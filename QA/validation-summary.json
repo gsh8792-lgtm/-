@@ -1,0 +1,132 @@
+{
+  "version": "0.1.0",
+  "created_utc": "2026-10-06T22:01:12.970198+00:00",
+  "windows_build": {
+    "result": "Succeeded",
+    "errors": 0,
+    "warnings": 1
+  },
+  "android_build": {
+    "result": "Succeeded",
+    "errors": 0,
+    "warnings": 1
+  },
+  "android_signature": "APK Signature Scheme v2 verified",
+  "android_min_sdk": 26,
+  "android_target_sdk": 36,
+  "android_abi": "arm64-v8a",
+  "rules": {
+    "passed": true,
+    "assertions": 67639,
+    "routeSeeds": 500,
+    "dropSamples": 20000,
+    "rarities": [
+      196,
+      984,
+      2460,
+      4529,
+      5147,
+      3504,
+      1958,
+      874,
+      307,
+      41
+    ]
+  },
+  "runtime": {
+    "passed": true,
+    "checks": 44,
+    "error": "",
+    "cases": [
+      "attack consumes stamina",
+      "windup does not hit early",
+      "active attack applies damage",
+      "one hit per attack target",
+      "recovery unlocks controls",
+      "forward attack misses behind",
+      "dodge invulnerability blocks damage",
+      "directional block reduces damage and spends stamina",
+      "stamina-only skill 0",
+      "stamina-only skill 1",
+      "stamina-only skill 5",
+      "hybrid skill consumes both resources 2",
+      "hybrid skill consumes both resources 3",
+      "hybrid skill consumes both resources 4",
+      "ranged windup creates projectile",
+      "projectile collides with target",
+      "healer skill restores health",
+      "insufficient resource rejects attack",
+      "purchased potions survive departure",
+      "party choices persist between runs",
+      "death resets level and preserves permanent progression",
+      "event resolves: 금이 간 성소",
+      "event resolves: 길 잃은 연금술사",
+      "event resolves: 봉인된 군수 상자",
+      "event resolves: 잿빛 계약자",
+      "event resolves: 수몰된 기록실",
+      "event resolves: 부상당한 순례자",
+      "blacksmith repairs recovered equipment",
+      "blacksmith enhancement applies",
+      "armor enhancement increases actual defense",
+      "save round trip preserves consumables and gear",
+      "stat and skill allocation applies",
+      "new class has separate allocation",
+      "previous class restores allocation",
+      "dual runes multiply costs and damage",
+      "permanent trait branches apply",
+      "expedition checkpoint restores actors and event",
+      "death preserves traits but clears class allocations and checkpoint",
+      "five-room expedition, legal AI inputs; class=0, ticks=1291, kills=9",
+      "five-room expedition, legal AI inputs; class=1, ticks=1423, kills=9",
+      "five-room expedition, legal AI inputs; class=2, ticks=1009, kills=9",
+      "five-room expedition, legal AI inputs; class=3, ticks=1319, kills=9",
+      "five-room expedition, legal AI inputs; class=4, ticks=1135, kills=9",
+      "five-room expedition, legal AI inputs; class=5, ticks=1136, kills=9"
+    ]
+  },
+  "local_three_process_network": {
+    "host": {
+      "passed": true,
+      "mode": 1,
+      "localId": 0,
+      "remotePlayers": 2,
+      "platforms": 3,
+      "movement": 6.89
+    },
+    "client1": {
+      "passed": true,
+      "mode": 2,
+      "localId": 1,
+      "remotePlayers": 2,
+      "platforms": 3,
+      "movement": 7.02
+    },
+    "client2": {
+      "passed": true,
+      "mode": 2,
+      "localId": 2,
+      "remotePlayers": 2,
+      "platforms": 3,
+      "movement": 7.06
+    }
+  },
+  "reference_original_bytes_identical": true,
+  "reference_crop_rgb_identical": true,
+  "android_compiled_sources_match": true,
+  "visual_evidence": [
+    "town-reviewed.jpg",
+    "combat-reviewed.jpg",
+    "inventory-reviewed.jpg",
+    "legendary-equipment-reviewed.jpg",
+    "rig-reviewed.jpg",
+    "equipment-contact.png"
+  ],
+  "limitations": [
+    "No connected Android hardware: no physical-device execution, thermal or multi-touch certification.",
+    "LAN proof uses three separate local processes; separate devices and internet transport are not certified.",
+    "Female companions share the supplied reference rig; six unique character costumes and complete armor layers remain production work.",
+    "50 weapon definitions share five family illustrations. Regional content uses prototype shared art.",
+    "100 stage slots are generated across five region tiers; they are not 100 distinct fully authored maps.",
+    "Full requested production art parity is not certified."
+  ]
+}

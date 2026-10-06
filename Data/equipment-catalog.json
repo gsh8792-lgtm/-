@@ -1,0 +1,514 @@
+{
+    "items": [
+        {
+            "id": "D_sword",
+            "name": "견습의 한손검",
+            "kind": "sword",
+            "grade": 0,
+            "jobs": [
+                0
+            ],
+            "basePower": 8.0
+        },
+        {
+            "id": "D_greatsword",
+            "name": "견습의 양손검",
+            "kind": "greatsword",
+            "grade": 0,
+            "jobs": [
+                1
+            ],
+            "basePower": 12.0
+        },
+        {
+            "id": "D_focus",
+            "name": "견습의 마도구",
+            "kind": "focus",
+            "grade": 0,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 10.0
+        },
+        {
+            "id": "D_bow",
+            "name": "견습의 활",
+            "kind": "bow",
+            "grade": 0,
+            "jobs": [
+                4
+            ],
+            "basePower": 8.0
+        },
+        {
+            "id": "D_daggers",
+            "name": "견습의 쌍검",
+            "kind": "daggers",
+            "grade": 0,
+            "jobs": [
+                5
+            ],
+            "basePower": 6.0
+        },
+        {
+            "id": "C_sword",
+            "name": "정련의 한손검",
+            "kind": "sword",
+            "grade": 1,
+            "jobs": [
+                0
+            ],
+            "basePower": 9.119999885559082
+        },
+        {
+            "id": "C_greatsword",
+            "name": "정련의 양손검",
+            "kind": "greatsword",
+            "grade": 1,
+            "jobs": [
+                1
+            ],
+            "basePower": 13.680000305175781
+        },
+        {
+            "id": "C_focus",
+            "name": "정련의 마도구",
+            "kind": "focus",
+            "grade": 1,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 11.399999618530273
+        },
+        {
+            "id": "C_bow",
+            "name": "정련의 활",
+            "kind": "bow",
+            "grade": 1,
+            "jobs": [
+                4
+            ],
+            "basePower": 9.119999885559082
+        },
+        {
+            "id": "C_daggers",
+            "name": "정련의 쌍검",
+            "kind": "daggers",
+            "grade": 1,
+            "jobs": [
+                5
+            ],
+            "basePower": 6.840000152587891
+        },
+        {
+            "id": "B_sword",
+            "name": "수호자의 한손검",
+            "kind": "sword",
+            "grade": 2,
+            "jobs": [
+                0
+            ],
+            "basePower": 10.399999618530273
+        },
+        {
+            "id": "B_greatsword",
+            "name": "수호자의 양손검",
+            "kind": "greatsword",
+            "grade": 2,
+            "jobs": [
+                1
+            ],
+            "basePower": 15.59999942779541
+        },
+        {
+            "id": "B_focus",
+            "name": "수호자의 마도구",
+            "kind": "focus",
+            "grade": 2,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 13.0
+        },
+        {
+            "id": "B_bow",
+            "name": "수호자의 활",
+            "kind": "bow",
+            "grade": 2,
+            "jobs": [
+                4
+            ],
+            "basePower": 10.399999618530273
+        },
+        {
+            "id": "B_daggers",
+            "name": "수호자의 쌍검",
+            "kind": "daggers",
+            "grade": 2,
+            "jobs": [
+                5
+            ],
+            "basePower": 7.799999713897705
+        },
+        {
+            "id": "A_sword",
+            "name": "영웅의 한손검",
+            "kind": "sword",
+            "grade": 3,
+            "jobs": [
+                0
+            ],
+            "basePower": 11.920000076293945
+        },
+        {
+            "id": "A_greatsword",
+            "name": "영웅의 양손검",
+            "kind": "greatsword",
+            "grade": 3,
+            "jobs": [
+                1
+            ],
+            "basePower": 17.880001068115234
+        },
+        {
+            "id": "A_focus",
+            "name": "영웅의 마도구",
+            "kind": "focus",
+            "grade": 3,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 14.899999618530273
+        },
+        {
+            "id": "A_bow",
+            "name": "영웅의 활",
+            "kind": "bow",
+            "grade": 3,
+            "jobs": [
+                4
+            ],
+            "basePower": 11.920000076293945
+        },
+        {
+            "id": "A_daggers",
+            "name": "영웅의 쌍검",
+            "kind": "daggers",
+            "grade": 3,
+            "jobs": [
+                5
+            ],
+            "basePower": 8.940000534057617
+        },
+        {
+            "id": "S_sword",
+            "name": "왕실의 한손검",
+            "kind": "sword",
+            "grade": 4,
+            "jobs": [
+                0
+            ],
+            "basePower": 13.600000381469727
+        },
+        {
+            "id": "S_greatsword",
+            "name": "왕실의 양손검",
+            "kind": "greatsword",
+            "grade": 4,
+            "jobs": [
+                1
+            ],
+            "basePower": 20.400001525878906
+        },
+        {
+            "id": "S_focus",
+            "name": "왕실의 마도구",
+            "kind": "focus",
+            "grade": 4,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 17.0
+        },
+        {
+            "id": "S_bow",
+            "name": "왕실의 활",
+            "kind": "bow",
+            "grade": 4,
+            "jobs": [
+                4
+            ],
+            "basePower": 13.600000381469727
+        },
+        {
+            "id": "S_daggers",
+            "name": "왕실의 쌍검",
+            "kind": "daggers",
+            "grade": 4,
+            "jobs": [
+                5
+            ],
+            "basePower": 10.200000762939453
+        },
+        {
+            "id": "SS_sword",
+            "name": "성좌의 한손검",
+            "kind": "sword",
+            "grade": 5,
+            "jobs": [
+                0
+            ],
+            "basePower": 15.520000457763672
+        },
+        {
+            "id": "SS_greatsword",
+            "name": "성좌의 양손검",
+            "kind": "greatsword",
+            "grade": 5,
+            "jobs": [
+                1
+            ],
+            "basePower": 23.280000686645508
+        },
+        {
+            "id": "SS_focus",
+            "name": "성좌의 마도구",
+            "kind": "focus",
+            "grade": 5,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 19.400001525878906
+        },
+        {
+            "id": "SS_bow",
+            "name": "성좌의 활",
+            "kind": "bow",
+            "grade": 5,
+            "jobs": [
+                4
+            ],
+            "basePower": 15.520000457763672
+        },
+        {
+            "id": "SS_daggers",
+            "name": "성좌의 쌍검",
+            "kind": "daggers",
+            "grade": 5,
+            "jobs": [
+                5
+            ],
+            "basePower": 11.640000343322754
+        },
+        {
+            "id": "SSS_sword",
+            "name": "심연의 한손검",
+            "kind": "sword",
+            "grade": 6,
+            "jobs": [
+                0
+            ],
+            "basePower": 17.68000030517578
+        },
+        {
+            "id": "SSS_greatsword",
+            "name": "심연의 양손검",
+            "kind": "greatsword",
+            "grade": 6,
+            "jobs": [
+                1
+            ],
+            "basePower": 26.520000457763672
+        },
+        {
+            "id": "SSS_focus",
+            "name": "심연의 마도구",
+            "kind": "focus",
+            "grade": 6,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 22.100000381469727
+        },
+        {
+            "id": "SSS_bow",
+            "name": "심연의 활",
+            "kind": "bow",
+            "grade": 6,
+            "jobs": [
+                4
+            ],
+            "basePower": 17.68000030517578
+        },
+        {
+            "id": "SSS_daggers",
+            "name": "심연의 쌍검",
+            "kind": "daggers",
+            "grade": 6,
+            "jobs": [
+                5
+            ],
+            "basePower": 13.260000228881836
+        },
+        {
+            "id": "R_sword",
+            "name": "태고의 한손검",
+            "kind": "sword",
+            "grade": 7,
+            "jobs": [
+                0
+            ],
+            "basePower": 20.15999984741211
+        },
+        {
+            "id": "R_greatsword",
+            "name": "태고의 양손검",
+            "kind": "greatsword",
+            "grade": 7,
+            "jobs": [
+                1
+            ],
+            "basePower": 30.239999771118164
+        },
+        {
+            "id": "R_focus",
+            "name": "태고의 마도구",
+            "kind": "focus",
+            "grade": 7,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 25.200000762939453
+        },
+        {
+            "id": "R_bow",
+            "name": "태고의 활",
+            "kind": "bow",
+            "grade": 7,
+            "jobs": [
+                4
+            ],
+            "basePower": 20.15999984741211
+        },
+        {
+            "id": "R_daggers",
+            "name": "태고의 쌍검",
+            "kind": "daggers",
+            "grade": 7,
+            "jobs": [
+                5
+            ],
+            "basePower": 15.119999885559082
+        },
+        {
+            "id": "UR_sword",
+            "name": "초월의 한손검",
+            "kind": "sword",
+            "grade": 8,
+            "jobs": [
+                0
+            ],
+            "basePower": 22.959999084472656
+        },
+        {
+            "id": "UR_greatsword",
+            "name": "초월의 양손검",
+            "kind": "greatsword",
+            "grade": 8,
+            "jobs": [
+                1
+            ],
+            "basePower": 34.439998626708984
+        },
+        {
+            "id": "UR_focus",
+            "name": "초월의 마도구",
+            "kind": "focus",
+            "grade": 8,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 28.69999885559082
+        },
+        {
+            "id": "UR_bow",
+            "name": "초월의 활",
+            "kind": "bow",
+            "grade": 8,
+            "jobs": [
+                4
+            ],
+            "basePower": 22.959999084472656
+        },
+        {
+            "id": "UR_daggers",
+            "name": "초월의 쌍검",
+            "kind": "daggers",
+            "grade": 8,
+            "jobs": [
+                5
+            ],
+            "basePower": 17.219999313354492
+        },
+        {
+            "id": "L_sword",
+            "name": "창세의 한손검",
+            "kind": "sword",
+            "grade": 9,
+            "jobs": [
+                0
+            ],
+            "basePower": 26.15999984741211
+        },
+        {
+            "id": "L_greatsword",
+            "name": "창세의 양손검",
+            "kind": "greatsword",
+            "grade": 9,
+            "jobs": [
+                1
+            ],
+            "basePower": 39.23999786376953
+        },
+        {
+            "id": "L_focus",
+            "name": "창세의 마도구",
+            "kind": "focus",
+            "grade": 9,
+            "jobs": [
+                2,
+                3
+            ],
+            "basePower": 32.70000076293945
+        },
+        {
+            "id": "L_bow",
+            "name": "창세의 활",
+            "kind": "bow",
+            "grade": 9,
+            "jobs": [
+                4
+            ],
+            "basePower": 26.15999984741211
+        },
+        {
+            "id": "L_daggers",
+            "name": "창세의 쌍검",
+            "kind": "daggers",
+            "grade": 9,
+            "jobs": [
+                5
+            ],
+            "basePower": 19.619998931884766
+        }
+    ]
+}

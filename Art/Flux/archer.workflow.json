@@ -1,0 +1,122 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "A professional game sprite sheet on a perfectly solid bright magenta (#FF00FF) background. Exactly eight full body pixel art sprites arranged in a precise 4 column by 2 row grid, each in its own equal cell, no cell borders. Every sprite shows the SAME character, an adult beautiful glamorous voluptuous female ranger with long emerald hair, fitted dark green leather corset armor, bare shoulders, short brown cape and thigh high boots. Mature heroic proportions. All characters face to the RIGHT in side profile as in a 2D side scrolling action game. Top row left to right: idle standing, walking contact pose right foot forward, walking passing pose, walking contact pose left foot forward. Bottom row: attack preparation with right arm raised, powerful forward punching attack with right arm extended, injured recoiling backwards, jumping with bent knees. Hands hold no weapons: empty fists. Each sprite fits completely in its cell with ample magenta margins and consistent feet baseline and body height. Each character is approximately 150 pixels tall. Crisp deliberate pixel clusters, detailed 16-bit dark fantasy pixel art, sharp edges, no blur, no text or lettering. Identical face, hair color, outfit, armor shapes and body proportions in every frame. No shadows or props or ground.",
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 768,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "conditioning": [
+        "4",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 771013
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "9": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 1024,
+      "height": 768
+    }
+  },
+  "10": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "7",
+        0
+      ],
+      "guider": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "filename_prefix": "AshenOath/flux-archer"
+    }
+  }
+}

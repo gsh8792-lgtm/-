@@ -1,0 +1,89 @@
+{
+  "source_hashes": {
+    "codex-clipboard-a63a180e-c1aa-481e-977f-02130cab3cb7.png": "59734c6177a9c72b69f65ea5d2723c359cdb29adf3ff1bdd8bf46a7de94d9261",
+    "codex-clipboard-07a9b7ab-2d69-4427-ab1a-ce5343f2b48d.png": "2933dcd18de9d3f84a50ceb4a7de7b6618e8b7896c8af731e11e1b9003055896"
+  },
+  "parts": [
+    {
+      "name": "head",
+      "source_box": [
+        41,
+        20,
+        225,
+        185
+      ],
+      "sha256": "5d5546932ad20f46df465fe0af819c95f70f712ef2040372421d586bba220b09"
+    },
+    {
+      "name": "torso",
+      "source_box": [
+        246,
+        191,
+        462,
+        539
+      ],
+      "sha256": "0e6c7ba9067e3b3e98f989f6ac6aacb0f8141d2ca5cb3b0a5b580b301e629566"
+    },
+    {
+      "name": "upperLeg",
+      "source_box": [
+        1408,
+        433,
+        1540,
+        662
+      ],
+      "sha256": "234ed30d700b1b48732b16a31b0e451058133bc50d9aa8958e93c763506809b1"
+    },
+    {
+      "name": "lowerLeg",
+      "source_box": [
+        1398,
+        703,
+        1554,
+        973
+      ],
+      "sha256": "e69c5d0f465e4df68a6be3fdf73c31241a9f9b649853436b3c691384c20033a2"
+    },
+    {
+      "name": "armRelaxed",
+      "source_box": [
+        1598,
+        192,
+        1788,
+        553
+      ],
+      "sha256": "4f0a5494ed8b298f25cd6460e4362dd1579e3330e5ac6e6830c6a5158e20b1b8"
+    },
+    {
+      "name": "armBent",
+      "source_box": [
+        1404,
+        195,
+        1630,
+        396
+      ],
+      "sha256": "a5a7bb75878ed20e86794ed2ed5b012af2161799e321efbe01ffbf70bebba013"
+    },
+    {
+      "name": "armRaised",
+      "source_box": [
+        1165,
+        200,
+        1398,
+        407
+      ],
+      "sha256": "c90474d10eba91869112a4312214cb4c5868e5ac29ac20725257b4156098261a"
+    },
+    {
+      "name": "fullLeg",
+      "source_box": [
+        931,
+        392,
+        1090,
+        974
+      ],
+      "sha256": "bb35257b2380ff2fe5878c90909b0913ff14b76a7ae68d7b1e9529f483ce7275"
+    }
+  ],
+  "method": "source pixels retained; edge-connected backdrop alpha only"
+}
