@@ -1,0 +1,11 @@
+{
+  "name": "hero-ebon",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5951219512195122,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "2b1c332ca6f596ed9e5d6d84bccf30572fc47cb621cb8ba84be7dd49cf775a7f"
+}

@@ -1,0 +1,60 @@
+{
+  "entries": [
+    {
+      "name": "archer",
+      "scale": 1.3688524590163935
+    },
+    {
+      "name": "enemy",
+      "scale": 1.6557377049180328
+    },
+    {
+      "name": "healer",
+      "scale": 1.6557377049180328
+    },
+    {
+      "name": "hero-archer",
+      "scale": 1.7459016393442621
+    },
+    {
+      "name": "hero-ebon",
+      "scale": 1.680327868852459
+    },
+    {
+      "name": "hero-healer",
+      "scale": 1.7622950819672132
+    },
+    {
+      "name": "hero-ivory",
+      "scale": 1.680327868852459
+    },
+    {
+      "name": "hero-mage",
+      "scale": 1.5327868852459015
+    },
+    {
+      "name": "hero-rogue",
+      "scale": 1.8032786885245902
+    },
+    {
+      "name": "hero-warrior",
+      "scale": 1.7950819672131149
+    },
+    {
+      "name": "knight",
+      "scale": 1.3278688524590163
+    },
+    {
+      "name": "mage",
+      "scale": 1.598360655737705
+    },
+    {
+      "name": "rogue",
+      "scale": 1.737704918032787
+    },
+    {
+      "name": "warrior",
+      "scale": 1.7950819672131149
+    }
+  ]
+}

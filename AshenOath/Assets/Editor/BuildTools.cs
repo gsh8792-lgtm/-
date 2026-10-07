@@ -52,14 +52,12 @@ namespace AshenOath.Editor
             Directory.CreateDirectory("Assets/Scenes");var scene=EditorSceneManager.NewScene(NewSceneSetup.EmptyScene,NewSceneMode.Single);
             var camera=new GameObject("Camera").AddComponent<Camera>();camera.orthographic=true;camera.backgroundColor=Color.black;camera.clearFlags=CameraClearFlags.SolidColor;camera.tag="MainCamera";
             EditorSceneManager.SaveScene(scene,"Assets/Scenes/Boot.unity");EditorBuildSettings.scenes=new[]{new EditorBuildSettingsScene("Assets/Scenes/Boot.unity",true)};
-            PlayerSettings.companyName="AshenOath";PlayerSettings.productName="Ashen Oath";PlayerSettings.bundleVersion="0.1.0";
+            PlayerSettings.companyName="AshenOath";PlayerSettings.productName="Ashen Oath";PlayerSettings.bundleVersion="0.2.0";
             PlayerSettings.defaultScreenWidth=1280;PlayerSettings.defaultScreenHeight=720;PlayerSettings.fullScreenMode=FullScreenMode.Windowed;PlayerSettings.runInBackground=true;
             PlayerSettings.SplashScreen.show=false;
             PlayerSettings.defaultInterfaceOrientation=UIOrientation.LandscapeLeft;PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Android,"com.ashenoath.prototype");
-            foreach(string guid in AssetDatabase.FindAssets("t:Texture2D",new[]{"Assets/Resources/Art"}))
-            {string path=AssetDatabase.GUIDToAssetPath(guid);var importer=(TextureImporter)AssetImporter.GetAtPath(path);importer.filterMode=FilterMode.Point;importer.textureCompression=TextureImporterCompression.Uncompressed;importer.mipmapEnabled=false;importer.alphaIsTransparency=true;importer.maxTextureSize=2048;importer.SaveAndReimport();}
-            foreach(string guid in AssetDatabase.FindAssets("t:Texture2D",new[]{"Assets/Resources/Rig"}))
-            {var importer=(TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid));importer.filterMode=FilterMode.Bilinear;importer.textureCompression=TextureImporterCompression.Uncompressed;importer.mipmapEnabled=false;importer.alphaIsTransparency=true;importer.SaveAndReimport();}
+            foreach(string guid in AssetDatabase.FindAssets("t:Texture2D",new[]{"Assets/Resources/Belt","Assets/Resources/Sanctuary"}))
+            {var importer=(TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid));importer.filterMode=FilterMode.Bilinear;importer.textureCompression=TextureImporterCompression.Uncompressed;importer.mipmapEnabled=false;importer.alphaIsTransparency=true;importer.npotScale=TextureImporterNPOTScale.None;importer.maxTextureSize=4096;importer.SaveAndReimport();}
             AssetDatabase.SaveAssets();Validate();
         }
         [MenuItem("Ashen Oath/Build all preview targets")]
@@ -68,7 +66,7 @@ namespace AshenOath.Editor
         public static void Windows()
         {
             Prepare();string path=Path.Combine(Root,"Builds","Windows","AshenOath.exe");Directory.CreateDirectory(Path.GetDirectoryName(path));
-            var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/Boot.unity"},locationPathName=path,target=BuildTarget.StandaloneWindows64,options=BuildOptions.Development});
+            var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/Boot.unity"},locationPathName=path,target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
             File.WriteAllText(Path.Combine(Root,"QA","windows-build.json"),"{\"result\":\""+report.summary.result+"\",\"errors\":"+report.summary.totalErrors+",\"warnings\":"+report.summary.totalWarnings+"}");
             if(report.summary.result!=BuildResult.Succeeded)throw new Exception("Windows build failed");
         }
@@ -76,8 +74,9 @@ namespace AshenOath.Editor
         public static void Web()
         {
             Prepare();PlayerSettings.WebGL.compressionFormat=WebGLCompressionFormat.Disabled;
+            PlayerSettings.WebGL.template="PROJECT:AshenOath";
             PlayerSettings.WebGL.dataCaching=false;
-            var r=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/Boot.unity"},locationPathName=Path.Combine(Root,"Builds","Web"),target=BuildTarget.WebGL,options=BuildOptions.Development});
+            var r=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/Boot.unity"},locationPathName=Path.Combine(Root,"Builds","Web"),target=BuildTarget.WebGL,options=BuildOptions.None});
             if(r.summary.result!=BuildResult.Succeeded)throw new Exception("Web preview build failed");
         }
         [MenuItem("Ashen Oath/Build Android APK")]
@@ -87,7 +86,7 @@ namespace AshenOath.Editor
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android,ScriptingImplementation.IL2CPP);PlayerSettings.Android.targetArchitectures=AndroidArchitecture.ARM64;
             PlayerSettings.Android.forceInternetPermission=true;PlayerSettings.Android.minSdkVersion=AndroidSdkVersions.AndroidApiLevel26;
             string path=Path.Combine(Root,"Builds","Android","AshenOath.apk");Directory.CreateDirectory(Path.GetDirectoryName(path));
-            var r=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/Boot.unity"},locationPathName=path,target=BuildTarget.Android,options=BuildOptions.Development});
+            var r=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/Boot.unity"},locationPathName=path,target=BuildTarget.Android,options=BuildOptions.None});
             File.WriteAllText(Path.Combine(Root,"QA","android-build.json"),"{\"result\":\""+r.summary.result+"\",\"errors\":"+r.summary.totalErrors+",\"warnings\":"+r.summary.totalWarnings+"}");
             if(r.summary.result!=BuildResult.Succeeded)throw new Exception("Android build failed");
         }

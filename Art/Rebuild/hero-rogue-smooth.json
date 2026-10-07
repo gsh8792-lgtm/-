@@ -1,0 +1,11 @@
+{
+  "name": "hero-rogue",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5545454545454546,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "0184c0070cc1b4447780631ba101f969c62c7d30c6b8bb2bd26be13c807a259c"
+}

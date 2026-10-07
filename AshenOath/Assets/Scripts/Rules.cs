@@ -29,7 +29,7 @@ namespace AshenOath
     {
         public int version=1, job, level=1, xp, gold=120, shards, runePoints=1, runeRank, unlockedRegion, deaths;
         public int weapon=0, armor=1, rune=0, stance;
-        public int potions=3,companion1=3,companion2=4;
+        public int potions=3,companion1=0,companion2=3;
         public int rune2=-1,vigorRank,insightRank;
         public JobBuild[] builds=Enumerable.Range(0,6).Select(i=>new JobBuild()).ToArray();
         public ExpeditionCheckpoint checkpoint;

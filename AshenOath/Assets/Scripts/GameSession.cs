@@ -8,12 +8,13 @@ using Random=System.Random;
 namespace AshenOath
 {
     [Serializable] public struct Controls
-    { public float move; public bool jump,attack,skill,dodge,block; public int order; }
+    { public float move,depth; public bool jump,attack,skill,dodge,block; public int order; }
     [Serializable] public sealed class Fighter
     {
         public int id,job,face=1;public string name,art;public bool enemy,boss,remote;
         public float x,y,vy,hp,maxHp,maxSp,maxMp,sp,mp,stun,invulnerable,attackTime=-1,skillCooldown,slow,burn,burnTick;
-        public float charge,aiTimer,holdX;public int phase;public bool resolved,skillAttack,blocking,grounded=true;
+        public float charge,aiTimer,holdX,holdY,lift,liftVelocity,depthMove,dodgeTime,dodgeX,dodgeY,animationTime,runPhase,attackBuffer;public int phase;public bool resolved,skillAttack,blocking,grounded=true;
+        public List<int> hitTargets=new List<int>();
         public float move,range,power,armor;public Controls input;public Stance stance;
         public bool Alive=>hp>0;
         public float Height=>enemy?(boss?3.9f:2.6f):3.2f;
@@ -25,9 +26,9 @@ namespace AshenOath
         }
     }
     [Serializable] public sealed class Missile
-    { public int owner;public float x,y,dx,damage,life=2;public bool enemy;public int rune; }
+    { public int owner;public float x,y,dx,dy,height=1.2f,damage,life=2;public bool enemy;public int rune; }
     public sealed class FloatingText
-    {public float x,y,time=1;public string text;public Color color;}
+    {public float x,y,height,time=1;public string text;public Color color;}
     [Serializable] public struct Platform
     {public float x,y,width;public Platform(float a,float b,float c){x=a;y=b;width=c;}}
     public sealed partial class GameSession:MonoBehaviour
@@ -46,7 +47,7 @@ namespace AshenOath
         public int kills;public LanCoop net;public Controls localInput;public CombatSound sound;public float hitStop,shake;
         public bool IsClient=>net!=null&&net.mode==2;
         public Fighter Hero=>actors.FirstOrDefault(a=>a.id==(IsClient?net.localId:0))??actors.FirstOrDefault(a=>!a.enemy);
-        public string SavePath=>Path.Combine(Application.persistentDataPath,"ashen-oath-v1.json");
+        public string SavePath=>Path.Combine(Application.persistentDataPath,"ashen-oath-belt-v2.json");
         Random random=new Random();int nextId=10;float step;
         bool selftest;int testTick,captureTick;
         public static string Argument(string name)
@@ -70,7 +71,7 @@ namespace AshenOath
             if(!selftest)RestoreCheckpoint();
             if(Argument("--host")!=null)net.Host(int.Parse(Argument("--host")));
             if(Argument("--join")!=null)net.Join(Argument("--join"),int.Parse(Argument("--port")??"7777"));
-            if(selftest){profile.started=true;if(Argument("--capture-mode")!="town"&&Argument("--netcheck")==null)BeginRun(0,5);if(Argument("--capture-mode")=="inventory"){for(int i=0;i<10;i++)profile.bag.Add(Equipment.Create(new Random(i),i,0,i+1));inventory=true;}}
+            if(selftest){profile.started=true;string mode=Argument("--capture-mode");if(mode!="town"&&mode!="animation"&&mode!="inventory"&&Argument("--netcheck")==null)BeginRun(0,5);if(mode=="inventory"){profile.bag.Add(new Gear{id="qa-ebon",name="흑요석 서약 갑옷",slot="armor",rarity=4,armor=25});if(Argument("--review-gear")=="ebon")profile.armor=profile.bag.Count-1;for(int i=0;i<10;i++)profile.bag.Add(Equipment.Create(new Random(i),i,0,i+1));inventory=true;}}
         }
         public void Save()
         {
@@ -90,9 +91,9 @@ namespace AshenOath
         }
         void AddParty()
         {
-            AddFighter(0,profile.job,"방랑자","hero",false,4);
-            AddFighter(1,profile.companion1,Rules.Companions[profile.companion1],"healer",false,2.5f);
-            AddFighter(2,profile.companion2,Rules.Companions[profile.companion2],"archer",false,1);
+            AddFighter(0,profile.job,"방랑자","hero",false,4).y=3.5f;
+            AddFighter(1,profile.companion1,Rules.Companions[profile.companion1],"companion",false,2.5f).y=2.4f;
+            AddFighter(2,profile.companion2,Rules.Companions[profile.companion2],"companion",false,2.5f).y=4.6f;
         }
         public Fighter AddFighter(int id,int job,string name,string art,bool enemy,float x,bool boss=false)
         {
@@ -112,14 +113,13 @@ namespace AshenOath
         {
             actors.RemoveAll(a=>a.enemy);shots.Clear();platforms.Clear();texts.Clear();cleared=false;eventResolved=false;order=0;
             worldWidth=42;cameraX=0;nextId=10;
-            foreach(var a in actors){a.x=3-a.id*.7f;a.y=0;a.vy=0;a.attackTime=-1;a.resolved=false;a.holdX=a.x;if(!a.Alive){a.hp=a.maxHp*.4f;} }
+            foreach(var a in actors){a.x=3-a.id*.7f;a.y=3.5f+(a.id==1?-1:a.id==2?1:0);a.lift=a.liftVelocity=0;a.attackTime=-1;a.resolved=false;a.holdX=a.x;a.holdY=a.y;if(!a.Alive){a.hp=a.maxHp*.4f;} }
             if(route[room]==RoomKind.Battle||route[room]==RoomKind.Elite)
             {
-                platforms.Add(new Platform(9,2,4));platforms.Add(new Platform(20,2.8f,4));platforms.Add(new Platform(29,1.5f,4));
                 int count=3+Math.Min(3,room/4)+(route[room]==RoomKind.Elite?2:0);
-                for(int i=0;i<count;i++)AddFighter(nextId++,i%3==2?2:0,i%3==2?"망령 술사":"무덤 파수병","enemy",true,12+i*4);
+                for(int i=0;i<count;i++)AddFighter(nextId++,0,"무덤 파수병","enemy",true,12+i*4).y=1.5f+i%3*2;
             }
-            if(route[room]==RoomKind.Boss)AddFighter(nextId++,1,"종지기 모르가스","enemy",true,27,true);
+            if(route[room]==RoomKind.Boss)AddFighter(nextId++,1,"종지기 모르가스","enemy",true,27,true).y=3.5f;
             if(route[room]==RoomKind.Event){eventName=Events.Names[random.Next(Events.Names.Length)];cleared=false;}
             if(route[room]==RoomKind.Rest){foreach(var a in actors){a.hp=Mathf.Min(a.maxHp,a.hp+a.maxHp*.4f);a.sp=a.Stats.stamina;a.mp=a.Stats.mana;}cleared=true;Toast("모닥불: 체력 40% 회복. 다음 방으로 가거나 안전하게 귀환할 수 있습니다.");}
             else Toast((room+1)+" / "+route.Length+"  ·  "+RoomName(route[room]));
@@ -147,7 +147,7 @@ namespace AshenOath
                 localInput.jump=localInput.attack=localInput.skill=localInput.dodge=false;
             }
             if(Hero!=null)cameraX=Mathf.Lerp(cameraX,Mathf.Clamp(Hero.x-8,0,worldWidth-24),1-Mathf.Exp(-Time.deltaTime*5));
-            for(int i=texts.Count-1;i>=0;i--){texts[i].time-=Time.deltaTime;texts[i].y+=Time.deltaTime*.5f;if(texts[i].time<=0)texts.RemoveAt(i);}
+            for(int i=texts.Count-1;i>=0;i--){texts[i].time-=Time.deltaTime;texts[i].height+=Time.deltaTime*.5f;if(texts[i].time<=0)texts.RemoveAt(i);}
             if(Argument("--smoke")!=null)Smoke();
             if(Argument("--capture")!=null){captureTick++;if(captureTick==360)StartCoroutine(CaptureFrame());}
         }
@@ -158,6 +158,7 @@ namespace AshenOath
             if(Input.GetKeyDown(KeyCode.Tab))showCommands=!showCommands;
             if(inventory||paused||showCommands){localInput=default;return;}
             float axis=Input.GetAxisRaw("Horizontal");if(Mathf.Abs(axis)>.05f)localInput.move=axis;else if(!showTouch)localInput.move=0;
+            float depthAxis=Input.GetAxisRaw("Vertical");if(Mathf.Abs(depthAxis)>.05f)localInput.depth=-depthAxis;else if(!showTouch)localInput.depth=0;
             localInput.jump|=Input.GetKeyDown(KeyCode.Space)||Input.GetKeyDown(KeyCode.JoystickButton0);
             localInput.attack|=Input.GetKeyDown(KeyCode.J)||Input.GetKeyDown(KeyCode.JoystickButton2)||!showTouch&&Input.GetMouseButtonDown(0)&&Input.mousePosition.y>155&&Input.mousePosition.y<Screen.height-105;
             localInput.skill|=Input.GetKeyDown(KeyCode.K)||Input.GetKeyDown(KeyCode.JoystickButton3);
@@ -172,7 +173,7 @@ namespace AshenOath
         {
             if(value<0||value>=Rules.Orders.Length)return;
             if(IsClient){Toast("파티 지시는 방장이 내립니다.");return;}
-            order=value;foreach(var f in actors.Where(a=>!a.enemy))f.holdX=f.x;
+            order=value;foreach(var f in actors.Where(a=>!a.enemy)){f.holdX=f.x;f.holdY=f.y;}
             Toast("파티 명령: "+Rules.Orders[value]);showCommands=false;
         }
         public void Drink()
@@ -189,64 +190,38 @@ namespace AshenOath
                 if(f.id==0){var mods=Equipment.Sum(profile);f.maxHp=f.Stats.hp+(profile.level-1)*9+mods.health+Build.vitality*8+profile.vigorRank*5;f.maxSp=f.Stats.stamina+mods.stamina+Build.focus*4;f.maxMp=f.Stats.mana>0?f.Stats.mana+mods.mana+Build.focus*5:0;f.hp=Mathf.Min(f.maxHp,f.hp+mods.regen*dt);}
                 f.sp=Mathf.Min(f.maxSp,f.sp+dt*(f.blocking?3:21));f.mp=Mathf.Min(f.maxMp,f.mp+dt*5);
                 Controls c=f.id==0?localInput:f.remote?f.input:AI(f,dt);
+                f.animationTime+=dt;f.attackBuffer=Mathf.Max(0,f.attackBuffer-dt);
+                if(c.attack&&f.attackTime>=0&&f.attackTime>f.Stats.windup+f.Stats.recovery-.16f)f.attackBuffer=.16f;
                 if(f.attackTime>=0)AdvanceAttack(f,dt);
+                if(f.attackTime<0&&f.attackBuffer>0){c.attack=true;f.attackBuffer=0;}
                 if(f.stun>0)c=default;
                 f.blocking=c.block&&f.sp>5&&f.attackTime<0;
-                if(c.dodge&&f.sp>=24&&f.attackTime<0){f.sp-=24;f.invulnerable=.32f;f.x+=f.face*2.4f;}
-                if(c.jump&&f.grounded){f.vy=8.8f;f.grounded=false;}
+                if(c.dodge&&f.sp>=24&&f.attackTime<0&&f.dodgeTime<=0){f.sp-=24;f.invulnerable=.28f;f.dodgeTime=.32f;var direction=new Vector2(c.move,c.depth);if(direction.sqrMagnitude<.01f)direction=new Vector2(f.face,0);direction.Normalize();f.dodgeX=direction.x;f.dodgeY=direction.y;}
+                if(c.jump&&f.grounded){f.liftVelocity=8.8f;f.grounded=false;}
                 if(c.skill&&f.skillCooldown<=0)Attack(f,true);
                 else if(c.attack)Attack(f,false);
-                f.move=c.move;
+                var movement=Vector2.ClampMagnitude(new Vector2(c.move,c.depth),1);f.move=movement.x;f.depthMove=movement.y;
                 if(Mathf.Abs(c.move)>.05f&&f.attackTime<0)f.face=c.move>0?1:-1;
                 float speed=f.enemy?(f.boss?2.3f:2.1f):f.Stats.speed;
-                f.x=Mathf.Clamp(f.x+c.move*speed*dt*(f.attackTime>=0?.2f:1)*(f.slow>0?.5f:1)*(f.blocking?.4f:1),.6f,worldWidth-1);
-                float oldY=f.y;f.vy-=22*dt;f.y+=f.vy*dt;f.grounded=false;
-                float floor=0;
-                foreach(var p in platforms)if(f.x>p.x-.2f&&f.x<p.x+p.width+.2f&&oldY>=p.y-.05f&&f.y<=p.y&&f.vy<=0)floor=Math.Max(floor,p.y);
-                if(f.y<=floor){f.y=floor;f.vy=0;f.grounded=true;}
+                float travel=speed*dt*(f.attackTime>=0?.18f:1)*(f.slow>0?.5f:1)*(f.blocking?.4f:1);
+                var oldGround=new Vector2(f.x,f.y);
+                if(f.dodgeTime>0){f.dodgeTime-=dt;f.x+=f.dodgeX*9*dt;f.y+=f.dodgeY*9*dt;}else{f.x+=movement.x*travel;f.y+=movement.y*travel;}
+                f.x=Mathf.Clamp(f.x,.6f,worldWidth-1);f.y=Mathf.Clamp(f.y,.4f,6.6f);
+                if(f.attackTime<0&&f.dodgeTime<=0&&f.grounded)f.runPhase=(f.runPhase+Vector2.Distance(oldGround,new Vector2(f.x,f.y))*1.8f)%6;
+                f.liftVelocity-=22*dt;f.lift+=f.liftVelocity*dt;f.grounded=false;
+                if(f.lift<=0){f.lift=0;f.liftVelocity=0;f.grounded=true;}
                 if(f.remote){f.input.jump=f.input.attack=f.input.skill=f.input.dodge=false;}
             }
             for(int i=shots.Count-1;i>=0;i--)
             {
-                var s=shots[i];s.x+=s.dx*dt;s.life-=dt;
-                foreach(var a in actors)if(a.Alive&&a.enemy!=s.enemy&&Mathf.Abs(a.x-s.x)<.55f&&s.y>a.y+.15f&&s.y<a.y+a.Height)
+                var s=shots[i];s.x+=s.dx*dt;s.y+=s.dy*dt;s.life-=dt;
+                foreach(var a in actors)if(a.Alive&&a.enemy!=s.enemy&&Mathf.Abs(a.x-s.x)<.55f&&Mathf.Abs(s.y-a.y)<.5f&&s.height>a.lift+.15f&&s.height<a.lift+a.Height)
                 {var owner=actors.Find(f=>f.id==s.owner);Hurt(a,s.damage,owner,s.rune);s.life=0;break;}
                 if(s.life<=0)shots.RemoveAt(i);
             }
             if(Hero!=null&&!actors.Any(f=>!f.enemy&&f.Alive)){Die();return;}
             if(!cleared&&route[room]!=RoomKind.Event&&!actors.Any(a=>a.enemy&&a.Alive))
             {cleared=true;Toast("구역 확보 · E 또는 다음 구역 버튼으로 이동");if(route[room]==RoomKind.Boss)Loot(true);}
-        }
-        Controls AI(Fighter f,float dt)
-        {
-            var c=new Controls();f.aiTimer-=dt;
-            var opponents=actors.Where(a=>a.enemy!=f.enemy&&a.Alive).OrderBy(a=>Mathf.Abs(a.x-f.x)).ToList();
-            if(opponents.Count==0){if(!f.enemy&&Hero!=null)c.move=Mathf.Abs(f.x-(Hero.x-f.id))>1?Mathf.Sign(Hero.x-f.id-f.x):0;return c;}
-            var t=opponents[0];
-            if(!f.enemy&&Hero!=null)
-            {
-                if(order==(int)Order.Follow||order==(int)Order.Retreat){float d=Hero.x-f.id-f.x;if(Mathf.Abs(d)>3)c.move=Mathf.Sign(d);if(order==(int)Order.Retreat)return c;}
-                if(order==(int)Order.Focus)t=opponents.OrderBy(a=>Mathf.Abs(a.x-Hero.x)).First();
-                if(order==(int)Order.Interrupt)t=opponents.OrderByDescending(a=>a.job==2).First();
-                if(f.job==3&&f.mp>=24&&f.skillCooldown<=0&&actors.Any(a=>!a.enemy&&a.Alive&&a.hp/a.maxHp<(order==(int)Order.Heal?.95f:.55f)))c.skill=true;
-                if(order==(int)Order.Protect&&Mathf.Abs(t.x-Hero.x)>4){c.move=Mathf.Abs(f.x-Hero.x)>2?Mathf.Sign(Hero.x-f.x):0;return c;}
-                if(order==(int)Order.Hold){c.move=Mathf.Abs(f.x-f.holdX)>.3f?Mathf.Sign(f.holdX-f.x):0;}
-            }
-            float dist=Mathf.Abs(t.x-f.x);f.face=t.x>=f.x?1:-1;
-            float desired=f.range>.1f?f.range*.75f:1;
-            bool hold=!f.enemy&&order==(int)Order.Hold;
-            if(dist>desired&&!hold)c.move=f.face;
-            else if(dist<2.3f&&f.range>4&&!hold)c.move=-f.face;
-            if(dist<=f.range+.2f&&Mathf.Abs(t.y-f.y)<2.4f&&f.aiTimer<=0){c.attack=true;f.aiTimer=f.enemy?(f.boss?1.3f:1.6f):.45f;}
-            if(!f.enemy&&order==(int)Order.Burst&&f.job!=3&&f.skillCooldown<=0&&dist<f.range+1)c.skill=true;
-            if(!f.enemy&&order==(int)Order.Conserve){c.skill=false;if(f.sp<f.Stats.stamina*.4f)c.attack=false;}
-            if(!f.enemy&&order==(int)Order.Spread&&Hero!=null&&Mathf.Abs(f.x-Hero.x)<3)c.move=f.id==1?-1:1;
-            if(!f.enemy&&f.stance==Stance.Aggressive&&f.job!=3&&dist<f.range+.5f&&f.sp>f.maxSp*.4f)c.skill=true;
-            if(!f.enemy&&f.stance==Stance.Support){if(f.job==3&&actors.Any(a=>!a.enemy&&a.Alive&&a.hp<a.maxHp*.8f))c.skill=true;if(Hero!=null&&dist>4&&Mathf.Abs(f.x-Hero.x)>3)c.move=Mathf.Sign(Hero.x-f.x);}
-            if(f.stance==Stance.Defensive&&!f.enemy&&f.hp<f.maxHp*.35f){c.block=true;if(dist<3)c.move=-f.face;}
-            if(t.y>f.y+1&&f.grounded)c.jump=true;
-            if(f.boss&&f.hp<f.maxHp*.5f){f.phase=1;if(f.skillCooldown<=0){c.skill=true;}}
-            return c;
         }
         void Attack(Fighter f,bool skill)
         {
@@ -256,27 +231,28 @@ namespace AshenOath
             if(f.job==4){sp=skill?16:8;mp=skill?18:0;}
             if(!f.enemy&&f.id==0){var mods=Equipment.Sum(profile);sp*=RuneCost*(1-mods.cost);mp*=RuneCost*(1-mods.cost);}
             if(!f.enemy&&(f.sp<sp||f.mp<mp))return;
-            f.sp-=sp;f.mp-=mp;f.attackTime=0;f.resolved=false;f.skillAttack=skill;
+            if(f.dodgeTime>0)return;
+            f.sp-=sp;f.mp-=mp;f.attackTime=0;f.resolved=false;f.skillAttack=skill;f.hitTargets=new List<int>();
             if(skill&&f.id==0)sound?.Play(f.job==3?2:1);
             if(skill)f.skillCooldown=(f.boss?4:5)*(f.id==0?(1-Equipment.Sum(profile).cooldown)*(1-Build.skillSpeed*.06f):1);
         }
         void AdvanceAttack(Fighter f,float dt)
         {
             f.attackTime+=dt*(f.id==0?1+Equipment.Sum(profile).haste:1);float wind=f.boss?.75f:f.enemy?.48f:f.Stats.windup;
-            if(f.attackTime>=wind&&!f.resolved)
+            if(f.attackTime>=wind&&(!f.resolved||f.range<=4&&f.attackTime<wind+.12f))
             {
-                f.resolved=true;
+                bool first=!f.resolved;f.resolved=true;
                 if(f.skillAttack&&f.job==3&&!f.enemy)
-                {foreach(var a in actors.Where(a=>!a.enemy&&a.Alive&&Mathf.Abs(a.x-f.x)<8)){a.hp=Mathf.Min(a.maxHp,a.hp+(38+profile.level*2+(f.id==0?Build.skillHealing*3:0))*(f.id==0?1+Build.skillPower*.12f:1));Float(a,"치유",new Color(.4f,1,.7f));}}
+                {if(first)foreach(var a in actors.Where(a=>!a.enemy&&a.Alive&&Vector2.Distance(new Vector2(a.x,a.y),new Vector2(f.x,f.y))<8)){a.hp=Mathf.Min(a.maxHp,a.hp+(38+profile.level*2+(f.id==0?Build.skillHealing*3:0))*(f.id==0?1+Build.skillPower*.12f:1));Float(a,"치유",new Color(.4f,1,.7f));}}
                 else
                 {
                     float damage=f.power*(f.skillAttack?1.9f:1);int rune=-1;
-                    if(f.id==0){damage+=Build.strength*1.5f;if(profile.weapon>=0&&profile.weapon<profile.bag.Count)damage+=profile.bag[profile.weapon].Attack;damage*=1+profile.runeRank*.025f;rune=profile.rune;damage*=RuneDamage;if(f.skillAttack){damage*=1+Build.skillPower*.12f;f.hp=Mathf.Min(f.maxHp,f.hp+Build.skillHealing*3);}}
+                    if(f.id==0){damage+=Build.strength*1.5f;if(profile.weapon>=0&&profile.weapon<profile.bag.Count)damage+=profile.bag[profile.weapon].Attack;damage*=1+profile.runeRank*.025f;rune=profile.rune;damage*=RuneDamage;if(f.skillAttack){damage*=1+Build.skillPower*.12f;if(first)f.hp=Mathf.Min(f.maxHp,f.hp+Build.skillHealing*3);}}
                     if(f.range>4)
-                    {shots.Add(new Missile{owner=f.id,x=f.x+f.face*.6f,y=f.y+1.2f,dx=f.face*13,damage=damage,enemy=f.enemy,rune=rune});}
+                    {var target=actors.Where(a=>a.enemy!=f.enemy&&a.Alive).OrderBy(a=>Vector2.Distance(new Vector2(a.x,a.y),new Vector2(f.x,f.y))).FirstOrDefault();Vector2 aim=target==null?new Vector2(f.face,0):new Vector2(target.x-f.x,target.y-f.y).normalized;shots.Add(new Missile{owner=f.id,x=f.x+f.face*.6f,y=f.y,height=f.lift+1.2f,dx=aim.x*13,dy=aim.y*13,damage=damage,enemy=f.enemy,rune=rune});}
                     else foreach(var t in actors.ToArray())
-                        if(t.Alive&&t.enemy!=f.enemy&&t.y<f.y+f.Height&&t.y+t.Height>f.y+.4f&&Mathf.Abs(t.x-f.x)<f.range+(f.skillAttack?1:.1f)&&(t.x-f.x)*f.face>-.4f)
-                            Hurt(t,damage,f,rune);
+                        if(t.Alive&&t.enemy!=f.enemy&&!f.hitTargets.Contains(t.id)&&Mathf.Abs(t.y-f.y)<(f.skillAttack?1.15f:.72f)&&Mathf.Abs(t.lift-f.lift)<1.7f&&Mathf.Abs(t.x-f.x)<f.range+(f.skillAttack?1:.1f)&&(t.x-f.x)*f.face>-.4f)
+                        {f.hitTargets.Add(t.id);Hurt(t,damage,f,rune);}
                 }
             }
             if(f.attackTime>=wind+(f.boss?.5f:f.Stats.recovery))f.attackTime=-1;
@@ -296,14 +272,14 @@ namespace AshenOath
             if(rune>=0&&source!=null)
             {
                 var r=Rules.Runes[rune];source.hp=Mathf.Min(source.maxHp,source.hp+damage*r.lifesteal);if(r.slow>0)target.slow=2;if(r.burn>0)target.burn=3;
-                if(r.chain>0){var other=actors.FirstOrDefault(a=>a!=target&&a.enemy==target.enemy&&a.Alive&&Mathf.Abs(a.x-target.x)<4);if(other!=null)Hurt(other,damage*r.chain,null);}
-                if(source.id==0&&profile.rune2>=0){var support=Rules.Runes[profile.rune2];source.hp=Mathf.Min(source.maxHp,source.hp+damage*support.lifesteal);if(support.slow>0)target.slow=2;if(support.burn>0)target.burn=3;if(support.chain>0){var other=actors.FirstOrDefault(a=>a!=target&&a.enemy==target.enemy&&a.Alive&&Mathf.Abs(a.x-target.x)<4);if(other!=null)Hurt(other,damage*support.chain,null);}}
+                if(r.chain>0){var other=actors.FirstOrDefault(a=>a!=target&&a.enemy==target.enemy&&a.Alive&&Vector2.Distance(new Vector2(a.x,a.y),new Vector2(target.x,target.y))<4);if(other!=null)Hurt(other,damage*r.chain,null);}
+                if(source.id==0&&profile.rune2>=0){var support=Rules.Runes[profile.rune2];source.hp=Mathf.Min(source.maxHp,source.hp+damage*support.lifesteal);if(support.slow>0)target.slow=2;if(support.burn>0)target.burn=3;if(support.chain>0){var other=actors.FirstOrDefault(a=>a!=target&&a.enemy==target.enemy&&a.Alive&&Vector2.Distance(new Vector2(a.x,a.y),new Vector2(target.x,target.y))<4);if(other!=null)Hurt(other,damage*support.chain,null);}}
             }
             Float(target,(result.critical?"치명 ":"")+Mathf.CeilToInt(damage),target.enemy?new Color(1,.8f,.4f):new Color(1,.4f,.4f));
             if(!target.Alive&&target.enemy){kills++;profile.xp+=18+region*6;profile.gold+=5+region*3;if(random.NextDouble()<.45)Loot(false);
                 if(profile.xp>=Rules.RequiredXp(profile.level)){profile.xp-=Rules.RequiredXp(profile.level);profile.level++;foreach(var a in actors.Where(a=>!a.enemy)){a.maxHp+=9;a.hp=Mathf.Min(a.maxHp,a.hp+25);a.power+=2;}Toast("레벨 "+profile.level+" 달성 · 체력과 공격력이 증가했습니다.");}}
         }
-        void Float(Fighter f,string text,Color c){texts.Add(new FloatingText{x=f.x,y=f.y+2.4f,text=text,color=c});}
+        void Float(Fighter f,string text,Color c){texts.Add(new FloatingText{x=f.x,y=f.y,height=f.lift+2.4f,text=text,color=c});}
         void Loot(bool boss)
         {if(profile.bag.Count>=24){profile.shards++;return;}var g=Rules.Drop(random,region,room+1,boss);profile.bag.Add(g);Toast(g.name+" 획득 · I로 장비 확인");}
         void Die()

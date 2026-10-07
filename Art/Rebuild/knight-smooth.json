@@ -1,0 +1,11 @@
+{
+  "name": "knight",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.7530864197530864,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "f7ba555f50bc6f380684965fd52289178f3733a3c50108b57cc0ed0a682fe7a7"
+}

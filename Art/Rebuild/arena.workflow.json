@@ -1,0 +1,122 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Original sophisticated hand-painted dark high fantasy 2D belt-scrolling action game background, wide horizontal ruined ivory royal abbey hall at night. View from slightly above the side, able to see a broad WALKABLE stone courtyard floor filling the entire LOWER TWO THIRDS of the image, spanning continuously from the left edge to the right edge. Clear large unoccupied combat space with detailed dark worn slate tiles and subtle cracks, softly lit by reflected gold candlelight. Only the UPPER THIRD contains towering broken pointed arches, intricately carved weathered ivory pillars, hanging tarnished brass censers, faded navy and burgundy banners, blue moonlight and distant mist. Scene composed as a broad flat playable stage with depth, not a single thin platform, not top-down, not an isometric diamond island. Beautiful intricate material painting with crisp restrained pixel-like texture, luminous antique gold and pale ivory accents, deep petrol blue shadows. No furniture or obstacles on foreground floor. No characters, no text, no UI, no logos, no borders. Continuous environment, suitable for a fluid side-view brawler with movement into and out of depth.",
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 1344,
+      "height": 768,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "conditioning": [
+        "4",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 10070722
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "9": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 1344,
+      "height": 768
+    }
+  },
+  "10": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "7",
+        0
+      ],
+      "guider": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "filename_prefix": "AshenOath/new-belt-arena"
+    }
+  }
+}

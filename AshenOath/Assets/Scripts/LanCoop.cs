@@ -14,7 +14,7 @@ namespace AshenOath
     {
         [Serializable] public sealed class Packet
         {
-            public int protocol=1,kind,id,seq,ack,job,room,region,order,potions;public string token,nonce,message;
+            public int protocol=2,kind,id,seq,ack,job,room,region,order,potions;public string token,nonce,message;
             public Controls input;public bool town,cleared,dead,eventResolved;public string eventName;
             public Fighter[] actors;public Missile[] shots;public Platform[] platforms;public RoomKind[] route;public Profile profile;
         }
@@ -44,7 +44,7 @@ namespace AshenOath
         void OnDestroy(){socket?.Close();}
         public void SendControls(Controls value)
         {
-            controls.move=Mathf.Clamp(value.move,-1,1);controls.block=value.block;
+            controls.move=Mathf.Clamp(value.move,-1,1);controls.depth=Mathf.Clamp(value.depth,-1,1);controls.block=value.block;
             if(value.attack||value.skill||value.jump||value.dodge){controls.attack|=value.attack;controls.skill|=value.skill;controls.jump|=value.jump;controls.dodge|=value.dodge;pendingSeq=++sequence;}
             GameSession.I.localInput.attack=GameSession.I.localInput.jump=GameSession.I.localInput.skill=GameSession.I.localInput.dodge=false;
         }
@@ -54,7 +54,7 @@ namespace AshenOath
             for(int n=0;n<40&&socket.Available>0;n++)
             {
                 try{var endpoint=new IPEndPoint(IPAddress.Any,0);byte[] data=socket.Receive(ref endpoint);if(data.Length>60000)continue;
-                    var p=JsonUtility.FromJson<Packet>(Encoding.UTF8.GetString(data));if(p==null||p.protocol!=1)continue;
+                    var p=JsonUtility.FromJson<Packet>(Encoding.UTF8.GetString(data));if(p==null||p.protocol!=2)continue;
                     if(mode==1)ReceiveHost(p,endpoint,now);else if(endpoint.Equals(server))ReceiveClient(p,now);
                 }catch(SocketException){break;}catch(Exception e){Debug.LogWarning("LAN invalid packet: "+e.GetType().Name);}
             }
@@ -90,6 +90,7 @@ namespace AshenOath
             if(p.kind!=2||!peers.TryGetValue(key,out var sender)||sender.token!=p.token)return;
             sender.seen=now;var f=GameSession.I.actors.Find(a=>a.id==sender.id);if(f==null)return;
             f.input.move=float.IsNaN(p.input.move)||float.IsInfinity(p.input.move)?0:Mathf.Clamp(p.input.move,-1,1);f.input.block=p.input.block;
+            f.input.depth=float.IsNaN(p.input.depth)||float.IsInfinity(p.input.depth)?0:Mathf.Clamp(p.input.depth,-1,1);
             if(p.seq>sender.seq){sender.seq=p.seq;f.input.attack|=p.input.attack;f.input.skill|=p.input.skill;f.input.jump|=p.input.jump;f.input.dodge|=p.input.dodge;}
         }
         void ReceiveClient(Packet p,float now)

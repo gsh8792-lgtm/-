@@ -32,7 +32,17 @@ namespace AshenOath
                 AdvanceAttack(hero,.1f);check(enemy.hp==hp,"windup does not hit early");
                 AdvanceAttack(hero,.13f);check(enemy.hp<hp,"active attack applies damage");
                 hp=enemy.hp;AdvanceAttack(hero,.06f);check(enemy.hp==hp,"one hit per attack target");
+                enemy.invulnerable=0;AdvanceAttack(hero,.02f);check(enemy.hp==hp,"active window never re-hits a target after invulnerability ends");
+                check(JsonUtility.FromJson<Fighter>(JsonUtility.ToJson(hero)).hitTargets.Contains(enemy.id),"mid-swing save retains already-hit targets");
                 AdvanceAttack(hero,1);check(hero.attackTime<0,"recovery unlocks controls");
+                enemy.invulnerable=0;enemy.y=2;hero.y=0;hp=enemy.hp;Attack(hero,false);AdvanceAttack(hero,.23f);check(enemy.hp==hp,"melee misses targets outside the ground-depth band");
+                hero.attackTime=-1;enemy.y=0;Attack(hero,false);AdvanceAttack(hero,.23f);check(enemy.hp<hp,"melee hits targets in the same ground-depth band");
+                hero.attackTime=-1;enemy.invulnerable=0;enemy.y=2;hp=enemy.hp;Attack(hero,false);AdvanceAttack(hero,.23f);enemy.y=0;AdvanceAttack(hero,.03f);check(enemy.hp<hp,"target entering the active swing window is hit");
+                hero.attackTime=-1;hero.y=3;hero.x=5;localInput=new Controls{depth=1};Tick(.1f);check(hero.y>3&&hero.lift==0,"depth movement stays on the floor");
+                hero.y=3;hero.x=5;localInput=new Controls{move=1};Tick(.1f);float straight=hero.x-5;
+                hero.y=3;hero.x=5;localInput=new Controls{move=1,depth=1};Tick(.1f);check(Math.Abs(new Vector2(hero.x-5,hero.y-3).magnitude-straight)<.001,"diagonal movement is normalized");
+                localInput=new Controls{jump=true};float depth=hero.y;Tick(.05f);check(hero.lift>0&&hero.y==depth,"jump height is separate from ground depth");
+                hero.lift=hero.liftVelocity=0;hero.grounded=true;hero.y=0;hero.x=5;localInput=default;
                 enemy.invulnerable=0;enemy.x=3;hero.face=1;hp=enemy.hp;Attack(hero,false);AdvanceAttack(hero,.23f);check(enemy.hp==hp,"forward attack misses behind");
                 hero.attackTime=-1;hero.stun=0;hero.invulnerable=.3f;hp=hero.hp;Hurt(hero,999,enemy);check(hero.hp==hp,"dodge invulnerability blocks damage");
                 hero.invulnerable=0;hero.blocking=true;hero.face=-1;hero.sp=100;hp=hero.hp;Hurt(hero,40,enemy);check(hp-hero.hp<12&&hero.sp==88,"directional block reduces damage and spends stamina");
@@ -75,15 +85,15 @@ namespace AshenOath
             catch(Exception e){result.error=e.ToString();Debug.LogException(e);}
             var path=Path.GetFullPath(Argument("--verify"));Directory.CreateDirectory(Path.GetDirectoryName(path));File.WriteAllText(path,JsonUtility.ToJson(result,true));Application.Quit(result.passed?0:3);
         }
-        int maxRemote,maxPlatforms;float minNetworkX=999,maxNetworkX=-999;bool networkRunStarted;
+        int maxRemote;float minNetworkX=999,maxNetworkX=-999,minNetworkY=999,maxNetworkY=-999;bool networkRunStarted;
         void NetworkVerification()
         {
             if(net.mode==1&&elapsed>3&&!networkRunStarted){networkRunStarted=true;BeginRun(0,5);foreach(var a in actors)a.hp=a.maxHp=10000;}
-            maxRemote=Math.Max(maxRemote,actors.Count(a=>a.remote));maxPlatforms=Math.Max(maxPlatforms,platforms.Count);
-            if(!inTown&&Hero!=null){minNetworkX=Math.Min(minNetworkX,Hero.x);maxNetworkX=Math.Max(maxNetworkX,Hero.x);localInput.move=elapsed<10?1:-1;localInput.attack=true;localInput.jump=(int)(elapsed*4)%8==0;}
+            maxRemote=Math.Max(maxRemote,actors.Count(a=>a.remote));
+            if(!inTown&&Hero!=null){minNetworkX=Math.Min(minNetworkX,Hero.x);maxNetworkX=Math.Max(maxNetworkX,Hero.x);minNetworkY=Math.Min(minNetworkY,Hero.y);maxNetworkY=Math.Max(maxNetworkY,Hero.y);localInput.move=elapsed<10?1:-1;localInput.depth=(int)(elapsed/3)%2==0?1:-1;localInput.attack=true;localInput.jump=(int)(elapsed*4)%8==0;}
             if(IsClient)net.SendControls(localInput);
-            if(elapsed>18){bool passed=maxRemote==2&&maxPlatforms==3&&(net.mode==1||net.localId>0)&&maxNetworkX-minNetworkX>1;
-                string path=Path.GetFullPath(Argument("--netcheck"));File.WriteAllText(path,"{\"passed\":"+passed.ToString().ToLower()+",\"mode\":"+net.mode+",\"localId\":"+net.localId+",\"remotePlayers\":"+maxRemote+",\"platforms\":"+maxPlatforms+",\"movement\":"+(maxNetworkX-minNetworkX).ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+"}");Application.Quit(passed?0:3);}
+            if(elapsed>18){bool passed=maxRemote==2&&platforms.Count==0&&(net.mode==1||net.localId>0)&&maxNetworkX-minNetworkX>1&&maxNetworkY-minNetworkY>1;
+                string path=Path.GetFullPath(Argument("--netcheck"));File.WriteAllText(path,"{\"passed\":"+passed.ToString().ToLower()+",\"mode\":"+net.mode+",\"localId\":"+net.localId+",\"remotePlayers\":"+maxRemote+",\"groundDepthMovement\":"+(maxNetworkY-minNetworkY).ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+",\"movement\":"+(maxNetworkX-minNetworkX).ToString("0.00",System.Globalization.CultureInfo.InvariantCulture)+"}");Application.Quit(passed?0:3);}
         }
     }
 }

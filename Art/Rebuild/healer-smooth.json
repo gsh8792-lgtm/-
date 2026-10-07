@@ -1,0 +1,11 @@
+{
+  "name": "healer",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.6039603960396039,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "17616969dbfe90d5aab2f9693a874fc6a4f1db06d3f3de5132b14b3ed16493ea"
+}

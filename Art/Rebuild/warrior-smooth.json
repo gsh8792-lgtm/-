@@ -1,0 +1,11 @@
+{
+  "name": "warrior",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5570776255707762,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "9ad909e3512afa1af561bf4e893b340e4ce2a5967b5fbef31f34bb72cc8dc5ed"
+}

@@ -1,6 +1,6 @@
 {
-  "version": "0.1.0",
-  "created_utc": "2026-10-06T22:01:12.970198+00:00",
+  "version": "0.2.0",
+  "created_utc": "2026-10-07T00:04:03.724590+00:00",
   "windows_build": {
     "result": "Succeeded",
     "errors": 0,
@@ -9,7 +9,7 @@
   "android_build": {
     "result": "Succeeded",
     "errors": 0,
-    "warnings": 1
+    "warnings": 0
   },
   "android_signature": "APK Signature Scheme v2 verified",
   "android_min_sdk": 26,
@@ -35,14 +35,22 @@
   },
   "runtime": {
     "passed": true,
-    "checks": 44,
+    "checks": 52,
     "error": "",
     "cases": [
       "attack consumes stamina",
       "windup does not hit early",
       "active attack applies damage",
       "one hit per attack target",
+      "active window never re-hits a target after invulnerability ends",
+      "mid-swing save retains already-hit targets",
       "recovery unlocks controls",
+      "melee misses targets outside the ground-depth band",
+      "melee hits targets in the same ground-depth band",
+      "target entering the active swing window is hit",
+      "depth movement stays on the floor",
+      "diagonal movement is normalized",
+      "jump height is separate from ground depth",
       "forward attack misses behind",
       "dodge invulnerability blocks damage",
       "directional block reduces damage and spends stamina",
@@ -76,12 +84,12 @@
       "permanent trait branches apply",
       "expedition checkpoint restores actors and event",
       "death preserves traits but clears class allocations and checkpoint",
-      "five-room expedition, legal AI inputs; class=0, ticks=1291, kills=9",
-      "five-room expedition, legal AI inputs; class=1, ticks=1423, kills=9",
-      "five-room expedition, legal AI inputs; class=2, ticks=1009, kills=9",
-      "five-room expedition, legal AI inputs; class=3, ticks=1319, kills=9",
-      "five-room expedition, legal AI inputs; class=4, ticks=1135, kills=9",
-      "five-room expedition, legal AI inputs; class=5, ticks=1136, kills=9"
+      "five-room expedition, legal AI inputs; class=0, ticks=1373, kills=9",
+      "five-room expedition, legal AI inputs; class=1, ticks=1331, kills=9",
+      "five-room expedition, legal AI inputs; class=2, ticks=1187, kills=9",
+      "five-room expedition, legal AI inputs; class=3, ticks=1334, kills=9",
+      "five-room expedition, legal AI inputs; class=4, ticks=1142, kills=9",
+      "five-room expedition, legal AI inputs; class=5, ticks=1110, kills=9"
     ]
   },
   "local_three_process_network": {
@@ -90,43 +98,205 @@
       "mode": 1,
       "localId": 0,
       "remotePlayers": 2,
-      "platforms": 3,
-      "movement": 6.89
+      "groundDepthMovement": 1.71,
+      "movement": 4.44
     },
     "client1": {
       "passed": true,
       "mode": 2,
       "localId": 1,
       "remotePlayers": 2,
-      "platforms": 3,
-      "movement": 7.02
+      "groundDepthMovement": 1.64,
+      "movement": 4.12
     },
     "client2": {
       "passed": true,
       "mode": 2,
       "localId": 2,
       "remotePlayers": 2,
-      "platforms": 3,
-      "movement": 7.06
+      "groundDepthMovement": 1.61,
+      "movement": 4.08
     }
   },
-  "reference_original_bytes_identical": true,
-  "reference_crop_rgb_identical": true,
-  "android_compiled_sources_match": true,
+  "android_source_and_art_snapshot_match": true,
+  "retired_runtime_removed": true,
+  "animation_atlases": [
+    {
+      "name": "hero-ivory",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5951219512195122,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "fb77233125cdef2b04dcbc6d09608ab86acceee3daec2d261734bf84bb05fa3e"
+    },
+    {
+      "name": "hero-ebon",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5951219512195122,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "2b1c332ca6f596ed9e5d6d84bccf30572fc47cb621cb8ba84be7dd49cf775a7f"
+    },
+    {
+      "name": "hero-warrior",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5570776255707762,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "232f40a5930ff66965746c6fc7e4549fa0e147596f331ac1b2363ebf380ef039"
+    },
+    {
+      "name": "hero-mage",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.6524064171122995,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "530cb590688f2a7253fb4f05d83ba615dacdd764adfd55d0c80cb12341953322"
+    },
+    {
+      "name": "hero-healer",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5674418604651162,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "72e675fa1cb706b9d8a9a84dec857623e887e43510c504eab816195d9177d35d"
+    },
+    {
+      "name": "hero-archer",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5727699530516432,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "ede6e695f44758c174aa7d8e460d58128aaa8b94627a1c39ba7a808f51a79be9"
+    },
+    {
+      "name": "hero-rogue",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5545454545454546,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "0184c0070cc1b4447780631ba101f969c62c7d30c6b8bb2bd26be13c807a259c"
+    },
+    {
+      "name": "knight",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.7530864197530864,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "f7ba555f50bc6f380684965fd52289178f3733a3c50108b57cc0ed0a682fe7a7"
+    },
+    {
+      "name": "warrior",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5570776255707762,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "9ad909e3512afa1af561bf4e893b340e4ce2a5967b5fbef31f34bb72cc8dc5ed"
+    },
+    {
+      "name": "mage",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.6256410256410256,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "1a7433a4a7ffde02db76de6276fc45b0591ce1ae25562407be3813b544fe09f8"
+    },
+    {
+      "name": "healer",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.6039603960396039,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "17616969dbfe90d5aab2f9693a874fc6a4f1db06d3f3de5132b14b3ed16493ea"
+    },
+    {
+      "name": "archer",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.7305389221556886,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "c56b563d3d0dabfb7f7195b7ba429efcff24f7733c75123d7eb59bfd7ffabf40"
+    },
+    {
+      "name": "rogue",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.5754716981132075,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "229e6225bc1b7096fedb5bfe81b86444c5fea8a5ea85d6b19fdb2dc8f992232e"
+    },
+    {
+      "name": "enemy",
+      "frames": 96,
+      "columns": 12,
+      "rows": 8,
+      "base_scale": 0.6039603960396039,
+      "complete_silhouettes": true,
+      "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+      "forward_lean_run": true,
+      "sha256": "6b76eefcb1f93238c3bc8339b4ec3409b2d95bcb2009737ac156daddf4799772"
+    }
+  ],
   "visual_evidence": [
-    "town-reviewed.jpg",
-    "combat-reviewed.jpg",
-    "inventory-reviewed.jpg",
-    "legendary-equipment-reviewed.jpg",
-    "rig-reviewed.jpg",
-    "equipment-contact.png"
+    "belt-town-reviewed.png",
+    "belt-combat-reviewed.png",
+    "belt-animation-reviewed.png",
+    "belt-classes-reviewed.png",
+    "belt-equipment-reviewed.png",
+    "belt-attack-reviewed.png",
+    "belt-skill-reviewed.png"
+  ],
+  "scope": [
+    "Town and five-room expedition ending in a boss; six playable jobs and six distinct female companion outfits.",
+    "Whole-body forward-lean run poses, distance-driven foot cycle, ground-depth combat and jump height separated.",
+    "14 full-body atlases, each with 24 run frames and 96 total slots including held dodge/death poses.",
+    "50 weapon definitions, ten grades, affixes, runes, town services, saved progression and local LAN test."
   ],
   "limitations": [
-    "No connected Android hardware: no physical-device execution, thermal or multi-touch certification.",
-    "LAN proof uses three separate local processes; separate devices and internet transport are not certified.",
-    "Female companions share the supplied reference rig; six unique character costumes and complete armor layers remain production work.",
-    "50 weapon definitions share five family illustrations. Regional content uses prototype shared art.",
-    "100 stage slots are generated across five region tiers; they are not 100 distinct fully authored maps.",
-    "Full requested production art parity is not certified."
+    "Android built and signed; no connected Android hardware for physical-device, thermal or multi-touch execution.",
+    "LAN proof uses three local processes; separate devices and internet transport were not exercised.",
+    "Knight high-grade armor changes to a second costume. A distinct costume for every equipment combination remains outside this milestone.",
+    "50 weapon definitions share five family illustrations. Undead and boss currently share a full-body atlas.",
+    "Five regions contain generated 20-room routes; these are not 100 distinct authored maps.",
+    "Generated animation preserves the costume direction but is not a claim of pixel-identical shapes across every pose."
   ]
 }

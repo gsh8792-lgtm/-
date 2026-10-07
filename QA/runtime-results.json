@@ -1,13 +1,21 @@
 {
     "passed": true,
-    "checks": 44,
+    "checks": 52,
     "error": "",
     "cases": [
         "attack consumes stamina",
         "windup does not hit early",
         "active attack applies damage",
         "one hit per attack target",
+        "active window never re-hits a target after invulnerability ends",
+        "mid-swing save retains already-hit targets",
         "recovery unlocks controls",
+        "melee misses targets outside the ground-depth band",
+        "melee hits targets in the same ground-depth band",
+        "target entering the active swing window is hit",
+        "depth movement stays on the floor",
+        "diagonal movement is normalized",
+        "jump height is separate from ground depth",
         "forward attack misses behind",
         "dodge invulnerability blocks damage",
         "directional block reduces damage and spends stamina",
@@ -41,11 +49,11 @@
         "permanent trait branches apply",
         "expedition checkpoint restores actors and event",
         "death preserves traits but clears class allocations and checkpoint",
-        "five-room expedition, legal AI inputs; class=0, ticks=1291, kills=9",
-        "five-room expedition, legal AI inputs; class=1, ticks=1423, kills=9",
-        "five-room expedition, legal AI inputs; class=2, ticks=1009, kills=9",
-        "five-room expedition, legal AI inputs; class=3, ticks=1319, kills=9",
-        "five-room expedition, legal AI inputs; class=4, ticks=1135, kills=9",
-        "five-room expedition, legal AI inputs; class=5, ticks=1136, kills=9"
+        "five-room expedition, legal AI inputs; class=0, ticks=1373, kills=9",
+        "five-room expedition, legal AI inputs; class=1, ticks=1331, kills=9",
+        "five-room expedition, legal AI inputs; class=2, ticks=1187, kills=9",
+        "five-room expedition, legal AI inputs; class=3, ticks=1334, kills=9",
+        "five-room expedition, legal AI inputs; class=4, ticks=1142, kills=9",
+        "five-room expedition, legal AI inputs; class=5, ticks=1110, kills=9"
     ]
 }

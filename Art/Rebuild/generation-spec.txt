@@ -1,0 +1,37 @@
+ASHEN OATH 0.2 CHARACTER REBUILD
+
+Generator: built-in ImageGen for dressed characters and revised arena.
+Local ComfyUI Flux2 Klein 4b for original sanctuary and initial arena.
+Original images and source alpha are preserved in Art/Rebuild.
+Runtime uses complete, fully dressed frames. No separate weapon/armor overlay.
+Final run clips supersede the rejected upright high-knee walk candidates.
+
+Character atlas specification:
+1536x1024 RGBA. Six columns, four rows, 24 poses. Each cell 256x256.
+0-5 movement (replaced by final run sheet); 6-11 attack; 12-17 class skill;
+18-19 idle; 20-21 hurt; 22 dodge; 23 death. Adult fantasy characters,
+consistent face, costume, body proportions, natural grip and full-body poses.
+Ivory/gold knight, red-haired steel warrior, violet mage, teal/ivory healer,
+green leather archer and plum/black rogue. Male hero variants use same face.
+
+Exact final running prompt:
+REFERENCE: preserve this exact adult fantasy character's identity, hairstyle, armor/costume, colors, weapon and detailed painterly rendering. REDRAW as a physically believable FAST FORWARD RUN CYCLE, NOT a walk or high-knee march. All six poses must have the ENTIRE BODY leaning forward toward RIGHT about 20-25 degrees from vertical, an inclined line from rear supporting ankle through pelvis, ribcage, shoulders to head. Pelvis shifts FORWARD with the chest. Do not bend only at the waist. Head, chest and hips all carry forward momentum. Strong horizontal acceleration, low flat trajectory, head height almost constant, minimal vertical bounce. Back foot pushes ground far BEHIND hips; bent recovering foot folds behind the body rather than lifting a knee high in front. Elbows bent, weapon firmly gripped close to body, no weapon floating. Preserve same gripping hand consistently in all six poses. Hair, cape and cloth stream backward. Athletic low sprint, NOT upright jogging, NOT standing jump, NOT marching, NOT six repeated silhouettes. Create exactly SIX sequential key poses in a 3-column x 2-row equal square-cell sprite atlas (1536 x 1024), full body plus weapon contained with generous margins, facing RIGHT, consistent body proportions, same head and pelvis screen positions, true transparent background, no shadow, no terrain, no text. Pose1 right front foot contacts slightly ahead of pelvis, left leg far behind extended; Pose2 right foot supports under body, left heel folds behind; Pose3 right foot finishes powerful push far behind pelvis, left foot reaches LOW forward; Pose4 left front foot contacts, right leg trails extended; Pose5 left supports, right heel folds behind; Pose6 left pushes behind, right reaches LOW forward. Show clearly alternating legs and genuine backward ground push. The defining silhouette of EVERY FRAME is WHOLE-BODY FORWARD LEAN including pelvis, not merely tilted shoulders.
+
+Other classes use their own atlas as identity reference and the corrected male
+knight run sheet only as a movement reference. Identity/costume take priority.
+Final corrections for enemy, male warrior, male rogue and female warrior use
+ONLY their own identity atlas: skull/round shield; fur collar/greatsword;
+two short daggers/plum scarf; red braid/two-handed upward-angled sword.
+The splitter finds true transparent gutters on both axes to preserve blades.
+All six run cells use a common scale to avoid frame-to-frame size pumping.
+The 24-pose source is split by connected character silhouettes, not fixed
+rectangles: long blades and full legs crossing nominal grid lines stay intact.
+layout.json records the common packing scale; combat rendering restores the
+original body scale so accommodating a long weapon does not shrink its wearer.
+Run layout: 3 columns x 2 rows. Whole-body forward lean, low horizontal travel.
+
+Interpolation: tools/smooth_belt_atlas.py uses local ComfyUI IFNet and official
+RIFE v4.26 weights. Same learned flow warps premultiplied RGB and alpha.
+Four samples per key-pose interval; no blending between unrelated clips.
+Feet share a ground anchor. Runtime phase is driven by actual ground distance.
+Final runtime atlas: 12x8 cells (96 slots), including held dodge/death poses.

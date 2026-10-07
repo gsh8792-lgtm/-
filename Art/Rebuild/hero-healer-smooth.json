@@ -1,0 +1,11 @@
+{
+  "name": "hero-healer",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5674418604651162,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "72e675fa1cb706b9d8a9a84dec857623e887e43510c504eab816195d9177d35d"
+}
