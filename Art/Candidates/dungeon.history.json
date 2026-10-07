@@ -1,0 +1,149 @@
+{
+  "prompt": [
+    584,
+    "0020867f-0c63-4ec9-8e85-dfde3928d416",
+    {
+      "1": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "sd_xl_base_1.0.safetensors"
+        }
+      },
+      "2": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "Detailed pixel art background for a side scrolling dark fantasy dungeon, wide horizontal view of a ruined underground abbey, tall gothic arches, turquoise luminous mist, ancient stone masonry, distant stairs, hanging chains, warm candlelight, deep layered parallax composition, no characters, no interface, no text, no border.",
+          "clip": [
+            "1",
+            1
+          ]
+        }
+      },
+      "3": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "photograph, 3d render, blurry, watermark, text, logo, cropped feet, extra limbs, duplicate person, child, nudity",
+          "clip": [
+            "1",
+            1
+          ]
+        }
+      },
+      "4": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "width": 1024,
+          "height": 576,
+          "batch_size": 1
+        }
+      },
+      "5": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": [
+            "1",
+            0
+          ],
+          "positive": [
+            "2",
+            0
+          ],
+          "negative": [
+            "3",
+            0
+          ],
+          "latent_image": [
+            "4",
+            0
+          ],
+          "seed": 879205,
+          "steps": 24,
+          "cfg": 6.5,
+          "sampler_name": "dpmpp_2m",
+          "scheduler": "karras",
+          "denoise": 1.0
+        }
+      },
+      "6": {
+        "class_type": "VAEDecode",
+        "inputs": {
+          "samples": [
+            "5",
+            0
+          ],
+          "vae": [
+            "1",
+            2
+          ]
+        }
+      },
+      "7": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": [
+            "6",
+            0
+          ],
+          "filename_prefix": "AshenOath/dungeon"
+        }
+      }
+    },
+    {
+      "client_id": "ashen-oath-local",
+      "create_time": 1791303569913
+    },
+    [
+      "7"
+    ]
+  ],
+  "outputs": {
+    "7": {
+      "images": [
+        {
+          "filename": "dungeon_00001_.png",
+          "subfolder": "AshenOath",
+          "type": "output"
+        }
+      ]
+    }
+  },
+  "status": {
+    "status_str": "success",
+    "completed": true,
+    "messages": [
+      [
+        "execution_start",
+        {
+          "prompt_id": "0020867f-0c63-4ec9-8e85-dfde3928d416",
+          "timestamp": 1791303569914
+        }
+      ],
+      [
+        "execution_cached",
+        {
+          "nodes": [
+            "1",
+            "3"
+          ],
+          "prompt_id": "0020867f-0c63-4ec9-8e85-dfde3928d416",
+          "timestamp": 1791303569915
+        }
+      ],
+      [
+        "execution_success",
+        {
+          "prompt_id": "0020867f-0c63-4ec9-8e85-dfde3928d416",
+          "timestamp": 1791303580421
+        }
+      ]
+    ]
+  },
+  "meta": {
+    "7": {
+      "node_id": "7",
+      "display_node": "7",
+      "parent_node": null,
+      "real_node_id": "7"
+    }
+  }
+}

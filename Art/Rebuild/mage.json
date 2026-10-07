@@ -1,0 +1,293 @@
+{
+  "name": "mage",
+  "sha256": "7f95524b201abd545a6243a89cd18d06bb0d33182ea7b75fd71456148ad729bd",
+  "size": [
+    1536,
+    1024
+  ],
+  "columns": 6,
+  "rows": 4,
+  "alpha_preserved": true,
+  "cells": [
+    {
+      "frame": 0,
+      "bounds": [
+        31,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 19714
+    },
+    {
+      "frame": 1,
+      "bounds": [
+        1,
+        0,
+        234,
+        256
+      ],
+      "opaque_pixels": 19881
+    },
+    {
+      "frame": 2,
+      "bounds": [
+        7,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 20023
+    },
+    {
+      "frame": 3,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 19132
+    },
+    {
+      "frame": 4,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 19666
+    },
+    {
+      "frame": 5,
+      "bounds": [
+        1,
+        0,
+        242,
+        256
+      ],
+      "opaque_pixels": 20404
+    },
+    {
+      "frame": 6,
+      "bounds": [
+        44,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 22880
+    },
+    {
+      "frame": 7,
+      "bounds": [
+        15,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 22028
+    },
+    {
+      "frame": 8,
+      "bounds": [
+        1,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 22131
+    },
+    {
+      "frame": 9,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 25007
+    },
+    {
+      "frame": 10,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 25680
+    },
+    {
+      "frame": 11,
+      "bounds": [
+        0,
+        0,
+        248,
+        256
+      ],
+      "opaque_pixels": 21628
+    },
+    {
+      "frame": 12,
+      "bounds": [
+        27,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 20373
+    },
+    {
+      "frame": 13,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 20245
+    },
+    {
+      "frame": 14,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 21612
+    },
+    {
+      "frame": 15,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 29442
+    },
+    {
+      "frame": 16,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 23820
+    },
+    {
+      "frame": 17,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 23563
+    },
+    {
+      "frame": 18,
+      "bounds": [
+        32,
+        0,
+        250,
+        256
+      ],
+      "opaque_pixels": 18433
+    },
+    {
+      "frame": 19,
+      "bounds": [
+        25,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 18185
+    },
+    {
+      "frame": 20,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 19558
+    },
+    {
+      "frame": 21,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 19783
+    },
+    {
+      "frame": 22,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 19248
+    },
+    {
+      "frame": 23,
+      "bounds": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "opaque_pixels": 12676
+    }
+  ],
+  "clips": {
+    "walk": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "attack": [
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "skill": [
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "idle": [
+      18,
+      19
+    ],
+    "hurt": [
+      20,
+      21
+    ],
+    "dodge": [
+      22
+    ],
+    "death": [
+      23
+    ]
+  }
+}

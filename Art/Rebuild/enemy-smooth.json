@@ -1,0 +1,11 @@
+{
+  "name": "enemy",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.6039603960396039,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "6b76eefcb1f93238c3bc8339b4ec3409b2d95bcb2009737ac156daddf4799772"
+}

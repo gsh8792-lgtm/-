@@ -1,0 +1,11 @@
+{
+  "name": "hero-warrior",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5570776255707762,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "232f40a5930ff66965746c6fc7e4549fa0e147596f331ac1b2363ebf380ef039"
+}

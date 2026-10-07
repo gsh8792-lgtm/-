@@ -1,0 +1,30 @@
+{
+  "reference_sources": {
+    "status": "original_bytes_preserved",
+    "files": ["Reference/parts-original.png", "Reference/character-original.png"],
+    "proof": "../QA/reference-rig-manifest.json"
+  },
+  "female_companion_rig": {
+    "status": "prototype_reviewed_with_remaining_art_work",
+    "changes": ["original source RGB retained", "edge-connected dark background removed", "local joint matrix corrected", "knee seam crops adjusted", "weapon grip linked to arm transform"],
+    "reviewed_states": ["idle", "walk A", "walk B", "attack windup", "attack active", "hurt", "jump", "death"],
+    "remaining": ["six unique companion identities and costumes", "production-quality shoulder/hip blending", "complete layered armor sets", "frame-by-frame validation on real Android hardware"]
+  },
+  "weapons": {
+    "status": "five_family_source_images_reviewed",
+    "files": ["Equipment/sword.png", "Equipment/greatsword.png", "Equipment/focus.png", "Equipment/bow.png", "Equipment/daggers.png"],
+    "proof": "../QA/equipment-contact.png",
+    "note": "50 equipment definitions share these five family illustrations; ten completely separate art sets are not present."
+  },
+  "earlier_female_candidates": {
+    "status": "reviewed_rejected_replaced",
+    "reasons": ["reference identity mismatch", "inconsistent pose count and orientation", "costumes do not match the supplied reference"],
+    "runtime_replacement": "Assets/Resources/Rig"
+  },
+  "hero_and_enemy": {
+    "status": "prototype_atlases_reviewed",
+    "source": "Flux",
+    "remaining": ["higher detail to match reference direction", "dedicated class and regional monster animations"]
+  },
+  "full_requested_visual_parity": false
+}

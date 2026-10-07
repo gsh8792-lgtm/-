@@ -1,0 +1,17 @@
+2026-10-07 — user-directed replacement
+
+The earlier 0.1 character art, cutout reference rig, detached weapon overlays,
+and single-plane platform combat are rejected and retired.
+ASHBOUND.html is an inspiration reference only. Do not transplant its art,
+characters, screens or game wholesale. Extracted candidate assets were removed.
+
+New target: freely move left/right and toward/away in a belt-scroll arena.
+Ground-plane depth controls targeting and draw order; airborne height is separate.
+New characters must be drawn wearing their equipment and gripping their weapons.
+Full-body animation frames must preserve costume, face, hand contact and silhouette.
+Equipment swaps must select consistent dressed animation sets rather than floating
+weapon/armor pictures. Review movement, anticipation, impact, recovery and hurt.
+
+Retain requested RPG progression and equipment rules where compatible.
+New sanctuary painting is original ComfyUI output, not ASHBOUND artwork.
+Previous checks apply only to the retired technical baseline, not the rebuild.

@@ -1,0 +1,11 @@
+{
+  "name": "rogue",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5754716981132075,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "229e6225bc1b7096fedb5bfe81b86444c5fea8a5ea85d6b19fdb2dc8f992232e"
+}

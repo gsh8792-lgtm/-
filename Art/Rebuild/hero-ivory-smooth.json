@@ -1,0 +1,11 @@
+{
+  "name": "hero-ivory",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.5951219512195122,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "fb77233125cdef2b04dcbc6d09608ab86acceee3daec2d261734bf84bb05fa3e"
+}

@@ -1,0 +1,482 @@
+[
+  {
+    "name": "hero",
+    "source_sha256": "a3c5feb4c6172ddd1a0fe89efae2221ea5c33b96851db48411e2661a5f205904",
+    "source_components": 7,
+    "frame_count": 8,
+    "frame_size": [
+      128,
+      192
+    ],
+    "frame_source_boxes": [
+      [
+        72,
+        40,
+        208,
+        358
+      ],
+      [
+        283,
+        42,
+        481,
+        356
+      ],
+      [
+        384,
+        411,
+        616,
+        727
+      ],
+      [
+        773,
+        41,
+        966,
+        354
+      ],
+      [
+        384,
+        411,
+        616,
+        727
+      ],
+      [
+        34,
+        409,
+        318,
+        730
+      ],
+      [
+        72,
+        40,
+        208,
+        358
+      ],
+      [
+        717,
+        414,
+        967,
+        722
+      ]
+    ],
+    "mapping": [
+      [
+        0,
+        false
+      ],
+      [
+        1,
+        false
+      ],
+      [
+        5,
+        false
+      ],
+      [
+        3,
+        false
+      ],
+      [
+        5,
+        false
+      ],
+      [
+        4,
+        false
+      ],
+      [
+        0,
+        false
+      ],
+      [
+        6,
+        false
+      ]
+    ],
+    "alpha": true,
+    "status": "normalized_for_visual_review"
+  },
+  {
+    "name": "knight",
+    "source_sha256": "07d88d5123f5b1dc317df2f2ce8e8d75b69b4af710fe9d78e40688c55b29077f",
+    "source_components": 6,
+    "frame_count": 8,
+    "frame_size": [
+      128,
+      192
+    ],
+    "frame_source_boxes": [
+      [
+        110,
+        43,
+        271,
+        362
+      ],
+      [
+        413,
+        43,
+        608,
+        361
+      ],
+      [
+        736,
+        42,
+        941,
+        361
+      ],
+      [
+        723,
+        420,
+        914,
+        733
+      ],
+      [
+        91,
+        418,
+        321,
+        736
+      ],
+      [
+        415,
+        421,
+        640,
+        736
+      ],
+      [
+        110,
+        43,
+        271,
+        362
+      ],
+      [
+        723,
+        420,
+        914,
+        733
+      ]
+    ],
+    "mapping": [
+      [
+        0,
+        true
+      ],
+      [
+        1,
+        false
+      ],
+      [
+        2,
+        false
+      ],
+      [
+        5,
+        false
+      ],
+      [
+        3,
+        true
+      ],
+      [
+        4,
+        true
+      ],
+      [
+        0,
+        true
+      ],
+      [
+        5,
+        false
+      ]
+    ],
+    "alpha": true,
+    "status": "normalized_for_visual_review"
+  },
+  {
+    "name": "healer",
+    "source_sha256": "5048eced67b11f766cf27979deea3a782900b05fc409d66ada419b9e258b38cc",
+    "source_components": 6,
+    "frame_count": 8,
+    "frame_size": [
+      128,
+      192
+    ],
+    "frame_source_boxes": [
+      [
+        89,
+        39,
+        223,
+        371
+      ],
+      [
+        307,
+        40,
+        476,
+        371
+      ],
+      [
+        548,
+        39,
+        711,
+        371
+      ],
+      [
+        795,
+        44,
+        954,
+        371
+      ],
+      [
+        89,
+        39,
+        223,
+        371
+      ],
+      [
+        69,
+        421,
+        296,
+        732
+      ],
+      [
+        89,
+        39,
+        223,
+        371
+      ],
+      [
+        763,
+        420,
+        953,
+        728
+      ]
+    ],
+    "mapping": [
+      [
+        0,
+        false
+      ],
+      [
+        1,
+        false
+      ],
+      [
+        2,
+        false
+      ],
+      [
+        3,
+        false
+      ],
+      [
+        0,
+        false
+      ],
+      [
+        4,
+        false
+      ],
+      [
+        0,
+        false
+      ],
+      [
+        5,
+        false
+      ]
+    ],
+    "alpha": true,
+    "status": "normalized_for_visual_review"
+  },
+  {
+    "name": "archer",
+    "source_sha256": "85f792d0751ce1553ce9c97dec40c24ec0c58f8dc09482d6661817a338a07fa8",
+    "source_components": 8,
+    "frame_count": 8,
+    "frame_size": [
+      128,
+      192
+    ],
+    "frame_source_boxes": [
+      [
+        60,
+        40,
+        215,
+        363
+      ],
+      [
+        305,
+        40,
+        483,
+        362
+      ],
+      [
+        557,
+        40,
+        729,
+        361
+      ],
+      [
+        805,
+        40,
+        983,
+        362
+      ],
+      [
+        281,
+        413,
+        491,
+        742
+      ],
+      [
+        38,
+        421,
+        268,
+        739
+      ],
+      [
+        537,
+        419,
+        744,
+        738
+      ],
+      [
+        773,
+        418,
+        958,
+        674
+      ]
+    ],
+    "mapping": [
+      [
+        0,
+        true
+      ],
+      [
+        1,
+        false
+      ],
+      [
+        2,
+        true
+      ],
+      [
+        3,
+        false
+      ],
+      [
+        5,
+        true
+      ],
+      [
+        4,
+        false
+      ],
+      [
+        6,
+        false
+      ],
+      [
+        7,
+        false
+      ]
+    ],
+    "alpha": true,
+    "status": "normalized_for_visual_review"
+  },
+  {
+    "name": "enemy",
+    "source_sha256": "ab5036edebd69a9dbe5e0b8798a7bb8132964128a99210c93d1eaf8116e26a67",
+    "source_components": 6,
+    "frame_count": 8,
+    "frame_size": [
+      128,
+      192
+    ],
+    "frame_source_boxes": [
+      [
+        110,
+        62,
+        268,
+        347
+      ],
+      [
+        426,
+        64,
+        592,
+        347
+      ],
+      [
+        752,
+        63,
+        927,
+        346
+      ],
+      [
+        732,
+        427,
+        929,
+        709
+      ],
+      [
+        90,
+        427,
+        327,
+        716
+      ],
+      [
+        426,
+        429,
+        677,
+        717
+      ],
+      [
+        110,
+        62,
+        268,
+        347
+      ],
+      [
+        732,
+        427,
+        929,
+        709
+      ]
+    ],
+    "mapping": [
+      [
+        0,
+        true
+      ],
+      [
+        1,
+        false
+      ],
+      [
+        2,
+        false
+      ],
+      [
+        5,
+        false
+      ],
+      [
+        3,
+        false
+      ],
+      [
+        4,
+        false
+      ],
+      [
+        0,
+        true
+      ],
+      [
+        5,
+        false
+      ]
+    ],
+    "alpha": true,
+    "status": "normalized_for_visual_review"
+  }
+]

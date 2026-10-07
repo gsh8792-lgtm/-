@@ -1,0 +1,11 @@
+{
+  "name": "mage",
+  "frames": 96,
+  "columns": 12,
+  "rows": 8,
+  "base_scale": 0.6256410256410256,
+  "complete_silhouettes": true,
+  "method": "RIFE v4.26, shared flow RGBA; 4x; original keyframes retained",
+  "forward_lean_run": true,
+  "sha256": "1a7433a4a7ffde02db76de6276fc45b0591ce1ae25562407be3813b544fe09f8"
+}

@@ -1,0 +1,122 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "flux-2-klein-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "text": "Original high fantasy RPG environment painting, a luminous ruined ivory citadel rebuilt as a sanctuary on sheer ocean cliffs beneath a gigantic pale moon, late blue hour, wide cinematic panoramic landscape. Foreground is a sheltered courtyard with weathered pale marble steps, engraved brass gates, white silk banners, a glowing amber blacksmith forge at the lower left and a tiny emerald glass alchemy greenhouse to the right. Farther back an elegant circular gold-roofed chapel and delicate flying buttresses, tall cypress trees, shimmering dark teal sea and distant islands far below. Rich environmental storytelling, intricate hand-painted stonework and gold filigree, beautiful layered depth, restrained ivory and antique gold accents against deep petrol blue shadows, warm windows, soft atmospheric moonlight, premium detailed 2D fantasy game illustration with crisp intricate texture. Clean readable architectural silhouette, no characters, no human figures, no UI, no letters, no typography, no logo, no border. Not a screenshot. Entire image is one continuous environment.",
+      "clip": [
+        "2",
+        0
+      ]
+    }
+  },
+  "5": {
+    "class_type": "EmptyFlux2LatentImage",
+    "inputs": {
+      "width": 1344,
+      "height": 768,
+      "batch_size": 1
+    }
+  },
+  "6": {
+    "class_type": "BasicGuider",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "conditioning": [
+        "4",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "RandomNoise",
+    "inputs": {
+      "noise_seed": 10070655
+    }
+  },
+  "8": {
+    "class_type": "KSamplerSelect",
+    "inputs": {
+      "sampler_name": "euler"
+    }
+  },
+  "9": {
+    "class_type": "Flux2Scheduler",
+    "inputs": {
+      "steps": 4,
+      "width": 1344,
+      "height": 768
+    }
+  },
+  "10": {
+    "class_type": "SamplerCustomAdvanced",
+    "inputs": {
+      "noise": [
+        "7",
+        0
+      ],
+      "guider": [
+        "6",
+        0
+      ],
+      "sampler": [
+        "8",
+        0
+      ],
+      "sigmas": [
+        "9",
+        0
+      ],
+      "latent_image": [
+        "5",
+        0
+      ]
+    }
+  },
+  "11": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "10",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "12": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "11",
+        0
+      ],
+      "filename_prefix": "AshenOath/original-sanctuary"
+    }
+  }
+}

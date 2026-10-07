@@ -1,0 +1,150 @@
+{
+  "prompt": [
+    582,
+    "9896c9fc-7b62-47f0-8bee-ddcf6270c65c",
+    {
+      "1": {
+        "class_type": "CheckpointLoaderSimple",
+        "inputs": {
+          "ckpt_name": "sd_xl_base_1.0.safetensors"
+        }
+      },
+      "2": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "Detailed 2D pixel art for a dark fantasy side scrolling action RPG, crisp pixel clusters, limited rich color palette, beautiful hand crafted sprite, clear readable silhouette, full body including feet, side view facing right, single character centered, plain white background, no shadow, no floor, no text, no grid, no border, no other character. Beautiful adult woman ranger age 26, glamorous curvy athletic build, long dark green hair, fitted forest green leather armor, short cape, thigh high brown boots, elegant confident pose, empty hands.",
+          "clip": [
+            "1",
+            1
+          ]
+        }
+      },
+      "3": {
+        "class_type": "CLIPTextEncode",
+        "inputs": {
+          "text": "photograph, 3d render, blurry, watermark, text, logo, cropped feet, extra limbs, duplicate person, child, nudity",
+          "clip": [
+            "1",
+            1
+          ]
+        }
+      },
+      "4": {
+        "class_type": "EmptyLatentImage",
+        "inputs": {
+          "width": 640,
+          "height": 832,
+          "batch_size": 1
+        }
+      },
+      "5": {
+        "class_type": "KSampler",
+        "inputs": {
+          "model": [
+            "1",
+            0
+          ],
+          "positive": [
+            "2",
+            0
+          ],
+          "negative": [
+            "3",
+            0
+          ],
+          "latent_image": [
+            "4",
+            0
+          ],
+          "seed": 879203,
+          "steps": 24,
+          "cfg": 6.5,
+          "sampler_name": "dpmpp_2m",
+          "scheduler": "karras",
+          "denoise": 1.0
+        }
+      },
+      "6": {
+        "class_type": "VAEDecode",
+        "inputs": {
+          "samples": [
+            "5",
+            0
+          ],
+          "vae": [
+            "1",
+            2
+          ]
+        }
+      },
+      "7": {
+        "class_type": "SaveImage",
+        "inputs": {
+          "images": [
+            "6",
+            0
+          ],
+          "filename_prefix": "AshenOath/archer"
+        }
+      }
+    },
+    {
+      "client_id": "ashen-oath-local",
+      "create_time": 1791303551857
+    },
+    [
+      "7"
+    ]
+  ],
+  "outputs": {
+    "7": {
+      "images": [
+        {
+          "filename": "archer_00001_.png",
+          "subfolder": "AshenOath",
+          "type": "output"
+        }
+      ]
+    }
+  },
+  "status": {
+    "status_str": "success",
+    "completed": true,
+    "messages": [
+      [
+        "execution_start",
+        {
+          "prompt_id": "9896c9fc-7b62-47f0-8bee-ddcf6270c65c",
+          "timestamp": 1791303551858
+        }
+      ],
+      [
+        "execution_cached",
+        {
+          "nodes": [
+            "1",
+            "3",
+            "4"
+          ],
+          "prompt_id": "9896c9fc-7b62-47f0-8bee-ddcf6270c65c",
+          "timestamp": 1791303551860
+        }
+      ],
+      [
+        "execution_success",
+        {
+          "prompt_id": "9896c9fc-7b62-47f0-8bee-ddcf6270c65c",
+          "timestamp": 1791303560260
+        }
+      ]
+    ]
+  },
+  "meta": {
+    "7": {
+      "node_id": "7",
+      "display_node": "7",
+      "parent_node": null,
+      "real_node_id": "7"
+    }
+  }
+}
