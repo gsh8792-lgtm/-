@@ -1,5 +1,7 @@
-// ===== 07_battle_view.js : 전투 장면 (렌더/연출/HUD/수동 타겟팅) =====
+// ===== 07_battle_view.js : 실시간 파티 전투 장면 (렌더/연출/HUD/입력) =====
 // BattleSim(로직)을 고정 타임스텝으로 돌리고, sim.events를 소비해 연출만 담당한다.
+// HUD: 캐릭터별 묶음 [얼굴 + ① 기본 ② 상황 ③ 필살기]. 버튼 탭 = 자동 대상 즉시 시전,
+//      버튼을 끌면 슬로모션 → 놓는 곳에 대상/범위 지정. 적 칩/적 탭 = 집중 공격. 오른쪽 = 작전 명령.
 
 const BattleScene = {
   enter(params) {
@@ -23,7 +25,7 @@ const BattleScene = {
     this.t = 0;
     this.speed = Game.settings.speed || 1;
     this.paused = false;
-    this.targeting = null;
+    this.drag = null;       // 스킬 버튼 끌기 상태
     this.slowmo = 0;
     this.hitstop = 0;
     this.shake = 0;
@@ -33,17 +35,16 @@ const BattleScene = {
     this.cutin = null;
     this.endTimer = -1;
     this.finished = false;
+    this.danger = null;
     this.dust = [];
     for (let i = 0; i < 26; i++) this.dust.push({ x: Math.random() * 960, y: 60 + Math.random() * 300, s: 0.5 + Math.random() * 1.5, p: Math.random() * 6 });
-    this.selHero = this.sim.aliveHeroes()[0];
-    this.drag = null;
     this.buildHud();
     this.consumeEvents();
-    this.banner = { text: node.type === 'boss' ? '보스: 오우거 대족장' : node.type === 'elite' ? '정예 전투!' : `전투 시작`, sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: 오우거 대족장' : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     Game.hint('battle');
   },
 
-  exit() { this.targeting = null; },
+  exit() { this.drag = null; },
 
   // ------------------------------------------------------------ HUD 구성 (DOM)
   buildHud() {
@@ -61,8 +62,8 @@ const BattleScene = {
     this.speedBtn.classList.toggle('on', this.speed === 2);
     right.appendChild(this.speedBtn);
     const seg = el('div', 'seg');
-    this.autoBtn = btn('자동', 'seg-btn', () => this.setAuto(true), { id: 'btn-auto' });
-    this.manualBtn = btn('수동', 'seg-btn', () => this.setAuto(false), { id: 'btn-manual' });
+    this.autoBtn = btn('전략 ON', 'seg-btn', () => this.setAuto(true), { id: 'btn-auto' });
+    this.manualBtn = btn('끄기', 'seg-btn', () => this.setAuto(false), { id: 'btn-manual' });
     seg.appendChild(this.autoBtn); seg.appendChild(this.manualBtn);
     right.appendChild(seg);
     top.appendChild(right);
@@ -70,53 +71,54 @@ const BattleScene = {
     this.setAuto(run.autoMode, true);
 
     this.chipsWrap = el('div', 'b-chips');
-    this.chipsWrap.appendChild(el('div', 'chips-label', '타겟'));
+    this.chipsWrap.appendChild(el('div', 'chips-label', '적<small>탭=집중</small>'));
     this.chipEls = {};
     ui.appendChild(this.chipsWrap);
 
     this.tmsg = el('div', 'b-tmsg hidden');
     ui.appendChild(this.tmsg);
+    this.warn = el('div', 'b-warn hidden');
+    ui.appendChild(this.warn);
 
+    // 작전 명령 (오른쪽 세로)
+    const ord = el('div', 'b-orders');
+    ord.appendChild(el('div', 'bo-label', '작전'));
+    this.orderBtns = {};
+    for (const k of ['charge', 'hold', 'retreat']) {
+      const b = btn(ORDERS[k].name, 'bo-btn', () => this.setOrder(k), { id: 'btn-order-' + k });
+      this.orderBtns[k] = b;
+      ord.appendChild(b);
+    }
+    ui.appendChild(ord);
+    this.setOrder('hold', true);
+
+    // 캐릭터 묶음: 얼굴 + ① ② ③
     const hud = el('div', 'b-hud');
-    const ports = el('div', 'b-ports');
-    this.portEls = {};
+    this.groups = {};
     for (const h of this.sim.heroes) {
-      const p = el('div', 'bport');
-      p.dataset.hero = h.key;
-      p.appendChild(portraitCanvas(h.sprite, 44));
-      p.appendChild(el('div', 'bp-stat', ''));
-      const hp = bar(1, 'hp'); p.appendChild(hp);
-      const ult = bar(0, 'ult'); p.appendChild(ult);
-      p.appendChild(el('div', 'bp-name', `${h.def.roleName}`));
-      p.appendChild(el('div', 'bp-dead', '✕'));
-      p.addEventListener('click', (e) => { e.stopPropagation(); this.onPortrait(h); });
-      ports.appendChild(p);
-      this.portEls[h.uid] = { root: p, hp, ult, stat: p.querySelector('.bp-stat'), last: '' };
+      const g = el('div', 'bgroup');
+      g.dataset.hero = h.key;
+      const face = el('div', 'bg-face');
+      face.appendChild(portraitCanvas(h.sprite, 52));
+      const hp = bar(1, 'hp'); face.appendChild(hp);
+      face.appendChild(el('div', 'bg-name', h.name));
+      face.appendChild(el('div', 'bg-stat', ''));
+      face.appendChild(el('div', 'bg-dead', '✕'));
+      g.appendChild(face);
+      const btns = {};
+      for (const slot of ['s1', 's2', 'ult']) {
+        const sk = this.sim.skillDef(h, slot);
+        const b = el('button', 'sk sk-' + slot);
+        b.type = 'button';
+        b.id = `sk-${h.key}-${slot}`;
+        b.innerHTML = `<span class="sk-tag"></span><span class="sk-icon">${skillGlyph(sk)}</span><span class="sk-cd"></span><span class="sk-name">${sk.name}</span><span class="sk-kind">${slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기'}</span>`;
+        this.bindSkillButton(b, h, slot);
+        g.appendChild(b);
+        btns[slot] = b;
+      }
+      hud.appendChild(g);
+      this.groups[h.uid] = { root: g, hp, stat: face.querySelector('.bg-stat'), btns, last: '' };
     }
-    hud.appendChild(ports);
-    const skills = el('div', 'b-skills');
-    this.skillName = el('div', 'bs-name', '');
-    skills.appendChild(this.skillName);
-    const row = el('div', 'bs-row');
-    this.skillBtns = {};
-    for (const slot of ['s1', 's2', 'ult']) {
-      const b = el('button', 'sbtn sbtn-' + slot);
-      b.type = 'button';
-      b.id = 'btn-skill-' + slot;
-      b.innerHTML = `<span class="sb-key">${slot === 'ult' ? '궁' : slot === 's1' ? '1' : '2'}</span><span class="sb-cd"></span><span class="sb-lab"></span>`;
-      b.addEventListener('click', (e) => { e.stopPropagation(); this.onSkill(slot); });
-      row.appendChild(b);
-      this.skillBtns[slot] = b;
-    }
-    skills.appendChild(row);
-    this.confirmRow = el('div', 'bs-confirm hidden');
-    this.confirmRow.appendChild(btn('취소', 'ghost big', () => this.cancelTargeting(), { id: 'btn-t-cancel', sfx: 'back' }));
-    this.confirmBtn = btn('확정', 'primary big', () => this.confirmTargeting(), { id: 'btn-t-confirm', sfx: 'skill' });
-    this.confirmRow.appendChild(this.confirmBtn);
-    skills.appendChild(this.confirmRow);
-    this.skillHint = el('div', 'bs-hint', '스킬 → 타겟 선택');
-    skills.appendChild(this.skillHint);
-    hud.appendChild(skills);
     ui.appendChild(hud);
   },
 
@@ -125,115 +127,125 @@ const BattleScene = {
     this.sim.autoMode = on;
     this.autoBtn.classList.toggle('on', on);
     this.manualBtn.classList.toggle('on', !on);
-    if (!silent) Game.toast(on ? '자동 전투: 전략 규칙대로 스킬 사용' : '수동 전투: 스킬을 직접 사용', 1400);
+    if (!silent) Game.toast(on ? '전략 ON: 설정한 스킬은 알아서 사용' : '전략 끄기: 모든 스킬을 직접 사용', 1400);
   },
 
-  // ------------------------------------------------------------ 입력
-  onPortrait(h) {
-    const tg = this.targeting;
-    if (tg && tg.kind === 'potion') {
-      if (!h.alive) return;
-      this.run.potions--;
-      this.sim._heal(null, h, h.maxHp * REWARD.potionHealPct);
-      Sfx.play('heal');
-      this.endTargeting(true);
-      return;
-    }
-    if (tg && (tg.kind === 'ally')) { if (h.alive) { tg.sel = h; Sfx.play('click'); } return; }
-    if (tg && tg.kind === 'area_ally') { if (h.alive) { tg.x = this.sim.clampAreaX(tg.hero, tg.sk, h.x); Sfx.play('click'); } return; }
-    if (tg) return;
-    if (!h.alive) return;
-    this.selHero = h;
-    Sfx.play('click');
+  setOrder(k, silent) {
+    this.sim.order = k;
+    for (const o in this.orderBtns) this.orderBtns[o].classList.toggle('on', o === k);
+    if (!silent) { Sfx.play('click'); this.popupOrder(k); }
+  },
+  popupOrder(k) { const f = this.sim.frontHero(); if (f) this.popup(f.x, this.unitTop(f) - 20, ORDERS[k].name + '!', '#ffe9a0', 20, { label: true }); },
+
+  // ------------------------------------------------------------ 스킬 버튼: 탭 = 즉시, 끌기 = 슬로모션 지정
+  bindSkillButton(b, h, slot) {
+    b.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      Sfx.init(); Sfx.resume();
+      if (!h.alive || this.sim.outcome) return;
+      try { b.setPointerCapture(ev.pointerId); } catch (e) { /* 무시 */ }
+      this.press = { h, slot, b, x0: ev.clientX, y0: ev.clientY, id: ev.pointerId };
+    });
+    b.addEventListener('pointermove', (ev) => {
+      const pr = this.press;
+      if (!pr || pr.b !== b) return;
+      if (!this.drag && Math.hypot(ev.clientX - pr.x0, ev.clientY - pr.y0) > 12) this.startDrag(pr);
+      if (this.drag) this.updateDrag(Input.toLogical(ev));
+    });
+    const up = (ev) => {
+      const pr = this.press;
+      if (!pr || pr.b !== b) return;
+      this.press = null;
+      if (this.drag) this.endDrag(Input.toLogical(ev));
+      else if (ev.type === 'pointerup') this.tapSkill(h, slot);
+    };
+    b.addEventListener('pointerup', up);
+    b.addEventListener('pointercancel', up);
   },
 
-  onChip(u) {
-    const tg = this.targeting;
-    if (!tg) { // 타겟팅 중이 아닐 때 칩 탭 → 선택 영웅 스킬1이 단일 대상이면 바로 그 대상으로 타겟팅 시작
-      return;
-    }
-    if (tg.kind === 'enemy' && u.alive) { tg.sel = u; Sfx.play('click'); }
-    if (tg.kind === 'area_enemy' && u.alive) { tg.x = this.sim.clampAreaX(tg.hero, tg.sk, u.x); Sfx.play('click'); }
+  explainCant(h, slot) {
+    Sfx.play('back');
+    if (h.statuses.stun) Game.toast(`${h.name} 기절 중!`, 900);
+    else if (slot === 'ult') Game.toast(`필살기 게이지 ${Math.floor(h.ult)}%`, 900);
+    else Game.toast(`쿨타임 ${h.cds[slot].toFixed(1)}초`, 900);
   },
 
-  onSkill(slot) {
-    Sfx.init(); Sfx.resume();
-    if (this.sim.outcome) return;
-    const h = this.selHero;
-    if (!h || !h.alive) return;
-    if (this.targeting) {
-      if (this.targeting.hero === h && this.targeting.slot === slot) { this.cancelTargeting(); return; }
-      this.cancelTargeting();
-    }
-    if (!this.sim.canCast(h, slot)) {
-      Sfx.play('back');
-      if (h.statuses.stun) Game.toast('기절 상태!', 900);
-      else if (slot === 'ult') Game.toast(`궁극기 게이지 ${Math.floor(h.ult)}%`, 900);
-      else Game.toast(`쿨타임 ${h.cds[slot].toFixed(1)}초`, 900);
-      return;
-    }
+  tapSkill(h, slot) {
+    if (!this.sim.canCast(h, slot)) { this.explainCant(h, slot); return; }
+    const spec = this.sim.resolveTarget(h, slot);
+    if (!spec) { Sfx.play('back'); Game.toast(this.sim.skillDef(h, slot).target === 'ally' || this.sim.skillDef(h, slot).target === 'area_ally' ? '회복할 아군이 없어요' : '사거리 안에 대상이 없어요', 1000); return; }
+    if (this.sim.cast(h, slot, spec)) { Sfx.play('skill'); this.slowmo = CONST.CONFIRM_SLOWMO_SEC; }
+  },
+
+  startDrag(pr) {
+    const { h, slot } = pr;
+    if (!this.sim.canCast(h, slot)) { this.explainCant(h, slot); this.press = null; return; }
     const sk = this.sim.skillDef(h, slot);
+    this.drag = { h, slot, sk, b: pr.b, x: 0, y: 0, unit: null, over: false };
+    Game.ui.classList.add('dragging');
+    pr.b.classList.add('drag');
+    this.tmsg.innerHTML = `<span class="tm-pause">⏸ 슬로모션</span> <b>${h.name} · ${sk.name}</b> 놓으면 시전 · 버튼 쪽으로 되돌리면 취소`;
+    this.tmsg.classList.remove('hidden');
     Sfx.play('click');
-    if (sk.target === 'self' || sk.target === 'party' || sk.target === 'all_enemies') {
-      this.sim.cast(h, slot, {});
-      this.slowmo = CONST.CONFIRM_SLOWMO_SEC;
-      return;
-    }
-    const st = this.run.strategy[h.key] || AI_PRESETS[h.key];
-    const defRule = sk.target === 'ally' || sk.target === 'area_ally' ? 'lowestAlly' : (this.sim.aliveEnemies().some((e) => e.charge) && slot !== 'ult' && h.role === 'tank' ? 'charging' : 'nearest');
-    const spec = this.sim.resolveTarget(h, sk, defRule) || {};
-    this.targeting = { hero: h, slot, sk, kind: sk.target, sel: spec.unit || null, x: spec.x !== undefined ? spec.x : null };
-    if (sk.target === 'ally' && !this.targeting.sel) this.targeting.sel = h;
-    if (sk.target === 'area_ally' && this.targeting.x === null) this.targeting.x = h.x;
-    this.showTargetingUi();
   },
 
+  updateDrag(p) {
+    const d = this.drag;
+    if (!d) return;
+    d.x = p.x; d.y = p.y;
+    d.over = p.y < 430 && p.y > 64; // 전장 위에 있는가
+    const fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1); // 손가락 아래 바닥 지점 (손가락에 가리지 않게 살짝 위를 가리킴)
+    d.fx = p.x; d.fy = fy;
+    d.unit = null;
+    const t = d.sk.target;
+    if (t === 'enemy' || t === 'ally') {
+      const list = t === 'enemy' ? this.sim.aliveEnemies() : this.sim.aliveHeroes();
+      let best = null, bd = 90;
+      for (const u of list) { const dd = Math.hypot(u.x - p.x, (u.y - 40) - p.y); if (dd < bd) { bd = dd; best = u; } }
+      d.unit = best;
+    }
+  },
+
+  endDrag(p) {
+    if (p) this.updateDrag(p); // 놓은 위치로 최종 대상 갱신
+    const d = this.drag;
+    this.drag = null;
+    Game.ui.classList.remove('dragging');
+    d.b.classList.remove('drag');
+    this.tmsg.classList.add('hidden');
+    if (!d.over) { Sfx.play('back'); Game.toast('취소', 600); return; }
+    const t = d.sk.target;
+    let spec;
+    if (t === 'enemy' || t === 'ally') { if (!d.unit) { Sfx.play('back'); Game.toast('대상 위에 놓아 주세요', 900); return; } spec = { unit: d.unit }; }
+    else if (t === 'area_enemy' || t === 'area_ally') spec = { x: d.fx, y: d.fy };
+    else spec = this.sim.resolveTarget(d.h, d.slot) || {};
+    if (this.sim.cast(d.h, d.slot, spec)) { Sfx.play('skill'); this.slowmo = CONST.CONFIRM_SLOWMO_SEC; }
+    else this.explainCant(d.h, d.slot);
+  },
+
+  // ------------------------------------------------------------ 회복약 (초상화/아군 탭)
   startPotion() {
     if (this.sim.outcome) return;
     if (this.run.potions <= 0) { Game.toast('회복약이 없어요.', 900); return; }
-    if (this.targeting) this.cancelTargeting();
-    this.targeting = { kind: 'potion' };
-    this.showTargetingUi();
-  },
-
-  showTargetingUi() {
-    const tg = this.targeting;
-    const msgs = {
-      enemy: '적 칩(또는 적)을 탭 → [확정]',
-      ally: '아군 초상화를 탭 → [확정]',
-      area_enemy: '바닥 범위를 드래그해서 이동 → [확정]',
-      area_ally: '아군 쪽 범위를 드래그 → [확정]',
-      potion: '회복약: 아군 초상화를 탭 (취소 가능)',
-    };
-    const name = tg.sk ? `<b>${tg.hero.name} · ${tg.sk.name}</b> ` : '';
-    this.tmsg.innerHTML = `<span class="tm-pause">⏸ 전술 정지</span> ${name}${msgs[tg.kind]}`;
+    this.potionPick = true;
+    this.tmsg.innerHTML = '<span class="tm-pause">⏸ 정지</span> 회복약: 아군 얼굴을 탭 (빈 곳 탭 = 취소)';
     this.tmsg.classList.remove('hidden');
-    this.confirmRow.classList.remove('hidden');
-    this.confirmBtn.style.display = tg.kind === 'potion' ? 'none' : '';
-    Game.ui.classList.add('targeting', 't-' + tg.kind);
+    Game.ui.classList.add('potion-pick');
+  },
+  endPotion() { this.potionPick = false; this.tmsg.classList.add('hidden'); Game.ui.classList.remove('potion-pick'); },
+  usePotionOn(h) {
+    if (!h.alive) return;
+    this.run.potions--;
+    this.sim._heal(null, h, h.maxHp * REWARD.potionHealPct);
+    Sfx.play('heal');
+    this.endPotion();
   },
 
-  confirmTargeting() {
-    const tg = this.targeting;
-    if (!tg || tg.kind === 'potion') return;
-    let spec = {};
-    if (tg.kind === 'enemy' || tg.kind === 'ally') {
-      if (!tg.sel || !tg.sel.alive) { Game.toast('대상을 먼저 선택하세요.', 1000); return; }
-      spec = { unit: tg.sel };
-    } else spec = { x: tg.x };
-    const ok = this.sim.cast(tg.hero, tg.slot, spec);
-    this.endTargeting(ok);
-  },
-
-  cancelTargeting() { this.endTargeting(false); },
-
-  endTargeting(didCast) {
-    this.targeting = null;
-    this.drag = null;
-    this.tmsg.classList.add('hidden');
-    this.confirmRow.classList.add('hidden');
-    Game.ui.classList.remove('targeting', 't-enemy', 't-ally', 't-area_enemy', 't-area_ally', 't-potion');
-    if (didCast) this.slowmo = CONST.CONFIRM_SLOWMO_SEC;
+  onChip(u) {
+    if (!u.alive) return;
+    Sfx.play('click');
+    this.sim.focus = this.sim.focus === u ? null : u;
+    if (this.sim.focus) this.popup(u.x, this.unitTop(u) - 18, '집중 공격!', '#ff8aa0', 18, { label: true });
   },
 
   unitAt(p) {
@@ -242,43 +254,19 @@ const BattleScene = {
     for (const u of all) {
       const s = getSprite(u.sprite);
       const sc = this.unitScale(u);
-      const w = s.w * sc, h = s.h * sc;
-      const uy = this.unitY(u);
-      if (p.x >= u.x - w / 2 && p.x <= u.x + w / 2 && p.y >= uy - h && p.y <= uy + 6) {
-        const d = Math.abs(p.x - u.x);
-        if (d < bd) { bd = d; best = u; }
-      }
+      const w = s.w * sc * 0.8, h = s.h * sc;
+      if (p.x >= u.x - w / 2 && p.x <= u.x + w / 2 && p.y >= u.y - h && p.y <= u.y + 6) { const d = Math.abs(p.x - u.x) + Math.abs(p.y - u.y + h / 2) * 0.3; if (d < bd) { bd = d; best = u; } }
     }
     return best;
   },
 
   pointerDown(p) {
-    const tg = this.targeting;
-    if (!tg) {
-      const u = this.unitAt(p); // 보조 수단: 스프라이트 탭으로 영웅 선택
-      if (u && u.side === 'hero') this.onPortrait(u);
-      return;
-    }
-    if (tg.kind === 'area_enemy' || tg.kind === 'area_ally') {
-      if (p.y < 140) return;
-      this.drag = { startX: p.x, startY: p.y, moved: false };
-      tg.x = this.sim.clampAreaX(tg.hero, tg.sk, p.x);
-      return;
-    }
+    if (this.potionPick) { const u = this.unitAt(p); if (u && u.side === 'hero') this.usePotionOn(u); else { Sfx.play('back'); this.endPotion(); } return; }
     const u = this.unitAt(p);
-    if (tg.kind === 'enemy' && u && u.side === 'enemy') { tg.sel = u; Sfx.play('click'); return; }
-    if ((tg.kind === 'ally' || tg.kind === 'potion') && u && u.side === 'hero') { this.onPortrait(u); return; }
-    // 빈 곳 탭 → 취소
-    Sfx.play('back');
-    this.cancelTargeting();
+    if (u && u.side === 'enemy') this.onChip(u); // 보조: 적을 직접 탭해도 집중 공격
   },
-  pointerMove(p) {
-    const tg = this.targeting;
-    if (!tg || !this.drag) return;
-    if (Math.abs(p.x - this.drag.startX) > 4) this.drag.moved = true;
-    tg.x = this.sim.clampAreaX(tg.hero, tg.sk, p.x);
-  },
-  pointerUp() { this.drag = null; },
+  pointerMove() {},
+  pointerUp() {},
 
   openPause() {
     if (this.sim.outcome) return;
@@ -313,7 +301,15 @@ const BattleScene = {
     this.t += dtReal;
     if (this.hitstop > 0) { this.hitstop -= dtReal; this.updateFx(dtReal * 0.2); this.updateHud(); return; }
     let scale = this.speed;
-    if (this.paused || Game.modalOpen || (this.targeting)) scale = 0;
+    if (this.paused || Game.modalOpen || this.potionPick) scale = 0;
+    if (this.drag) scale *= CONST.DRAG_SLOWMO;
+    // 위험 순간: 아군이 차지 범위 안에 있으면 슬로모션
+    this.danger = null;
+    for (const e of this.sim.enemies) if (e.alive && e.charge) {
+      const inZone = this.sim.aliveHeroes().filter((h) => this.sim.inChargeZone(h, e.charge)).length;
+      if (inZone && (!this.danger || e.charge.t < this.danger.t)) this.danger = { e, t: e.charge.t, n: inZone };
+    }
+    if (this.danger && !this.drag) scale *= CONST.DANGER_SLOWMO;
     if (this.slowmo > 0) { this.slowmo -= dtReal; scale *= CONST.CONFIRM_SLOWMO_SCALE; }
     if (this.cutin) { this.cutin.t += dtReal; if (this.cutin.t < this.cutin.dur) scale *= 0.12; else this.cutin = null; }
     scale *= Game.debug.simMult;
@@ -329,10 +325,7 @@ const BattleScene = {
     this.updateFx(dtReal * (scale > 0 ? Math.min(scale, 2) : 0.15));
     if (this.banner) { this.banner.t += dtReal; if (this.banner.t > this.banner.dur) this.banner = null; }
     if (this.endTimer > 0) { this.endTimer -= dtReal; if (this.endTimer <= 0) this.finish(this.sim.outcome); }
-    // 선택 영웅 사망 시 다음 영웅
-    if (!this.selHero || !this.selHero.alive) this.selHero = this.sim.aliveHeroes()[0] || null;
-    if (this.targeting && this.targeting.hero && (!this.targeting.hero.alive)) this.cancelTargeting();
-    if (this.targeting && this.targeting.sel && !this.targeting.sel.alive) this.targeting.sel = null;
+    if (this.drag && !this.drag.h.alive) { this.drag.over = false; this.endDrag(null); }
     this.updateHud();
   },
 
@@ -343,20 +336,11 @@ const BattleScene = {
     ev.length = 0;
   },
 
-  unitY(u) {
-    if (u.side === 'hero') return CONST.BATTLE_GROUND_Y;
-    const idx = this.sim.enemies.indexOf(u);
-    return CONST.BATTLE_GROUND_Y + (idx % 2 ? 10 : 0) - (u.size > 1.5 ? 0 : 0);
-  },
   unitScale(u) { return u.def.abilities && u.def.abilities.includes('boss') ? CONST.SPRITE_SCALE * 1.15 : CONST.SPRITE_SCALE; },
-  unitTop(u) {
-    const s = getSprite(u.sprite);
-    const sc = this.unitScale(u);
-    return this.unitY(u) - s.h * sc;
-  },
+  unitTop(u) { return u.y - getSprite(u.sprite).h * this.unitScale(u); },
 
   popup(x, y, text, color, size, opts) {
-    if (opts && opts.label) { // 스킬 이름은 겹치지 않게 위로 쌓는다
+    if (opts && opts.label) {
       for (const q of this.popups) if (q.label && q.t < 0.5 && Math.abs(q.x - x) < 120 && Math.abs(q.y - y) < 20) y = q.y - 22;
       return this.popups.push(Object.assign({ x, y, text, color, size: size || 20, t: 0, dur: 0.9, vy: -40 }, opts));
     }
@@ -372,42 +356,30 @@ const BattleScene = {
         if (e.dot) this.popup(u.x, y + 10, String(e.amount), STATUS[e.dot].color, 15, { dur: 0.7 });
         else if (e.crit) { this.popup(u.x, y - 6, e.amount + '!', '#ffd34a', 30, { crit: true }); Sfx.play('crit'); this.hitstop = Math.max(this.hitstop, CONST.HITSTOP_MS / 1000 * 1.4); this.shake = Math.max(this.shake, 4); }
         else { this.popup(u.x, y, String(e.amount), u.side === 'hero' ? '#ff8a7a' : '#ffffff', e.skill ? 24 : 19); Sfx.play('hit'); if (e.skill) this.hitstop = Math.max(this.hitstop, CONST.HITSTOP_MS / 1000); this.shake = Math.max(this.shake, e.skill ? 3 : 1.5); }
-        if (!e.dot) this.spark(u.x - (u.side === 'enemy' ? 10 : -10), this.unitY(u) - 30 * (u.size || 1), e.crit ? 14 : 7, e.crit ? '#ffe066' : '#fff6c0');
+        if (!e.dot) this.spark(u.x, u.y - 30 * (u.size || 1), e.crit ? 14 : 7, e.crit ? '#ffe066' : '#fff6c0');
         break;
       }
       case 'heal':
         if (!e.quiet || e.amount >= 8) this.popup(e.target.x, this.unitTop(e.target) + 4, '+' + e.amount, '#6fe08a', e.quiet ? 15 : 22);
-        if (!e.quiet) { Sfx.play('heal'); this.sparkle(e.target.x, this.unitY(e.target) - 30, '#9cf0a8', 10); }
+        if (!e.quiet) { Sfx.play('heal'); this.sparkle(e.target.x, e.target.y - 30, '#9cf0a8', 10); }
         break;
       case 'death': {
-        const u = e.target || e.unit;
-        this.smoke(u.x, this.unitY(u) - 20, u.size || 1);
+        const u = e.unit;
+        this.smoke(u.x, u.y - 20, u.size || 1);
         Sfx.play('death');
-        if (u.side === 'hero') {
-          Game.toast(`💀 ${u.name} 쓰러짐 — 이번 원정에서 복귀 불가`, 2400);
-          run.stats.deathsAt[u.key] = `${this.node.stage}스테이지`;
-          this.shake = 6;
-        }
+        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐 — 이번 원정에서 복귀 불가`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}스테이지`; this.shake = 6; }
         break;
       }
-      case 'attack': break;
-      case 'projectile': {
-        const kind = e.kind;
-        this.fx.push({ type: 'proj', kind, x0: e.from.x + 14, y0: this.unitY(e.from) - 34, to: e.to, t: 0, dur: e.travel });
-        Sfx.play(kind === 'soldam' ? 'magic' : 'shoot');
+      case 'projectile':
+        this.fx.push({ type: 'proj', kind: e.kind, x0: e.from.x + 14 * e.from.face, y0: e.from.y - 40, to: e.to, t: 0, dur: e.travel });
+        Sfx.play(e.kind === 'soldam' ? 'magic' : 'shoot');
         break;
-      }
+      case 'dash': this.smoke(e.unit.x, e.unit.y - 6, 0.5); break;
       case 'cast': this.castFx(e); break;
-      case 'ult':
-        this.cutin = { hero: e.unit, name: e.skill.name, t: 0, dur: 0.85 };
-        Sfx.play('ult');
-        break;
-      case 'ultReady':
-        this.popup(e.unit.x, this.unitTop(e.unit) - 8, '궁극기 준비!', '#ffd34a', 15);
-        break;
+      case 'ult': this.cutin = { hero: e.unit, name: e.skill.name, t: 0, dur: 0.85 }; Sfx.play('ult'); break;
+      case 'ultReady': this.popup(e.unit.x, this.unitTop(e.unit) - 8, '필살기 준비!', '#ffd34a', 15); break;
       case 'status':
         if (e.status === 'stun') this.popup(e.target.x, this.unitTop(e.target) - 4, '기절!', STATUS.stun.color, 18);
-        else if (e.status === 'taunt' && e.target.side === 'enemy') { /* 대량 표시는 생략 */ }
         else if (['bleed', 'burn', 'vuln'].includes(e.status)) this.popup(e.target.x, this.unitTop(e.target) - 2, STATUS[e.status].name, STATUS[e.status].color, 14, { dur: 0.7 });
         break;
       case 'chargeStart':
@@ -417,47 +389,23 @@ const BattleScene = {
         break;
       case 'chargeImpact':
         Sfx.play('boom');
-        this.shake = 12;
-        this.hitstop = 0.12;
-        for (let i = 0; i < 18; i++) this.fx.push({ type: 'dust', x: lerp(e.x0, e.x1, Math.random()), y: CONST.BATTLE_GROUND_Y, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 90, t: 0, dur: 0.7 + Math.random() * 0.4 });
+        this.shake = 12; this.hitstop = 0.12;
+        for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, r = Math.random() * e.r; this.fx.push({ type: 'dust', x: e.cx + Math.cos(a) * r, y: e.cy + Math.sin(a) * r * 0.45, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 90, t: 0, dur: 0.7 + Math.random() * 0.4 }); }
         this.fx.push({ type: 'flash', t: 0, dur: 0.25, color: 'rgba(255,90,60,' });
-        if (e.blocked) this.popup((e.x0 + e.x1) / 2, CONST.BATTLE_GROUND_Y - 120, '토비가 막았다!', '#7ab8f0', 20);
+        if (e.blocked) this.popup(e.cx, e.cy - 120, '토비가 막았다!', '#7ab8f0', 20);
+        else if (!e.hit) this.popup(e.cx, e.cy - 60, '회피!', '#9fd0ff', 24, { crit: true });
         break;
-      case 'chargeCancel':
-        Sfx.play('cancel');
-        this.popup(e.unit.x, this.unitTop(e.unit) - 14, '캔슬!', '#ffd34a', 30, { crit: true });
-        this.hitstop = 0.1;
-        break;
-      case 'callStart':
-        this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18);
-        Sfx.play('summon');
-        break;
-      case 'callCancel':
-        this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20);
-        Sfx.play('cancel');
-        break;
-      case 'summon':
-        this.smoke(e.unit.x, CONST.BATTLE_GROUND_Y - 20, 0.8);
-        break;
-      case 'enrage':
-        this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22);
-        break;
-      case 'warcry':
-        this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성! (적 공격력↑)', '#ffb04a', 18);
-        this.shake = 4;
-        break;
-      case 'phase':
-        this.banner = { text: e.name, sub: '오우거 대족장이 분노한다!', t: 0, dur: 2.0, danger: true };
-        Sfx.play('phase');
-        this.shake = 10;
-        break;
-      case 'wave':
-        if (e.index > 0) this.banner = { text: `웨이브 ${e.index + 1}/${e.total}`, sub: '적이 몰려온다!', t: 0, dur: 1.4 };
-        break;
-      case 'waveClear': break;
+      case 'chargeCancel': Sfx.play('cancel'); this.popup(e.unit.x, this.unitTop(e.unit) - 14, '캔슬!', '#ffd34a', 30, { crit: true }); this.hitstop = 0.1; break;
+      case 'callStart': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18); Sfx.play('summon'); break;
+      case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20); Sfx.play('cancel'); break;
+      case 'summon': this.smoke(e.unit.x, e.unit.y - 20, 0.8); break;
+      case 'enrage': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22); break;
+      case 'warcry': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성! (적 공격력↑)', '#ffb04a', 18); this.shake = 4; break;
+      case 'phase': this.banner = { text: e.name, sub: '오우거 대족장이 분노한다!', t: 0, dur: 2.0, danger: true }; Sfx.play('phase'); this.shake = 10; break;
+      case 'wave': if (e.index > 0) this.banner = { text: `웨이브 ${e.index + 1}/${e.total}`, sub: '적이 몰려온다!', t: 0, dur: 1.4 }; break;
       case 'end':
         this.endTimer = e.outcome === 'win' ? 1.3 : 1.6;
-        if (this.targeting) this.cancelTargeting();
+        if (this.drag) { this.drag.over = false; this.endDrag(null); }
         this.banner = e.outcome === 'win' ? { text: '승리!', sub: '', t: 0, dur: 2 } : { text: '전멸…', sub: '', t: 0, dur: 2, danger: true };
         Sfx.play(e.outcome === 'win' ? 'win' : 'lose');
         break;
@@ -469,43 +417,24 @@ const BattleScene = {
     const h = e.unit, sk = e.skill, spec = e.spec || {};
     Sfx.play(sk.fx === 'starbolt' || sk.fx === 'meteor' || sk.fx === 'nova' ? 'magic' : 'skill');
     this.popup(h.x, this.unitTop(h) - 16, sk.name, '#fff0a0', 16, { dur: 0.8, label: true });
-    const gy = CONST.BATTLE_GROUND_Y;
+    const tu = spec.unit;
     switch (sk.fx) {
       case 'slash': case 'bash': case 'flurry':
-        this.fx.push({ type: 'slash', x: spec.unit ? spec.unit.x : h.x + 60, y: gy - 36, t: 0, dur: sk.fx === 'flurry' ? 0.75 : 0.3, color: sk.fx === 'bash' ? '#9fd0ff' : '#ffffff', multi: sk.fx === 'flurry' });
+        this.fx.push({ type: 'slash', x: tu ? tu.x : h.x + 40 * h.face, y: (tu ? tu.y : h.y) - 36, t: 0, dur: sk.fx === 'flurry' ? 0.75 : 0.3, color: sk.fx === 'bash' ? '#9fd0ff' : '#ffffff', multi: sk.fx === 'flurry' });
         break;
-      case 'spin':
-        this.fx.push({ type: 'spin', x: spec.x, y: gy - 30, w: sk.areaW, t: 0, dur: 0.4 });
-        break;
-      case 'pierce': case 'starbolt': case 'snipe':
-        if (spec.unit) this.fx.push({ type: 'proj', kind: sk.fx, x0: h.x + 14, y0: gy - 36, to: spec.unit, t: 0, dur: e.delay, big: true });
-        break;
-      case 'meteor':
-        for (let i = 0; i < 7; i++) this.fx.push({ type: 'meteor', tx: spec.x + (Math.random() - 0.5) * sk.areaW, t: -i * 0.06, dur: 0.5, y: gy - 10 });
-        break;
-      case 'arrowrain':
-        for (let i = 0; i < 16; i++) this.fx.push({ type: 'arrowdrop', tx: spec.x + (Math.random() - 0.5) * sk.areaW, t: -Math.random() * 0.25, dur: 0.45, y: gy - 6 });
-        break;
+      case 'spin': this.fx.push({ type: 'spin', x: h.x, y: h.y, r: sk.areaR, t: 0, dur: 0.4 }); break;
+      case 'pierce': case 'starbolt': case 'snipe': if (tu) this.fx.push({ type: 'proj', kind: sk.fx, x0: h.x + 14 * h.face, y0: h.y - 40, to: tu, t: 0, dur: e.delay, big: true }); break;
+      case 'meteor': for (let i = 0; i < 7; i++) { const a = Math.random() * 6.28, r = Math.random() * sk.areaR; this.fx.push({ type: 'meteor', tx: spec.x + Math.cos(a) * r, ty: spec.y + Math.sin(a) * r * 0.45, t: -i * 0.06, dur: 0.5 }); } this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.7, color: '255,180,80' }); break;
+      case 'arrowrain': for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, r = Math.random() * sk.areaR; this.fx.push({ type: 'arrowdrop', tx: spec.x + Math.cos(a) * r, ty: spec.y + Math.sin(a) * r * 0.45, t: -Math.random() * 0.25, dur: 0.45 }); } this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.6, color: '255,220,140' }); break;
       case 'nova':
         this.fx.push({ type: 'flash', t: 0, dur: 0.5, color: 'rgba(200,170,255,' });
-        for (const en of this.sim.aliveEnemies()) for (let i = 0; i < 3; i++) this.fx.push({ type: 'meteor', tx: en.x + (Math.random() - 0.5) * 40, t: -i * 0.08 - Math.random() * 0.1, dur: 0.4, y: gy - 10, big: true });
+        for (const en of this.sim.aliveEnemies()) for (let i = 0; i < 3; i++) this.fx.push({ type: 'meteor', tx: en.x + (Math.random() - 0.5) * 40, ty: en.y, t: -i * 0.08 - Math.random() * 0.1, dur: 0.4, big: true });
         break;
-      case 'heal':
-        if (spec.unit) this.sparkle(spec.unit.x, gy - 30, '#9cf0a8', 14);
-        break;
-      case 'aoeheal':
-        this.fx.push({ type: 'ring', x: spec.x, y: gy, w: sk.areaW, t: 0, dur: 0.6, color: '#8cf0a0' });
-        break;
-      case 'taunt':
-        this.fx.push({ type: 'ring', x: h.x, y: gy, w: 120, t: 0, dur: 0.5, color: '#c86af0' });
-        this.popup(h.x, this.unitTop(h) - 30, '이리 와!', '#e0a0ff', 20);
-        break;
-      case 'wall':
-        for (const a of this.sim.aliveHeroes()) this.fx.push({ type: 'shield', unit: a, t: 0, dur: 1.0 });
-        break;
-      case 'tree':
-        this.fx.push({ type: 'tree', x: 230, t: 0, dur: 1.6 });
-        break;
+      case 'heal': if (tu) this.sparkle(tu.x, tu.y - 30, '#9cf0a8', 14); break;
+      case 'aoeheal': this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.7, color: '140,240,160' }); break;
+      case 'taunt': this.fx.push({ type: 'zone', x: h.x, y: h.y, r: 70, t: 0, dur: 0.5, color: '200,106,240' }); this.popup(h.x, this.unitTop(h) - 30, '이리 와!', '#e0a0ff', 20); break;
+      case 'wall': for (const a of this.sim.aliveHeroes()) this.fx.push({ type: 'shield', unit: a, t: 0, dur: 1.0 }); break;
+      case 'tree': { const c = this.sim.aliveHeroes(); const mx = c.reduce((s, a) => s + a.x, 0) / Math.max(1, c.length); this.fx.push({ type: 'tree', x: mx - 40, y: CONST.FIELD_Y0 + 10, t: 0, dur: 1.6 }); break; }
       default: break;
     }
   },
@@ -565,85 +494,297 @@ const BattleScene = {
   },
 
   // ------------------------------------------------------------ HUD 갱신
+  // ------------------------------------------------------------ HUD 갱신
   updateHud() {
     const sim = this.sim;
     this.stageLabel.textContent = `던전 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
-    const tg = this.targeting;
-    const inArea = tg && (tg.kind === 'area_enemy' || tg.kind === 'area_ally') ? new Set(sim.unitsInArea(tg.hero, tg.slot, tg.x).map((u) => u.uid)) : null;
+    // 위험 경고
+    if (this.danger) {
+      this.warn.classList.remove('hidden');
+      const txt = `⚠ ${this.danger.e.name} 차지 공격! ${Math.max(0, this.danger.t).toFixed(1)}초`;
+      if (this.warn.dataset.t !== txt) { this.warn.dataset.t = txt; this.warn.innerHTML = `<b>${txt}</b><small>슬로모션 ${CONST.DANGER_SLOWMO}x · 기절로 캔슬하거나 [후퇴]로 범위 밖으로!</small>`; }
+    } else this.warn.classList.add('hidden');
     // 적 칩
-    const alive = sim.enemies.filter((u) => u.alive);
+    const alive = sim.enemies.filter((u) => u.alive).sort((a, b) => a.x - b.x);
     const seen = new Set();
-    alive.sort((a, b) => a.homeX - b.homeX);
-    let idx = 0;
-    for (const u of alive) {
+    alive.forEach((u, idx) => {
       seen.add(u.uid);
       let c = this.chipEls[u.uid];
       if (!c) {
         const root = el('button', 'chip');
         root.type = 'button';
         root.dataset.uid = u.uid;
-        const pc = portraitCanvas(u.sprite, 30, { flip: true });
-        root.appendChild(pc);
+        root.appendChild(portraitCanvas(u.sprite, 30, { flip: true }));
         const body = el('div', 'chip-body');
-        const hp = bar(1, 'hp enemy');
-        body.appendChild(hp);
-        const st = el('div', 'chip-st', '');
-        body.appendChild(st);
+        const hp = bar(1, 'hp enemy'); body.appendChild(hp);
+        const st = el('div', 'chip-st', ''); body.appendChild(st);
         root.appendChild(body);
-        const ch = bar(0, 'charge');
-        root.appendChild(ch);
+        const ch = bar(0, 'charge'); root.appendChild(ch);
+        root.appendChild(el('div', 'chip-focus', '집중'));
         root.addEventListener('click', (e) => { e.stopPropagation(); this.onChip(u); });
         if (u.def.abilities.includes('boss')) root.classList.add('boss');
         this.chipsWrap.appendChild(root);
         c = this.chipEls[u.uid] = { root, hp, st, ch, last: '' };
       }
-      c.root.style.order = idx++;
+      c.root.style.order = idx;
       setBar(c.hp, u.hp / u.maxHp);
-      const stTxt = this.statusIcons(u);
-      if (stTxt !== c.last) { c.st.innerHTML = stTxt; c.last = stTxt; }
-      const charging = u.charge || u.call;
-      c.root.classList.toggle('charging', !!charging);
-      if (charging) setBar(c.ch, 1 - charging.t / charging.total);
-      c.root.classList.toggle('targetable', !!tg && (tg.kind === 'enemy' || tg.kind === 'area_enemy'));
-      c.root.classList.toggle('targeted', !!tg && tg.sel === u);
-      c.root.classList.toggle('inarea', !!inArea && inArea.has(u.uid));
-    }
+      const s = this.statusIcons(u);
+      if (s !== c.last) { c.st.innerHTML = s; c.last = s; }
+      const casting = u.charge || u.call;
+      c.root.classList.toggle('charging', !!casting);
+      if (casting) setBar(c.ch, 1 - casting.t / casting.total);
+      c.root.classList.toggle('focused', sim.focus === u);
+      const d = this.drag;
+      c.root.classList.toggle('inarea', !!d && d.over && ((d.unit === u) || ((d.sk.target === 'area_enemy') && sim.unitsInArea(d.h, d.slot, d.fx, d.fy).includes(u))));
+    });
     for (const uid in this.chipEls) if (!seen.has(+uid)) { this.chipEls[uid].root.remove(); delete this.chipEls[uid]; }
-    // 초상화
+    // 캐릭터 묶음
     for (const h of sim.heroes) {
-      const p = this.portEls[h.uid];
-      setBar(p.hp, h.hp / h.maxHp);
-      p.hp.classList.toggle('low', h.hp / h.maxHp < 0.3);
-      setBar(p.ult, h.ult / 100);
-      p.ult.classList.toggle('ready', h.ult >= 100);
-      p.root.classList.toggle('dead', !h.alive);
-      p.root.classList.toggle('sel', h === this.selHero && !tg);
-      p.root.classList.toggle('targetable', !!tg && (tg.kind === 'ally' || tg.kind === 'potion' || tg.kind === 'area_ally') && h.alive);
-      p.root.classList.toggle('targeted', !!tg && tg.sel === h);
-      p.root.classList.toggle('inarea', !!inArea && inArea.has(h.uid));
+      const g = this.groups[h.uid];
+      setBar(g.hp, h.hp / h.maxHp);
+      g.hp.classList.toggle('low', h.hp / h.maxHp < 0.3);
+      g.root.classList.toggle('dead', !h.alive);
+      g.root.classList.toggle('pick', !!this.potionPick && h.alive);
       const s = this.statusIcons(h);
-      if (s !== p.last) { p.stat.innerHTML = s; p.last = s; }
-    }
-    // 스킬 버튼
-    const h = this.selHero;
-    if (h) {
-      this.skillName.innerHTML = `<b>${h.name}</b> <small>${h.def.roleName}</small>`;
+      if (s !== g.last) { g.stat.innerHTML = s; g.last = s; }
+      const st = this.run.strategy[h.key] || AI_PRESETS[h.key];
       for (const slot of ['s1', 's2', 'ult']) {
-        const b = this.skillBtns[slot];
-        const sk = sim.skillDef(h, slot);
-        const lab = b.querySelector('.sb-lab');
-        if (lab.textContent !== sk.name) lab.textContent = sk.name;
-        const cdEl = b.querySelector('.sb-cd');
-        let frac = 0, txt = '';
-        if (slot === 'ult') { frac = 1 - h.ult / 100; txt = h.ult >= 100 ? '' : Math.floor(h.ult) + '%'; }
-        else { const mx = sim.skillCdMax(h, slot); frac = h.cds[slot] / mx; txt = h.cds[slot] > 0 ? Math.ceil(h.cds[slot]) + '' : ''; }
-        b.style.setProperty('--cd', frac.toFixed(3));
+        const b = g.btns[slot];
+        let frac, txt = '';
+        if (slot === 'ult') { frac = 1 - h.ult / 100; if (h.ult < 100) txt = Math.floor(h.ult) + '%'; }
+        else { frac = h.cds[slot] / sim.skillCdMax(h, slot); if (h.cds[slot] > 0) txt = String(Math.ceil(h.cds[slot])); }
+        b.style.setProperty('--cd', clamp(frac, 0, 1).toFixed(3));
+        const cdEl = b.children[2];
         if (cdEl.textContent !== txt) cdEl.textContent = txt;
+        const ready = sim.canCast(h, slot);
+        const hint = slot === 's2' ? sim.skillHint(h, slot) : '';
+        const auto = sim.autoMode && st[slot] && st[slot].auto;
+        let tag = '';
+        if (ready && hint === 'now') tag = '지금!';
+        else if (ready && hint === 'hint') tag = '추천!';
+        else if (ready && slot === 'ult') tag = '탭!';
+        const tagEl = b.children[0];
+        if (tagEl.textContent !== tag) tagEl.textContent = tag;
+        b.classList.toggle('ready', ready);
         b.classList.toggle('cooling', txt !== '');
-        b.classList.toggle('ready', sim.canCast(h, slot));
-        b.classList.toggle('active', !!tg && tg.hero === h && tg.slot === slot);
+        b.classList.toggle('hint', ready && hint === 'hint');
+        b.classList.toggle('now', ready && hint === 'now');
+        b.classList.toggle('glow', ready && slot === 'ult');
+        b.classList.toggle('auto', !!auto);
+        const kind = b.children[4];
+        const kt = auto ? (slot === 's1' ? '① AUTO' : slot === 's2' ? '② AUTO' : '③ AUTO') : (slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기');
+        if (kind.textContent !== kt) kind.textContent = kt;
+      }
+    }
+  },
+
+  // ------------------------------------------------------------ 렌더
+  render(ctx) {
+    const sim = this.sim;
+    const t = this.t;
+    ctx.save();
+    if (this.shake > 0) ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
+    this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
+    // 차지 위험 범위 (원형)
+    for (const e of sim.enemies) {
+      if (!e.alive || !e.charge) continue;
+      const c = e.charge, prog = 1 - c.t / c.total;
+      const pulse = 0.35 + Math.sin(t * (10 + prog * 20)) * 0.15 + prog * 0.3;
+      ctx.fillStyle = `rgba(220,40,30,${pulse * 0.5})`;
+      this.floorEllipse(ctx, c.cx, c.cy, c.r, c.r * 0.45);
+      ctx.strokeStyle = `rgba(255,120,90,${0.6 + pulse * 0.4})`; ctx.lineWidth = 2.5; ctx.setLineDash([7, 5]);
+      ctx.beginPath(); ctx.ellipse(c.cx, c.cy, c.r, c.r * 0.45, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = `rgba(255,60,40,${0.25 + prog * 0.3})`;
+      this.floorEllipse(ctx, c.cx, c.cy, c.r * prog, c.r * 0.45 * prog);
+    }
+    // 집중 공격 표시
+    if (sim.focus && sim.focus.alive) {
+      const f = sim.focus, r = 26 + Math.sin(t * 6) * 2, y = f.y - getSprite(f.sprite).h * this.unitScale(f) * 0.5;
+      ctx.strokeStyle = 'rgba(255,77,109,0.9)'; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(f.x, f.y + 2, 30 * (f.size || 1), 10, 0, 0, Math.PI * 2); ctx.stroke();
+      for (const a of [0, 1.57, 3.14, 4.71]) { ctx.beginPath(); ctx.moveTo(f.x + Math.cos(a) * (r - 6), y + Math.sin(a) * (r - 6)); ctx.lineTo(f.x + Math.cos(a) * (r + 7), y + Math.sin(a) * (r + 7)); ctx.stroke(); }
+    }
+    // 끌기 미리보기 (범위)
+    const d = this.drag;
+    if (d && d.over && (d.sk.target === 'area_enemy' || d.sk.target === 'area_ally' || d.sk.target === 'self_area')) {
+      const cx = d.sk.target === 'self_area' ? d.h.x : d.fx, cy = d.sk.target === 'self_area' ? d.h.y : d.fy;
+      const col = d.sk.target === 'area_ally' ? '120,240,150' : '255,210,80';
+      const r = d.sk.areaR, ry = r / CONST.Y_WEIGHT;
+      ctx.fillStyle = `rgba(${col},${0.16 + Math.sin(t * 6) * 0.05})`; this.floorEllipse(ctx, cx, cy, r, ry);
+      ctx.strokeStyle = `rgba(${col},0.95)`; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t * 30;
+      ctx.beginPath(); ctx.ellipse(cx, cy, r, ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const units = sim.heroes.concat(sim.enemies).filter((u) => u.alive);
+    units.sort((a, b) => a.y - b.y);
+    const inArea = d && d.over && d.sk.areaR ? new Set(sim.unitsInArea(d.h, d.slot, d.fx, d.fy).map((u) => u.uid)) : null;
+    for (const u of units) this.drawUnit(ctx, u, t, (inArea && inArea.has(u.uid)) || (d && d.unit === u));
+    this.drawFx(ctx);
+    this.drawPopups(ctx);
+    ctx.restore();
+    for (const f of this.fx) if (f.type === 'flash') { ctx.fillStyle = f.color + (0.5 * (1 - f.t / f.dur)).toFixed(3) + ')'; ctx.fillRect(0, 0, 960, 540); }
+    if (this.danger) {
+      const a = 0.2 + Math.sin(t * 12) * 0.1;
+      const g = ctx.createRadialGradient(480, 260, 260, 480, 260, 560);
+      g.addColorStop(0, 'rgba(200,0,0,0)'); g.addColorStop(1, `rgba(200,0,0,${a})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 960, 540);
+    }
+    if (d) { // 끌기: 슬로모션 톤 + 버튼에서 손가락까지 선
+      ctx.fillStyle = 'rgba(30,60,90,0.22)'; ctx.fillRect(0, 0, 960, 540);
+      const br = d.b.getBoundingClientRect();
+      const bp = Input.toLogical({ clientX: br.left + br.width / 2, clientY: br.top });
+      ctx.strokeStyle = d.over ? 'rgba(156,240,168,0.95)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
+      ctx.beginPath(); ctx.moveTo(bp.x, bp.y); ctx.quadraticCurveTo((bp.x + d.x) / 2, Math.min(bp.y, d.y) - 60, d.x, d.y); ctx.stroke(); ctx.setLineDash([]);
+      if (d.unit) this.drawTargetArc(ctx, d.h, d.unit, t);
+    }
+    if (this.potionPick) { ctx.fillStyle = 'rgba(20,40,30,0.25)'; ctx.fillRect(0, 0, 960, 540); }
+    this.drawBanner(ctx);
+    this.drawCutin(ctx);
+  },
+
+  floorEllipse(ctx, x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0, rx), Math.max(0, ry), 0, 0, Math.PI * 2); ctx.fill(); },
+
+  drawBackground(ctx, camX, t) {
+    const W = 960, F = CONST;
+    ctx.fillStyle = '#231c33'; ctx.fillRect(0, 0, W, 540);
+    const ox1 = camX * 0.3;
+    for (let row = 0; row < 9; row++) {
+      const y = 40 + row * 34, off = (row % 2) * 44;
+      for (let x = -100 + off + ox1; x < W + 100; x += 88) { ctx.fillStyle = row % 3 === 0 ? '#2e2642' : '#2b2340'; ctx.fillRect(Math.round(x), y, 84, 30); ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(Math.round(x), y, 84, 3); }
+    }
+    for (const tx0 of [110, 470, 850]) {
+      const tx = tx0 + ox1;
+      const fl = 0.88 + Math.sin(t * 9 + tx0) * 0.07 + Math.sin(t * 21 + tx0 * 2) * 0.05;
+      const g = ctx.createRadialGradient(tx, 150, 6, tx, 150, 150 * fl);
+      g.addColorStop(0, 'rgba(255,170,80,0.42)'); g.addColorStop(0.5, 'rgba(255,140,60,0.12)'); g.addColorStop(1, 'rgba(255,140,60,0)');
+      ctx.fillStyle = g; ctx.fillRect(tx - 170, 0, 340, 340);
+      ctx.fillStyle = '#5e3a20'; ctx.fillRect(tx - 3, 150, 6, 26);
+      const fh = 12 + Math.sin(t * 14 + tx0) * 3;
+      ctx.fillStyle = '#ff9a2a'; ctx.fillRect(tx - 4, 148 - fh, 8, fh); ctx.fillStyle = '#ffe066'; ctx.fillRect(tx - 2, 148 - fh * 0.6, 4, fh * 0.6);
+    }
+    const ox2 = camX * 0.6;
+    for (const px0 of [290, 690]) {
+      const px = px0 + ox2;
+      ctx.fillStyle = '#3a3152'; ctx.fillRect(px - 16, 70, 32, 220); ctx.fillStyle = '#463c62'; ctx.fillRect(px - 16, 70, 8, 220);
+      ctx.fillStyle = '#4c4268'; ctx.fillRect(px - 22, 62, 44, 12); ctx.fillRect(px - 22, 282, 44, 14);
+    }
+    // 바닥 (자유 이동 영역)
+    const top = F.FIELD_Y0 - 30;
+    const g2 = ctx.createLinearGradient(0, top, 0, 540);
+    g2.addColorStop(0, '#3b3150'); g2.addColorStop(1, '#221b30');
+    ctx.fillStyle = g2; ctx.fillRect(0, top, W, 540 - top);
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
+    for (let x = -300; x < W + 300; x += 80) { ctx.beginPath(); ctx.moveTo(x + camX, top); ctx.lineTo(x * 1.35 - 160 + camX * 1.3, 540); ctx.stroke(); }
+    for (const y of [top + 30, top + 75, top + 130, top + 200]) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, top, W, 3);
+    for (const dd of this.dust) {
+      const x = (dd.x + t * 8 * dd.s + camX * 0.8) % 980 - 10, y = dd.y + Math.sin(t * dd.s + dd.p) * 10;
+      ctx.fillStyle = `rgba(255,230,190,${0.15 + 0.15 * Math.sin(t * 2 + dd.p)})`; ctx.fillRect(x, y, 2, 2);
+    }
+  },
+
+  drawUnit(ctx, u, t, highlight) {
+    const enemy = u.side === 'enemy';
+    const sc = this.unitScale(u);
+    let x = u.x, y = u.y;
+    if (u.anim.lunge > 0) { const k = clamp(Math.sin((1 - u.anim.lunge / 0.25) * Math.PI), 0, 1); x += u.anim.lungeX * k; y += (u.anim.lungeY || 0) * k * 0.5; }
+    if (u.anim.hurt > 0) x += -u.face * u.anim.hurt * 30;
+    const s = getSprite(u.sprite);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    this.floorEllipse(ctx, x, u.y + 2, s.w * sc * 0.36, 7 * (enemy ? u.size : 1));
+    if (highlight) { ctx.strokeStyle = '#ffd34a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(x, u.y + 2, s.w * sc * 0.42 + Math.sin(t * 8) * 2, 10, 0, 0, Math.PI * 2); ctx.stroke(); }
+    if (this.potionPick && !enemy) { ctx.strokeStyle = '#9cf0a8'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(x, u.y + 2, s.w * sc * 0.42, 10, 0, 0, Math.PI * 2); ctx.stroke(); }
+    const blinking = ((t + u.uid * 1.37) % 3.6) < 0.13;
+    let tint = null, tintAlpha = 0;
+    if (u.anim.hurt > 0.08) tint = 'white';
+    if (u.charge && Math.floor(t * (6 + (1 - u.charge.t / u.charge.total) * 14)) % 2 === 0) tint = 'white';
+    if (!tint && u.statuses.enrage) { tint = 'red'; tintAlpha = 0.25 + Math.sin(t * 8) * 0.1; }
+    const squash = u.anim.cast > 0 ? 1 + Math.sin((u.anim.cast / 0.3) * Math.PI) * 0.06 : (u.anim.hurt > 0 ? 0.94 : 1);
+    const walk = u.moving ? Math.abs(Math.sin(t * 12 + u.uid)) * 3 : 0;
+    const so = { scale: sc, flip: u.face < 0, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, squash };
+    if (tint === 'white') { // 피격/차지 섬광: 원래 그림 위에 반투명 흰색
+      drawSprite(ctx, u.sprite, x, y - walk, so);
+      drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'white', alpha: u.charge ? 0.7 : 0.5 }));
+    } else drawSprite(ctx, u.sprite, x, y - walk, Object.assign(so, { tint, tintAlpha }));
+    if (u.moving && Math.random() < 0.08) this.fx.push({ type: 'dust', x: u.x - u.face * 8, y: u.y, vx: -u.face * 20, vy: -20, t: 0, dur: 0.4 });
+    const top = y - s.h * sc;
+    if (u.statuses.stun) for (let i = 0; i < 3; i++) { const a = t * 5 + i * 2.1; ctx.fillStyle = '#ffd34a'; ctx.fillRect(x + Math.cos(a) * 16 - 2, top - 4 + Math.sin(a) * 4, 5, 5); }
+    const bw = enemy ? 34 + u.size * 10 : 34;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 10, bw + 2, 6);
+    ctx.fillStyle = enemy ? '#e0524a' : '#6fd86a'; ctx.fillRect(x - bw / 2, top - 9, bw * (u.hp / u.maxHp), 4);
+    const cast = u.charge || u.call;
+    if (cast) {
+      const prog = 1 - cast.t / cast.total;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 22, top - 20, 44, 7);
+      ctx.fillStyle = u.charge ? '#ff5a3a' : '#ffb04a'; ctx.fillRect(x - 21, top - 19, 42 * prog, 5);
+      ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#3a0000'; ctx.fillText('!', x + 1, top - 25); ctx.fillStyle = Math.floor(t * 8) % 2 ? '#ff5a3a' : '#ffd34a'; ctx.fillText('!', x, top - 26);
+    }
+    if (!enemy && u.statuses.guard) { ctx.strokeStyle = 'rgba(122,184,240,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y - s.h * sc * 0.5, s.h * sc * 0.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+    if (!enemy && u.statuses.regen && Math.random() < 0.15) this.sparkle(x, y - 20, '#9cf0a8', 1);
+  },
+
+  drawTargetArc(ctx, from, to, t) {
+    const x0 = from.x, y0 = this.unitTop(from) + 10, x1 = to.x, y1 = this.unitTop(to) - 4;
+    ctx.strokeStyle = '#ffd34a'; ctx.lineWidth = 3; ctx.setLineDash([8, 7]); ctx.lineDashOffset = -t * 40;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo((x0 + x1) / 2, Math.min(y0, y1) - 70, x1, y1); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#ffd34a'; ctx.beginPath(); ctx.moveTo(x1, y1 + 2); ctx.lineTo(x1 - 7, y1 - 10); ctx.lineTo(x1 + 7, y1 - 10); ctx.fill();
+  },
+
+  drawFx(ctx) {
+    for (const f of this.fx) {
+      if (f.t < 0) continue;
+      const k = f.t / f.dur;
+      switch (f.type) {
+        case 'spark': ctx.fillStyle = f.color; ctx.globalAlpha = 1 - k; ctx.fillRect(f.x - 2, f.y - 2, 4, 4); ctx.globalAlpha = 1; break;
+        case 'sparkle': ctx.fillStyle = f.color; ctx.globalAlpha = 1 - k; ctx.fillRect(f.x - 1, f.y - 4, 2, 8); ctx.fillRect(f.x - 4, f.y - 1, 8, 2); ctx.globalAlpha = 1; break;
+        case 'smoke': ctx.fillStyle = `rgba(200,190,210,${0.55 * (1 - k)})`; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.6 + k), 0, Math.PI * 2); ctx.fill(); break;
+        case 'dust': ctx.fillStyle = `rgba(160,130,110,${0.7 * (1 - k)})`; ctx.fillRect(f.x - 3, f.y - 3, 6, 6); break;
+        case 'zone': ctx.strokeStyle = `rgba(${f.color},${1 - k})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(f.x, f.y, f.r * (0.4 + k * 0.6), f.r / CONST.Y_WEIGHT * (0.4 + k * 0.6), 0, 0, Math.PI * 2); ctx.stroke(); break;
+        case 'proj': {
+          if (!f.to) break;
+          const x1 = f.to.x, y1 = f.to.y - 30 * (f.to.size || 1);
+          const x = lerp(f.x0, x1, k), y = lerp(f.y0, y1, k) - Math.sin(k * Math.PI) * (f.kind === 'bori' ? 30 : 12);
+          const ang = Math.atan2(y1 - f.y0, x1 - f.x0);
+          if (f.kind === 'byeolbi' || f.kind === 'pierce' || f.kind === 'snipe') {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+            ctx.strokeStyle = f.kind === 'snipe' ? '#ffd34a' : '#f3dcb4'; ctx.lineWidth = f.big ? 4 : 2;
+            ctx.beginPath(); ctx.moveTo(-14, 0); ctx.lineTo(4, 0); ctx.stroke(); ctx.fillStyle = '#c9d0d8'; ctx.fillRect(3, -2, 4, 4);
+            if (f.big) { ctx.fillStyle = 'rgba(255,230,120,0.5)'; ctx.fillRect(-40, -1, 30, 2); }
+            ctx.restore();
+          } else if (f.kind === 'soldam' || f.kind === 'starbolt') {
+            const r = f.big ? 7 : 4;
+            ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,200,90,0.4)'; ctx.beginPath(); ctx.arc(x - Math.cos(ang) * 8, y - Math.sin(ang) * 8, r * 0.8, 0, Math.PI * 2); ctx.fill();
+          } else { ctx.fillStyle = '#9fe0ff'; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); }
+          break;
+        }
+        case 'slash': {
+          ctx.strokeStyle = f.color; ctx.lineWidth = 4 * (1 - k) + 1;
+          const n = f.multi ? 6 : 1;
+          for (let i = 0; i < n; i++) { const kk = f.multi ? clamp(k * n - i, 0, 1) : k; if (kk <= 0 || kk >= 1) continue; const a0 = -1.2 + i * 0.7, r = 34 + (i % 2) * 8; ctx.beginPath(); ctx.arc(f.x, f.y, r, a0, a0 + kk * 2.2); ctx.stroke(); }
+          break;
+        }
+        case 'spin': ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.ellipse(f.x, f.y - 24, f.r * (0.5 + k * 0.5), f.r / CONST.Y_WEIGHT * (0.5 + k * 0.5) + 6, 0, k * 8, k * 8 + 4.5); ctx.stroke(); break;
+        case 'meteor': {
+          const x = f.tx + (1 - k) * 120, y = lerp(-20, f.ty, k);
+          ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(x, y, f.big ? 9 : 7, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = 'rgba(255,150,60,0.7)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 30, y - 40); ctx.stroke();
+          if (k > 0.9) { ctx.fillStyle = 'rgba(255,200,90,0.6)'; this.floorEllipse(ctx, f.tx, f.ty, 26, 8); }
+          break;
+        }
+        case 'arrowdrop': { const y = lerp(40, f.ty, k); ctx.strokeStyle = '#f3dcb4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f.tx, y - 16); ctx.lineTo(f.tx, y); ctx.stroke(); ctx.fillStyle = '#c9d0d8'; ctx.fillRect(f.tx - 2, y, 4, 4); break; }
+        case 'shield': { const u = f.unit; const s = getSprite(u.sprite); ctx.strokeStyle = `rgba(122,184,240,${1 - k})`; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(u.x, u.y - s.h * 1.5, s.h * 1.8 * (0.8 + k * 0.3), Math.PI, 0); ctx.stroke(); break; }
+        case 'tree': {
+          const h = Math.min(1, k * 2) * 140;
+          ctx.globalAlpha = k < 0.8 ? 0.85 : (1 - k) * 4;
+          ctx.fillStyle = '#6e4724'; ctx.fillRect(f.x - 8, f.y - h, 16, h);
+          ctx.fillStyle = '#64b84e';
+          for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(f.x + Math.cos(i) * 40 * (h / 140), f.y - h + Math.sin(i * 2) * 18, 26 * (h / 140), 0, Math.PI * 2); ctx.fill(); }
+          ctx.globalAlpha = 1; break;
+        }
+        default: break;
       }
     }
   },
@@ -659,276 +800,6 @@ const BattleScene = {
     return s;
   },
 
-  // ------------------------------------------------------------ 렌더
-  render(ctx) {
-    const sim = this.sim;
-    const t = this.t;
-    const sh = this.shake;
-    const camX = Math.sin(t * 0.3) * 6;
-    ctx.save();
-    if (sh > 0) ctx.translate((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh);
-    this.drawBackground(ctx, camX, t);
-    // 차지 위험 범위
-    for (const e of sim.enemies) {
-      if (!e.alive || !e.charge) continue;
-      const c = e.charge;
-      const prog = 1 - c.t / c.total;
-      const pulse = 0.35 + Math.sin(t * (10 + prog * 20)) * 0.15 + prog * 0.3;
-      ctx.fillStyle = `rgba(220,40,30,${pulse * 0.55})`;
-      this.floorEllipse(ctx, (c.x0 + c.x1) / 2, CONST.BATTLE_GROUND_Y + 4, (c.x1 - c.x0) / 2 + 10, 22);
-      ctx.strokeStyle = `rgba(255,120,90,${0.6 + pulse * 0.4})`;
-      ctx.lineWidth = 2; ctx.setLineDash([6, 4]);
-      ctx.beginPath(); ctx.ellipse((c.x0 + c.x1) / 2, CONST.BATTLE_GROUND_Y + 4, (c.x1 - c.x0) / 2 + 10, 22, 0, 0, Math.PI * 2); ctx.stroke();
-      ctx.setLineDash([]);
-      // 채워지는 내부 링
-      ctx.fillStyle = `rgba(255,60,40,${0.25 + prog * 0.3})`;
-      this.floorEllipse(ctx, (c.x0 + c.x1) / 2, CONST.BATTLE_GROUND_Y + 4, ((c.x1 - c.x0) / 2 + 10) * prog, 22 * prog);
-    }
-    // 범위 지정 표시
-    const tg = this.targeting;
-    if (tg && (tg.kind === 'area_enemy' || tg.kind === 'area_ally')) {
-      const cx = sim.clampAreaX(tg.hero, tg.sk, tg.x);
-      const w = tg.sk.areaW;
-      const col = tg.kind === 'area_ally' ? '120,240,150' : '255,210,80';
-      ctx.fillStyle = `rgba(${col},${0.18 + Math.sin(t * 6) * 0.06})`;
-      ctx.fillRect(cx - w / 2, CONST.BATTLE_GROUND_Y - 12, w, 34);
-      ctx.strokeStyle = `rgba(${col},0.95)`;
-      ctx.lineWidth = 2; ctx.setLineDash([8, 5]); ctx.lineDashOffset = -t * 30;
-      ctx.strokeRect(cx - w / 2, CONST.BATTLE_GROUND_Y - 12, w, 34);
-      ctx.setLineDash([]);
-      ctx.fillStyle = `rgba(${col},1)`;
-      ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('◀ 드래그: 범위 이동 ▶', cx, CONST.BATTLE_GROUND_Y + 40);
-    }
-    // 유닛
-    const units = sim.heroes.concat(sim.enemies).filter((u) => u.alive);
-    units.sort((a, b) => this.unitY(a) - this.unitY(b));
-    for (const u of units) this.drawUnit(ctx, u, t);
-    // 단일 타겟 화살표 (시전자 → 대상)
-    if (tg && tg.sel && tg.hero) this.drawTargetArc(ctx, tg.hero, tg.sel, t);
-    this.drawFx(ctx);
-    this.drawPopups(ctx);
-    ctx.restore();
-    // 화면 효과
-    for (const f of this.fx) if (f.type === 'flash') { ctx.fillStyle = f.color + (0.5 * (1 - f.t / f.dur)).toFixed(3) + ')'; ctx.fillRect(0, 0, 960, 540); }
-    if (sim.enemies.some((e) => e.alive && e.charge)) {
-      const a = 0.18 + Math.sin(t * 12) * 0.1;
-      const g = ctx.createRadialGradient(480, 260, 260, 480, 260, 560);
-      g.addColorStop(0, 'rgba(200,0,0,0)'); g.addColorStop(1, `rgba(200,0,0,${a})`);
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 960, 540);
-    }
-    if (tg) { ctx.fillStyle = 'rgba(20,30,60,0.18)'; ctx.fillRect(0, 0, 960, 540); }
-    this.drawBanner(ctx);
-    this.drawCutin(ctx);
-  },
-
-  floorEllipse(ctx, x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0, rx), Math.max(0, ry), 0, 0, Math.PI * 2); ctx.fill(); },
-
-  drawBackground(ctx, camX, t) {
-    const W = 960, gy = CONST.BATTLE_GROUND_Y;
-    // 레이어 1: 벽
-    ctx.fillStyle = '#231c33';
-    ctx.fillRect(0, 0, W, 540);
-    const ox1 = camX * 0.3;
-    for (let row = 0; row < 9; row++) {
-      const y = 40 + row * 34;
-      const off = (row % 2) * 44;
-      for (let x = -100 + off + ox1; x < W + 100; x += 88) {
-        ctx.fillStyle = row % 3 === 0 ? '#2e2642' : '#2b2340';
-        ctx.fillRect(Math.round(x), y, 84, 30);
-        ctx.fillStyle = 'rgba(255,255,255,0.03)';
-        ctx.fillRect(Math.round(x), y, 84, 3);
-      }
-    }
-    // 횃불 + 광원
-    for (const tx0 of [110, 470, 850]) {
-      const tx = tx0 + ox1;
-      const fl = 0.88 + Math.sin(t * 9 + tx0) * 0.07 + Math.sin(t * 21 + tx0 * 2) * 0.05;
-      const g = ctx.createRadialGradient(tx, 150, 6, tx, 150, 150 * fl);
-      g.addColorStop(0, 'rgba(255,170,80,0.42)'); g.addColorStop(0.5, 'rgba(255,140,60,0.12)'); g.addColorStop(1, 'rgba(255,140,60,0)');
-      ctx.fillStyle = g; ctx.fillRect(tx - 170, 0, 340, 340);
-      ctx.fillStyle = '#5e3a20'; ctx.fillRect(tx - 3, 150, 6, 26);
-      ctx.fillStyle = '#3a2418'; ctx.fillRect(tx - 6, 148, 12, 5);
-      const fh = 12 + Math.sin(t * 14 + tx0) * 3;
-      ctx.fillStyle = '#ff9a2a'; ctx.fillRect(tx - 4, 148 - fh, 8, fh);
-      ctx.fillStyle = '#ffe066'; ctx.fillRect(tx - 2, 148 - fh * 0.6, 4, fh * 0.6);
-    }
-    // 레이어 2: 기둥
-    const ox2 = camX * 0.6;
-    for (const px0 of [290, 690]) {
-      const px = px0 + ox2;
-      ctx.fillStyle = '#3a3152'; ctx.fillRect(px - 16, 70, 32, gy - 70);
-      ctx.fillStyle = '#463c62'; ctx.fillRect(px - 16, 70, 8, gy - 70);
-      ctx.fillStyle = '#2a2340'; ctx.fillRect(px + 10, 70, 6, gy - 70);
-      ctx.fillStyle = '#4c4268'; ctx.fillRect(px - 22, 62, 44, 12); ctx.fillRect(px - 22, gy - 14, 44, 14);
-    }
-    // 레이어 3: 바닥
-    const g2 = ctx.createLinearGradient(0, gy - 20, 0, 410);
-    g2.addColorStop(0, '#3b3150'); g2.addColorStop(1, '#2a2338');
-    ctx.fillStyle = g2; ctx.fillRect(0, gy - 20, W, 410 - (gy - 20));
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 2;
-    const ox3 = camX;
-    for (let x = -200; x < W + 200; x += 70) {
-      ctx.beginPath(); ctx.moveTo(x + ox3, gy - 20); ctx.lineTo(x * 1.25 - 120 + ox3 * 1.3, 410); ctx.stroke();
-    }
-    ctx.beginPath(); ctx.moveTo(0, gy + 18); ctx.lineTo(W, gy + 18); ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, gy - 20, W, 3);
-    // 먼지
-    for (const d of this.dust) {
-      const x = (d.x + t * 8 * d.s + camX * 0.8) % 980 - 10;
-      const y = d.y + Math.sin(t * d.s + d.p) * 10;
-      ctx.fillStyle = `rgba(255,230,190,${0.15 + 0.15 * Math.sin(t * 2 + d.p)})`;
-      ctx.fillRect(x, y, 2, 2);
-    }
-  },
-
-  drawUnit(ctx, u, t) {
-    const enemy = u.side === 'enemy';
-    const sc = this.unitScale(u);
-    const y = this.unitY(u);
-    let x = u.x;
-    if (u.anim.lunge > 0) { const k = Math.sin((1 - u.anim.lunge / 0.25) * Math.PI); x += u.anim.lungeX * clamp(k, 0, 1); }
-    if (u.anim.hurt > 0) x += (enemy ? 1 : -1) * u.anim.hurt * 30;
-    const s = getSprite(u.sprite);
-    // 그림자
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    this.floorEllipse(ctx, x, y + 2, s.w * sc * 0.38, 7 * (enemy ? u.size : 1));
-    // 선택/타겟 링
-    const tg = this.targeting;
-    if (!enemy && u === this.selHero && !tg) { ctx.strokeStyle = '#ffd34a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(x, y + 2, s.w * sc * 0.42, 9, 0, 0, Math.PI * 2); ctx.stroke(); }
-    if (tg) {
-      const valid = (tg.kind === 'enemy' && enemy) || ((tg.kind === 'ally' || tg.kind === 'potion') && !enemy);
-      const inArea = (tg.kind === 'area_enemy' || tg.kind === 'area_ally') && this.sim.unitsInArea(tg.hero, tg.slot, tg.x).includes(u);
-      if (valid || inArea) {
-        ctx.strokeStyle = tg.sel === u || inArea ? '#ffd34a' : 'rgba(255,255,255,0.45)';
-        ctx.lineWidth = tg.sel === u || inArea ? 3 : 1.5;
-        ctx.beginPath(); ctx.ellipse(x, y + 2, s.w * sc * 0.45 + Math.sin(t * 8) * 2, 10, 0, 0, Math.PI * 2); ctx.stroke();
-      }
-    }
-    const blinking = ((t + u.uid * 1.37) % 3.6) < 0.13;
-    let tint = null, tintAlpha = 0;
-    if (u.anim.hurt > 0.08) tint = 'white';
-    if (u.charge && Math.floor(t * (6 + (1 - u.charge.t / u.charge.total) * 14)) % 2 === 0) tint = 'white';
-    if (!tint && u.statuses.enrage) { tint = 'red'; tintAlpha = 0.25 + Math.sin(t * 8) * 0.1; }
-    const squash = u.anim.cast > 0 ? 1 + Math.sin((u.anim.cast / 0.3) * Math.PI) * 0.06 : (u.anim.hurt > 0 ? 0.94 : 1);
-    drawSprite(ctx, u.sprite, x, y, { scale: sc, flip: enemy, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, tint, tintAlpha, squash });
-    const top = y - s.h * sc;
-    // 기절 별
-    if (u.statuses.stun) for (let i = 0; i < 3; i++) { const a = t * 5 + i * 2.1; ctx.fillStyle = '#ffd34a'; ctx.fillRect(x + Math.cos(a) * 16 - 2, top - 4 + Math.sin(a) * 4, 5, 5); }
-    // 머리 위 작은 HP 바
-    const bw = enemy ? 34 + u.size * 10 : 34;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 10, bw + 2, 6);
-    ctx.fillStyle = enemy ? '#e0524a' : '#6fd86a'; ctx.fillRect(x - bw / 2, top - 9, bw * (u.hp / u.maxHp), 4);
-    // 차지/호출 텔레그래프
-    const cast = u.charge || u.call;
-    if (cast) {
-      const prog = 1 - cast.t / cast.total;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 22, top - 20, 44, 7);
-      ctx.fillStyle = u.charge ? '#ff5a3a' : '#ffb04a'; ctx.fillRect(x - 21, top - 19, 42 * prog, 5);
-      ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillStyle = '#3a0000'; ctx.fillText('!', x + 1, top - 25);
-      ctx.fillStyle = Math.floor(t * 8) % 2 ? '#ff5a3a' : '#ffd34a'; ctx.fillText('!', x, top - 26);
-    }
-    // 도발당한 적 표시
-    if (enemy && u.statuses.taunt) { ctx.fillStyle = '#c86af0'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('도발', x, top - 14); }
-    if (!enemy && u.statuses.guard) { ctx.strokeStyle = 'rgba(122,184,240,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y - s.h * sc * 0.5, s.h * sc * 0.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
-    if (!enemy && u.statuses.regen && Math.random() < 0.15) this.sparkle(x, y - 20, '#9cf0a8', 1);
-  },
-
-  drawTargetArc(ctx, from, to, t) {
-    const x0 = from.x, y0 = this.unitTop(from) + 10;
-    const x1 = to.x, y1 = this.unitTop(to) - 4;
-    const mx = (x0 + x1) / 2, my = Math.min(y0, y1) - 70;
-    ctx.strokeStyle = '#ffd34a'; ctx.lineWidth = 3; ctx.setLineDash([8, 7]); ctx.lineDashOffset = -t * 40;
-    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(mx, my, x1, y1); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#ffd34a';
-    ctx.beginPath(); ctx.moveTo(x1, y1 + 2); ctx.lineTo(x1 - 7, y1 - 10); ctx.lineTo(x1 + 7, y1 - 10); ctx.fill();
-  },
-
-  drawFx(ctx) {
-    const gy = CONST.BATTLE_GROUND_Y;
-    for (const f of this.fx) {
-      if (f.t < 0) continue;
-      const k = f.t / f.dur;
-      switch (f.type) {
-        case 'spark':
-          ctx.fillStyle = f.color; ctx.globalAlpha = 1 - k;
-          ctx.fillRect(f.x - 2, f.y - 2, 4, 4); ctx.globalAlpha = 1; break;
-        case 'sparkle':
-          ctx.fillStyle = f.color; ctx.globalAlpha = 1 - k;
-          ctx.fillRect(f.x - 1, f.y - 4, 2, 8); ctx.fillRect(f.x - 4, f.y - 1, 8, 2); ctx.globalAlpha = 1; break;
-        case 'smoke':
-          ctx.fillStyle = `rgba(200,190,210,${0.55 * (1 - k)})`;
-          ctx.beginPath(); ctx.arc(f.x, f.y, f.r * (0.6 + k), 0, Math.PI * 2); ctx.fill(); break;
-        case 'dust':
-          ctx.fillStyle = `rgba(160,130,110,${0.8 * (1 - k)})`; ctx.fillRect(f.x - 3, f.y - 3, 6, 6); break;
-        case 'proj': {
-          if (!f.to) break;
-          const x1 = f.to.x, y1 = this.unitY(f.to) - 30 * (f.to.size || 1);
-          const x = lerp(f.x0, x1, k), y = lerp(f.y0, y1, k) - Math.sin(k * Math.PI) * (f.kind === 'bori' ? 30 : 12);
-          if (f.kind === 'byeolbi' || f.kind === 'pierce' || f.kind === 'snipe') {
-            ctx.strokeStyle = f.kind === 'snipe' ? '#ffd34a' : '#f3dcb4'; ctx.lineWidth = f.big ? 4 : 2;
-            ctx.beginPath(); ctx.moveTo(x - 14, y); ctx.lineTo(x + 4, y); ctx.stroke();
-            ctx.fillStyle = '#c9d0d8'; ctx.fillRect(x + 3, y - 2, 4, 4);
-            if (f.big) { ctx.fillStyle = 'rgba(255,230,120,0.5)'; ctx.fillRect(x - 40, y - 1, 30, 2); }
-          } else if (f.kind === 'soldam' || f.kind === 'starbolt') {
-            ctx.fillStyle = '#ffe066'; const r = f.big ? 7 : 4;
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = 'rgba(255,200,90,0.4)'; ctx.beginPath(); ctx.arc(x - 8, y, r * 0.8, 0, Math.PI * 2); ctx.fill();
-          } else {
-            ctx.fillStyle = '#64b84e'; ctx.fillRect(x - 3, y - 3, 6, 6); ctx.fillStyle = '#9fe08a'; ctx.fillRect(x - 1, y - 1, 2, 2);
-          }
-          break;
-        }
-        case 'slash': {
-          ctx.strokeStyle = f.color; ctx.lineWidth = 4 * (1 - k) + 1;
-          const n = f.multi ? 6 : 1;
-          for (let i = 0; i < n; i++) {
-            const kk = f.multi ? clamp(k * n - i, 0, 1) : k;
-            if (kk <= 0 || kk >= 1) continue;
-            const a0 = -1.2 + i * 0.7, r = 34 + (i % 2) * 8;
-            ctx.beginPath(); ctx.arc(f.x, f.y, r, a0, a0 + kk * 2.2); ctx.stroke();
-          }
-          break;
-        }
-        case 'spin':
-          ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 4;
-          ctx.beginPath(); ctx.ellipse(f.x, f.y, f.w / 2 * (0.4 + k * 0.6), 26, 0, k * 8, k * 8 + 4.5); ctx.stroke(); break;
-        case 'meteor': {
-          const kk = k;
-          const x = f.tx + (1 - kk) * 120, y = lerp(-20, f.y, kk);
-          ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(x, y, f.big ? 9 : 7, 0, Math.PI * 2); ctx.fill();
-          ctx.strokeStyle = 'rgba(255,150,60,0.7)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 30, y - 40); ctx.stroke();
-          if (kk > 0.9) { ctx.fillStyle = 'rgba(255,200,90,0.6)'; this.floorEllipse(ctx, f.tx, f.y, 26, 8); }
-          break;
-        }
-        case 'arrowdrop': {
-          const y = lerp(40, f.y, k);
-          ctx.strokeStyle = '#f3dcb4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(f.tx, y - 16); ctx.lineTo(f.tx, y); ctx.stroke();
-          ctx.fillStyle = '#c9d0d8'; ctx.fillRect(f.tx - 2, y, 4, 4);
-          break;
-        }
-        case 'ring':
-          ctx.strokeStyle = f.color; ctx.globalAlpha = 1 - k; ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.ellipse(f.x, f.y, f.w / 2 * (0.3 + k * 0.7), 20 * (0.3 + k * 0.7), 0, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; break;
-        case 'shield': {
-          const u = f.unit; const s = getSprite(u.sprite);
-          ctx.strokeStyle = `rgba(122,184,240,${1 - k})`; ctx.lineWidth = 4;
-          ctx.beginPath(); ctx.arc(u.x, gy - s.h * 1.5, s.h * 1.8 * (0.8 + k * 0.3), Math.PI, 0); ctx.stroke(); break;
-        }
-        case 'tree': {
-          const h = Math.min(1, k * 2) * 140;
-          ctx.globalAlpha = k < 0.8 ? 0.85 : (1 - k) * 4;
-          ctx.fillStyle = '#6e4724'; ctx.fillRect(f.x - 8, gy - h, 16, h);
-          ctx.fillStyle = '#64b84e';
-          for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(f.x + Math.cos(i) * 40 * (h / 140), gy - h + Math.sin(i * 2) * 18, 26 * (h / 140), 0, Math.PI * 2); ctx.fill(); }
-          ctx.globalAlpha = 1; break;
-        }
-        default: break;
-      }
-    }
-  },
 
   drawPopups(ctx) {
     ctx.textAlign = 'center';
@@ -984,3 +855,25 @@ const BattleScene = {
     ctx.restore();
   },
 };
+
+// 스킬 아이콘 (인라인 SVG, fx 키 기준)
+function skillGlyph(sk) {
+  const P = {
+    taunt: '<path d="M12 3c5 0 8 1 8 3 0 7-3 12-8 15C7 18 4 13 4 6c0-2 3-3 8-3z" fill="currentColor"/>',
+    wall: '<path d="M12 2c5 0 8 1 8 3 0 7-3 12-8 15C7 17 4 12 4 5c0-2 3-3 8-3z" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M8 9h8M8 13h8" stroke="currentColor" stroke-width="2"/>',
+    bash: '<path d="M5 19L16 8" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="16" cy="7" r="4.5" fill="currentColor"/>',
+    slash: '<path d="M4 20L20 4M9 4c7 1 11 5 11 12" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/>',
+    spin: '<path d="M19 12a7 7 0 1 1-3-5.7" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M17 3l1 5-5 0z" fill="currentColor"/>',
+    flurry: '<path d="M3 17L13 5M8 20L18 8M13 21L21 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+    pierce: '<path d="M4 20L19 5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><path d="M20 4l-7 1 6 6z" fill="currentColor"/>',
+    snipe: '<circle cx="12" cy="12" r="7" stroke="currentColor" stroke-width="2.2" fill="none"/><path d="M12 2v6M12 16v6M2 12h6M16 12h6" stroke="currentColor" stroke-width="2.2"/>',
+    arrowrain: '<path d="M6 3v12M12 5v14M18 3v12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M3 14l3 5 3-5zM9 18l3 5 3-5zM15 14l3 5 3-5z" fill="currentColor"/>',
+    starbolt: '<path d="M12 2l2.6 6.3L21 9l-5 4.4L17.5 20 12 16.6 6.5 20 8 13.4 3 9l6.4-.7z" fill="currentColor"/>',
+    meteor: '<circle cx="9" cy="15" r="5" fill="currentColor"/><path d="M12 11l8-8M14 15l7-5M9 9l5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    nova: '<circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 1v5M12 18v5M1 12h5M18 12h5M4 4l3.5 3.5M16.5 16.5L20 20M4 20l3.5-3.5M16.5 7.5L20 4" stroke="currentColor" stroke-width="2"/>',
+    heal: '<path d="M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z" fill="currentColor"/>',
+    aoeheal: '<path d="M6 5h3v3h3v3H9v3H6v-3H3V8h3zM15 10h3v3h3v3h-3v3h-3v-3h-3v-3h3z" fill="currentColor"/>',
+    tree: '<path d="M12 21V11" stroke="currentColor" stroke-width="2.4"/><path d="M12 2c5 3 6 9 0 12C6 11 7 5 12 2z" fill="currentColor"/>',
+  };
+  return '<svg viewBox="0 0 24 24" width="30" height="30">' + (P[sk.fx] || P.slash) + '</svg>';
+}

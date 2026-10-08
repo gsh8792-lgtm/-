@@ -34,7 +34,7 @@ async function playRun(p, seed, opts) {
   // 보급 상자 → 포털
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((i) => i.key === 'chest')); });
   // 궁극기 자동 사용 (게임 내 전략 설정 기능)
-  await p.evaluate(() => { const r = window.GAME.Game.run; for (const k in r.strategy) r.strategy[k].ultAuto = true; });
+  await p.evaluate(() => { const r = window.GAME.Game.run; for (const k in r.strategy) r.strategy[k].ult.auto = true; });
   await p.click('#btn-automove');
   await p.waitForSelector('#portal-yes', { timeout: 20000 });
   await p.click('#portal-yes');
@@ -139,7 +139,7 @@ async function playRun(p, seed, opts) {
   await p.click('#btn-party'); await p.click('#ps-soldam');
   ok('필드: 4번째 선택 거부', (await p.evaluate(() => document.querySelectorAll('.ps-card.on').length)) === 3);
   await p.click('#ps-cancel');
-  await p.click('#btn-f-strategy'); await p.click('#stab-bori'); await p.selectOption('#sr-cond-0', 'always'); await p.click('#ult-auto'); await p.click('#strat-reset'); await p.click('#strat-close');
+  await p.click('#btn-f-strategy'); await p.click('#stab-bori'); await p.click('#sr-auto-s2'); await p.selectOption('#sr-cond-s2', 'always'); await p.click('#sr-auto-ult'); await p.click('#strat-reset'); await p.click('#strat-close');
   ok('필드: 전략 편집 열기/수정/기본값/닫기', !(await vis(p, '.strat-box')));
   // 길잡이 대화 (탭 → 자동 이동 → 대화)
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.autoMove('guide'); });
@@ -183,44 +183,61 @@ async function playRun(p, seed, opts) {
   await p.evaluate(() => { const G = window.GAME.Game; G.run.party = ['tobi', 'danbi', 'bori']; G.go('battle', { node: { stage: 3, row: 0, type: 'battle', waves: [['ogre', 'goblin_caller', 'goblin']] } }); });
   await dismissHints(p);
   await p.click('#btn-speed'); ok('전투: 배속 2x', (await p.textContent('#btn-speed')).includes('2x')); await p.click('#btn-speed');
-  await p.click('#btn-manual'); ok('전투: 수동 전환', await p.evaluate(() => !window.GAME.Game.run.autoMode));
-  await p.click('#btn-bpotion'); ok('전투: 회복약 → 전술 정지', await p.evaluate(() => window.GAME.Game.scene.targeting && window.GAME.Game.scene.targeting.kind === 'potion')); await p.click('#btn-t-cancel');
+  await p.click('#btn-manual'); ok('전투: 전략 끄기', await p.evaluate(() => !window.GAME.Game.run.autoMode));
+  // 회복약: 정지 후 아군 얼굴 탭
+  await p.click('#btn-bpotion'); ok('전투: 회복약 → 정지 + 대상 선택', await p.evaluate(() => !!window.GAME.Game.scene.potionPick));
+  await p.mouse.click(bb.x + 480 * k, bb.y + 120 * k); ok('전투: 회복약 빈 곳 탭 → 취소', await p.evaluate(() => !window.GAME.Game.scene.potionPick));
   await p.click('#btn-pause'); ok('전투: 일시정지 메뉴', await vis(p, '#pause-resume'));
   await p.click('#pause-sound'); await p.click('#pause-sound');
   await p.click('#pause-strategy'); await p.click('#strat-close');
   await p.click('#pause-giveup'); await p.click('#giveup-no'); await p.click('#pause-resume');
-  // 차지 → 방패 강타로 캔슬
+  // 작전 명령
+  for (const o of ['charge', 'retreat', 'hold']) { await p.click('#btn-order-' + o); ok(`전투: 작전 [${o}]`, (await p.evaluate(() => window.GAME.Game.scene.sim.order)) === o); }
+  // 집중 공격: 적 칩 탭 → 다시 탭하면 해제
+  await p.waitForSelector('.chip', { timeout: 10000 });
+  await p.locator('.chip').first().click();
+  ok('전투: 적 칩 탭 → 집중 공격 지정', await p.evaluate(() => !!window.GAME.Game.scene.sim.focus));
+  await p.waitForTimeout(800);
+  ok('전투: 집중 대상으로 파티 대상 변경', await p.evaluate(() => { const s = window.GAME.Game.scene.sim; return s.aliveHeroes().every((h) => h.target === s.focus); }));
+  await p.locator('.chip.focused').click(); ok('전투: 집중 해제', await p.evaluate(() => !window.GAME.Game.scene.sim.focus));
+  // 실시간 이동 확인
+  const pos0 = await p.evaluate(() => window.GAME.Game.scene.sim.heroes.map((h) => [h.x, h.y]));
+  await p.waitForTimeout(700);
+  const pos1 = await p.evaluate(() => window.GAME.Game.scene.sim.heroes.map((h) => [h.x, h.y]));
+  ok('전투: 캐릭터 자유 이동', pos0.some((q, i) => Math.hypot(q[0] - pos1[i][0], q[1] - pos1[i][1]) > 3));
+  // 차지 → ② 방패 강타 "지금!" 탭 → 캔슬
   await p.waitForFunction(() => window.GAME.Game.scene.sim && window.GAME.Game.scene.sim.enemies.some((e) => e.alive && e.charge), null, { timeout: 30000 });
   await dismissHints(p);
+  await p.evaluate(() => { window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'tobi').cds.s2 = 0; });
+  await p.waitForTimeout(120);
+  ok('전투: 차지 중 ② 방패 강타에 "지금!" 표시', (await p.textContent('#sk-tobi-s2 .sk-tag')).includes('지금'));
   await p.screenshot({ path: `${OUT}/battle_charge.png` });
-  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'tobi'); S.sim.heroes.find((h) => h.key === 'tobi').cds.s2 = 0; });
-  await p.click('#btn-skill-s2');
-  const tsel = await p.evaluate(() => { const tg = window.GAME.Game.scene.targeting; return tg && tg.sel && tg.sel.key; });
-  ok('전투: 차지 중이면 방패 강타 기본 타겟 = 차지 중인 적', tsel === 'ogre', String(tsel));
-  const t1 = await p.evaluate(() => window.GAME.Game.scene.sim.time); await p.waitForTimeout(300);
-  ok('전투: 타겟팅 중 시간 정지(시뮬 시간 고정)', (await p.evaluate(() => window.GAME.Game.scene.sim.time)) === t1);
-  await p.locator('.chip').first().click();
-  await p.click('#btn-t-confirm');
-  await p.waitForTimeout(600);
-  const cancelled = await p.evaluate(() => { const o = window.GAME.Game.scene.sim.enemies.find((e) => e.key === 'ogre'); return !o.charge && !!o.statuses.stun; });
-  ok('전투: 기절로 차지 공격 캔슬', cancelled);
-  // 범위 스킬 드래그
-  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'danbi'); S.selHero.cds.s2 = 0; });
-  await p.click('#btn-skill-s2');
-  const x0 = await p.evaluate(() => window.GAME.Game.scene.targeting.x);
-  await p.mouse.move(bb.x + 600 * k, bb.y + 330 * k); await p.mouse.down(); await p.mouse.move(bb.x + 530 * k, bb.y + 330 * k, { steps: 4 });
-  const x1 = await p.evaluate(() => window.GAME.Game.scene.targeting.x); await p.mouse.up();
-  ok('전투: 범위 드래그로 위치 이동', x1 !== x0, `${x0 && x0.toFixed(0)} → ${x1.toFixed(0)}`);
-  await p.screenshot({ path: `${OUT}/battle_area.png` });
-  await p.click('#btn-t-cancel'); ok('전투: 취소 → 재개', await p.evaluate(() => !window.GAME.Game.scene.targeting));
-  // 단일 타겟 → 빈 곳 탭 취소
-  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'danbi'); S.selHero.cds.s1 = 0; });
-  await p.click('#btn-skill-s1'); await p.mouse.click(bb.x + 480 * k, bb.y + 150 * k);
-  ok('전투: 빈 곳 탭 → 타겟팅 취소', await p.evaluate(() => !window.GAME.Game.scene.targeting));
-  // 궁극기 (컷인)
-  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'bori'); S.selHero.ult = 100; });
-  await p.click('#btn-skill-ult'); await p.waitForTimeout(250);
-  ok('전투: 궁극기 컷인 연출', await p.evaluate(() => !!window.GAME.Game.scene.cutin));
+  await p.locator('#sk-tobi-s2').tap();
+  await p.waitForTimeout(700);
+  ok('전투: 탭 한 번 → 차지 중인 적 기절 → 캔슬', await p.evaluate(() => { const o = window.GAME.Game.scene.sim.enemies.find((e) => e.key === 'ogre'); return !o.charge && !!o.statuses.stun; }));
+  // 끌어서 범위 지정 (보리 ② 광역 치유)
+  await p.evaluate(() => { const s = window.GAME.Game.scene.sim; const b = s.heroes.find((h) => h.key === 'bori'); b.cds.s2 = 0; for (const h of s.heroes) h.hp = Math.round(h.maxHp * 0.5); });
+  const sb = await p.locator('#sk-bori-s2').boundingBox();
+  await p.mouse.move(sb.x + sb.width / 2, sb.y + 20); await p.mouse.down();
+  await p.mouse.move(bb.x + 320 * k, bb.y + 330 * k, { steps: 8 });
+  const dragOn = await p.evaluate(() => { const d = window.GAME.Game.scene.drag; return d && d.over; });
+  const tA = await p.evaluate(() => window.GAME.Game.scene.sim.time); await p.waitForTimeout(400); const tB = await p.evaluate(() => window.GAME.Game.scene.sim.time);
+  ok('전투: 버튼 끌기 → 슬로모션 지정 모드', dragOn, `0.4초 실시간 동안 시뮬 ${(tB - tA).toFixed(2)}초 진행`);
+  await p.screenshot({ path: `${OUT}/battle_drag.png` });
+  await p.mouse.up(); await p.waitForTimeout(200);
+  ok('전투: 놓은 곳에 시전 (쿨타임 시작)', await p.evaluate(() => window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'bori').cds.s2 > 0));
+  // 끌다가 버튼 쪽으로 되돌리면 취소
+  await p.evaluate(() => { window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'danbi').cds.s1 = 0; });
+  const sd = await p.locator('#sk-danbi-s1').boundingBox();
+  await p.mouse.move(sd.x + sd.width / 2, sd.y + 20); await p.mouse.down();
+  await p.mouse.move(bb.x + 600 * k, bb.y + 330 * k, { steps: 6 }); await p.mouse.move(sd.x + sd.width / 2, sd.y + 30, { steps: 6 }); await p.mouse.up();
+  ok('전투: 끌기 → 버튼으로 되돌리면 취소', await p.evaluate(() => window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'danbi').cds.s1 === 0 && !window.GAME.Game.scene.drag));
+  // ③ 필살기 탭 (컷인)
+  await p.evaluate(() => { window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'bori').ult = 100; });
+  await p.waitForTimeout(80);
+  ok('전투: ③ 필살기 준비 → "탭!" 표시', (await p.textContent('#sk-bori-ult .sk-tag')).includes('탭'));
+  await p.locator('#sk-bori-ult').tap(); await p.waitForTimeout(250);
+  ok('전투: ③ 필살기 컷인 연출', await p.evaluate(() => !!window.GAME.Game.scene.cutin));
   await p.screenshot({ path: `${OUT}/battle_ult.png` });
   await p.click('#btn-auto');
   await p.evaluate(() => { window.GAME.Game.debug.simMult = 8; });
@@ -280,7 +297,7 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   // 터치 타겟 크기 (실제 화면 px): 전투/지도/필드의 모든 보이는 버튼·칩·초상화
   const measure = () => p.evaluate(() => {
     let min = 1e9, which = '';
-    for (const e of document.querySelectorAll('#ui button, #ui .bport, #ui select')) { const r = e.getBoundingClientRect(); if (!r.width || getComputedStyle(e).visibility === 'hidden' || e.offsetParent === null) continue; const m = Math.min(r.width, r.height); if (m < min) { min = m; which = e.id || e.className; } }
+    for (const e of document.querySelectorAll('#ui button, #ui select')) { const r = e.getBoundingClientRect(); if (!r.width || getComputedStyle(e).visibility === 'hidden' || e.offsetParent === null) continue; const m = Math.min(r.width, r.height); if (m < min) { min = m; which = e.id || e.className; } }
     return { min, which };
   });
   const tBattle = await measure();

@@ -25,15 +25,21 @@ const CONST = {
   HITSTOP_MS: 60,
   CONFIRM_SLOWMO_SEC: 0.2,           // 확정 후 감속 시간(실시간)
   CONFIRM_SLOWMO_SCALE: 0.25,
-  BATTLE_GROUND_Y: 352,              // 전투 바닥 기준선(논리 px)
-  HERO_FRONT_X: 400, HERO_SPACING: 66,
-  ENEMY_FRONT_X: 545, ENEMY_SPACING: 64,
+  // 실시간 자유 이동 전장 (바닥 영역, 논리 px)
+  FIELD_X0: 40, FIELD_X1: 920, FIELD_Y0: 318, FIELD_Y1: 420,
+  HERO_SPAWN_X: 150, ENEMY_SPAWN_X: 800,
+  MELEE_RANGE: 46,                   // 근접 사거리(+대상 크기 보정)
+  Y_WEIGHT: 1.8,                     // 깊이(y) 거리 가중치: 위아래로는 덜 닿는다
+  SEPARATION: 16,                    // 같은 편끼리 살짝 밀어내는 거리 (겹침은 허용)
+  RETARGET_SEC: 0.5,
+  DANGER_SLOWMO: 0.5,                // 차지 범위 안에 아군이 있을 때 시간 배율
+  DRAG_SLOWMO: 0.25,                 // 스킬 버튼을 끄는 동안 시간 배율
   SPRITE_SCALE: 3,
   WAVE_DELAY: 1.2,
   BATTLE_INTRO: 1.0,
   // 전역 밸런스 배율 (초안 수치는 테이블에 그대로 두고 여기서 조정)
-  ENEMY_HP_MULT: 1.7,
-  ENEMY_ATK_MULT: 0.6,
+  ENEMY_HP_MULT: 1.4,
+  ENEMY_ATK_MULT: 0.85,
   HEAL_MULT: 0.85,
 };
 
@@ -57,11 +63,11 @@ const STATUS = {
 // ---------------------------------------------------------------- 영웅
 // order: 대형 기본 순서(0 = 앞열). traits: TRAITS의 id.
 const HEROES = {
-  tobi:  { name: '토비',   species: '수호기사', role: 'tank',    roleName: '탱커',   hp: 520, atk: 22, atkInterval: 1.7, range: 'melee',  def: 0.15, order: 0, skills: ['tobi_s1', 'tobi_s2'], ult: 'tobi_ult', traits: ['sturdy'],           portraitColor: '#9a6232', accent: '#e98a80', sprite: 'knight' },
-  danbi: { name: '단비',   species: '검사',     role: 'melee',   roleName: '근딜',   hp: 300, atk: 40, atkInterval: 1.35, range: 'melee', def: 0.05, order: 1, skills: ['danbi_s1', 'danbi_s2'], ult: 'danbi_ult', traits: ['brave'],          portraitColor: '#9a958f', accent: '#6fb08a', sprite: 'sword' },
-  byeolbi: { name: '별비', species: '궁수',     role: 'ranged',  roleName: '원딜',   hp: 260, atk: 36, atkInterval: 1.5, range: 'ranged', def: 0.0, order: 2, skills: ['byeolbi_s1', 'byeolbi_s2'], ult: 'byeolbi_ult', traits: ['keen'],     portraitColor: '#a49c92', accent: '#e8a83a', sprite: 'archer' },
-  soldam: { name: '솔담',  species: '마법사',   role: 'mage',    roleName: '매지션', hp: 240, atk: 44, atkInterval: 1.9, range: 'ranged', def: 0.0, order: 3, skills: ['soldam_s1', 'soldam_s2'], ult: 'soldam_ult', traits: ['cautious'],    portraitColor: '#8a5a34', accent: '#8cc3a0', sprite: 'mage' },
-  bori:  { name: '보리',   species: '사제',     role: 'support', roleName: '서포터', hp: 280, atk: 16, atkInterval: 1.9, range: 'ranged', def: 0.0, order: 4, skills: ['bori_s1', 'bori_s2'], ult: 'bori_ult', traits: ['gentle'],           portraitColor: '#fff4e0', accent: '#8cc3a0', sprite: 'priest' },
+  tobi:  { name: '토비',   species: '수호기사', role: 'tank',    roleName: '탱커',   hp: 520, atk: 22, atkInterval: 1.7, range: 'melee', reach: 0, moveSpeed: 72,  def: 0.15, order: 0, skills: ['tobi_s1', 'tobi_s2'], ult: 'tobi_ult', traits: ['sturdy'],           portraitColor: '#9a6232', accent: '#e98a80', sprite: 'knight' },
+  danbi: { name: '단비',   species: '검사',     role: 'melee',   roleName: '근딜',   hp: 300, atk: 40, atkInterval: 1.35, range: 'melee', reach: 0, moveSpeed: 95, def: 0.05, order: 1, skills: ['danbi_s1', 'danbi_s2'], ult: 'danbi_ult', traits: ['brave'],          portraitColor: '#9a958f', accent: '#6fb08a', sprite: 'sword' },
+  byeolbi: { name: '별비', species: '궁수',     role: 'ranged',  roleName: '원딜',   hp: 260, atk: 36, atkInterval: 1.5, range: 'ranged', reach: 220, moveSpeed: 78, def: 0.0, order: 2, skills: ['byeolbi_s1', 'byeolbi_s2'], ult: 'byeolbi_ult', traits: ['keen'],     portraitColor: '#a49c92', accent: '#e8a83a', sprite: 'archer' },
+  soldam: { name: '솔담',  species: '마법사',   role: 'mage',    roleName: '매지션', hp: 240, atk: 44, atkInterval: 1.9, range: 'ranged', reach: 210, moveSpeed: 66, def: 0.0, order: 3, skills: ['soldam_s1', 'soldam_s2'], ult: 'soldam_ult', traits: ['cautious'],    portraitColor: '#8a5a34', accent: '#8cc3a0', sprite: 'mage' },
+  bori:  { name: '보리',   species: '사제',     role: 'support', roleName: '서포터', hp: 280, atk: 16, atkInterval: 1.9, range: 'ranged', reach: 190, moveSpeed: 70, def: 0.0, order: 4, skills: ['bori_s1', 'bori_s2'], ult: 'bori_ult', traits: ['gentle'],           portraitColor: '#fff4e0', accent: '#8cc3a0', sprite: 'priest' },
 };
 const HERO_ORDER = ['tobi', 'danbi', 'byeolbi', 'soldam', 'bori']; // 앞열 → 뒷열 (로스터)
 const DEFAULT_PARTY = ['tobi', 'danbi', 'bori'];
@@ -77,67 +83,84 @@ const TRAITS = {
 };
 
 // ---------------------------------------------------------------- 스킬
-// target: enemy(단일) | ally(단일 아군) | area_enemy | area_ally | self | party | all_enemies
-// power: 공격력 배율. areaW: 범위 가로폭(논리 px). fx: 연출 키
+// 슬롯: s1 = ① 기본(직업 주력기, 전략 ON이면 자동) / s2 = ② 상황(hint 조건일 때 추천) / ult = ③ 필살기
+// target: enemy(단일) | ally(단일 아군) | area_enemy | area_ally(지점 원형) | self_area(시전자 주변) | self | party | all_enemies
+// power: 공격력 배율. areaR: 원형 범위 반지름(논리 px). hint: ② 추천 조건(SKILL_HINTS). fx: 연출 키
 const SKILLS = {
   tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적이 토비를 공격.' },
-  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 8,  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
+  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 8, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
   tobi_ult: { name: '철벽',       target: 'party',     cd: 0,  power: 0,   effects: [{ status: 'guard', dur: 7, value: 0.45, to: 'party' }], fx: 'wall', desc: '7초간 파티 받는 피해 -45%.' },
 
   danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈.' },
-  danbi_s2: { name: '회전 베기',  target: 'area_enemy', cd: 9, power: 1.2, areaW: 150, melee: true, effects: [], fx: 'spin', desc: '근거리 범위 베기.' },
+  danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '근거리 범위 베기.' },
   danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 강한 출혈.' },
 
   byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '대상 취약(받는 피해 +25%).' },
-  byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaW: 190, effects: [], fx: 'arrowrain', desc: '지정 범위 화살비.' },
+  byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정 범위 화살비.' },
   byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '단일 대상 초강력 사격.' },
 
   soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '화상 부여.' },
-  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaW: 200, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '지정 범위에 유성우.' },
+  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '지정 범위에 유성우.' },
   soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해.' },
 
   bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [], fx: 'heal', desc: '아군 1명 회복.' },
-  bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.08, areaW: 200, effects: [], fx: 'aoeheal', desc: '범위 내 아군 회복.' },
+  bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 내 아군 회복.' },
   bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (초당 최대HP 4.5%).' },
 };
 
-// ---------------------------------------------------------------- 자동 전략 규칙
+// ---------------------------------------------------------------- ② 상황 스킬 추천 조건
+const SKILL_HINTS = {
+  enemyCharging: { name: '적이 차지/호출 중', urgent: true },   // "지금!" (위험 대응)
+  nearEnemies:   { name: '주변에 적 2마리 이상' },
+  cluster:       { name: '적 3마리가 뭉쳐 있음' },
+  alliesHurt:    { name: '아군 2명 이상 HP 70% 이하' },
+};
+
+// ---------------------------------------------------------------- 작전 명령 (파티 전체)
+const ORDERS = {
+  charge:  { name: '돌격', desc: '모두 앞으로. 원거리도 가까이 붙어 화력 집중.' },
+  hold:    { name: '대형', desc: '탱커가 앞, 원거리·서포터는 뒤에서 거리 유지.' },
+  retreat: { name: '후퇴', desc: '왼쪽으로 물러남. 차지 범위 회피용. 사거리 안 적만 공격.' },
+};
+
+// ---------------------------------------------------------------- 자동 전략 (스킬별: 자동 여부 · 조건 · 대상)
 const AI_CONDITIONS = {
-  always:       { name: '항상',           param: null },
+  always:       { name: '쿨 될 때마다',   param: null },
+  hint:         { name: '추천 상황일 때', param: null },
   allyHpBelow:  { name: '아군 HP ≤ X%',   param: [30, 50, 60, 70, 80] },
   enemyHpBelow: { name: '적 HP ≤ X%',     param: [20, 30, 50, 70] },
   enemyCharging:{ name: '적이 차지 중',    param: null },
   enemyCountGte:{ name: '적 N마리 이상',   param: [2, 3, 4] },
-  ultReady:     { name: '궁극기 가능',     param: null },
 };
-const AI_SKILL_SLOTS = { s1: '스킬1', s2: '스킬2', ult: '궁극기' };
+const AI_SKILL_SLOTS = { s1: '① 기본', s2: '② 상황', ult: '③ 필살기' };
 const AI_TARGET_RULES = {
-  weakest:    { name: '가장 약한 적' },
+  focus:      { name: '집중 대상 우선' },
   nearest:    { name: '가장 가까운 적' },
+  weakest:    { name: '가장 약한 적' },
   charging:   { name: '차지 중인 적' },
   lowestAlly: { name: 'HP 낮은 아군' },
   tank:       { name: '탱커' },
 };
-// 직업별 기본 프리셋
+// 기본 프리셋: ① 자동 / ② 수동(추천 표시, 자동으로 켜면 추천 상황에 사용) / ③ 수동 대기
 const AI_PRESETS = {
-  tobi:    { rules: [ { cond: 'enemyCharging', skill: 's2', target: 'charging' }, { cond: 'allyHpBelow', param: 60, skill: 's1', target: 'tank' }, { cond: 'always', skill: 's2', target: 'nearest' } ], ultAuto: false, ultTarget: 'tank' },
-  danbi:   { rules: [ { cond: 'enemyCountGte', param: 3, skill: 's2', target: 'nearest' }, { cond: 'enemyHpBelow', param: 50, skill: 's1', target: 'weakest' }, { cond: 'always', skill: 's1', target: 'nearest' } ], ultAuto: false, ultTarget: 'weakest' },
-  byeolbi: { rules: [ { cond: 'enemyCountGte', param: 3, skill: 's2', target: 'nearest' }, { cond: 'enemyCharging', skill: 's1', target: 'charging' }, { cond: 'always', skill: 's1', target: 'weakest' } ], ultAuto: false, ultTarget: 'weakest' },
-  soldam:  { rules: [ { cond: 'enemyCountGte', param: 2, skill: 's2', target: 'nearest' }, { cond: 'always', skill: 's1', target: 'nearest' }, { cond: 'enemyHpBelow', param: 30, skill: 's1', target: 'weakest' } ], ultAuto: false, ultTarget: 'nearest' },
-  bori:    { rules: [ { cond: 'allyHpBelow', param: 50, skill: 's2', target: 'lowestAlly' }, { cond: 'allyHpBelow', param: 70, skill: 's1', target: 'lowestAlly' }, { cond: 'allyHpBelow', param: 30, skill: 's1', target: 'lowestAlly' } ], ultAuto: false, ultTarget: 'lowestAlly' },
+  tobi:    { s1: { auto: true, cond: 'enemyCountGte', param: 2, target: 'nearest' }, s2: { auto: false, cond: 'hint', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
+  danbi:   { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'always', target: 'focus' } },
+  byeolbi: { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'always', target: 'focus' } },
+  soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'enemyCountGte', param: 3, target: 'nearest' } },
+  bori:    { s1: { auto: true, cond: 'allyHpBelow', param: 80, target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },
 };
 
 // ---------------------------------------------------------------- 적
 // ability: caller(동료 호출) | enrage(HP 50% 광폭) | charge(차지 공격) | warcry | boss
 const ENEMIES = {
-  goblin:        { name: '고블린',        hp: 90,   atk: 14, atkInterval: 1.15, def: 0,    size: 1,   sprite: 'goblin',  color: '#7cc050', gold: 4,  abilities: [] },
-  goblin_caller: { name: '고블린 나팔수', hp: 110,  atk: 12, atkInterval: 1.3,  def: 0,    size: 1,   sprite: 'goblinHorn', color: '#8ad060', gold: 6, abilities: ['caller'], callEvery: 9, callCast: 1.6, callCount: 1 },
-  orc:           { name: '오크',          hp: 260,  atk: 26, atkInterval: 1.7,  def: 0.1,  size: 1.2, sprite: 'orc',     color: '#5a8a4a', gold: 10, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.6 },
-  ogre:          { name: '오우거',        hp: 620,  atk: 48, atkInterval: 2.4,  def: 0.1,  size: 1.6, sprite: 'ogre',    color: '#d29a68', gold: 20, abilities: ['charge'], chargeEvery: 8, chargeTime: 3, chargeMult: 2.4, chargeZone: 2 },
-  orc_captain:   { name: '오크 대장',     hp: 820,  atk: 32, atkInterval: 1.6,  def: 0.15, size: 1.4, sprite: 'orcCaptain', color: '#4a7a3a', gold: 40, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 2.0, chargeZone: 1 },
-  ogre_chief:    { name: '오우거 대족장', hp: 3000, atk: 46, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 1.9, chargeZone: 2,
+  goblin:        { name: '고블린', moveSpeed: 88,        hp: 90,   atk: 14, atkInterval: 1.15, def: 0,    size: 1,   sprite: 'goblin',  color: '#7cc050', gold: 4,  abilities: [] },
+  goblin_caller: { name: '고블린 나팔수', moveSpeed: 70, hp: 110,  atk: 12, atkInterval: 1.3,  def: 0,    size: 1,   sprite: 'goblinHorn', color: '#8ad060', gold: 6, abilities: ['caller'], callEvery: 9, callCast: 1.6, callCount: 1 },
+  orc:           { name: '오크', moveSpeed: 66,          hp: 260,  atk: 26, atkInterval: 1.7,  def: 0.1,  size: 1.2, sprite: 'orc',     color: '#5a8a4a', gold: 10, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.6 },
+  ogre:          { name: '오우거', moveSpeed: 46,        hp: 620,  atk: 48, atkInterval: 2.4,  def: 0.1,  size: 1.6, sprite: 'ogre',    color: '#d29a68', gold: 20, abilities: ['charge'], chargeEvery: 8, chargeTime: 3, chargeMult: 2.4, chargeR: 80 },
+  orc_captain:   { name: '오크 대장', moveSpeed: 60,     hp: 820,  atk: 32, atkInterval: 1.6,  def: 0.15, size: 1.4, sprite: 'orcCaptain', color: '#4a7a3a', gold: 40, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 2.0, chargeR: 64 },
+  ogre_chief:    { name: '오우거 대족장', moveSpeed: 40, hp: 3000, atk: 46, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 1.9, chargeR: 90,
                    phases: [ // HP 비율 이하가 되면 진입
-                     { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeZone: 5, chargeTime: 3.2, chargeEvery: 10, chargeMult: 1.4 },
+                     { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 1.4 },
                      { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 1.7, enrage: true },
                    ] },
 };
@@ -243,6 +266,6 @@ const TREE_DEALS = [
 const HINTS = {
   field:  '화면을 탭하거나 왼쪽 아래 조이스틱으로 이동하세요. 보급 상자에서 식량을 챙기고, 포털로 던전에 들어가요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
-  battle: '스킬 버튼을 누르면 시간이 멈춰요. 적 칩/아군 초상화를 탭하고 [확정]. 범위 스킬은 바닥 범위를 드래그!',
-  charge: '오우거가 차지 중! 붉은 범위에 큰 피해가 옵니다. 토비의 방패 강타(기절)로 캔슬하세요.',
+  battle: '캐릭터마다 ① 기본(자동) ② 상황 ③ 필살기. 버튼을 탭하면 바로 시전, 끌면 느려지면서 원하는 곳에 떨어뜨려요. 적 칩을 탭하면 집중 공격!',
+  charge: '오우거가 차지 중! 붉은 원 안에 큰 피해가 옵니다. 토비의 ② 방패 강타로 끊거나, [후퇴]로 원 밖으로 피하세요.',
 };

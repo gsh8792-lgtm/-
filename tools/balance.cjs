@@ -9,7 +9,7 @@ let COMP = COMPS[0];
 const party = (hpPct) => HERO_ORDER.filter((id) => COMP.includes(id)).map((id) => ({ id, hp: Math.round(HEROES[id].hp * hpPct), maxHp: HEROES[id].hp, upgrades: {} }));
 const strat = JSON.parse(JSON.stringify(AI_PRESETS));
 const ultAuto = process.argv.includes('--ult');
-for (const k in strat) strat[k].ultAuto = ultAuto;
+for (const k in strat) strat[k].ult.auto = ultAuto;
 const rows = [];
 for (const type of ['battle', 'elite', 'boss']) for (const st in ENCOUNTERS[type]) ENCOUNTERS[type][st].forEach((waves, i) => {
   let wins = 0, t = 0, hpLeft = 0, deaths = 0; const N = 30;

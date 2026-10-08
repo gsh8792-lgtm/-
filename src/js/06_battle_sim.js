@@ -1,11 +1,12 @@
-// ===== 06_battle_sim.js : 전투 시뮬레이션 (순수 로직) =====
-// 렌더/DOM을 전혀 모른다. step(dt)로만 진행하고 events[]에 연출용 이벤트를 쌓는다.
+// ===== 06_battle_sim.js : 실시간 파티 전투 시뮬레이션 (순수 로직) =====
+// 2D 바닥 위 자유 이동: 근접은 달려들고, 원거리는 거리를 유지하고, 서로 겹칠 수 있다.
+// 렌더/DOM을 모른다. step(dt)로만 진행하고 events[]에 연출용 이벤트를 쌓는다.
 // 같은 시드 + 같은 입력(명령과 그 시점) → 같은 결과.
 
 let _uidSeq = 1;
 
 class BattleSim {
-  // opts: { seed, stage, waves:[[enemyId...]], heroes:[{id, hp, maxHp, upgrades}], relics:[id], fruit:{bonus}, torchDark, strategy, autoMode }
+  // opts: { seed, stage, waves, heroes:[{id,hp,maxHp,upgrades}], relics, fruit, torchDark, strategy, autoMode, partySize }
   constructor(opts) {
     this.rng = makeRng(opts.seed >>> 0);
     this.stage = opts.stage || 1;
@@ -19,6 +20,8 @@ class BattleSim {
     this.torchDark = !!opts.torchDark;
     this.strategy = opts.strategy || {};
     this.autoMode = opts.autoMode !== undefined ? opts.autoMode : true;
+    this.order = 'hold';          // 작전: charge | hold | retreat
+    this.focus = null;            // 집중 공격 대상 (적 유닛)
     this.time = 0;
     this.events = [];
     this.delayed = [];
@@ -26,150 +29,208 @@ class BattleSim {
     this.heroes = [];
     this.enemies = [];
     this.kills = 0;
-    this.introT = CONST.BATTLE_INTRO; // 입장 연출: 이 동안은 이동만
-    for (const h of opts.heroes) this.heroes.push(this._makeHero(h));
-    this._layoutHeroes(true);
+    this.introT = CONST.BATTLE_INTRO;
+    opts.heroes.forEach((h, i) => this.heroes.push(this._makeHero(h, i, opts.heroes.length)));
     this._spawnWave(0, true);
-    if (this.relics.has('acorn')) {
-      for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
-    }
+    if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
   }
 
   // ------------------------------------------------------------ 생성
-  _makeHero(h) {
+  _makeHero(h, i, n) {
     const def = HEROES[h.id];
+    const y = lerp(CONST.FIELD_Y0 + 20, CONST.FIELD_Y1 - 14, n === 1 ? 0.5 : i / (n - 1));
     const u = {
       uid: _uidSeq++, side: 'hero', key: h.id, def, name: def.name, sprite: def.sprite, role: def.role,
       hp: h.hp, maxHp: h.maxHp, atk: def.atk, atkInterval: def.atkInterval, defPct: def.def, size: 1,
-      x: CONST.HERO_FRONT_X - 300, homeX: 0, atkTimer: 0.4 + this.rng() * 0.8,
-      statuses: {}, cds: { s1: 1.5 + this.rng() * 1.5, s2: 3 + this.rng() * 2 }, ult: 0,
+      melee: def.range === 'melee', reach: def.reach || 0, speed: def.moveSpeed,
+      x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
+      atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
+      statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
       upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0,
-      anim: { lunge: 0, lungeX: 0, hurt: 0, cast: 0 },
+      anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
     };
     if (this.fruit && this.fruit.bonus > 0) u.statuses.fruit = { t: Infinity, value: this.fruit.bonus };
     return u;
   }
 
-  _makeEnemy(id, spawnX) {
+  _makeEnemy(id, x, y) {
     const def = ENEMIES[id];
     const sc = def.fixedScale ? 1 : this.scale;
     const hpMul = (def.fixedScale ? 1 : CONST.ENEMY_HP_MULT) * this.partyScale, atkMul = def.fixedScale ? 1 : CONST.ENEMY_ATK_MULT;
-    const u = {
+    return {
       uid: _uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
       hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval,
-      defPct: def.def, size: def.size, x: spawnX, homeX: spawnX, atkTimer: 0.6 + this.rng() * 1.0,
+      defPct: def.def, size: def.size, melee: true, reach: 0, speed: def.moveSpeed || 60,
+      x, y, tx: x, ty: y, face: -1, moving: false,
+      atkTimer: 0.6 + this.rng() * 1.0, target: null, retarget: 0,
       statuses: {}, alive: true,
       charge: null, chargeCd: def.chargeEvery ? def.chargeEvery * (0.45 + this.rng() * 0.25) : 0,
-      chargeEvery: def.chargeEvery, chargeTime: def.chargeTime, chargeMult: def.chargeMult, chargeZone: def.chargeZone,
+      chargeEvery: def.chargeEvery, chargeTime: def.chargeTime, chargeMult: def.chargeMult, chargeR: def.chargeR,
       call: null, callCd: def.callEvery ? def.callEvery * (0.5 + this.rng() * 0.3) : 0,
       warcryCd: def.warcryEvery ? def.warcryEvery * 0.6 : 0,
       phase: 0, enraged: false,
-      anim: { lunge: 0, lungeX: 0, hurt: 0, cast: 0 },
+      anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
     };
-    return u;
   }
 
   _spawnWave(i, initial) {
     const ids = this.waves[i];
-    for (const id of ids) this.enemies.push(this._makeEnemy(id, initial ? CONST.ENEMY_FRONT_X + 260 + this.enemies.length * 40 : 1040 + this.enemies.length * 30));
-    this._layoutEnemies();
+    ids.forEach((id, k) => {
+      const y = lerp(CONST.FIELD_Y0 + 8, CONST.FIELD_Y1 - 8, ids.length === 1 ? 0.5 : k / (ids.length - 1));
+      const x = (initial ? CONST.ENEMY_SPAWN_X + 150 : 1010) + (k % 2) * 40 + ENEMIES[id].size * 20;
+      this.enemies.push(this._makeEnemy(id, x, y + (this.rng() - 0.5) * 10));
+    });
     this.events.push({ type: 'wave', index: i, total: this.waves.length });
   }
 
   _summon(ids, by) {
     for (const id of ids) {
       if (this.aliveEnemies().length >= 7) break;
-      const e = this._makeEnemy(id, 1010);
+      const e = this._makeEnemy(id, clamp(by.x + 40 + this.rng() * 40, CONST.FIELD_X0, 990), clamp(by.y + (this.rng() - 0.5) * 70, CONST.FIELD_Y0, CONST.FIELD_Y1));
       this.enemies.push(e);
       this.events.push({ type: 'summon', unit: e, by });
     }
-    this._layoutEnemies();
   }
 
   // ------------------------------------------------------------ 조회
   aliveHeroes() { return this.heroes.filter((u) => u.alive); }
   aliveEnemies() { return this.enemies.filter((u) => u.alive); }
-  frontEnemy() {
-    let best = null;
-    for (const e of this.enemies) if (e.alive && (!best || e.homeX < best.homeX)) best = e;
-    return best;
-  }
-  frontHero() {
-    let best = null;
-    for (const h of this.heroes) if (h.alive && (!best || h.homeX > best.homeX)) best = h;
-    return best;
-  }
   tankHero() { return this.heroes.find((h) => h.alive && h.role === 'tank') || null; }
   hpPct(u) { return u.hp / u.maxHp; }
-
-  _layoutHeroes(snap) {
-    let i = 0;
-    for (const key of HERO_ORDER) {
-      const h = this.heroes.find((u) => u.key === key);
-      if (!h || !h.alive) continue;
-      h.homeX = CONST.HERO_FRONT_X - i * CONST.HERO_SPACING;
-      if (snap) h.x = h.homeX - 260;
-      i++;
-    }
-  }
-  _layoutEnemies() {
-    let x = CONST.ENEMY_FRONT_X;
-    let prev = 0;
-    for (const e of this.enemies) {
-      if (!e.alive) continue;
-      const half = 20 + e.size * 14;
-      if (prev) x += prev + half;
-      e.homeX = x;
-      prev = half;
-    }
-  }
+  // 깊이(y)는 가중치를 줘서 위아래로는 덜 닿게
+  dist(a, b) { const dx = a.x - b.x, dy = (a.y - b.y) * CONST.Y_WEIGHT; return Math.sqrt(dx * dx + dy * dy); }
+  distXY(u, x, y) { const dx = u.x - x, dy = (u.y - y) * CONST.Y_WEIGHT; return Math.sqrt(dx * dx + dy * dy); }
+  nearest(u, list) { let b = null, bd = 1e9; for (const o of list) { const d = this.dist(u, o); if (d < bd) { bd = d; b = o; } } return b; }
+  attackRange(u, tgt) { return u.melee ? CONST.MELEE_RANGE + ((tgt && tgt.size) || 1) * 12 + (u.size - 1) * 14 : u.reach; }
+  frontEnemy() { let b = null; for (const e of this.enemies) if (e.alive && (!b || e.x < b.x)) b = e; return b; }
+  frontHero() { let b = null; for (const h of this.heroes) if (h.alive && (!b || h.x > b.x)) b = h; return b; }
 
   // ------------------------------------------------------------ 진행
   step(dt) {
     if (this.outcome) return;
     this.time += dt;
-    // 지연 효과(투사체 착탄, 연속 타격)
     for (let i = this.delayed.length - 1; i >= 0; i--) {
       const d = this.delayed[i];
       d.t -= dt;
       if (d.t <= 0) { this.delayed.splice(i, 1); d.fn(); }
     }
-    if (this.introT > 0) this.introT -= dt;
-    else {
-      for (const u of this.heroes) if (u.alive) this._tickUnit(u, dt);
-      for (const u of this.enemies) if (u.alive) this._tickUnit(u, dt);
-    }
-    // 위치 보간 (대형 재정렬)
+    if (this.focus && !this.focus.alive) { this.focus = null; this.events.push({ type: 'focusClear' }); }
+    const intro = this.introT > 0;
+    if (intro) this.introT -= dt;
+    for (const u of this.heroes) if (u.alive) { if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
+    for (const u of this.enemies) if (u.alive) { if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
+    this._move(dt);
     for (const u of this.heroes.concat(this.enemies)) {
-      u.x += (u.homeX - u.x) * Math.min(1, dt * (u.side === 'enemy' && u.x > 960 ? 3.2 : 5));
       u.anim.lunge = Math.max(0, u.anim.lunge - dt);
       u.anim.hurt = Math.max(0, u.anim.hurt - dt);
       u.anim.cast = Math.max(0, u.anim.cast - dt);
     }
-    if (this.introT > 0) return;
+    if (intro) return;
     if (this.autoMode) this._heroAI();
-    else for (const h of this.heroes) if (h.alive && h.ult >= 100 && this._ultAuto(h)) this._tryAutoUlt(h);
-    // 웨이브/승패
-    if (this.aliveHeroes().length === 0) {
-      this.outcome = 'lose';
-      this.events.push({ type: 'end', outcome: 'lose' });
-      return;
-    }
+    if (this.aliveHeroes().length === 0) { this.outcome = 'lose'; this.events.push({ type: 'end', outcome: 'lose' }); return; }
     if (this.aliveEnemies().length === 0) {
       if (this.waveIndex < this.waves.length - 1) {
         if (this.waveTimer < 0) { this.waveTimer = CONST.WAVE_DELAY; this.events.push({ type: 'waveClear' }); }
         this.waveTimer -= dt;
         if (this.waveTimer <= 0) { this.waveTimer = -1; this.waveIndex++; this._spawnWave(this.waveIndex, false); }
-      } else if (this.delayed.length === 0) {
-        this.outcome = 'win';
-        this.events.push({ type: 'end', outcome: 'win' });
+      } else if (this.delayed.length === 0) { this.outcome = 'win'; this.events.push({ type: 'end', outcome: 'win' }); }
+    }
+  }
+
+  // 대상 선택 + 가고 싶은 위치(tx, ty) 결정
+  _think(u, dt, intro) {
+    const F = CONST;
+    u.retarget -= dt;
+    if (u.side === 'hero') {
+      const enemies = this.aliveEnemies();
+      if (u.retarget <= 0 || !u.target || !u.target.alive) {
+        u.retarget = F.RETARGET_SEC;
+        if (this.focus && this.focus.alive) u.target = this.focus;
+        else if (!enemies.length) u.target = null;
+        else if (u.role === 'ranged') { let b = enemies[0]; for (const e of enemies) if (this.hpPct(e) < this.hpPct(b)) b = e; u.target = b; }
+        else u.target = this.nearest(u, enemies);
       }
+      const tank = this.tankHero();
+      const anchor = tank && tank !== u ? tank : this.frontHero();
+      if (intro || !u.target) { // 입장/대기: 기본 대형
+        const order = HERO_ORDER.indexOf(u.key);
+        u.tx = F.HERO_SPAWN_X + 120 - order * 30; u.ty = u.y;
+        return;
+      }
+      const t = u.target;
+      if (this.order === 'retreat') {
+        u.tx = F.FIELD_X0 + 40 + (u.melee ? 70 : 0); u.ty = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
+        return;
+      }
+      if (u.melee) { // 대상에게 붙는다 (대상 앞쪽, 살짝 위아래로 어긋나게)
+        const r = this.attackRange(u, t) * 0.8;
+        const side = u.x <= t.x ? -1 : 1;
+        u.tx = t.x + side * r; u.ty = t.y + ((u.uid % 3) - 1) * 10;
+      } else {
+        const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
+        let tx = t.x - keep;
+        if (this.order === 'hold' && anchor && anchor.melee) tx = Math.min(tx, anchor.x - (u.role === 'support' ? 120 : 70));
+        if (u.role === 'support') { // 서포터는 가장 다친 아군 쪽으로
+          const hurt = this.aliveHeroes().reduce((a, b) => (this.hpPct(b) < this.hpPct(a) ? b : a), u);
+          tx = Math.min(tx, hurt.x - 90); u.ty = hurt.y + 14;
+        } else u.ty = t.y + ((u.uid % 3) - 1) * 18;
+        // 너무 가까이 붙은 적이 있으면 뒤로 빠진다
+        const near = this.nearest(u, enemies);
+        if (near && this.dist(u, near) < 70 && u.x > F.FIELD_X0 + 30) tx = Math.min(tx, u.x - 60);
+        u.tx = tx;
+      }
+    } else {
+      if (u.charge || u.call) { u.tx = u.x; u.ty = u.y; return; }
+      const heroes = this.aliveHeroes();
+      if (!heroes.length) return;
+      if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) u.target = tt; }
+      else if (u.retarget <= 0 || !u.target || !u.target.alive) {
+        u.retarget = F.RETARGET_SEC * 2;
+        u.target = u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes);
+      }
+      if (intro) { u.tx = F.ENEMY_SPAWN_X - (u.uid % 3) * 30; u.ty = u.y; return; }
+      const t = u.target;
+      const r = this.attackRange(u, t) * 0.8;
+      // 같은 대상을 노리는 적들은 둘러싸듯 흩어진다
+      const slot = (u.uid % 5) - 2;
+      u.tx = t.x + (u.x >= t.x ? 1 : -1) * (r + Math.abs(slot) * 8); u.ty = t.y + slot * 14;
+    }
+  }
+
+  _move(dt) {
+    const F = CONST;
+    const all = this.heroes.concat(this.enemies).filter((u) => u.alive);
+    for (const u of all) {
+      if (u.statuses.stun || u.charge || u.call) { u.moving = false; continue; }
+      const dx = u.tx - u.x, dy = u.ty - u.y;
+      const d = Math.hypot(dx, dy);
+      const fast = (u.side === 'enemy' && u.x > 960) || this.introT > 0 ? 2.2 : 1;
+      const sp = u.speed * fast * (this.order === 'retreat' && u.side === 'hero' ? 1.25 : 1);
+      if (d > 3) {
+        const k = Math.min(1, (sp * dt) / d);
+        u.x += dx * k; u.y += dy * k; u.moving = true;
+        if (Math.abs(dx) > 2) u.face = dx > 0 ? 1 : -1;
+      } else u.moving = false;
+      if (u.target && u.target.alive && !u.moving) u.face = u.target.x >= u.x ? 1 : -1;
+    }
+    // 같은 편끼리 살짝만 밀어냄 (완전히 겹치는 것만 방지, 부분 겹침은 허용)
+    for (const side of [this.heroes, this.enemies]) {
+      const list = side.filter((u) => u.alive);
+      for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+        const a = list[i], b = list[j];
+        const dx = b.x - a.x, dy = (b.y - a.y) * 1.6, d = Math.hypot(dx, dy) || 0.01;
+        const minD = F.SEPARATION * (a.size + b.size) * 0.5;
+        if (d < minD) { const push = (minD - d) * 0.5 * Math.min(1, dt * 8); a.x -= (dx / d) * push; b.x += (dx / d) * push; a.y -= (dy / d) * push * 0.4; b.y += (dy / d) * push * 0.4; }
+      }
+    }
+    for (const u of all) {
+      if (u.side === 'enemy' && u.x > 960) continue; // 입장 중
+      u.x = clamp(u.x, F.FIELD_X0, F.FIELD_X1); u.y = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
     }
   }
 
   _tickUnit(u, dt) {
-    // 상태이상
     for (const k in u.statuses) {
       const s = u.statuses[k];
       if (s.dps) {
@@ -183,10 +244,7 @@ class BattleSim {
           if (!u.alive) return;
         }
       }
-      if (k === 'regen') {
-        s.acc = (s.acc || 0) + dt;
-        if (s.acc >= 0.5) { s.acc -= 0.5; this._heal(s.src, u, u.maxHp * s.value * 0.5, true); }
-      }
+      if (k === 'regen') { s.acc = (s.acc || 0) + dt; if (s.acc >= 0.5) { s.acc -= 0.5; this._heal(s.src, u, u.maxHp * s.value * 0.5, true); } }
       s.t -= dt;
       if (s.t <= 0) delete u.statuses[k];
     }
@@ -199,35 +257,33 @@ class BattleSim {
     const stunned = !!u.statuses.stun;
     if (u.side === 'enemy') {
       this._enemyAbilities(u, dt, stunned);
-      if (!u.alive) return;
-      if (u.charge || u.call) return; // 시전 중에는 평타 없음
+      if (!u.alive || u.charge || u.call) return;
     }
     if (stunned) return;
     const speed = u.statuses.enrage ? 1 / (u.def.enrageSpeed || 0.6) : 1;
     u.atkTimer -= dt * speed;
-    if (u.atkTimer <= 0) {
-      const tgt = this._basicTarget(u);
-      if (tgt) {
-        u.atkTimer = u.atkInterval * (0.95 + this.rng() * 0.1);
-        this._basicAttack(u, tgt);
-      } else u.atkTimer = 0.2;
+    if (u.atkTimer > 0) return;
+    let tgt = u.target && u.target.alive ? u.target : null;
+    // 후퇴 중이거나 대상이 멀면, 사거리 안의 아무 적이나
+    if (!tgt || this.dist(u, tgt) > this.attackRange(u, tgt)) {
+      const foes = u.side === 'hero' ? this.aliveEnemies() : this.aliveHeroes();
+      tgt = foes.find((f) => this.dist(u, f) <= this.attackRange(u, f)) || null;
     }
+    if (tgt) { u.atkTimer = u.atkInterval * (0.95 + this.rng() * 0.1); this._basicAttack(u, tgt); }
+    else u.atkTimer = 0.15;
   }
 
   _enemyAbilities(u, dt, stunned) {
     const d = u.def;
-    // 광폭화
     if (d.abilities.includes('enrage') && !u.enraged && u.hp <= u.maxHp * d.enrageAt) {
-      u.enraged = true;
-      u.statuses.enrage = { t: Infinity };
+      u.enraged = true; u.statuses.enrage = { t: Infinity };
       this.events.push({ type: 'enrage', unit: u });
     }
-    // 보스 페이즈
     if (d.phases) {
       while (u.phase < d.phases.length && u.hp <= u.maxHp * d.phases[u.phase].at) {
         const ph = d.phases[u.phase];
         u.phase++;
-        if (ph.chargeZone) u.chargeZone = ph.chargeZone;
+        if (ph.chargeR) u.chargeR = ph.chargeR;
         if (ph.chargeTime) u.chargeTime = ph.chargeTime;
         if (ph.chargeEvery) u.chargeEvery = ph.chargeEvery;
         if (ph.chargeMult) u.chargeMult = ph.chargeMult;
@@ -237,64 +293,48 @@ class BattleSim {
         if (ph.summon) this._summon(ph.summon, u);
       }
     }
-    // 차지 공격
     if (u.charge) {
-      if (stunned) {
-        u.charge = null;
-        u.chargeCd = u.chargeEvery * 0.8;
-        this.events.push({ type: 'chargeCancel', unit: u });
-      } else {
-        u.charge.t -= dt;
-        if (u.charge.t <= 0) this._chargeImpact(u);
-      }
+      if (stunned) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); }
+      else { u.charge.t -= dt; if (u.charge.t <= 0) this._chargeImpact(u); }
       return;
     }
     if (u.call) {
       if (stunned) { u.call = null; u.callCd = d.callEvery; this.events.push({ type: 'callCancel', unit: u }); }
-      else {
-        u.call.t -= dt;
-        if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._summon(new Array(d.callCount).fill('goblin'), u); }
-      }
+      else { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._summon(new Array(d.callCount).fill('goblin'), u); } }
       return;
     }
-    if (stunned) return;
+    if (stunned || u.x > 960) return;
     if (d.abilities.includes('charge')) {
       u.chargeCd -= dt;
-      if (u.chargeCd <= 0 && this.aliveHeroes().length) {
-        const n = u.chargeZone;
-        const x1 = CONST.HERO_FRONT_X + 36;
-        const x0 = CONST.HERO_FRONT_X - (n - 1) * CONST.HERO_SPACING - 36;
-        u.charge = { t: u.chargeTime, total: u.chargeTime, x0, x1, mult: u.chargeMult };
+      const tgt = u.target && u.target.alive ? u.target : this.nearest(u, this.aliveHeroes());
+      if (u.chargeCd <= 0 && tgt && this.dist(u, tgt) < 260) {
+        // 원형 위험 범위: 시작 순간의 대상 위치 (피하려면 범위 밖으로 이동)
+        u.charge = { t: u.chargeTime, total: u.chargeTime, cx: tgt.x, cy: tgt.y, r: u.chargeR, mult: u.chargeMult };
+        u.face = tgt.x >= u.x ? 1 : -1;
         this.events.push({ type: 'chargeStart', unit: u });
         return;
       }
     }
     if (d.abilities.includes('caller')) {
       u.callCd -= dt;
-      if (u.callCd <= 0 && this.aliveEnemies().length < 6) {
-        u.call = { t: d.callCast, total: d.callCast };
-        this.events.push({ type: 'callStart', unit: u });
-        return;
-      }
+      if (u.callCd <= 0 && this.aliveEnemies().length < 6) { u.call = { t: d.callCast, total: d.callCast }; this.events.push({ type: 'callStart', unit: u }); return; }
     }
     if (d.abilities.includes('warcry')) {
       u.warcryCd -= dt;
-      if (u.warcryCd <= 0) {
-        u.warcryCd = d.warcryEvery;
-        for (const e of this.aliveEnemies()) e.statuses.warcry = { t: 6, value: 0.3 };
-        this.events.push({ type: 'warcry', unit: u });
-      }
+      if (u.warcryCd <= 0) { u.warcryCd = d.warcryEvery; for (const e of this.aliveEnemies()) e.statuses.warcry = { t: 6, value: 0.3 }; this.events.push({ type: 'warcry', unit: u }); }
     }
   }
+
+  inChargeZone(h, c) { const dx = (h.x - c.cx) / c.r, dy = (h.y - c.cy) / (c.r * 0.45); return dx * dx + dy * dy <= 1; }
 
   _chargeImpact(u) {
     const c = u.charge;
     u.charge = null;
     u.chargeCd = u.chargeEvery;
-    const inZone = this.aliveHeroes().filter((h) => h.x >= c.x0 && h.x <= c.x1);
+    const inZone = this.aliveHeroes().filter((h) => this.inChargeZone(h, c));
     const tank = inZone.find((h) => h.role === 'tank');
-    this.events.push({ type: 'chargeImpact', unit: u, x0: c.x0, x1: c.x1, blocked: !!tank });
-    u.anim.lunge = 0.35; u.anim.lungeX = -60;
+    this.events.push({ type: 'chargeImpact', unit: u, cx: c.cx, cy: c.cy, r: c.r, blocked: !!tank, hit: inZone.length });
+    u.anim.lunge = 0.35; u.anim.lungeX = (c.cx - u.x) * 0.5; u.anim.lungeY = (c.cy - u.y) * 0.5;
     for (const h of inZone) {
       let mult = c.mult;
       if (tank && h !== tank) mult *= 0.4;
@@ -304,37 +344,15 @@ class BattleSim {
     }
   }
 
-  _basicTarget(u) {
-    if (u.side === 'enemy') {
-      if (u.statuses.taunt) {
-        const t = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive);
-        if (t) return t;
-      }
-      const alive = this.aliveHeroes();
-      if (!alive.length) return null;
-      if (u.def.size <= 1 && this.rng() < 0.3) return alive[Math.floor(this.rng() * alive.length)];
-      return this.frontHero();
-    }
-    const alive = this.aliveEnemies();
-    if (!alive.length) return null;
-    if (u.role === 'ranged') { // 원딜은 HP 비율 낮은 적 우선
-      let best = alive[0];
-      for (const e of alive) if (this.hpPct(e) < this.hpPct(best)) best = e;
-      return best;
-    }
-    return this.frontEnemy();
-  }
-
   _basicAttack(u, tgt) {
-    const melee = u.side === 'enemy' || u.def.range === 'melee';
-    if (melee) {
-      u.anim.lunge = 0.22;
-      u.anim.lungeX = (tgt.x - u.x) * 0.45;
+    if (u.melee) {
+      u.anim.lunge = 0.22; u.anim.lungeX = (tgt.x - u.x) * 0.4; u.anim.lungeY = (tgt.y - u.y) * 0.4;
+      u.face = tgt.x >= u.x ? 1 : -1;
       this.delayed.push({ t: 0.1, fn: () => { if (tgt.alive && u.alive) this._damage(u, tgt, this._atkOf(u), { basic: true }); } });
       this.events.push({ type: 'attack', unit: u, target: tgt, melee: true });
     } else {
-      u.anim.cast = 0.18;
-      const travel = 0.22;
+      u.anim.cast = 0.18; u.face = tgt.x >= u.x ? 1 : -1;
+      const travel = 0.12 + this.dist(u, tgt) / 1400;
       this.events.push({ type: 'projectile', from: u, to: tgt, kind: u.key, travel });
       this.delayed.push({ t: travel, fn: () => { if (tgt.alive) this._damage(u, tgt, this._atkOf(u), { basic: true }); } });
     }
@@ -345,9 +363,9 @@ class BattleSim {
     if (u.statuses.fruit) m += u.statuses.fruit.value;
     if (u.statuses.warcry) m += u.statuses.warcry.value;
     if (u.side === 'hero' && u.def.traits.includes('brave')) m += 0.4 * (1 - u.hp / u.maxHp);
+    if (u.side === 'hero' && this.focus && u.target === this.focus) m += 0.1; // 집중 공격 보너스
     return u.atk * m;
   }
-
   _critChance(u) {
     if (u.side !== 'hero') return 0.05;
     let c = CONST.BASE_CRIT;
@@ -361,8 +379,7 @@ class BattleSim {
   _damage(src, tgt, raw, info) {
     if (!tgt.alive) return 0;
     info = info || {};
-    let dmg = raw;
-    let crit = false;
+    let dmg = raw, crit = false;
     if (!info.dot) {
       dmg *= 0.9 + this.rng() * 0.2;
       if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT; }
@@ -380,12 +397,8 @@ class BattleSim {
     if (tgt.side === 'hero') this._gainUlt(tgt, dmg * CONST.ULT_GAIN_TAKE);
     this.events.push({ type: 'hit', target: tgt, src, amount: dmg, crit, dot: info.dot || null, charge: !!info.charge, skill: info.skill || null });
     if (tgt.hp <= 0) {
-      tgt.hp = 0;
-      tgt.alive = false;
-      tgt.charge = null; tgt.call = null;
-      tgt.statuses = {};
-      if (tgt.side === 'enemy') { this.kills++; if (src && src.stats) src.stats.kills++; this._layoutEnemies(); }
-      else this._layoutHeroes(false);
+      tgt.hp = 0; tgt.alive = false; tgt.charge = null; tgt.call = null; tgt.statuses = {};
+      if (tgt.side === 'enemy') { this.kills++; if (src && src.stats) src.stats.kills++; }
       this.events.push({ type: 'death', unit: tgt });
     }
     return dmg;
@@ -414,10 +427,7 @@ class BattleSim {
   _applyStatus(src, tgt, eff) {
     if (!tgt.alive) return;
     let dur = eff.dur;
-    if (eff.status === 'burn') {
-      if (this.relics.has('ember')) dur += 2;
-      if (src && src.def.traits && src.def.traits.includes('cautious')) dur += 1;
-    }
+    if (eff.status === 'burn') { if (this.relics.has('ember')) dur += 2; if (src && src.def.traits && src.def.traits.includes('cautious')) dur += 1; }
     const s = { t: dur, src };
     if (eff.dps) s.dps = this._atkOf(src) * eff.dps;
     if (eff.value) s.value = eff.value;
@@ -428,7 +438,7 @@ class BattleSim {
     this.events.push({ type: 'status', target: tgt, status: eff.status });
   }
 
-  // ------------------------------------------------------------ 스킬
+  // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
   skillDef(h, slot) { return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
   skillUp(h, slot) { return h.upgrades[slot] || { power: 0, cd: 0 }; }
   skillCdMax(h, slot) { const d = this.skillDef(h, slot); return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd); }
@@ -440,64 +450,86 @@ class BattleSim {
     return h.cds[slot] <= 0;
   }
 
-  // 타겟이 필요 없거나 / 단일 유닛 / 범위 중심 x
-  // spec: { unit } | { x } | {}
+  // ② 상황 스킬 추천 상태: '' | 'hint'(추천) | 'now'(위험 대응)
+  skillHint(h, slot) {
+    const sk = this.skillDef(h, slot);
+    if (!sk.hint || !h.alive) return '';
+    switch (sk.hint) {
+      case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call) ? 'now' : '';
+      case 'nearEnemies': return this.aliveEnemies().filter((e) => this.dist(h, e) <= sk.areaR + 10).length >= 2 ? 'hint' : '';
+      case 'cluster': { const p = this.bestAreaPoint(sk.areaR, this.aliveEnemies()); return p && p.n >= 3 ? 'hint' : ''; }
+      case 'alliesHurt': return this.aliveHeroes().filter((a) => this.hpPct(a) <= 0.7).length >= 2 ? 'hint' : '';
+      default: return '';
+    }
+  }
+
+  // 원형 범위에 가장 많이 들어가는 지점
+  bestAreaPoint(r, list, filter) {
+    let best = null;
+    for (const c of list) {
+      const n = list.filter((o) => this.distXY(o, c.x, c.y) <= r + o.size * 8 && (!filter || filter(o))).length;
+      if (!best || n > best.n) best = { x: c.x, y: c.y, n };
+    }
+    return best;
+  }
+
+  unitsInArea(h, slot, x, y) {
+    const sk = this.skillDef(h, slot);
+    if (sk.target === 'self_area') { x = h.x; y = h.y; }
+    const list = sk.target === 'area_ally' ? this.aliveHeroes() : this.aliveEnemies();
+    return list.filter((u) => this.distXY(u, x, y) <= sk.areaR + (u.size || 1) * 8);
+  }
+
+  // spec: { unit } | { x, y } | {}
   cast(h, slot, spec) {
     if (!this.canCast(h, slot)) return false;
     const sk = this.skillDef(h, slot);
-    const up = this.skillUp(h, slot);
-    const pmul = 1 + up.power * REWARD.skillUpgradePower;
+    const pmul = 1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower;
     spec = spec || {};
-    // 타겟 유효성
     if ((sk.target === 'enemy' || sk.target === 'ally') && (!spec.unit || !spec.unit.alive)) return false;
+    if ((sk.target === 'area_enemy' || sk.target === 'area_ally') && spec.x === undefined) return false;
     if (slot === 'ult') { h.ult = 0; this.events.push({ type: 'ult', unit: h, skill: sk }); }
     else h.cds[slot] = this.skillCdMax(h, slot);
     h.castLock = 0.35;
     h.anim.cast = 0.3;
     const atk = this._atkOf(h);
     const fxDelay = { meteor: 0.55, arrowrain: 0.5, nova: 0.35, starbolt: 0.22, pierce: 0.16, snipe: 0.3 }[sk.fx] || 0.08;
+    if (spec.unit) h.face = spec.unit.x >= h.x ? 1 : -1;
+    else if (spec.x !== undefined) h.face = spec.x >= h.x ? 1 : -1;
     this.events.push({ type: 'cast', unit: h, skill: sk, slot, spec, delay: fxDelay });
     const applyEffects = (tgt) => { for (const e of sk.effects) if (!e.to) this._applyStatus(h, tgt, e); };
     switch (sk.target) {
       case 'enemy': {
         const tgt = spec.unit;
-        if (h.def.range === 'melee') { h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.55; }
-        const hits = sk.hits || 1;
-        for (let i = 0; i < hits; i++) {
-          this.delayed.push({ t: fxDelay + i * 0.11, fn: () => {
-            if (!tgt.alive) return;
-            this._damage(h, tgt, atk * sk.power * pmul, { skill: sk.fx });
-            if (i === 0 || i === hits - 1) applyEffects(tgt);
-          } });
+        if (h.melee) { // 근접 스킬은 대상에게 순간 돌진
+          const side = h.x <= tgt.x ? -1 : 1;
+          const r = this.attackRange(h, tgt) * 0.7;
+          if (this.dist(h, tgt) > r + 10) { h.x = tgt.x + side * r; h.y = tgt.y; this.events.push({ type: 'dash', unit: h }); }
+          h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.5; h.anim.lungeY = 0;
         }
+        const hits = sk.hits || 1;
+        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.11, fn: () => { if (!tgt.alive) return; this._damage(h, tgt, atk * sk.power * pmul, { skill: sk.fx }); if (i === 0 || i === hits - 1) applyEffects(tgt); } });
         break;
       }
-      case 'ally': {
-        const tgt = spec.unit;
-        this.delayed.push({ t: fxDelay, fn: () => this._heal(h, tgt, (atk * sk.heal + tgt.maxHp * sk.healPct) * pmul) });
-        break;
-      }
-      case 'area_enemy': {
-        const cx = this.clampAreaX(h, sk, spec.x);
-        const half = sk.areaW / 2;
-        if (sk.melee) { h.anim.lunge = 0.3; h.anim.lungeX = Math.max(0, (cx - half) - h.x - 10) * 0.8; }
+      case 'ally': { const tgt = spec.unit; this.delayed.push({ t: fxDelay, fn: () => this._heal(h, tgt, (atk * sk.heal + tgt.maxHp * sk.healPct) * pmul) }); break; }
+      case 'area_enemy': case 'self_area': {
+        const cx = sk.target === 'self_area' ? h.x : spec.x, cy = sk.target === 'self_area' ? h.y : spec.y;
+        if (sk.target === 'self_area') { h.anim.lunge = 0.3; h.anim.lungeX = 0; h.anim.lungeY = 0; }
         this.delayed.push({ t: fxDelay, fn: () => {
-          for (const e of this.aliveEnemies()) if (Math.abs(e.x - cx) <= half + e.size * 10) { this._damage(h, e, atk * sk.power * pmul, { skill: sk.fx }); applyEffects(e); }
+          for (const e of this.aliveEnemies()) if (this.distXY(e, cx, cy) <= sk.areaR + e.size * 8) { this._damage(h, e, atk * sk.power * pmul, { skill: sk.fx }); applyEffects(e); }
         } });
+        spec.x = cx; spec.y = cy;
         break;
       }
       case 'area_ally': {
-        const cx = spec.x;
-        const half = sk.areaW / 2;
-        this.delayed.push({ t: fxDelay, fn: () => {
-          for (const a of this.aliveHeroes()) if (Math.abs(a.x - cx) <= half) this._heal(h, a, (atk * sk.heal + a.maxHp * sk.healPct) * pmul);
-        } });
+        const cx = spec.x, cy = spec.y;
+        this.delayed.push({ t: fxDelay, fn: () => { for (const a of this.aliveHeroes()) if (this.distXY(a, cx, cy) <= sk.areaR) this._heal(h, a, (atk * sk.heal + a.maxHp * sk.healPct) * pmul); } });
         break;
       }
       case 'all_enemies':
         this.delayed.push({ t: fxDelay, fn: () => { for (const e of this.aliveEnemies()) { this._damage(h, e, atk * sk.power * pmul, { skill: sk.fx }); applyEffects(e); } } });
         break;
-      default: break; // self / party: effects만
+      default: break;
     }
     for (const e of sk.effects) {
       if (e.to === 'self') this._applyStatus(h, h, e);
@@ -507,121 +539,69 @@ class BattleSim {
     return true;
   }
 
-  // 근접 범위 스킬은 앞열 적 근처로만 이동 가능
-  clampAreaX(h, sk, x) {
-    if (x === undefined || x === null) { const f = this.frontEnemy(); x = f ? f.x : 700; }
-    if (sk.target === 'area_enemy') {
-      const f = this.frontEnemy();
-      const fx = f ? f.x : CONST.ENEMY_FRONT_X;
-      if (sk.melee) return clamp(x, fx - 20, fx + sk.areaW * 0.5);
-      return clamp(x, CONST.ENEMY_FRONT_X - 60, 940);
-    }
-    if (sk.target === 'area_ally') return clamp(x, 60, CONST.HERO_FRONT_X + 30);
-    return x;
-  }
-
-  // 범위 안 유닛 (뷰 하이라이트용)
-  unitsInArea(h, slot, x) {
+  // 탭 시전용 자동 대상 / 자동 전략 대상
+  resolveTarget(h, slot, rule) {
     const sk = this.skillDef(h, slot);
-    const cx = this.clampAreaX(h, sk, x);
-    const half = sk.areaW / 2;
-    if (sk.target === 'area_enemy') return this.aliveEnemies().filter((e) => Math.abs(e.x - cx) <= half + e.size * 10);
-    return this.aliveHeroes().filter((a) => Math.abs(a.x - cx) <= half);
-  }
-
-  // ------------------------------------------------------------ 자동 전략
-  _ultAuto(h) { const st = this.strategy[h.key]; return !!(st && st.ultAuto); }
-
-  _tryAutoUlt(h) {
-    const st = this.strategy[h.key] || AI_PRESETS[h.key];
-    const sk = this.skillDef(h, 'ult');
-    const spec = this.resolveTarget(h, sk, st.ultTarget || 'nearest');
-    if (spec) return this.cast(h, 'ult', spec);
-    return false;
-  }
-
-  checkCond(h, rule) {
-    switch (rule.cond) {
-      case 'always': return true;
-      case 'allyHpBelow': return this.aliveHeroes().some((a) => a.hp / a.maxHp * 100 <= rule.param);
-      case 'enemyHpBelow': return this.aliveEnemies().some((e) => e.hp / e.maxHp * 100 <= rule.param);
-      case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call);
-      case 'enemyCountGte': return this.aliveEnemies().length >= rule.param;
-      case 'ultReady': return h.ult >= 100;
-      default: return false;
-    }
-  }
-
-  // 규칙 → 실제 타겟 spec
-  resolveTarget(h, sk, rule) {
-    const enemies = this.aliveEnemies();
-    const allies = this.aliveHeroes();
-    const lowestAlly = () => { let b = null; for (const a of allies) if (!b || a.hp / a.maxHp < b.hp / b.maxHp) b = a; return b; };
+    const enemies = this.aliveEnemies(), allies = this.aliveHeroes();
+    const lowestAlly = () => allies.reduce((a, b) => (!a || this.hpPct(b) < this.hpPct(a) ? b : a), null);
+    rule = rule || (sk.target === 'ally' || sk.target === 'area_ally' ? 'lowestAlly' : sk.hint === 'enemyCharging' ? 'charging' : 'focus');
     const pickEnemy = () => {
       if (!enemies.length) return null;
-      if (rule === 'weakest') { let b = enemies[0]; for (const e of enemies) if (e.hp < b.hp) b = e; return b; }
-      if (rule === 'charging') return enemies.find((e) => e.charge) || enemies.find((e) => e.call) || null;
-      return this.frontEnemy();
+      if (rule === 'charging') return enemies.find((e) => e.charge) || enemies.find((e) => e.call) || (this.focus && this.focus.alive ? this.focus : this.nearest(h, enemies));
+      if (rule === 'focus' && this.focus && this.focus.alive) return this.focus;
+      if (rule === 'weakest') return enemies.reduce((a, b) => (b.hp < a.hp ? b : a));
+      if (h.target && h.target.alive && rule === 'focus') return h.target;
+      return this.nearest(h, enemies);
     };
     switch (sk.target) {
       case 'enemy': { const u = pickEnemy(); return u ? { unit: u } : null; }
-      case 'ally': { const u = rule === 'tank' ? (this.tankHero() || this.frontHero()) : lowestAlly(); return u && u.hp < u.maxHp ? { unit: u } : null; }
+      case 'ally': { const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly(); return u && u.hp < u.maxHp ? { unit: u } : null; }
       case 'area_enemy': {
-        const anchor = pickEnemy();
-        if (!anchor) return null;
-        let bestX = anchor.x, bestN = -1;
-        for (const e of enemies) {
-          const cx = this.clampAreaX(h, sk, e.x);
-          const n = enemies.filter((o) => Math.abs(o.x - cx) <= sk.areaW / 2 + o.size * 10).length;
-          const hasAnchor = Math.abs(anchor.x - cx) <= sk.areaW / 2 + anchor.size * 10;
-          if (hasAnchor && n > bestN) { bestN = n; bestX = cx; }
-        }
-        return { x: this.clampAreaX(h, sk, bestX) };
+        if (!enemies.length) return null;
+        const p = this.bestAreaPoint(sk.areaR, enemies);
+        return { x: p.x, y: p.y };
       }
       case 'area_ally': {
-        const a = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly();
-        if (!a) return null;
-        let bestX = a.x, bestN = -1;
-        for (const o of allies) {
-          const cx = this.clampAreaX(h, sk, o.x);
-          const n = allies.filter((q) => Math.abs(q.x - cx) <= sk.areaW / 2 && q.hp < q.maxHp).length;
-          if (Math.abs(a.x - cx) <= sk.areaW / 2 && n > bestN) { bestN = n; bestX = cx; }
-        }
-        return { x: bestX };
+        const p = this.bestAreaPoint(sk.areaR, allies, (a) => a.hp < a.maxHp);
+        return p ? { x: p.x, y: p.y } : null;
       }
+      case 'self_area': return enemies.some((e) => this.dist(h, e) <= sk.areaR + 10) ? {} : null;
       case 'all_enemies': return enemies.length ? {} : null;
       default: return {};
     }
   }
 
+  checkCond(h, slot, c) {
+    switch (c.cond) {
+      case 'always': return true;
+      case 'hint': return this.skillHint(h, slot) !== '';
+      case 'allyHpBelow': return this.aliveHeroes().some((a) => this.hpPct(a) * 100 <= c.param);
+      case 'enemyHpBelow': return this.aliveEnemies().some((e) => this.hpPct(e) * 100 <= c.param);
+      case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call);
+      case 'enemyCountGte': return this.aliveEnemies().length >= c.param;
+      default: return false;
+    }
+  }
+
+  // 전략 ON: 스킬별 설정(자동 여부 · 조건 · 대상)대로 시전
   _heroAI() {
     for (const h of this.heroes) {
       if (!h.alive || h.castLock > 0 || h.statuses.stun) continue;
       const st = this.strategy[h.key] || AI_PRESETS[h.key];
-      if (st.ultAuto && h.ult >= 100 && this._tryAutoUlt(h)) continue;
-      for (const rule of st.rules) {
-        if (!rule || !rule.skill) continue;
-        if (rule.skill === 'ult' && !st.ultAuto) continue;
-        if (!this.canCast(h, rule.skill)) continue;
-        if (!this.checkCond(h, rule)) continue;
-        const sk = this.skillDef(h, rule.skill);
-        const spec = this.resolveTarget(h, sk, rule.target);
-        if (!spec) continue;
-        if (this.cast(h, rule.skill, spec)) break;
+      for (const slot of ['s2', 'ult', 's1']) {
+        const c = st[slot];
+        if (!c || !c.auto || !this.canCast(h, slot) || !this.checkCond(h, slot, c)) continue;
+        const spec = this.resolveTarget(h, slot, c.target);
+        if (spec && this.cast(h, slot, spec)) break;
       }
     }
   }
 
-  // 결과를 런 상태로 돌려줄 요약
   summary() {
-    return {
-      outcome: this.outcome, time: this.time, kills: this.kills,
-      heroes: this.heroes.map((h) => ({ id: h.key, hp: Math.max(0, Math.round(h.hp)), alive: h.alive, stats: h.stats })),
-    };
+    return { outcome: this.outcome, time: this.time, kills: this.kills, heroes: this.heroes.map((h) => ({ id: h.key, hp: Math.max(0, Math.round(h.hp)), alive: h.alive, stats: h.stats })) };
   }
 }
 
-// 헤드리스 실행 (밸런스 검증용): 자동 모드로 끝까지 돌린다.
 BattleSim.runHeadless = function (opts, maxTime) {
   const sim = new BattleSim(Object.assign({ autoMode: true }, opts));
   const lim = maxTime || 300;

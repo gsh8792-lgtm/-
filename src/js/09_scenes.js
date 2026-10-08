@@ -586,48 +586,44 @@ function openStrategyEditor(run, onClose) {
   const box = el('div', 'strat-box');
   const render = () => {
     box.innerHTML = '';
-    box.appendChild(el('div', 'modal-title', '자동 전투 전략 <small>위 규칙부터 검사해서 처음 맞는 것을 사용</small>'));
+    box.appendChild(el('div', 'modal-title', '자동 전략 <small>전략 ON일 때, 자동으로 켠 스킬만 조건이 맞으면 알아서 사용</small>'));
     const tabs = el('div', 'strat-tabs');
     for (const id of partyIds(run)) {
       const t = el('button', 'stab' + (id === cur ? ' on' : '') + (run.heroes[id].dead ? ' dead' : ''));
       t.type = 'button';
       t.id = 'stab-' + id;
       t.appendChild(portraitCanvas(HEROES[id].sprite, 30, { dead: run.heroes[id].dead }));
-      t.appendChild(el('span', '', HEROES[id].roleName));
+      t.appendChild(el('span', '', `${HEROES[id].name} <small>${HEROES[id].roleName}</small>`));
       t.addEventListener('click', () => { Sfx.play('click'); cur = id; render(); });
       tabs.appendChild(t);
     }
     box.appendChild(tabs);
     const st = run.strategy[cur];
     const def = HEROES[cur];
-    const skName = (slot) => SKILLS[slot === 'ult' ? def.ult : def.skills[slot === 's1' ? 0 : 1]].name;
     const rules = el('div', 'strat-rules');
-    st.rules.forEach((r, i) => {
-      const row = el('div', 'srule');
-      row.appendChild(el('span', 'sr-n', String(i + 1)));
-      const cond = sel(Object.keys(AI_CONDITIONS).map((k) => [k, AI_CONDITIONS[k].name]), r.cond, (v) => { r.cond = v; const p = AI_CONDITIONS[v].param; r.param = p ? p[Math.floor(p.length / 2)] : undefined; render(); }, `sr-cond-${i}`);
-      row.appendChild(cond);
-      const P = AI_CONDITIONS[r.cond].param;
-      if (P) row.appendChild(sel(P.map((v) => [v, r.cond === 'enemyCountGte' ? `${v}마리` : `${v}%`]), r.param, (v) => { r.param = +v; }, `sr-param-${i}`));
-      row.appendChild(el('span', 'sr-arrow', '→'));
-      row.appendChild(sel(Object.keys(AI_SKILL_SLOTS).map((k) => [k, `${AI_SKILL_SLOTS[k]}: ${skName(k)}`]), r.skill, (v) => { r.skill = v; render(); }, `sr-skill-${i}`));
-      row.appendChild(el('span', 'sr-arrow', '→'));
-      const sk = SKILLS[r.skill === 'ult' ? def.ult : def.skills[r.skill === 's1' ? 0 : 1]];
-      if (sk.target === 'self' || sk.target === 'party' || sk.target === 'all_enemies') row.appendChild(el('span', 'sr-auto', sk.target === 'self' ? '자신' : sk.target === 'party' ? '파티 전체' : '적 전체'));
-      else row.appendChild(sel(Object.keys(AI_TARGET_RULES).map((k) => [k, AI_TARGET_RULES[k].name]), r.target, (v) => { r.target = v; }, `sr-target-${i}`));
-      if (r.skill === 'ult' && !st.ultAuto) row.appendChild(el('span', 'sr-warn', '궁극기 수동 대기 중'));
+    for (const slot of ['s1', 's2', 'ult']) {
+      const sk = SKILLS[slot === 'ult' ? def.ult : def.skills[slot === 's1' ? 0 : 1]];
+      const c = st[slot];
+      const row = el('div', 'srule' + (c.auto ? '' : ' manual'));
+      row.appendChild(el('div', 'sr-skill', `<span class="sr-slot">${AI_SKILL_SLOTS[slot]}</span><b>${sk.name}</b><small>${sk.desc}${sk.hint ? ` · 추천: ${SKILL_HINTS[sk.hint].name}` : ''}</small>`));
+      const seg = el('div', 'seg');
+      seg.appendChild(btn('수동', 'seg-btn' + (!c.auto ? ' on' : ''), () => { c.auto = false; render(); }, { id: `sr-manual-${slot}` }));
+      seg.appendChild(btn('자동', 'seg-btn' + (c.auto ? ' on' : ''), () => { c.auto = true; render(); }, { id: `sr-auto-${slot}` }));
+      row.appendChild(seg);
+      if (c.auto) {
+        const conds = Object.keys(AI_CONDITIONS).filter((k) => k !== 'hint' || sk.hint);
+        row.appendChild(sel(conds.map((k) => [k, AI_CONDITIONS[k].name]), c.cond, (v) => { c.cond = v; const P = AI_CONDITIONS[v].param; c.param = P ? P[Math.floor(P.length / 2)] : undefined; render(); }, `sr-cond-${slot}`));
+        const P = AI_CONDITIONS[c.cond].param;
+        if (P) row.appendChild(sel(P.map((v) => [v, c.cond === 'enemyCountGte' ? `${v}마리` : `${v}%`]), c.param, (v) => { c.param = +v; }, `sr-param-${slot}`));
+        if (['enemy', 'ally', 'area_enemy', 'area_ally'].includes(sk.target)) {
+          const ally = sk.target === 'ally' || sk.target === 'area_ally';
+          const opts = Object.keys(AI_TARGET_RULES).filter((k) => (ally ? ['lowestAlly', 'tank'] : ['focus', 'nearest', 'weakest', 'charging']).includes(k));
+          row.appendChild(sel(opts.map((k) => [k, AI_TARGET_RULES[k].name]), opts.includes(c.target) ? c.target : opts[0], (v) => { c.target = v; }, `sr-target-${slot}`));
+        } else row.appendChild(el('span', 'sr-auto', sk.target === 'self' ? '대상: 자신' : sk.target === 'party' ? '대상: 파티 전체' : sk.target === 'self_area' ? '대상: 주변 적' : '대상: 적 전체'));
+      } else row.appendChild(el('span', 'sr-auto', slot === 'ult' ? '버튼이 금색으로 빛나면 직접 탭' : '직접 탭 / 끌어서 사용'));
       rules.appendChild(row);
-    });
+    }
     box.appendChild(rules);
-    const ult = el('div', 'strat-ult');
-    ult.appendChild(el('span', '', `궁극기 「${skName('ult')}」`));
-    const seg = el('div', 'seg');
-    seg.appendChild(btn('수동 대기', 'seg-btn' + (!st.ultAuto ? ' on' : ''), () => { st.ultAuto = false; render(); }, { id: 'ult-manual' }));
-    seg.appendChild(btn('자동 사용', 'seg-btn' + (st.ultAuto ? ' on' : ''), () => { st.ultAuto = true; render(); }, { id: 'ult-auto' }));
-    ult.appendChild(seg);
-    const usk = SKILLS[def.ult];
-    if (st.ultAuto && !(usk.target === 'self' || usk.target === 'party' || usk.target === 'all_enemies')) ult.appendChild(sel(Object.keys(AI_TARGET_RULES).map((k) => [k, AI_TARGET_RULES[k].name]), st.ultTarget, (v) => { st.ultTarget = v; }, 'ult-target'));
-    box.appendChild(ult);
     const row = el('div', 'btn-row');
     row.appendChild(btn('기본값으로', 'ghost', () => { run.strategy[cur] = JSON.parse(JSON.stringify(AI_PRESETS[cur])); render(); }, { id: 'strat-reset' }));
     row.appendChild(btn('저장하고 닫기', 'primary', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'strat-close' }));
