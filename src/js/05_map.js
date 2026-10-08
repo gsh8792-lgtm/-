@@ -228,7 +228,7 @@ const MapScene = {
       if (Game.run.torch <= 0 && node.type === 'battle') info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다! 어둠 속 전투는 정예로 바뀔 수 있다.'));
       row.appendChild(go);
     } else {
-      row.appendChild(el('div', 'mi-locked', '지금 위치에서 갈 수 없는 방'));
+      row.appendChild(el('div', 'mi-locked', '갈 수 없는 방'));
     }
     info.appendChild(row);
   },

@@ -342,6 +342,14 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .portal-party { display: flex; gap: 8px; justify-content: center; margin: 6px 0; }
 .portal-party span { background: rgba(0,0,0,.3); border-radius: 8px; padding: 4px 10px; font-weight: 800; display: flex; flex-direction: column; }
 
+/* 그로기 */
+.bar.poise { height: 4px; margin-top: 1px; }
+.bar.poise .fill { background: #5aa8ff; transition: none; }
+.bar.poise.broken .fill { background: #ffd34a; }
+.chip-armor { position: absolute; top: -7px; right: 4px; font-size: 9px; font-weight: 900; color: #cfe6ff; background: #2a3a5a; border-radius: 6px; padding: 0 4px; }
+.chip.broken { border-color: #ffd34a; box-shadow: 0 0 10px 2px rgba(255,211,74,0.8); }
+.chip.broken .chip-armor { text-decoration: line-through; color: #ffd34a; }
+
 </style>
 </head>
 <body>
@@ -453,6 +461,17 @@ const CONST = {
   SPRITE_SCALE: 3,
   WAVE_DELAY: 1.2,
   BATTLE_INTRO: 1.0,
+  // 그로기(경직) 시스템: 큰 적은 평소 '방어 태세'(받는 피해 감소). 그로기 게이지를 깎아 무너뜨리면 무방비.
+  // 게이지는 기절/스킬/차지 캔슬로 크게, 평타로는 조금 깎이고 계속 회복 → 딜만으로는 깨기 어렵다.
+  BREAK_DUR: 6,          // 그로기 지속(초): 행동 불가 + 방어 해제
+  BREAK_BONUS: 0.5,      // 그로기 중 받는 피해 +50%
+  POISE_REGEN: 7,        // 초당 게이지 회복
+  POISE_BASIC: 2,        // 평타 1회
+  POISE_SKILL: 10,       // 피해 스킬 1타
+  POISE_STUN: 55,        // 기절 부여
+  POISE_CANCEL: 100,     // 차지/호출을 끊었을 때 추가 (카운터: 공략의 핵심)
+  // 장비 스탯 상한 (장비 DB 밸런스 분석 결과)
+  STAT_CAPS: { dr: 0.5, cdr: 0.4, crit: 0.6, aspd: 0.5, mspd: 0.5, ultgain: 0.8 },
   // 전역 밸런스 배율 (초안 수치는 테이블에 그대로 두고 여기서 조정)
   ENEMY_HP_MULT: 1.4,
   ENEMY_ATK_MULT: 0.85,
@@ -503,8 +522,8 @@ const TRAITS = {
 // target: enemy(단일) | ally(단일 아군) | area_enemy | area_ally(지점 원형) | self_area(시전자 주변) | self | party | all_enemies
 // power: 공격력 배율. areaR: 원형 범위 반지름(논리 px). hint: ② 추천 조건(SKILL_HINTS). fx: 연출 키
 const SKILLS = {
-  tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적이 토비를 공격.' },
-  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 8, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
+  tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적이 토비를 공격. 이때 차지를 받아내면 동료 피해 -60%.' },
+  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
   tobi_ult: { name: '철벽',       target: 'party',     cd: 0,  power: 0,   effects: [{ status: 'guard', dur: 7, value: 0.45, to: 'party' }], fx: 'wall', desc: '7초간 파티 받는 피해 -45%.' },
 
   danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈.' },
@@ -547,6 +566,8 @@ const AI_CONDITIONS = {
   enemyHpBelow: { name: '적 HP ≤ X%',     param: [20, 30, 50, 70] },
   enemyCharging:{ name: '적이 차지 중',    param: null },
   enemyCountGte:{ name: '적 N마리 이상',   param: [2, 3, 4] },
+  breakWindow:  { name: '그로기 타이밍',   param: null },
+  saveForCharge:{ name: '차지 대비 아껴두기', param: null }, // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
 };
 const AI_SKILL_SLOTS = { s1: '① 기본', s2: '② 상황', ult: '③ 필살기' };
 const AI_TARGET_RULES = {
@@ -559,10 +580,10 @@ const AI_TARGET_RULES = {
 };
 // 기본 프리셋: ① 자동 / ② 수동(추천 표시, 자동으로 켜면 추천 상황에 사용) / ③ 수동 대기
 const AI_PRESETS = {
-  tobi:    { s1: { auto: true, cond: 'enemyCountGte', param: 2, target: 'nearest' }, s2: { auto: false, cond: 'hint', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
-  danbi:   { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'always', target: 'focus' } },
-  byeolbi: { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'always', target: 'focus' } },
-  soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'enemyCountGte', param: 3, target: 'nearest' } },
+  tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'hint', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
+  danbi:   { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  byeolbi: { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'nearest' } },
   bori:    { s1: { auto: true, cond: 'allyHpBelow', param: 80, target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },
 };
 
@@ -571,13 +592,13 @@ const AI_PRESETS = {
 const ENEMIES = {
   goblin:        { name: '고블린', moveSpeed: 88,        hp: 90,   atk: 14, atkInterval: 1.15, def: 0,    size: 1,   sprite: 'goblin',  color: '#7cc050', gold: 4,  abilities: [] },
   goblin_caller: { name: '고블린 나팔수', moveSpeed: 70, hp: 110,  atk: 12, atkInterval: 1.3,  def: 0,    size: 1,   sprite: 'goblinHorn', color: '#8ad060', gold: 6, abilities: ['caller'], callEvery: 9, callCast: 1.6, callCount: 1 },
-  orc:           { name: '오크', moveSpeed: 66,          hp: 260,  atk: 26, atkInterval: 1.7,  def: 0.1,  size: 1.2, sprite: 'orc',     color: '#5a8a4a', gold: 10, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.6 },
-  ogre:          { name: '오우거', moveSpeed: 46,        hp: 620,  atk: 48, atkInterval: 2.4,  def: 0.1,  size: 1.6, sprite: 'ogre',    color: '#d29a68', gold: 20, abilities: ['charge'], chargeEvery: 8, chargeTime: 3, chargeMult: 2.4, chargeR: 80 },
-  orc_captain:   { name: '오크 대장', moveSpeed: 60,     hp: 820,  atk: 32, atkInterval: 1.6,  def: 0.15, size: 1.4, sprite: 'orcCaptain', color: '#4a7a3a', gold: 40, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 2.0, chargeR: 64 },
-  ogre_chief:    { name: '오우거 대족장', moveSpeed: 40, hp: 3000, atk: 46, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 1.9, chargeR: 90,
+  orc:           { name: '오크', armor: 0.25, poise: 60, moveSpeed: 66,          hp: 260,  atk: 26, atkInterval: 1.7,  def: 0.1,  size: 1.2, sprite: 'orc',     color: '#5a8a4a', gold: 10, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.6 },
+  ogre:          { name: '오우거', armor: 0.5, poise: 120, moveSpeed: 46,        hp: 620,  atk: 48, atkInterval: 2.4,  def: 0.1,  size: 1.6, sprite: 'ogre',    color: '#d29a68', gold: 20, abilities: ['charge'], chargeEvery: 8, chargeTime: 3, chargeMult: 4.0, chargeR: 80 },
+  orc_captain:   { name: '오크 대장', armor: 0.45, poise: 130, moveSpeed: 60,     hp: 820,  atk: 32, atkInterval: 1.6,  def: 0.15, size: 1.4, sprite: 'orcCaptain', color: '#4a7a3a', gold: 40, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 3.4, chargeR: 64 },
+  ogre_chief:    { name: '오우거 대족장', armor: 0.7, poise: 220, moveSpeed: 40, hp: 3000, atk: 34, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 4.6, chargeR: 90,
                    phases: [ // HP 비율 이하가 되면 진입
-                     { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 1.4 },
-                     { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 1.7, enrage: true },
+                     { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 3.5 },
+                     { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 4.0, enrage: true },
                    ] },
 };
 
@@ -615,7 +636,7 @@ const RELICS = {
   ember:    { name: '불씨 깃털',     icon: '🔥', price: 75, desc: '화상 피해 +30%, 지속 +2초.' },
   bark:     { name: '단단한 나무껍질', icon: '🛡', price: 80, desc: '탱커가 받는 피해 -15%.' },
   clover:   { name: '행운의 클로버', icon: '🍀', price: 80, desc: '치명타 확률 +10%.' },
-  stardust: { name: '별가루 주머니', icon: '✨', price: 85, desc: '궁극기 게이지 충전 +30%.' },
+  stardust: { name: '별가루 주머니', icon: '✨', price: 85, desc: '필살기 게이지 충전 +30%.' },
 };
 
 // ---------------------------------------------------------------- 보상/상점
@@ -680,10 +701,11 @@ const TREE_DEALS = [
 
 // ---------------------------------------------------------------- 튜토리얼 힌트 (첫 플레이)
 const HINTS = {
-  field:  '화면을 탭하거나 왼쪽 아래 조이스틱으로 이동하세요. 보급 상자에서 식량을 챙기고, 포털로 던전에 들어가요.',
+  field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
-  battle: '캐릭터마다 ① 기본(자동) ② 상황 ③ 필살기. 버튼을 탭하면 바로 시전, 끌면 느려지면서 원하는 곳에 떨어뜨려요. 적 칩을 탭하면 집중 공격!',
-  charge: '오우거가 차지 중! 붉은 원 안에 큰 피해가 옵니다. 토비의 ② 방패 강타로 끊거나, [후퇴]로 원 밖으로 피하세요.',
+  battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
+  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 기절과 강타로 파란 게이지를 깎으면 ${CONST.BREAK_DUR}초간 그로기 상태가 되어 무방비로 피해를 받아요.`,
+  charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
 };
 
 // ---------- 02_sprites.js
@@ -1908,7 +1930,7 @@ const MapScene = {
       if (Game.run.torch <= 0 && node.type === 'battle') info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다! 어둠 속 전투는 정예로 바뀔 수 있다.'));
       row.appendChild(go);
     } else {
-      row.appendChild(el('div', 'mi-locked', '지금 위치에서 갈 수 없는 방'));
+      row.appendChild(el('div', 'mi-locked', '갈 수 없는 방'));
     }
     info.appendChild(row);
   },
@@ -2023,16 +2045,20 @@ function showRulesHelp() {
 // 렌더/DOM을 모른다. step(dt)로만 진행하고 events[]에 연출용 이벤트를 쌓는다.
 // 같은 시드 + 같은 입력(명령과 그 시점) → 같은 결과.
 
-let _uidSeq = 1;
 
 class BattleSim {
   // opts: { seed, stage, waves, heroes:[{id,hp,maxHp,upgrades}], relics, fruit, torchDark, strategy, autoMode, partySize }
   constructor(opts) {
     this.rng = makeRng(opts.seed >>> 0);
+    this.uidSeq = 1; // 전투마다 새로 매기는 유닛 번호 (위치 분산 등에 쓰이므로 결정성 유지)
     this.stage = opts.stage || 1;
     this.scale = STAGE_SCALE[clamp(this.stage - 1, 0, STAGE_SCALE.length - 1)];
     this.waves = opts.waves.map((w) => w.slice());
     this.partyScale = PARTY_ENEMY_SCALE[clamp(opts.partySize || opts.heroes.length, 1, 3)] || 1;
+    this.tier = opts.tier || { hp: 1, atk: 1 }; // 난이도 단계 배율 (보스 포함 모든 적)
+    // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
+    // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
+    this.aiProfile = opts.aiProfile || 'none';
     this.waveIndex = 0;
     this.waveTimer = -1;
     this.relics = new Set(opts.relics || []);
@@ -2058,11 +2084,15 @@ class BattleSim {
   // ------------------------------------------------------------ 생성
   _makeHero(h, i, n) {
     const def = HEROES[h.id];
+    const m = h.mods || {};   // 장비 보정치 (equipStats 결과). hp는 호출 측에서 maxHp에 이미 반영
+    const cap = CONST.STAT_CAPS;
     const y = lerp(CONST.FIELD_Y0 + 20, CONST.FIELD_Y1 - 14, n === 1 ? 0.5 : i / (n - 1));
     const u = {
-      uid: _uidSeq++, side: 'hero', key: h.id, def, name: def.name, sprite: def.sprite, role: def.role,
-      hp: h.hp, maxHp: h.maxHp, atk: def.atk, atkInterval: def.atkInterval, defPct: def.def, size: 1,
-      melee: def.range === 'melee', reach: def.reach || 0, speed: def.moveSpeed,
+      uid: this.uidSeq++, side: 'hero', key: h.id, def, name: def.name, sprite: def.sprite, role: def.role,
+      hp: h.hp, maxHp: h.maxHp, atk: def.atk * (1 + (m.atk_pct || 0)) + (m.atk || 0),
+      atkInterval: def.atkInterval / (1 + Math.min(m.aspd || 0, cap.aspd)),
+      defPct: 1 - (1 - def.def) * (1 - Math.min(m.dr || 0, cap.dr)), size: 1, mods: m,
+      melee: def.range === 'melee', reach: def.reach || 0, speed: def.moveSpeed * (1 + Math.min(m.mspd || 0, cap.mspd)),
       x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
@@ -2077,9 +2107,9 @@ class BattleSim {
   _makeEnemy(id, x, y) {
     const def = ENEMIES[id];
     const sc = def.fixedScale ? 1 : this.scale;
-    const hpMul = (def.fixedScale ? 1 : CONST.ENEMY_HP_MULT) * this.partyScale, atkMul = def.fixedScale ? 1 : CONST.ENEMY_ATK_MULT;
+    const hpMul = (def.fixedScale ? 1 : CONST.ENEMY_HP_MULT) * this.partyScale * this.tier.hp, atkMul = (def.fixedScale ? 1 : CONST.ENEMY_ATK_MULT) * this.tier.atk;
     return {
-      uid: _uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
+      uid: this.uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
       hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval,
       defPct: def.def, size: def.size, melee: true, reach: 0, speed: def.moveSpeed || 60,
       x, y, tx: x, ty: y, face: -1, moving: false,
@@ -2090,6 +2120,7 @@ class BattleSim {
       call: null, callCd: def.callEvery ? def.callEvery * (0.5 + this.rng() * 0.3) : 0,
       warcryCd: def.warcryEvery ? def.warcryEvery * 0.6 : 0,
       phase: 0, enraged: false,
+      armor: def.armor || 0, poiseMax: def.poise || 0, poise: def.poise || 0, broken: 0,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
     };
   }
@@ -2171,6 +2202,22 @@ class BattleSim {
         else if (u.role === 'ranged') { let b = enemies[0]; for (const e of enemies) if (this.hpPct(e) < this.hpPct(b)) b = e; u.target = b; }
         else u.target = this.nearest(u, enemies);
       }
+      if (this.aiProfile === 'gimmick') {
+        const br = enemies.find((e) => e.broken > 0);
+        if (br) u.target = br;
+        const squishy = u.role !== 'tank' && (u.role !== 'melee' || this.hpPct(u) < 0.5);
+        if (squishy) for (const e of enemies) if (e.charge && this.inChargeZone(u, e.charge)) { // 위험 범위 밖으로
+          u.tx = clamp(e.charge.cx - e.charge.r - 30, F.FIELD_X0, F.FIELD_X1); u.ty = u.y; return;
+        }
+      }
+      // 개별 명령 (캐릭터 끌기): 지점 이동 / 대상 공격
+      const cmd = u.cmd;
+      if (cmd && cmd.type === 'attack') { if (cmd.unit.alive) u.target = cmd.unit; else u.cmd = null; }
+      if (cmd && cmd.type === 'move' && !intro) {
+        u.tx = cmd.x; u.ty = cmd.y;
+        if (u.target && !u.target.alive) u.target = null;
+        return;
+      }
       const tank = this.tankHero();
       const anchor = tank && tank !== u ? tank : this.frontHero();
       if (intro || !u.target) { // 입장/대기: 기본 대형
@@ -2179,7 +2226,7 @@ class BattleSim {
         return;
       }
       const t = u.target;
-      if (this.order === 'retreat') {
+      if (this.order === 'retreat' && !u.cmd) {
         u.tx = F.FIELD_X0 + 40 + (u.melee ? 70 : 0); u.ty = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
         return;
       }
@@ -2218,11 +2265,23 @@ class BattleSim {
     }
   }
 
+  // 개별 명령: { type: 'move', x, y } | { type: 'attack', unit } | null (작전으로 복귀)
+  command(h, cmd) {
+    if (!h.alive || this.outcome) return false;
+    if (cmd && cmd.type === 'move') cmd = { type: 'move', x: clamp(cmd.x, CONST.FIELD_X0, CONST.FIELD_X1), y: clamp(cmd.y, CONST.FIELD_Y0, CONST.FIELD_Y1) };
+    if (cmd && cmd.type === 'attack' && !(cmd.unit && cmd.unit.alive && cmd.unit.side === 'enemy')) return false;
+    h.cmd = cmd || null;
+    if (cmd && cmd.type === 'attack') { h.target = cmd.unit; h.retarget = CONST.RETARGET_SEC; }
+    this.events.push({ type: 'command', unit: h, cmd: h.cmd });
+    return true;
+  }
+  clearCommands() { for (const h of this.heroes) h.cmd = null; }
+
   _move(dt) {
     const F = CONST;
     const all = this.heroes.concat(this.enemies).filter((u) => u.alive);
     for (const u of all) {
-      if (u.statuses.stun || u.charge || u.call) { u.moving = false; continue; }
+      if (u.statuses.stun || u.charge || u.call || u.broken > 0) { u.moving = false; continue; }
       const dx = u.tx - u.x, dy = u.ty - u.y;
       const d = Math.hypot(dx, dy);
       const fast = (u.side === 'enemy' && u.x > 960) || this.introT > 0 ? 2.2 : 1;
@@ -2275,6 +2334,14 @@ class BattleSim {
       this._gainUlt(u, CONST.ULT_GAIN_TIME * dt);
     }
     const stunned = !!u.statuses.stun;
+    if (u.side === 'enemy' && u.poiseMax) {
+      if (u.broken > 0) {
+        u.broken -= dt;
+        if (u.broken <= 0) { u.broken = 0; u.poise = u.poiseMax; this.events.push({ type: 'breakEnd', unit: u }); }
+        return; // 그로기: 행동 불가
+      }
+      u.poise = Math.min(u.poiseMax, u.poise + CONST.POISE_REGEN * dt);
+    }
     if (u.side === 'enemy') {
       this._enemyAbilities(u, dt, stunned);
       if (!u.alive || u.charge || u.call) return;
@@ -2314,12 +2381,12 @@ class BattleSim {
       }
     }
     if (u.charge) {
-      if (stunned) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); }
+      if (stunned) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
       else { u.charge.t -= dt; if (u.charge.t <= 0) this._chargeImpact(u); }
       return;
     }
     if (u.call) {
-      if (stunned) { u.call = null; u.callCd = d.callEvery; this.events.push({ type: 'callCancel', unit: u }); }
+      if (stunned) { u.call = null; u.callCd = d.callEvery; this.events.push({ type: 'callCancel', unit: u }); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
       else { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._summon(new Array(d.callCount).fill('goblin'), u); } }
       return;
     }
@@ -2352,7 +2419,8 @@ class BattleSim {
     u.charge = null;
     u.chargeCd = u.chargeEvery;
     const inZone = this.aliveHeroes().filter((h) => this.inChargeZone(h, c));
-    const tank = inZone.find((h) => h.role === 'tank');
+    // 탱커 막기: 도발(①) 또는 철벽(③)으로 '버티는 중'인 탱커만 동료 피해를 대신 받아낸다 (타이밍 기믹)
+    const tank = inZone.find((h) => h.role === 'tank' && h.statuses.guard);
     this.events.push({ type: 'chargeImpact', unit: u, cx: c.cx, cy: c.cy, r: c.r, blocked: !!tank, hit: inZone.length });
     u.anim.lunge = 0.35; u.anim.lungeX = (c.cx - u.x) * 0.5; u.anim.lungeY = (c.cy - u.y) * 0.5;
     for (const h of inZone) {
@@ -2392,7 +2460,8 @@ class BattleSim {
     if (u.def.traits.includes('keen')) c += 0.1;
     if (this.relics.has('clover')) c += 0.1;
     if (this.torchDark) c -= CONST.TORCH_DARK_CRIT_PENALTY;
-    return Math.max(0, c);
+    c += (u.mods && u.mods.crit) || 0;
+    return clamp(c, 0, CONST.STAT_CAPS.crit);
   }
 
   // ------------------------------------------------------------ 피해/회복
@@ -2402,9 +2471,11 @@ class BattleSim {
     let dmg = raw, crit = false;
     if (!info.dot) {
       dmg *= 0.9 + this.rng() * 0.2;
-      if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT; }
+      if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
     }
     dmg *= 1 - tgt.defPct;
+    if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - tgt.armor;                       // 방어 태세
+    if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
@@ -2415,6 +2486,7 @@ class BattleSim {
     if (tgt.stats) tgt.stats.taken += dmg;
     if (src && src.side === 'hero') this._gainUlt(src, dmg * CONST.ULT_GAIN_DEAL);
     if (tgt.side === 'hero') this._gainUlt(tgt, dmg * CONST.ULT_GAIN_TAKE);
+    if (src && src.side === 'hero' && !info.dot) this._poiseHit(src, tgt, info.skill ? CONST.POISE_SKILL : CONST.POISE_BASIC);
     this.events.push({ type: 'hit', target: tgt, src, amount: dmg, crit, dot: info.dot || null, charge: !!info.charge, skill: info.skill || null });
     if (tgt.hp <= 0) {
       tgt.hp = 0; tgt.alive = false; tgt.charge = null; tgt.call = null; tgt.statuses = {};
@@ -2424,9 +2496,20 @@ class BattleSim {
     return dmg;
   }
 
+  // 그로기 게이지 감소 → 0이면 그로기
+  _poiseHit(src, tgt, amount) {
+    if (!tgt.alive || !tgt.poiseMax || tgt.broken > 0) return;
+    tgt.poise -= amount * (1 + ((src && src.mods && src.mods.breakdmg) || 0));
+    if (tgt.poise <= 0) {
+      tgt.poise = 0; tgt.broken = CONST.BREAK_DUR;
+      tgt.charge = null; tgt.call = null;
+      this.events.push({ type: 'break', unit: tgt });
+    }
+  }
+
   _heal(src, tgt, amount, silent) {
     if (!tgt.alive) return 0;
-    let a = amount * (silent ? 1 : CONST.HEAL_MULT);
+    let a = amount * (silent ? 1 : CONST.HEAL_MULT) * (1 + ((src && src.mods && src.mods.heal) || 0));
     if (src && src.def && src.def.traits && src.def.traits.includes('gentle')) a *= 1.15;
     if (tgt.statuses.burn) a *= 0.5;
     a = Math.round(Math.min(a, tgt.maxHp - tgt.hp));
@@ -2440,28 +2523,31 @@ class BattleSim {
   _gainUlt(h, amt) {
     if (!h.alive) return;
     const before = h.ult;
-    h.ult = Math.min(100, h.ult + amt * (this.relics.has('stardust') ? 1.3 : 1));
+    h.ult = Math.min(100, h.ult + amt * (this.relics.has('stardust') ? 1.3 : 1) * (1 + Math.min((h.mods && h.mods.ultgain) || 0, CONST.STAT_CAPS.ultgain)));
     if (before < 100 && h.ult >= 100) this.events.push({ type: 'ultReady', unit: h });
   }
 
   _applyStatus(src, tgt, eff) {
     if (!tgt.alive) return;
     let dur = eff.dur;
+    const sm = (src && src.mods) || {};
+    if ((eff.status === 'stun' || eff.status === 'taunt') && sm.ccdur) dur *= 1 + sm.ccdur;
     if (eff.status === 'burn') { if (this.relics.has('ember')) dur += 2; if (src && src.def.traits && src.def.traits.includes('cautious')) dur += 1; }
     const s = { t: dur, src };
-    if (eff.dps) s.dps = this._atkOf(src) * eff.dps;
+    if (eff.dps) s.dps = this._atkOf(src) * eff.dps * (1 + (sm.dotdmg || 0));
     if (eff.value) s.value = eff.value;
     const prev = tgt.statuses[eff.status];
     if (prev && prev.dps && s.dps) s.dps = Math.max(prev.dps, s.dps);
     if (prev) s.acc = prev.acc;
     tgt.statuses[eff.status] = s;
     this.events.push({ type: 'status', target: tgt, status: eff.status });
+    if (eff.status === 'stun' && tgt.side === 'enemy') this._poiseHit(src, tgt, CONST.POISE_STUN);
   }
 
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
   skillDef(h, slot) { return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
   skillUp(h, slot) { return h.upgrades[slot] || { power: 0, cd: 0 }; }
-  skillCdMax(h, slot) { const d = this.skillDef(h, slot); return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd); }
+  skillCdMax(h, slot) { const d = this.skillDef(h, slot); return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd) * (1 - Math.min((h.mods && h.mods.cdr) || 0, CONST.STAT_CAPS.cdr)); }
 
   canCast(h, slot) {
     if (!h || !h.alive || this.outcome || this.introT > 0) return false;
@@ -2505,6 +2591,7 @@ class BattleSim {
     if (!this.canCast(h, slot)) return false;
     const sk = this.skillDef(h, slot);
     const pmul = 1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower;
+    const dmul = pmul * (1 + ((h.mods && h.mods.skilldmg) || 0)); // 스킬 피해 보정 (회복에는 미적용)
     spec = spec || {};
     if ((sk.target === 'enemy' || sk.target === 'ally') && (!spec.unit || !spec.unit.alive)) return false;
     if ((sk.target === 'area_enemy' || sk.target === 'area_ally') && spec.x === undefined) return false;
@@ -2528,7 +2615,7 @@ class BattleSim {
           h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.5; h.anim.lungeY = 0;
         }
         const hits = sk.hits || 1;
-        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.11, fn: () => { if (!tgt.alive) return; this._damage(h, tgt, atk * sk.power * pmul, { skill: sk.fx }); if (i === 0 || i === hits - 1) applyEffects(tgt); } });
+        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.11, fn: () => { if (!tgt.alive) return; this._damage(h, tgt, atk * sk.power * dmul, { skill: sk.fx }); if (i === 0 || i === hits - 1) applyEffects(tgt); } });
         break;
       }
       case 'ally': { const tgt = spec.unit; this.delayed.push({ t: fxDelay, fn: () => this._heal(h, tgt, (atk * sk.heal + tgt.maxHp * sk.healPct) * pmul) }); break; }
@@ -2536,7 +2623,7 @@ class BattleSim {
         const cx = sk.target === 'self_area' ? h.x : spec.x, cy = sk.target === 'self_area' ? h.y : spec.y;
         if (sk.target === 'self_area') { h.anim.lunge = 0.3; h.anim.lungeX = 0; h.anim.lungeY = 0; }
         this.delayed.push({ t: fxDelay, fn: () => {
-          for (const e of this.aliveEnemies()) if (this.distXY(e, cx, cy) <= sk.areaR + e.size * 8) { this._damage(h, e, atk * sk.power * pmul, { skill: sk.fx }); applyEffects(e); }
+          for (const e of this.aliveEnemies()) if (this.distXY(e, cx, cy) <= sk.areaR + e.size * 8) { this._damage(h, e, atk * sk.power * dmul, { skill: sk.fx }); applyEffects(e); }
         } });
         spec.x = cx; spec.y = cy;
         break;
@@ -2547,7 +2634,7 @@ class BattleSim {
         break;
       }
       case 'all_enemies':
-        this.delayed.push({ t: fxDelay, fn: () => { for (const e of this.aliveEnemies()) { this._damage(h, e, atk * sk.power * pmul, { skill: sk.fx }); applyEffects(e); } } });
+        this.delayed.push({ t: fxDelay, fn: () => { for (const e of this.aliveEnemies()) { this._damage(h, e, atk * sk.power * dmul, { skill: sk.fx }); applyEffects(e); } } });
         break;
       default: break;
     }
@@ -2599,6 +2686,15 @@ class BattleSim {
       case 'enemyHpBelow': return this.aliveEnemies().some((e) => this.hpPct(e) * 100 <= c.param);
       case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call);
       case 'enemyCountGte': return this.aliveEnemies().length >= c.param;
+      case 'saveForCharge': { // 차지·호출 능력을 가진 적이 있으면 그 순간에만, 없으면 바로
+        const threats = this.aliveEnemies().filter((e) => e.def.abilities.includes('charge') || e.def.abilities.includes('caller'));
+        return !threats.length || threats.some((e) => e.charge || e.call);
+      }
+      case 'breakWindow': { // 그로기 중이면 지금, 그로기가 임박(게이지 45% 이하)하면 아껴둠, 아니면 바로
+        const big = this.aliveEnemies().filter((e) => e.poiseMax);
+        if (!big.length || big.some((e) => e.broken > 0)) return true;
+        return !big.some((e) => e.poise / e.poiseMax <= 0.45);
+      }
       default: return false;
     }
   }
@@ -2673,10 +2769,11 @@ const BattleScene = {
     this.buildHud();
     this.consumeEvents();
     this.banner = { text: node.type === 'boss' ? '보스: 오우거 대족장' : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
-    Game.hint('battle');
+    if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
+    this.breakHintPending = !Game.settings.seenHints.break;
   },
 
-  exit() { this.drag = null; },
+  exit() { this.drag = null; this.cmdDrag = null; this.cmdPress = null; },
 
   // ------------------------------------------------------------ HUD 구성 (DOM)
   buildHud() {
@@ -2694,8 +2791,8 @@ const BattleScene = {
     this.speedBtn.classList.toggle('on', this.speed === 2);
     right.appendChild(this.speedBtn);
     const seg = el('div', 'seg');
-    this.autoBtn = btn('전략 ON', 'seg-btn', () => this.setAuto(true), { id: 'btn-auto' });
-    this.manualBtn = btn('끄기', 'seg-btn', () => this.setAuto(false), { id: 'btn-manual' });
+    this.autoBtn = btn('자동', 'seg-btn', () => this.setAuto(true), { id: 'btn-auto' });
+    this.manualBtn = btn('수동', 'seg-btn', () => this.setAuto(false), { id: 'btn-manual' });
     seg.appendChild(this.autoBtn); seg.appendChild(this.manualBtn);
     right.appendChild(seg);
     top.appendChild(right);
@@ -2703,7 +2800,7 @@ const BattleScene = {
     this.setAuto(run.autoMode, true);
 
     this.chipsWrap = el('div', 'b-chips');
-    this.chipsWrap.appendChild(el('div', 'chips-label', '적<small>탭=집중</small>'));
+    this.chipsWrap.appendChild(el('div', 'chips-label', '적'));
     this.chipEls = {};
     ui.appendChild(this.chipsWrap);
 
@@ -2736,6 +2833,8 @@ const BattleScene = {
       face.appendChild(el('div', 'bg-name', h.name));
       face.appendChild(el('div', 'bg-stat', ''));
       face.appendChild(el('div', 'bg-dead', '✕'));
+      face.id = 'face-' + h.key;
+      this.bindFace(face, h);
       g.appendChild(face);
       const btns = {};
       for (const slot of ['s1', 's2', 'ult']) {
@@ -2759,11 +2858,12 @@ const BattleScene = {
     this.sim.autoMode = on;
     this.autoBtn.classList.toggle('on', on);
     this.manualBtn.classList.toggle('on', !on);
-    if (!silent) Game.toast(on ? '전략 ON: 설정한 스킬은 알아서 사용' : '전략 끄기: 모든 스킬을 직접 사용', 1400);
+    if (!silent) Game.toast(on ? '자동 전투' : '수동 전투', 900);
   },
 
   setOrder(k, silent) {
     this.sim.order = k;
+    this.sim.clearCommands();
     for (const o in this.orderBtns) this.orderBtns[o].classList.toggle('on', o === k);
     if (!silent) { Sfx.play('click'); this.popupOrder(k); }
   },
@@ -2795,6 +2895,60 @@ const BattleScene = {
     b.addEventListener('pointercancel', up);
   },
 
+  // ------------------------------------------------------------ 캐릭터 끌기: 지점 = 이동, 적 = 공격 대상
+  bindFace(face, h) {
+    face.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      Sfx.init(); Sfx.resume();
+      if (!h.alive || this.sim.outcome) return;
+      if (this.potionPick) { this.usePotionOn(h); return; }
+      try { face.setPointerCapture(ev.pointerId); } catch (e) { /* 무시 */ }
+      this.cmdPress = { h, x0: ev.clientX, y0: ev.clientY, el: face, client: true };
+    });
+    face.addEventListener('pointermove', (ev) => {
+      const pr = this.cmdPress;
+      if (!pr || pr.el !== face) return;
+      if (!this.cmdDrag && Math.hypot(ev.clientX - pr.x0, ev.clientY - pr.y0) > 12) this.startCmd(pr);
+      if (this.cmdDrag) this.updateCmd(Input.toLogical(ev));
+    });
+    const up = (ev) => {
+      const pr = this.cmdPress;
+      if (!pr || pr.el !== face) return;
+      this.cmdPress = null;
+      if (this.cmdDrag) this.endCmd(ev.type === 'pointerup' ? Input.toLogical(ev) : null);
+    };
+    face.addEventListener('pointerup', up);
+    face.addEventListener('pointercancel', up);
+  },
+  startCmd(pr) {
+    if (!pr.h.alive) return;
+    this.cmdDrag = { h: pr.h, el: pr.el, x: pr.h.x, y: pr.h.y, fx: pr.h.x, fy: pr.h.y, unit: null, over: false };
+    Game.ui.classList.add('dragging');
+    Sfx.play('click');
+  },
+  updateCmd(p) {
+    const d = this.cmdDrag;
+    if (!d) return;
+    d.x = p.x; d.y = p.y;
+    d.over = p.y < 430 && p.y > 64;
+    d.fx = clamp(p.x, CONST.FIELD_X0, CONST.FIELD_X1); d.fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1);
+    d.unit = null;
+    let bd = 70;
+    for (const u of this.sim.aliveEnemies()) { const dd = Math.hypot(u.x - p.x, (u.y - 40) - p.y); if (dd < bd) { bd = dd; d.unit = u; } }
+  },
+  endCmd(p) {
+    if (p) this.updateCmd(p);
+    const d = this.cmdDrag;
+    this.cmdDrag = null;
+    Game.ui.classList.remove('dragging');
+    if (!d || !d.over || !d.h.alive) return;
+    const ok = d.unit ? this.sim.command(d.h, { type: 'attack', unit: d.unit }) : this.sim.command(d.h, { type: 'move', x: d.fx, y: d.fy });
+    if (!ok) return;
+    Sfx.play('click');
+    if (d.unit) this.popup(d.unit.x, this.unitTop(d.unit) - 18, `${d.h.name} 공격`, '#ffb0a0', 16, { label: true });
+    else this.popup(d.fx, d.fy - 50, `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
+  },
+
   explainCant(h, slot) {
     Sfx.play('back');
     if (h.statuses.stun) Game.toast(`${h.name} 기절 중!`, 900);
@@ -2816,7 +2970,7 @@ const BattleScene = {
     this.drag = { h, slot, sk, b: pr.b, x: 0, y: 0, unit: null, over: false };
     Game.ui.classList.add('dragging');
     pr.b.classList.add('drag');
-    this.tmsg.innerHTML = `<span class="tm-pause">⏸ 슬로모션</span> <b>${h.name} · ${sk.name}</b> 놓으면 시전 · 버튼 쪽으로 되돌리면 취소`;
+    this.tmsg.innerHTML = `<b>${h.name} · ${sk.name}</b>`;
     this.tmsg.classList.remove('hidden');
     Sfx.play('click');
   },
@@ -2848,7 +3002,7 @@ const BattleScene = {
     if (!d.over) { Sfx.play('back'); Game.toast('취소', 600); return; }
     const t = d.sk.target;
     let spec;
-    if (t === 'enemy' || t === 'ally') { if (!d.unit) { Sfx.play('back'); Game.toast('대상 위에 놓아 주세요', 900); return; } spec = { unit: d.unit }; }
+    if (t === 'enemy' || t === 'ally') { if (!d.unit) { Sfx.play('back'); Game.toast('대상이 없어요', 900); return; } spec = { unit: d.unit }; }
     else if (t === 'area_enemy' || t === 'area_ally') spec = { x: d.fx, y: d.fy };
     else spec = this.sim.resolveTarget(d.h, d.slot) || {};
     if (this.sim.cast(d.h, d.slot, spec)) { Sfx.play('skill'); this.slowmo = CONST.CONFIRM_SLOWMO_SEC; }
@@ -2860,7 +3014,7 @@ const BattleScene = {
     if (this.sim.outcome) return;
     if (this.run.potions <= 0) { Game.toast('회복약이 없어요.', 900); return; }
     this.potionPick = true;
-    this.tmsg.innerHTML = '<span class="tm-pause">⏸ 정지</span> 회복약: 아군 얼굴을 탭 (빈 곳 탭 = 취소)';
+    this.tmsg.innerHTML = '회복약을 누구에게 쓸까요?';
     this.tmsg.classList.remove('hidden');
     Game.ui.classList.add('potion-pick');
   },
@@ -2880,6 +3034,15 @@ const BattleScene = {
     if (this.sim.focus) this.popup(u.x, this.unitTop(u) - 18, '집중 공격!', '#ff8aa0', 18, { label: true });
   },
 
+  drawMoveMark(ctx, x, y, t, a) {
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.strokeStyle = '#c8f0ff'; ctx.lineWidth = 2.5;
+    const r = 16 + Math.sin(t * 6) * 2;
+    ctx.beginPath(); ctx.ellipse(x, y, r, r / CONST.Y_WEIGHT, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.lineTo(x + 6, y); ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4); ctx.stroke();
+    ctx.restore();
+  },
+
   unitAt(p) {
     const all = this.sim.enemies.concat(this.sim.heroes).filter((u) => u.alive);
     let best = null, bd = 1e9;
@@ -2895,10 +3058,21 @@ const BattleScene = {
   pointerDown(p) {
     if (this.potionPick) { const u = this.unitAt(p); if (u && u.side === 'hero') this.usePotionOn(u); else { Sfx.play('back'); this.endPotion(); } return; }
     const u = this.unitAt(p);
-    if (u && u.side === 'enemy') this.onChip(u); // 보조: 적을 직접 탭해도 집중 공격
+    if (u && u.side === 'enemy') this.onChip(u); // 적을 탭하면 집중 공격
+    else if (u && u.side === 'hero' && !this.sim.outcome) this.cmdPress = { h: u, x0: p.x, y0: p.y, el: null };
   },
-  pointerMove() {},
-  pointerUp() {},
+  pointerMove(p) {
+    const pr = this.cmdPress;
+    if (!pr || pr.el) return;
+    if (!this.cmdDrag && Math.hypot(p.x - pr.x0, p.y - pr.y0) > 10) this.startCmd(pr);
+    if (this.cmdDrag) this.updateCmd(p);
+  },
+  pointerUp(p) {
+    const pr = this.cmdPress;
+    if (!pr || pr.el) return;
+    this.cmdPress = null;
+    if (this.cmdDrag) this.endCmd(p);
+  },
 
   openPause() {
     if (this.sim.outcome) return;
@@ -2934,7 +3108,7 @@ const BattleScene = {
     if (this.hitstop > 0) { this.hitstop -= dtReal; this.updateFx(dtReal * 0.2); this.updateHud(); return; }
     let scale = this.speed;
     if (this.paused || Game.modalOpen || this.potionPick) scale = 0;
-    if (this.drag) scale *= CONST.DRAG_SLOWMO;
+    if (this.drag || this.cmdDrag) scale *= CONST.DRAG_SLOWMO;
     // 위험 순간: 아군이 차지 범위 안에 있으면 슬로모션
     this.danger = null;
     for (const e of this.sim.enemies) if (e.alive && e.charge) {
@@ -2963,6 +3137,7 @@ const BattleScene = {
 
   consumeEvents() {
     const ev = this.sim.events;
+    if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < 960)) { this.breakHintPending = false; Game.hint('break'); }
     if (!ev.length) return;
     for (const e of ev) this.onEvent(e);
     ev.length = 0;
@@ -2999,7 +3174,7 @@ const BattleScene = {
         const u = e.unit;
         this.smoke(u.x, u.y - 20, u.size || 1);
         Sfx.play('death');
-        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐 — 이번 원정에서 복귀 불가`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}스테이지`; this.shake = 6; }
+        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}스테이지`; this.shake = 6; }
         break;
       }
       case 'projectile':
@@ -3031,8 +3206,15 @@ const BattleScene = {
       case 'callStart': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18); Sfx.play('summon'); break;
       case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20); Sfx.play('cancel'); break;
       case 'summon': this.smoke(e.unit.x, e.unit.y - 20, 0.8); break;
+      case 'break':
+        this.popup(e.unit.x, this.unitTop(e.unit) - 24, '그로기!', '#ffd34a', 34, { crit: true, dur: 1.2 });
+        this.banner = { text: '그로기!', sub: `${e.unit.name} 무방비`, t: 0, dur: 1.3 };
+        Sfx.play('crit'); this.shake = 8; this.hitstop = 0.12;
+        this.fx.push({ type: 'flash', t: 0, dur: 0.3, color: 'rgba(255,220,120,' });
+        break;
+      case 'breakEnd': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '방어 태세', '#9fd0ff', 16); break;
       case 'enrage': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22); break;
-      case 'warcry': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성! (적 공격력↑)', '#ffb04a', 18); this.shake = 4; break;
+      case 'warcry': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성!', '#ffb04a', 18); this.shake = 4; break;
       case 'phase': this.banner = { text: e.name, sub: '오우거 대족장이 분노한다!', t: 0, dur: 2.0, danger: true }; Sfx.play('phase'); this.shake = 10; break;
       case 'wave': if (e.index > 0) this.banner = { text: `웨이브 ${e.index + 1}/${e.total}`, sub: '적이 몰려온다!', t: 0, dur: 1.4 }; break;
       case 'end':
@@ -3135,8 +3317,8 @@ const BattleScene = {
     // 위험 경고
     if (this.danger) {
       this.warn.classList.remove('hidden');
-      const txt = `⚠ ${this.danger.e.name} 차지 공격! ${Math.max(0, this.danger.t).toFixed(1)}초`;
-      if (this.warn.dataset.t !== txt) { this.warn.dataset.t = txt; this.warn.innerHTML = `<b>${txt}</b><small>슬로모션 ${CONST.DANGER_SLOWMO}x · 기절로 캔슬하거나 [후퇴]로 범위 밖으로!</small>`; }
+      const txt = `⚠ ${this.danger.e.name} 차지 ${Math.max(0, this.danger.t).toFixed(1)}초`;
+      if (this.warn.dataset.t !== txt) { this.warn.dataset.t = txt; this.warn.innerHTML = `<b>${txt}</b>`; }
     } else this.warn.classList.add('hidden');
     // 적 칩
     const alive = sim.enemies.filter((u) => u.alive).sort((a, b) => a.x - b.x);
@@ -3154,14 +3336,18 @@ const BattleScene = {
         const st = el('div', 'chip-st', ''); body.appendChild(st);
         root.appendChild(body);
         const ch = bar(0, 'charge'); root.appendChild(ch);
+        const po = u.poiseMax ? bar(1, 'poise') : null; if (po) body.appendChild(po);
+        if (u.poiseMax) root.appendChild(el('div', 'chip-armor', `🛡${Math.round(u.armor * 100)}`));
         root.appendChild(el('div', 'chip-focus', '집중'));
         root.addEventListener('click', (e) => { e.stopPropagation(); this.onChip(u); });
         if (u.def.abilities.includes('boss')) root.classList.add('boss');
         this.chipsWrap.appendChild(root);
-        c = this.chipEls[u.uid] = { root, hp, st, ch, last: '' };
+        c = this.chipEls[u.uid] = { root, hp, st, ch, po, last: '' };
       }
       c.root.style.order = idx;
       setBar(c.hp, u.hp / u.maxHp);
+      if (c.po) { setBar(c.po, u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax); c.po.classList.toggle('broken', u.broken > 0); }
+      c.root.classList.toggle('broken', u.broken > 0);
       const s = this.statusIcons(u);
       if (s !== c.last) { c.st.innerHTML = s; c.last = s; }
       const casting = u.charge || u.call;
@@ -3194,19 +3380,23 @@ const BattleScene = {
         const hint = slot === 's2' ? sim.skillHint(h, slot) : '';
         const auto = sim.autoMode && st[slot] && st[slot].auto;
         let tag = '';
-        if (ready && hint === 'now') tag = '지금!';
+        const sk = sim.skillDef(h, slot);
+        const dmgSkill = sk.power > 0 && sk.target !== 'self' && sk.target !== 'party';
+        const breakNow = dmgSkill && sim.enemies.some((e) => e.alive && e.broken > 0);
+        if (ready && breakNow && slot !== 's1') tag = '그로기!';
+        else if (ready && hint === 'now') tag = '지금!';
         else if (ready && hint === 'hint') tag = '추천!';
-        else if (ready && slot === 'ult') tag = '탭!';
+        
         const tagEl = b.children[0];
         if (tagEl.textContent !== tag) tagEl.textContent = tag;
         b.classList.toggle('ready', ready);
         b.classList.toggle('cooling', txt !== '');
         b.classList.toggle('hint', ready && hint === 'hint');
-        b.classList.toggle('now', ready && hint === 'now');
+        b.classList.toggle('now', ready && (hint === 'now' || (breakNow && slot !== 's1')));
         b.classList.toggle('glow', ready && slot === 'ult');
         b.classList.toggle('auto', !!auto);
         const kind = b.children[4];
-        const kt = auto ? (slot === 's1' ? '① AUTO' : slot === 's2' ? '② AUTO' : '③ AUTO') : (slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기');
+        const kt = auto ? (slot === 's1' ? '① 자동' : slot === 's2' ? '② 자동' : '③ 자동') : (slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기');
         if (kind.textContent !== kt) kind.textContent = kt;
       }
     }
@@ -3270,6 +3460,15 @@ const BattleScene = {
       ctx.beginPath(); ctx.moveTo(bp.x, bp.y); ctx.quadraticCurveTo((bp.x + d.x) / 2, Math.min(bp.y, d.y) - 60, d.x, d.y); ctx.stroke(); ctx.setLineDash([]);
       if (d.unit) this.drawTargetArc(ctx, d.h, d.unit, t);
     }
+    const cd = this.cmdDrag;
+    if (cd) {
+      ctx.fillStyle = 'rgba(30,60,90,0.22)'; ctx.fillRect(0, 0, 960, 540);
+      ctx.strokeStyle = cd.over ? 'rgba(200,240,255,0.95)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
+      ctx.beginPath(); ctx.moveTo(cd.h.x, cd.h.y - 20); ctx.lineTo(cd.unit ? cd.unit.x : cd.fx, cd.unit ? cd.unit.y - 20 : cd.fy); ctx.stroke(); ctx.setLineDash([]);
+      if (cd.over && cd.unit) this.drawTargetArc(ctx, cd.h, cd.unit, t);
+      else if (cd.over) this.drawMoveMark(ctx, cd.fx, cd.fy, t, 1);
+    }
+    for (const h of sim.heroes) if (h.alive && h.cmd && h.cmd.type === 'move' && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) > 6) this.drawMoveMark(ctx, h.cmd.x, h.cmd.y, t, 0.6);
     if (this.potionPick) { ctx.fillStyle = 'rgba(20,40,30,0.25)'; ctx.fillRect(0, 0, 960, 540); }
     this.drawBanner(ctx);
     this.drawCutin(ctx);
@@ -3345,6 +3544,15 @@ const BattleScene = {
     const bw = enemy ? 34 + u.size * 10 : 34;
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 10, bw + 2, 6);
     ctx.fillStyle = enemy ? '#e0524a' : '#6fd86a'; ctx.fillRect(x - bw / 2, top - 9, bw * (u.hp / u.maxHp), 4);
+    if (u.poiseMax) {
+      const pf = u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 4, bw + 2, 5);
+      ctx.fillStyle = u.broken > 0 ? '#ffd34a' : '#5aa8ff'; ctx.fillRect(x - bw / 2, top - 3, bw * pf, 3);
+    }
+    if (u.broken > 0) {
+      for (let i = 0; i < 4; i++) { const a = t * 4 + i * 1.57; ctx.fillStyle = i % 2 ? '#ffd34a' : '#fff6c0'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('★', x + Math.cos(a) * 22, top - 18 + Math.sin(a) * 5); }
+      ctx.font = '900 14px sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = '#1a0f08'; ctx.strokeText('그로기', x, top - 30); ctx.fillStyle = '#ffd34a'; ctx.fillText('그로기', x, top - 30);
+    }
     const cast = u.charge || u.call;
     if (cast) {
       const prog = 1 - cast.t / cast.total;
@@ -3483,7 +3691,7 @@ const BattleScene = {
     ctx.textAlign = 'left'; ctx.font = '900 46px sans-serif';
     ctx.lineWidth = 6; ctx.strokeStyle = '#1a0f08';
     ctx.strokeText(c.name, 400 * slide + 40, 16); ctx.fillStyle = '#fff6e6'; ctx.fillText(c.name, 400 * slide + 40, 16);
-    ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = '#1a0f08'; ctx.fillText(`${c.hero.name}의 궁극기!`, 400 * slide + 44, 46);
+    ctx.font = 'bold 18px sans-serif'; ctx.fillStyle = '#1a0f08'; ctx.fillText(`${c.hero.name}의 필살기`, 400 * slide + 44, 46);
     ctx.restore();
   },
 };
@@ -3626,7 +3834,7 @@ const FieldScene = {
     const pages = [
       { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 다섯 개의 방을 지나면 오우거 대족장이 기다리지.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 캠프에서 제대로 쉴 수 없어.' },
       { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방 종류는 미리 보이니 길을 잘 고르게.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
-      { t: '전투 요령', b: '평타는 알아서 하지만, <b>스킬은 시간을 멈추고</b> 직접 고를 수 있다네. 적 이름표(칩)를 눌러 대상을 고르고 확정!<br><br>오우거가 번쩍이며 힘을 모으면 <b>토비의 방패 강타</b>로 기절시켜 끊게. 쓰러진 동료는... 이번 원정에선 돌아오지 못하네.' },
+      { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. <b>기절</b>로 흔들어 놓고 비틀거릴 때 몰아치게.<br><br>오우거가 힘을 모으면 <b>토비의 방패 강타</b>로 끊거나 붉은 원 밖으로 피하게. 쓰러진 동료는... 이번 원정에선 돌아오지 못하네.' },
     ];
     const p = pages[page];
     const box = el('div', 'dialog-box');
@@ -3950,7 +4158,6 @@ const TitleScene = {
     this.seedLabel = el('div', 'title-seed', `시드 ${this.seed}`);
     box.appendChild(this.seedLabel);
     ui.appendChild(box);
-    ui.appendChild(el('div', 'title-foot', '데모 빌드 · 가로 화면 · 터치/마우스'));
   },
   seedDialog() {
     const box = el('div', 'confirm-box');
@@ -4009,8 +4216,8 @@ function openPreBattle(node) {
   });
   box.appendChild(wl);
   const tips = [];
-  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격 주의: 방패 강타(기절)로 캔슬');
-  if (waves.flat().includes('goblin_caller')) tips.push('나팔수는 동료를 부른다: 먼저 처치하거나 기절');
+  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격: 기절로 끊을 수 있다');
+  if (waves.flat().includes('goblin_caller')) tips.push('나팔수: 동료를 부른다');
   if (run.fruit) tips.push(`고목의 열매: 공격력 +${Math.round(run.fruit.bonus * 100)}% (남은 전투 ${run.fruit.battles})`);
   if (run.torch <= 0) tips.push('횃불이 꺼졌다: 치명타 확률 감소');
   if (tips.length) box.appendChild(el('div', 'pb-tips', tips.map((x) => '• ' + x).join('<br>')));
@@ -4406,7 +4613,7 @@ const TreeScene = {
       });
       box.appendChild(deals);
       if (this.deal) {
-        box.appendChild(el('div', 'reward-sub', '누구의 피를 바칠까? (HP가 모자라면 바칠 수 없다)'));
+        box.appendChild(el('div', 'reward-sub', '누구의 피를 바칠까?'));
         const pp = partyPanel(run, { compact: true, onSelect: (id) => {
           const h = run.heroes[id];
           if (h.hp <= h.maxHp * this.deal.hpCost + 1) { Game.toast('HP가 부족해 거래할 수 없다.'); return; }
@@ -4421,7 +4628,7 @@ const TreeScene = {
       if (!this.deal || !this.hero) ok.disabled = true;
       row.appendChild(ok);
       box.appendChild(row);
-      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다(+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 새 거래는 더 강한 쪽으로 갱신된다.`));
+      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다(+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 더 강한 효과만 남는다.`));
     }
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -4512,7 +4719,7 @@ function openStrategyEditor(run, onClose) {
   const box = el('div', 'strat-box');
   const render = () => {
     box.innerHTML = '';
-    box.appendChild(el('div', 'modal-title', '자동 전략 <small>전략 ON일 때, 자동으로 켠 스킬만 조건이 맞으면 알아서 사용</small>'));
+    box.appendChild(el('div', 'modal-title', '자동 전략'));
     const tabs = el('div', 'strat-tabs');
     for (const id of partyIds(run)) {
       const t = el('button', 'stab' + (id === cur ? ' on' : '') + (run.heroes[id].dead ? ' dead' : ''));
@@ -4546,7 +4753,7 @@ function openStrategyEditor(run, onClose) {
           const opts = Object.keys(AI_TARGET_RULES).filter((k) => (ally ? ['lowestAlly', 'tank'] : ['focus', 'nearest', 'weakest', 'charging']).includes(k));
           row.appendChild(sel(opts.map((k) => [k, AI_TARGET_RULES[k].name]), opts.includes(c.target) ? c.target : opts[0], (v) => { c.target = v; }, `sr-target-${slot}`));
         } else row.appendChild(el('span', 'sr-auto', sk.target === 'self' ? '대상: 자신' : sk.target === 'party' ? '대상: 파티 전체' : sk.target === 'self_area' ? '대상: 주변 적' : '대상: 적 전체'));
-      } else row.appendChild(el('span', 'sr-auto', slot === 'ult' ? '버튼이 금색으로 빛나면 직접 탭' : '직접 탭 / 끌어서 사용'));
+      } else row.appendChild(el('span', 'sr-auto', '직접 사용'));
       rules.appendChild(row);
     }
     box.appendChild(rules);
@@ -4578,7 +4785,7 @@ function openPartySelect(run, onDone) {
   const box = el('div', 'party-select');
   const render = () => {
     box.innerHTML = '';
-    box.appendChild(el('div', 'modal-title', `파티 편성 <small>최대 ${CONST.PARTY_SIZE}명 · 던전에 들어가면 바꿀 수 없어요</small>`));
+    box.appendChild(el('div', 'modal-title', `파티 편성 <small>최대 ${CONST.PARTY_SIZE}명</small>`));
     const grid = el('div', 'ps-grid');
     for (const id of HERO_ORDER) {
       const d = HEROES[id];
@@ -4604,7 +4811,7 @@ function openPartySelect(run, onDone) {
     const tips = [];
     if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 오우거의 차지 공격을 막기 어려워요.');
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
-    if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요 (적 체력은 인원에 맞춰 줄어듭니다).`);
+    if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
     const row = el('div', 'btn-row');
     row.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'ps-cancel' }));

@@ -24,7 +24,6 @@ const TitleScene = {
     this.seedLabel = el('div', 'title-seed', `시드 ${this.seed}`);
     box.appendChild(this.seedLabel);
     ui.appendChild(box);
-    ui.appendChild(el('div', 'title-foot', '데모 빌드 · 가로 화면 · 터치/마우스'));
   },
   seedDialog() {
     const box = el('div', 'confirm-box');
@@ -83,8 +82,8 @@ function openPreBattle(node) {
   });
   box.appendChild(wl);
   const tips = [];
-  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격 주의: 방패 강타(기절)로 캔슬');
-  if (waves.flat().includes('goblin_caller')) tips.push('나팔수는 동료를 부른다: 먼저 처치하거나 기절');
+  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격: 기절로 끊을 수 있다');
+  if (waves.flat().includes('goblin_caller')) tips.push('나팔수: 동료를 부른다');
   if (run.fruit) tips.push(`고목의 열매: 공격력 +${Math.round(run.fruit.bonus * 100)}% (남은 전투 ${run.fruit.battles})`);
   if (run.torch <= 0) tips.push('횃불이 꺼졌다: 치명타 확률 감소');
   if (tips.length) box.appendChild(el('div', 'pb-tips', tips.map((x) => '• ' + x).join('<br>')));
@@ -480,7 +479,7 @@ const TreeScene = {
       });
       box.appendChild(deals);
       if (this.deal) {
-        box.appendChild(el('div', 'reward-sub', '누구의 피를 바칠까? (HP가 모자라면 바칠 수 없다)'));
+        box.appendChild(el('div', 'reward-sub', '누구의 피를 바칠까?'));
         const pp = partyPanel(run, { compact: true, onSelect: (id) => {
           const h = run.heroes[id];
           if (h.hp <= h.maxHp * this.deal.hpCost + 1) { Game.toast('HP가 부족해 거래할 수 없다.'); return; }
@@ -495,7 +494,7 @@ const TreeScene = {
       if (!this.deal || !this.hero) ok.disabled = true;
       row.appendChild(ok);
       box.appendChild(row);
-      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다(+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 새 거래는 더 강한 쪽으로 갱신된다.`));
+      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다(+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 더 강한 효과만 남는다.`));
     }
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -586,7 +585,7 @@ function openStrategyEditor(run, onClose) {
   const box = el('div', 'strat-box');
   const render = () => {
     box.innerHTML = '';
-    box.appendChild(el('div', 'modal-title', '자동 전략 <small>전략 ON일 때, 자동으로 켠 스킬만 조건이 맞으면 알아서 사용</small>'));
+    box.appendChild(el('div', 'modal-title', '자동 전략'));
     const tabs = el('div', 'strat-tabs');
     for (const id of partyIds(run)) {
       const t = el('button', 'stab' + (id === cur ? ' on' : '') + (run.heroes[id].dead ? ' dead' : ''));
@@ -620,7 +619,7 @@ function openStrategyEditor(run, onClose) {
           const opts = Object.keys(AI_TARGET_RULES).filter((k) => (ally ? ['lowestAlly', 'tank'] : ['focus', 'nearest', 'weakest', 'charging']).includes(k));
           row.appendChild(sel(opts.map((k) => [k, AI_TARGET_RULES[k].name]), opts.includes(c.target) ? c.target : opts[0], (v) => { c.target = v; }, `sr-target-${slot}`));
         } else row.appendChild(el('span', 'sr-auto', sk.target === 'self' ? '대상: 자신' : sk.target === 'party' ? '대상: 파티 전체' : sk.target === 'self_area' ? '대상: 주변 적' : '대상: 적 전체'));
-      } else row.appendChild(el('span', 'sr-auto', slot === 'ult' ? '버튼이 금색으로 빛나면 직접 탭' : '직접 탭 / 끌어서 사용'));
+      } else row.appendChild(el('span', 'sr-auto', '직접 사용'));
       rules.appendChild(row);
     }
     box.appendChild(rules);
@@ -652,7 +651,7 @@ function openPartySelect(run, onDone) {
   const box = el('div', 'party-select');
   const render = () => {
     box.innerHTML = '';
-    box.appendChild(el('div', 'modal-title', `파티 편성 <small>최대 ${CONST.PARTY_SIZE}명 · 던전에 들어가면 바꿀 수 없어요</small>`));
+    box.appendChild(el('div', 'modal-title', `파티 편성 <small>최대 ${CONST.PARTY_SIZE}명</small>`));
     const grid = el('div', 'ps-grid');
     for (const id of HERO_ORDER) {
       const d = HEROES[id];
@@ -678,7 +677,7 @@ function openPartySelect(run, onDone) {
     const tips = [];
     if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 오우거의 차지 공격을 막기 어려워요.');
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
-    if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요 (적 체력은 인원에 맞춰 줄어듭니다).`);
+    if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
     const row = el('div', 'btn-row');
     row.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'ps-cancel' }));

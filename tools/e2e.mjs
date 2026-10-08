@@ -28,7 +28,7 @@ async function dismissHints(p) { for (let i = 0; i < 3; i++) if (!(await clickIf
 // ---------------------------------------------------------------- 1. 한 판 자동 진행 (정책: 전투 우선, HP 낮으면 휴식)
 async function playRun(p, seed, opts) {
   opts = opts || {};
-  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1 }; G.debug.simMult = 6; G.scenes.title.start(s); }, seed);
+  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(s); }, seed);
   await p.waitForTimeout(200);
   if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
   // 보급 상자 → 포털
@@ -62,8 +62,9 @@ async function playRun(p, seed, opts) {
       continue;
     }
     if (sc === 'battle') {
-      try { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 120000 }); }
+      try { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle' || !!document.querySelector('#hint-ok'), null, { timeout: 120000 }); }
       catch (e) { console.log('STUCK', await p.evaluate(() => { const G = window.GAME.Game, S = G.scene, sim = S.sim; return JSON.stringify({ modal: G.modalOpen, ov: G.overlay.innerText.slice(0, 80), paused: S.paused, tg: !!S.targeting, t: sim.time, out: sim.outcome, end: S.endTimer, wave: sim.waveIndex, en: sim.enemies.filter((e) => e.alive).map((e) => [e.key, Math.round(e.hp), Math.round(e.x)]), he: sim.heroes.map((h) => [h.key, Math.round(h.hp)]), err: G.lastError }); })); throw e; }
+      await dismissHints(p);
       continue;
     }
     if (sc === 'reward') { if (await vis(p, '#reward-0')) { await p.click('#reward-0'); await p.click('#btn-reward-confirm'); } else await p.click('#btn-continue'); continue; }
@@ -108,7 +109,7 @@ async function playRun(p, seed, opts) {
 // 전멸 → 결과 화면 (실제 전투에서 HP 1로 시작)
 {
   const p = await newPage();
-  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; G.go('map'); });
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; G.go('map'); });
   await p.click('.map-node.reachable >> nth=0');
   await p.click('#btn-node-go');
   if (await vis(p, '#pb-start')) await p.click('#pb-start');
@@ -182,6 +183,9 @@ async function playRun(p, seed, opts) {
   // 전투 (직접 진입: 차지 오우거 포함 조우)
   await p.evaluate(() => { const G = window.GAME.Game; G.run.party = ['tobi', 'danbi', 'bori']; G.go('battle', { node: { stage: 3, row: 0, type: 'battle', waves: [['ogre', 'goblin_caller', 'goblin']] } }); });
   await dismissHints(p);
+  await p.waitForSelector('#hint-ok', { timeout: 15000 }).catch(() => {});
+  ok('전투: 큰 적 등장 → 그로기 도움말', (await p.evaluate(() => document.querySelector('.hint-text')?.textContent || '')).includes('그로기'));
+  await dismissHints(p);
   await p.click('#btn-speed'); ok('전투: 배속 2x', (await p.textContent('#btn-speed')).includes('2x')); await p.click('#btn-speed');
   await p.click('#btn-manual'); ok('전투: 전략 끄기', await p.evaluate(() => !window.GAME.Game.run.autoMode));
   // 회복약: 정지 후 아군 얼굴 탭
@@ -205,6 +209,29 @@ async function playRun(p, seed, opts) {
   await p.waitForTimeout(700);
   const pos1 = await p.evaluate(() => window.GAME.Game.scene.sim.heroes.map((h) => [h.x, h.y]));
   ok('전투: 캐릭터 자유 이동', pos0.some((q, i) => Math.hypot(q[0] - pos1[i][0], q[1] - pos1[i][1]) > 3));
+  // 캐릭터 끌기: 얼굴 → 지점 = 이동
+  const fb = await p.locator('#face-danbi').boundingBox();
+  await p.mouse.move(fb.x + fb.width / 2, fb.y + fb.height / 2); await p.mouse.down();
+  await p.mouse.move(bb.x + 260 * k, bb.y + 360 * k, { steps: 8 });
+  ok('전투: 얼굴 끌기 → 슬로모션 명령 모드', await p.evaluate(() => !!window.GAME.Game.scene.cmdDrag));
+  await p.screenshot({ path: `${OUT}/battle_cmd_drag.png` });
+  await p.mouse.up();
+  const mv = await p.evaluate(() => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return h.cmd && h.cmd.type === 'move' ? [Math.round(h.cmd.x), Math.round(h.cmd.y)] : null; });
+  ok('전투: 얼굴 끌어 놓기 → 그 지점으로 이동 명령', !!mv && Math.abs(mv[0] - 260) < 4, JSON.stringify(mv));
+  await p.waitForFunction(() => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return h.cmd && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) < 12; }, null, { timeout: 8000 }).catch(() => {});
+  ok('전투: 지정 지점 도착 후 대기', await p.evaluate(() => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return !!h.cmd && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) < 12; }));
+  // 전장의 캐릭터 → 적 = 공격 대상
+  const dragPts = await p.evaluate(() => { const s = window.GAME.Game.scene.sim; const h = s.heroes.find((u) => u.key === 'danbi'); const e = s.aliveEnemies().find((u) => u.key !== 'ogre') || s.aliveEnemies()[0]; return { hx: h.x, hy: h.y - 30, ex: e.x, ey: e.y - 40, uid: e.uid }; });
+  await p.mouse.move(bb.x + dragPts.hx * k, bb.y + dragPts.hy * k); await p.mouse.down();
+  await p.mouse.move(bb.x + dragPts.ex * k, bb.y + dragPts.ey * k, { steps: 10 }); await p.mouse.up();
+  ok('전투: 캐릭터를 적 위로 끌기 → 공격 대상 지정', await p.evaluate((uid) => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return !!h.cmd && h.cmd.type === 'attack' && h.cmd.unit.uid === uid && h.target.uid === uid; }, dragPts.uid));
+  await p.click('#btn-order-hold');
+  ok('전투: 작전 버튼 → 개별 명령 해제', await p.evaluate(() => window.GAME.Game.scene.sim.heroes.every((h) => !h.cmd)));
+  // 회복약: 얼굴 탭으로 대상 선택
+  await p.evaluate(() => { const s = window.GAME.Game.scene.sim; s.heroes.find((u) => u.key === 'bori').hp = 30; });
+  const pots0 = await p.evaluate(() => window.GAME.Game.run.potions);
+  await p.click('#btn-bpotion'); await p.click('#face-bori');
+  ok('전투: 회복약 → 얼굴 탭으로 사용', (await p.evaluate(() => window.GAME.Game.run.potions)) === pots0 - 1 && (await p.evaluate(() => window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'bori').hp > 30)));
   // 차지 → ② 방패 강타 "지금!" 탭 → 캔슬
   await p.waitForFunction(() => window.GAME.Game.scene.sim && window.GAME.Game.scene.sim.enemies.some((e) => e.alive && e.charge), null, { timeout: 30000 });
   await dismissHints(p);
@@ -235,12 +262,13 @@ async function playRun(p, seed, opts) {
   // ③ 필살기 탭 (컷인)
   await p.evaluate(() => { window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'bori').ult = 100; });
   await p.waitForTimeout(80);
-  ok('전투: ③ 필살기 준비 → "탭!" 표시', (await p.textContent('#sk-bori-ult .sk-tag')).includes('탭'));
+  ok('전투: ③ 필살기 준비 → 버튼 빛남', await p.evaluate(() => document.querySelector('#sk-bori-ult').classList.contains('glow')));
   await p.locator('#sk-bori-ult').tap(); await p.waitForTimeout(250);
   ok('전투: ③ 필살기 컷인 연출', await p.evaluate(() => !!window.GAME.Game.scene.cutin));
   await p.screenshot({ path: `${OUT}/battle_ult.png` });
   await p.click('#btn-auto');
-  await p.evaluate(() => { window.GAME.Game.debug.simMult = 8; });
+  // 플레이어 대신 ② 상황 스킬을 추천 시점에 사용 (힌트에 반응하는 플레이 재현)
+  await p.evaluate(() => { const G = window.GAME.Game; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } G.scene.sim.strategy = G.run.strategy; for (const h of G.scene.sim.heroes) if (h.alive) h.hp = h.maxHp; G.debug.simMult = 8; });
   await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 120000 });
   ok('전투 승리 → 보상 화면', (await scene(p)) === 'reward', await scene(p));
   await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; });
@@ -271,7 +299,7 @@ async function playRun(p, seed, opts) {
   await p.screenshot({ path: `${OUT}/shop.png` });
   await p.click('#btn-continue'); ok('상점 → 지도', (await scene(p)) === 'map');
   // 휴식
-  await p.evaluate(() => { const G = window.GAME.Game; for (const id of G.run.party) G.run.heroes[id].hp = Math.round(G.run.heroes[id].maxHp * 0.3); G.go('rest', {}); });
+  await p.evaluate(() => { const G = window.GAME.Game; for (const id of G.run.party) G.run.heroes[id].dead = false, G.run.heroes[id].hp = Math.round(G.run.heroes[id].maxHp * 0.3); G.go('rest', {}); });
   const f0 = await p.evaluate(() => window.GAME.Game.run.food);
   await p.click('#rest-food');
   const hp = await p.evaluate(() => { const r = window.GAME.Game.run; return r.party.map((id) => r.heroes[id].hp / r.heroes[id].maxHp); });
@@ -291,7 +319,7 @@ async function playRun(p, seed, opts) {
 // ---------------------------------------------------------------- 3. 모바일 해상도 레이아웃
 for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 667, height: 375, name: 'iphoneSE_land' }, { width: 915, height: 412, name: 'galaxy_land' }, { width: 1920, height: 1080, name: 'fhd' }, { width: 390, height: 844, name: 'portrait' }]) {
   const p = await newPage(Object.assign({ mobile: vp.width < 1000 }, vp));
-  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1 }; G.scenes.title.start(9); G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } }); });
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.scenes.title.start(9); G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } }); });
   await p.waitForTimeout(1800);
   await p.screenshot({ path: `${OUT}/mobile_${vp.name}_battle.png` });
   // 터치 타겟 크기 (실제 화면 px): 전투/지도/필드의 모든 보이는 버튼·칩·초상화

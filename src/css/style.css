@@ -331,3 +331,11 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .ps-tips { margin-top: 10px; font-size: 14px; color: #ffcf9a; text-align: center; min-height: 20px; }
 .portal-party { display: flex; gap: 8px; justify-content: center; margin: 6px 0; }
 .portal-party span { background: rgba(0,0,0,.3); border-radius: 8px; padding: 4px 10px; font-weight: 800; display: flex; flex-direction: column; }
+
+/* 그로기 */
+.bar.poise { height: 4px; margin-top: 1px; }
+.bar.poise .fill { background: #5aa8ff; transition: none; }
+.bar.poise.broken .fill { background: #ffd34a; }
+.chip-armor { position: absolute; top: -7px; right: 4px; font-size: 9px; font-weight: 900; color: #cfe6ff; background: #2a3a5a; border-radius: 6px; padding: 0 4px; }
+.chip.broken { border-color: #ffd34a; box-shadow: 0 0 10px 2px rgba(255,211,74,0.8); }
+.chip.broken .chip-armor { text-decoration: line-through; color: #ffd34a; }

@@ -9,13 +9,13 @@ let COMP = COMPS[0];
 const party = (hpPct) => HERO_ORDER.filter((id) => COMP.includes(id)).map((id) => ({ id, hp: Math.round(HEROES[id].hp * hpPct), maxHp: HEROES[id].hp, upgrades: {} }));
 const strat = JSON.parse(JSON.stringify(AI_PRESETS));
 const ultAuto = process.argv.includes('--ult');
-for (const k in strat) strat[k].ult.auto = ultAuto;
+for (const k in strat) { strat[k].ult.auto = ultAuto; if (process.argv.includes('--s2')) strat[k].s2.auto = true; }
 const rows = [];
 for (const type of ['battle', 'elite', 'boss']) for (const st in ENCOUNTERS[type]) ENCOUNTERS[type][st].forEach((waves, i) => {
   let wins = 0, t = 0, hpLeft = 0, deaths = 0; const N = 30;
   for (let s = 0; s < N; s++) {
     COMP = COMPS[s % COMPS.length];
-    const sim = BattleSim.runHeadless({ seed: 1000 + s, stage: +st, waves, heroes: party(type === 'boss' ? 0.75 : 0.85), strategy: strat });
+    const sim = BattleSim.runHeadless({ seed: 1000 + s, stage: +st, waves, heroes: party(type === 'boss' ? 0.75 : 0.85), strategy: strat, aiProfile: process.env.PROFILE || 'none' });
     if (sim.outcome === 'win') wins++;
     t += sim.time; deaths += sim.heroes.filter((h) => !h.alive).length;
     hpLeft += sim.heroes.reduce((a, h) => a + h.hp, 0) / sim.heroes.reduce((a, h) => a + h.maxHp, 0);
