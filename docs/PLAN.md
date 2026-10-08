@@ -56,3 +56,10 @@
 - 원본: `tools/gen_equipment_db.py` → `data/equipment/equipment_db.json` + `csv/`
 - 밸런스: `node tools/equip_balance.cjs` (전투력 분석 + 난이도×등급 시뮬 매트릭스, 기믹 공략 vs 딜만) → `balance_report.json`
 - 엑셀: `python3 tools/build_equipment_xlsx.py` → `docs/equipment_db.xlsx` (등급별 수치는 수식)
+
+## 마을·장비 (2단계)
+- 장기 설계: `docs/GAME_DESIGN.md` (자물쇠/열쇠 가챠 원칙, 엔드게임, 심연 던전 교대, 강화, 속성, 소울 메달 보류 안)
+- `src/js/01b_equip_db.js` — 장비 DB (`tools/gen_equipment_db.py`가 생성)
+- `src/js/04b_equip.js` — 장비 로직(프로필 저장, 생성, 능력치 합산, 강화·장인의 기운, 분해, 보석, 드랍, 난이도)
+- `src/js/09b_inventory.js` — 장비창, 대장간, 아이템 아이콘, 무기 발광·갑옷 오라, 전투 보상·정산
+- 마을: 대장간(강화) · 보관함(장비) · 포털에서 난이도 선택(보스 격파 시 다음 단계 해금). 원정 골드는 끝나면 마을로 가져간다.

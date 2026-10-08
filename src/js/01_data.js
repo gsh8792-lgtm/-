@@ -72,6 +72,7 @@ const STATUS = {
   regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '초당 회복.' },
   enrage: { name: '광폭', short: '광', color: '#ff4a3a', desc: '공격 속도 증가.' },
   fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매: 공격력 증가.' },
+  invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '피해를 받지 않는다.' },
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
 };
 

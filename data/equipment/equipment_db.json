@@ -311,6 +311,22 @@
    "note": "그로기 게이지를 더 크게 깎는다 (공략 스탯)"
   },
   {
+   "key": "s1pow",
+   "name": "① 스킬 위력",
+   "unit": "%",
+   "pct": true,
+   "pw": 0.12,
+   "note": "소울 메달 주 스탯 (갑옷 스킬)"
+  },
+  {
+   "key": "s2pow",
+   "name": "② 스킬 위력",
+   "unit": "%",
+   "pct": true,
+   "pw": 0.12,
+   "note": "소울 메달 주 스탯 (무기 스킬)"
+  },
+  {
    "key": "vsbroken",
    "name": "그로기 적 피해",
    "unit": "%",
@@ -567,18 +583,11 @@
      "base": 0.012
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s1pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "ult_dur",
-    "text": "③ 철벽 지속 +{v}초",
-    "base": 0.5,
-    "unit": "초",
-    "pw": 1.6,
-    "skill": "ult"
-   }
+   "innate": null
   },
   {
    "id": "tank_medal_2",
@@ -592,18 +601,11 @@
      "base": 0.012
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s2pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "low_hp_dr",
-    "text": "HP 30% 이하일 때 받는 피해 -{v}%",
-    "base": 5.0,
-    "unit": "%",
-    "pw": 1.4,
-    "skill": null
-   }
+   "innate": null
   },
   {
    "id": "melee_weapon_1",
@@ -767,18 +769,11 @@
      "base": 0.06
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s1pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "ult_power",
-    "text": "③ 난도질 위력 +{v}%",
-    "base": 8.0,
-    "unit": "%",
-    "pw": 1.5,
-    "skill": "ult"
-   }
+   "innate": null
   },
   {
    "id": "melee_medal_2",
@@ -792,18 +787,11 @@
      "base": 0.06
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s2pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "trait_brave",
-    "text": "용감함 효과 +{v}%p",
-    "base": 8.0,
-    "unit": "%p",
-    "pw": 1.5,
-    "skill": null
-   }
+   "innate": null
   },
   {
    "id": "ranged_weapon_1",
@@ -967,18 +955,11 @@
      "base": 0.016
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s1pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "crit_ult",
-    "text": "치명타 시 필살기 게이지 +{v}",
-    "base": 2.0,
-    "unit": "",
-    "pw": 1.4,
-    "skill": null
-   }
+   "innate": null
   },
   {
    "id": "ranged_medal_2",
@@ -992,18 +973,11 @@
      "base": 0.016
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s2pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "s2_cd",
-    "text": "② 화살비 쿨타임 -{v}%",
-    "base": 5.0,
-    "unit": "%",
-    "pw": 1.6,
-    "skill": "s2"
-   }
+   "innate": null
   },
   {
    "id": "mage_weapon_1",
@@ -1167,18 +1141,11 @@
      "base": 0.04
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s1pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "ult_gain",
-    "text": "③ 필살기 충전 +{v}%",
-    "base": 8.0,
-    "unit": "%",
-    "pw": 1.5,
-    "skill": "ult"
-   }
+   "innate": null
   },
   {
    "id": "mage_medal_2",
@@ -1192,18 +1159,11 @@
      "base": 0.04
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s2pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "trait_cautious",
-    "text": "신중함: 차지 피해 감소 +{v}%p",
-    "base": 5.0,
-    "unit": "%p",
-    "pw": 1.4,
-    "skill": null
-   }
+   "innate": null
   },
   {
    "id": "support_weapon_1",
@@ -1367,18 +1327,11 @@
      "base": 0.05
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s1pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "ult_power",
-    "text": "③ 생명의 나무 회복량 +{v}%",
-    "base": 8.0,
-    "unit": "%",
-    "pw": 1.5,
-    "skill": "ult"
-   }
+   "innate": null
   },
   {
    "id": "support_medal_2",
@@ -1392,18 +1345,11 @@
      "base": 0.05
     },
     {
-     "stat": "ultgain",
-     "base": 0.02
+     "stat": "s2pow",
+     "base": 0.1
     }
    ],
-   "innate": {
-    "key": "trait_gentle",
-    "text": "다정함 효과 +{v}%p",
-    "base": 5.0,
-    "unit": "%p",
-    "pw": 1.4,
-    "skill": null
-   }
+   "innate": null
   },
   {
    "id": "common_ring_1",
@@ -2489,5 +2435,299 @@
   "cdr": 0.4,
   "ultgain": 0.8,
   "mspd": 0.5
- }
+ },
+ "enhance": {
+  "mainPerLevel": 0.06,
+  "failBonusStep": 0.1,
+  "failBonusMax": 1.0,
+  "artisanFactor": 0.465,
+  "capByGrade": {
+   "UC": 5,
+   "C": 7,
+   "R": 9,
+   "SR": 11,
+   "SSR": 13,
+   "UR": 15,
+   "L": 15,
+   "E": 15
+  },
+  "visualTiers": [
+   5,
+   10,
+   15
+  ],
+  "levels": [
+   {
+    "rate": 1.0,
+    "stones": 1,
+    "gold": 20
+   },
+   {
+    "rate": 1.0,
+    "stones": 1,
+    "gold": 30
+   },
+   {
+    "rate": 0.95,
+    "stones": 2,
+    "gold": 40
+   },
+   {
+    "rate": 0.9,
+    "stones": 2,
+    "gold": 55
+   },
+   {
+    "rate": 0.85,
+    "stones": 3,
+    "gold": 70
+   },
+   {
+    "rate": 0.75,
+    "stones": 3,
+    "gold": 90
+   },
+   {
+    "rate": 0.65,
+    "stones": 4,
+    "gold": 110
+   },
+   {
+    "rate": 0.55,
+    "stones": 4,
+    "gold": 135
+   },
+   {
+    "rate": 0.45,
+    "stones": 5,
+    "gold": 160
+   },
+   {
+    "rate": 0.35,
+    "stones": 6,
+    "gold": 190
+   },
+   {
+    "rate": 0.25,
+    "stones": 7,
+    "gold": 230
+   },
+   {
+    "rate": 0.18,
+    "stones": 8,
+    "gold": 270
+   },
+   {
+    "rate": 0.12,
+    "stones": 10,
+    "gold": 320
+   },
+   {
+    "rate": 0.08,
+    "stones": 12,
+    "gold": 380
+   },
+   {
+    "rate": 0.05,
+    "stones": 15,
+    "gold": 450
+   }
+  ]
+ },
+ "dismantle": {
+  "UC": 1,
+  "C": 2,
+  "R": 3,
+  "SR": 5,
+  "SSR": 8,
+  "UR": 12,
+  "L": 18,
+  "E": 25
+ },
+ "stoneReward": {
+  "battle": 2,
+  "elite": 4,
+  "boss": 8
+ },
+ "passives": [
+  {
+   "key": "iron_heart",
+   "name": "무쇠 심장",
+   "min": "UC",
+   "kind": "stat",
+   "stat": "hp_pct",
+   "v": 0.03,
+   "text": "최대 HP +{v}"
+  },
+  {
+   "key": "trained_arm",
+   "name": "단련된 팔",
+   "min": "UC",
+   "kind": "stat",
+   "stat": "atk_pct",
+   "v": 0.02,
+   "text": "공격력 +{v}"
+  },
+  {
+   "key": "light_feet",
+   "name": "가벼운 발",
+   "min": "UC",
+   "kind": "stat",
+   "stat": "mspd",
+   "v": 0.06,
+   "text": "이동 속도 +{v}"
+  },
+  {
+   "key": "clear_mind",
+   "name": "맑은 정신",
+   "min": "C",
+   "kind": "stat",
+   "stat": "cdr",
+   "v": 0.025,
+   "text": "쿨타임 -{v}"
+  },
+  {
+   "key": "oath_guard",
+   "name": "수호의 맹세",
+   "min": "C",
+   "kind": "stat",
+   "stat": "dr",
+   "v": 0.02,
+   "text": "받는 피해 -{v}"
+  },
+  {
+   "key": "breaker",
+   "name": "부수는 손",
+   "min": "R",
+   "kind": "stat",
+   "stat": "breakdmg",
+   "v": 0.06,
+   "text": "그로기 피해 +{v}"
+  },
+  {
+   "key": "hawk_eye",
+   "name": "매의 눈",
+   "min": "R",
+   "kind": "stat",
+   "stat": "crit",
+   "v": 0.025,
+   "text": "치명타 확률 +{v}"
+  },
+  {
+   "key": "finisher",
+   "name": "결정타",
+   "min": "R",
+   "kind": "stat",
+   "stat": "vsbroken",
+   "v": 0.06,
+   "text": "그로기 적에게 피해 +{v}"
+  },
+  {
+   "key": "firefly",
+   "name": "반딧불 신호",
+   "min": "SR",
+   "kind": "hook",
+   "v": 8,
+   "unit": "",
+   "text": "차지·호출을 끊으면 필살기 게이지 +{v}"
+  },
+  {
+   "key": "first_breath",
+   "name": "첫 숨결",
+   "min": "SR",
+   "kind": "hook",
+   "v": 10,
+   "unit": "",
+   "text": "전투 시작 시 필살기 게이지 +{v}"
+  },
+  {
+   "key": "stubborn",
+   "name": "끈질긴 생명",
+   "min": "SSR",
+   "kind": "hook",
+   "v": 1.0,
+   "unit": "초",
+   "text": "HP 25% 이하가 되면 {v} 무적 (전투당 1회)"
+  },
+  {
+   "key": "hunter_rain",
+   "name": "여우비",
+   "min": "SSR",
+   "kind": "hook",
+   "v": 0.2,
+   "text": "적이 그로기에 빠지면 ② 쿨타임 {v} 감소"
+  },
+  {
+   "key": "old_root",
+   "name": "늙은 참나무의 뿌리",
+   "min": "UR",
+   "kind": "trade",
+   "stat": "breakdmg",
+   "v": 0.08,
+   "pen": {
+    "stat": "mspd",
+    "v": -0.2
+   },
+   "text": "그로기 피해 +{v}",
+   "penText": "이동 속도 -20%"
+  },
+  {
+   "key": "berserk",
+   "name": "광전사의 피",
+   "min": "UR",
+   "kind": "trade",
+   "stat": "atk_pct",
+   "v": 0.06,
+   "pen": {
+    "stat": "dr",
+    "v": -0.12
+   },
+   "text": "공격력 +{v}",
+   "penText": "받는 피해 +12%"
+  },
+  {
+   "key": "moon_oath",
+   "name": "달빛 맹세",
+   "min": "L",
+   "kind": "trade",
+   "stat": "vsbroken",
+   "v": 0.16,
+   "pen": {
+    "stat": "nonbroken",
+    "v": -0.2
+   },
+   "text": "그로기 적에게 피해 +{v}",
+   "penText": "그로기 게이지가 있는 적이 그로기가 아닐 때 피해 -20%"
+  },
+  {
+   "key": "first_light",
+   "name": "숲의 첫 숨",
+   "min": "E",
+   "kind": "trade",
+   "stat": "ultpow",
+   "v": 0.13,
+   "pen": {
+    "stat": "ultonlybreak",
+    "v": 1
+   },
+   "text": "필살기 위력 +{v}",
+   "penText": "필살기 게이지는 그로기 적이 있을 때만 참"
+  }
+ ],
+ "passiveMult": {
+  "UC": 1.0,
+  "C": 1.15,
+  "R": 1.3,
+  "SR": 1.5,
+  "SSR": 1.75,
+  "UR": 2.0,
+  "L": 2.3,
+  "E": 2.6
+ },
+ "passiveGradeRoll": [
+  25,
+  35,
+  25,
+  15
+ ]
 }

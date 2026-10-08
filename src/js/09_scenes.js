@@ -116,6 +116,7 @@ const RewardScene = {
     const box = el('div', 'reward-box');
     box.appendChild(el('div', 'scene-title', node.type === 'elite' ? '정예 격파!' : '전투 승리!'));
     box.appendChild(el('div', 'reward-gold', `골드 +${gold} <small>(보유 ${run.gold})</small>`));
+    if (run.lastLoot) { box.appendChild(el('div', 'reward-loot', `💎 강화석 +${run.lastLoot.stones}${run.lastLoot.got.length ? ' · 획득 ' + lootHtml(run.lastLoot.got) : ''}`)); run.lastLoot = null; }
     if (params.goldOnly) {
       box.appendChild(el('p', 'muted', '고블린의 보따리에서 골드를 챙겼다.'));
       box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
@@ -139,6 +140,7 @@ const RewardScene = {
       c.type = 'button';
       c.id = 'reward-' + i;
       c.innerHTML = `<div class="rc-kind">${o.kindName}</div><div class="rc-icon">${o.icon}</div><div class="rc-title">${o.title}</div><div class="rc-desc">${o.desc}</div>`;
+      if (o.item) { const ic = c.querySelector('.rc-icon'); ic.innerHTML = ''; ic.appendChild(itemIcon(o.item, 44)); }
       c.addEventListener('click', () => {
         Sfx.play('click');
         chosen = o;
@@ -179,7 +181,16 @@ const RewardScene = {
       const rid = rng.pick(avail);
       opts.push({ kind: 'relic', kindName: '유물', icon: RELICS[rid].icon, title: RELICS[rid].name, desc: RELICS[rid].desc, apply: () => run.relics.push(rid) });
     } else opts.push({ kind: 'gold', kindName: '골드', icon: '●', title: '금화 주머니', desc: '골드 +60', apply: () => { run.gold += 60; } });
-    // 3) 회복약
+    // 3) 장비 (일반 전투 절반 확률) 또는 회복약
+    if (!elite && rng() < 0.5) {
+      const p = Game.profile;
+      const it = EQ.dropItem(rng, p, 'battle', run.tier, partyIds(run));
+      const base = EQ.BASE[it.base];
+      opts.push({ kind: 'equip', kindName: `장비 · ${it.grade}`, icon: '', item: it, title: EQ.itemName(it),
+        desc: `${EQ.SLOT_NAME[base.slot]} · ${EQ.mainStats(it).map((m) => EQ.fmtStat(m.stat, m.v)).join(', ')}${it.opts.length ? ` 외 옵션 ${it.opts.length}` : ''}${it.passive ? `<br>「${EQ.PASSIVE[it.passive.key].name}」` : ''}`,
+        apply: () => { p.inv.push(it); run.loot.push({ kind: 'item', uid: it.uid }); saveProfile(); } });
+      return opts;
+    }
     const n = elite ? 2 : 1;
     opts.push({ kind: 'potion', kindName: '회복약', icon: '🧪', title: `회복약 ×${n}`, desc: `아군 1명 HP ${REWARD.potionHealPct * 100}% 회복. 전투 중에도 사용 가능.`, apply: () => { run.potions += n; } });
     return opts;
@@ -412,6 +423,7 @@ const RestScene = {
     } else box.appendChild(el('div', 'event-result good', this.msg));
     const row = el('div', 'btn-row');
     row.appendChild(btn('⚙ 전략 편집', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
+    row.appendChild(btn('🎒 장비', '', () => openInventory({ onClose: () => this.build() }), { id: 'rest-inv' }));
     row.appendChild(btn('🧪 회복약', '', () => usePotionFlow(run, () => this.build()), { id: 'rest-potion' }));
     row.appendChild(btn(this.rested ? '출발 ▶' : '쉬지 않고 출발', this.rested ? 'primary' : 'ghost', () => Game.go('map'), { id: 'btn-continue' }));
     box.appendChild(row);
@@ -540,6 +552,7 @@ const ResultScene = {
     const box = el('div', 'result-box ' + (win ? 'win' : 'lose'));
     box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
     box.appendChild(el('div', 'result-sub', win ? '오우거 대족장을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
+    const settle = settleRun(run);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `
       <div><b>${Math.floor(sec / 60)}분 ${sec % 60}초</b><small>플레이 시간</small></div>
@@ -558,7 +571,9 @@ const ResultScene = {
       heroes.appendChild(c);
     }
     box.appendChild(heroes);
-    box.appendChild(el('div', 'muted', `시드 ${run.seed}`));
+    const lootLine = run.loot.length ? `획득 장비 ${lootHtml(run.loot)}` : '획득 장비 없음';
+    box.appendChild(el('div', 'result-loot', `${lootLine}<br>💎 강화석 +${run.stonesGot} · 마을로 가져간 골드 ● ${settle ? settle.gold : run.gold}${settle && settle.unlocked ? `<br><b class="ok">새 난이도 해금: ${settle.unlocked.name} (T${settle.unlocked.tier})</b>` : ''}`));
+    box.appendChild(el('div', 'muted', `시드 ${run.seed} · 난이도 ${EQ.tierInfo(run.tier).name}`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('타이틀', 'ghost', () => Game.go('title'), { id: 'res-title' }));
     row.appendChild(btn('같은 시드로 다시', '', () => { Game.run = newRun(run.seed); Game.go('field'); }, { id: 'res-same' }));

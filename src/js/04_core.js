@@ -37,8 +37,10 @@ function portraitCanvas(spriteName, size, opts) {
 // ---------------------------------------------------------------- 런 상태
 function newRun(seed) {
   const heroes = {};
+  const prof = Game.profile || EQ.newProfile();
   HERO_ORDER.forEach((id) => {
-    heroes[id] = { id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, dead: false, upgrades: {} };
+    const mh = EQ.heroLoadout(prof, id).maxHp; // 장비 반영 최대 HP
+    heroes[id] = { id, hp: mh, maxHp: mh, dead: false, upgrades: {} };
   });
   const strategy = {};
   for (const id in heroes) strategy[id] = JSON.parse(JSON.stringify(AI_PRESETS[id]));
@@ -56,6 +58,10 @@ function newRun(seed) {
     autoMode: true,
     lastNode: null,
     result: null,
+    tier: prof.tier || 0,   // 난이도 단계 (0 = 기본)
+    loot: [],               // 이번 원정에서 얻은 장비/보석 (프로필에 바로 저장됨)
+    stonesGot: 0,
+    settled: false,
   };
   for (const id in heroes) { run.stats.dealt[id] = 0; run.stats.healed[id] = 0; }
   return run;

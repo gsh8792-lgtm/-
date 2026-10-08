@@ -5,6 +5,7 @@ function boot() {
   Game.ui = document.getElementById('ui');
   Game.overlay = document.getElementById('overlay');
   Game.loadSettings();
+  Game.profile = EQ.loadProfile();
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
   Game.register('map', MapScene);
@@ -66,5 +67,5 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { Game, CONST, BattleSim, generateMap, validStage, canMoveTo, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, MapScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { EQ, openInventory, openBlacksmith, refreshRunLoadout, Game, CONST, BattleSim, generateMap, validStage, canMoveTo, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, MapScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

@@ -317,6 +317,78 @@ async function playRun(p, seed, opts) {
 }
 
 // ---------------------------------------------------------------- 3. 모바일 해상도 레이아웃
+// ---------------------------------------------------------------- 장비 시스템 (마을·장비창·대장간·난이도·드랍·정산)
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.scenes.title.start(321); });
+  await p.waitForTimeout(200);
+  ok('마을: 장비 버튼', await vis(p, '#btn-inv'));
+  // 시험용 장비 지급 (드랍 함수 그대로 사용)
+  await p.evaluate(() => {
+    const G = window.GAME.Game, EQ = window.GAME.EQ, P = G.profile, rng = window.GAME.makeRng(5);
+    P.inv.push(EQ.rollItem(rng, P, { base: 'melee_weapon_1', grade: 'SR' }), EQ.rollItem(rng, P, { base: 'melee_weapon_2', grade: 'R' }), EQ.rollItem(rng, P, { base: 'melee_armor_1', grade: 'E' }));
+    P.gems.push(EQ.rollGem(rng, P, 'SSR'));
+    P.stones = 40; P.gold = 2000; EQ.saveProfile(P);
+  });
+  const hp0 = await p.evaluate(() => window.GAME.Game.run.heroes.danbi.maxHp);
+  await p.click('#btn-inv'); await p.click('#inv-hero-danbi'); await p.click('#inv-slot-armor');
+  ok('장비창: 부위 선택 → 쓸 수 있는 장비 목록', (await p.locator('.inv-item').count()) === 1);
+  await p.locator('.inv-item').first().click(); await p.click('#inv-equip');
+  ok('장비창: 장착', await p.evaluate(() => { const P = window.GAME.Game.profile; return !!P.equip.danbi.armor; }));
+  ok('장비창: 갑옷 패시브 표시', (await p.textContent('#inv-detail')).includes('패시브'));
+  await p.click('#inv-sock-0'); await p.locator('.gem-pick').first().click();
+  ok('장비창: 보석 끼우기', await p.evaluate(() => { const P = window.GAME.Game.profile; const it = P.inv.find((i) => i.grade === 'E'); return !!it.gems[0] && P.gems[0].inItem === it.uid; }));
+  await p.click('#inv-back'); await p.click('#inv-slot-weapon');
+  await p.locator('.inv-item').first().click(); await p.click('#inv-equip');
+  await p.click('#inv-back'); await p.locator('.inv-item').nth(1).click();
+  ok('장비창: 지금 장비와 비교', await vis(p, '.id-cmp'));
+  const st0 = await p.evaluate(() => window.GAME.Game.profile.stones);
+  await p.click('#inv-dismantle'); await p.click('#dis-yes');
+  ok('장비창: 분해 → 강화석', (await p.evaluate(() => window.GAME.Game.profile.stones)) > st0);
+  await p.screenshot({ path: `${OUT}/inventory.png` });
+  await p.click('#inv-close');
+  ok('장착 → 원정 최대 HP 반영', (await p.evaluate(() => window.GAME.Game.run.heroes.danbi.maxHp)) > hp0);
+  // 대장간: 걸어가서 상호작용
+  await p.evaluate(() => window.GAME.Game.scene.autoMove('smith'));
+  await p.waitForSelector('.bs-box', { timeout: 15000 });
+  ok('마을: 대장간 → 강화 창', await vis(p, '.bs-box'));
+  const wuid = await p.evaluate(() => window.GAME.Game.profile.equip.danbi.weapon);
+  await p.click(`.bs-item[data-uid="${wuid}"]`);
+  const before = await p.evaluate(() => { const P = window.GAME.Game.profile; const it = P.inv.find((i) => i.uid === P.equip.danbi.weapon); return { enh: it.enh, fail: it.fail, stones: P.stones }; });
+  await p.click('#bs-enhance');
+  const after = await p.evaluate(() => { const P = window.GAME.Game.profile; const it = P.inv.find((i) => i.uid === P.equip.danbi.weapon); return { enh: it.enh, fail: it.fail, stones: P.stones }; });
+  ok('대장간: 강화 (재료 소모 + 단계 또는 실패 보정)', after.stones < before.stones && (after.enh > before.enh || after.fail > before.fail), JSON.stringify([before, after]));
+  ok('대장간: 결과 표시', await vis(p, '.bs-result'));
+  await p.screenshot({ path: `${OUT}/blacksmith.png` });
+  await p.click('#bs-close');
+  ok('장비 정보 저장 (새로고침 후 유지)', await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('fe_profile')); return !!s && !!s.equip.danbi.weapon; }));
+  // 난이도 선택 (해금된 단계만)
+  await p.evaluate(() => { const G = window.GAME.Game; G.profile.unlockedTier = 1; window.GAME.EQ.saveProfile(G.profile); G.scene.interact(G.scene.interactables().find((i) => i.key === 'portal')); });
+  ok('포털: 해금된 난이도만 표시', (await vis(p, '#tier-1')) && !(await vis(p, '#tier-2')));
+  await p.click('#tier-1');
+  ok('포털: 난이도 선택', await p.evaluate(() => window.GAME.Game.run.tier === 1 && window.GAME.Game.profile.tier === 1));
+  await p.click('#portal-yes');
+  // 정예 전투 승리 → 장비 드랍 + 강화석
+  await p.evaluate(() => { const G = window.GAME.Game; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } G.debug.simMult = 8; G.go('battle', { node: { stage: 1, row: 0, type: 'elite', waves: [['goblin', 'goblin']] } }); });
+  ok('전투: 난이도 배율 적용', await p.evaluate(() => window.GAME.Game.scene.sim.tier.hp === window.GAME.EQ.DB.tiers[0].hp));
+  await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 60000 });
+  ok('정예 승리 → 보상에 장비·강화석 표시', (await scene(p)) === 'reward' && (await vis(p, '.reward-loot')) && (await p.textContent('.reward-loot')).includes('강화석'));
+  ok('정예 승리 → 장비가 보관함에 들어감', await p.evaluate(() => window.GAME.Game.run.loot.length >= 1));
+  await p.screenshot({ path: `${OUT}/reward_loot.png` });
+  // 보상 3택1의 장비 카드
+  const eqCard = await p.evaluate(() => { const G = window.GAME.Game, R = G.scenes.reward; for (let s = 0; s < 40; s++) { const o = R.makeOptions(G.run, window.GAME.makeRng(s), false).find((x) => x.kind === 'equip'); if (o) { const n = G.profile.inv.length; o.apply(); return G.profile.inv.length === n + 1; } } return false; });
+  ok('보상: 장비 카드 선택 → 보관함', eqCard);
+  // 원정 종료 정산: 골드 귀환 + 보스 격파 시 다음 난이도 해금
+  const g0 = await p.evaluate(() => window.GAME.Game.profile.gold);
+  await p.evaluate(() => { const G = window.GAME.Game; G.debug.simMult = 1; G.run.gold = 77; G.run.result = 'victory'; G.go('result'); });
+  ok('결과: 골드를 마을로 가져감', (await p.evaluate(() => window.GAME.Game.profile.gold)) === g0 + 77);
+  ok('결과: 다음 난이도 해금', (await p.evaluate(() => window.GAME.Game.profile.unlockedTier)) === 2 && (await p.textContent('.result-loot')).includes('해금'));
+  await p.screenshot({ path: `${OUT}/result_loot.png` });
+  await p.evaluate(() => { window.GAME.Game.go('result'); });
+  ok('결과: 정산은 한 번만', (await p.evaluate(() => window.GAME.Game.profile.gold)) === g0 + 77);
+  await p.close();
+}
+
 for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 667, height: 375, name: 'iphoneSE_land' }, { width: 915, height: 412, name: 'galaxy_land' }, { width: 1920, height: 1080, name: 'fhd' }, { width: 390, height: 844, name: 'portrait' }]) {
   const p = await newPage(Object.assign({ mobile: vp.width < 1000 }, vp));
   await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.scenes.title.start(9); G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } }); });

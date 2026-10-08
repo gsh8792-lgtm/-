@@ -96,156 +96,230 @@
  "power": {
   "tank": {
    "UC": {
-    "main": 14.2,
-    "innate": 4.4,
+    "main": 15.2,
+    "innate": 2.9,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 18.7
+    "total": 18.1
    },
    "C": {
-    "main": 20.6,
-    "innate": 6,
+    "main": 22,
+    "innate": 4,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 26.6
+    "total": 26
    },
    "R": {
-    "main": 24.2,
-    "innate": 6.7,
+    "main": 25.8,
+    "innate": 4.4,
     "options": 7.8,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 38.6
+    "total": 38
    },
    "SR": {
-    "main": 29.9,
-    "innate": 7.8,
+    "main": 31.9,
+    "innate": 5.1,
     "options": 17.9,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 55.5
+    "total": 54.9
    },
    "SSR": {
-    "main": 36.3,
-    "innate": 8.9,
+    "main": 38.7,
+    "innate": 5.9,
     "options": 30.3,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 75.4
+    "total": 74.9
    },
    "UR": {
-    "main": 43.4,
-    "innate": 10.2,
+    "main": 46.3,
+    "innate": 6.7,
     "options": 46.6,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 100.2
+    "total": 99.7
    },
    "L": {
-    "main": 45.5,
-    "innate": 11.7,
+    "main": 48.6,
+    "innate": 7.8,
     "options": 48.2,
     "classStat": 2.5,
     "skillBonus": 2.8,
     "gems": 12.6,
-    "total": 123.3
+    "total": 122.4
    },
    "E": {
-    "main": 46.9,
-    "innate": 13.3,
+    "main": 50.1,
+    "innate": 8.8,
     "options": 49.1,
     "classStat": 7.2,
     "skillBonus": 6.9,
     "gems": 21.6,
-    "total": 145
+    "total": 143.7
    }
   },
   "melee": {
    "UC": {
-    "main": 14.3,
-    "innate": 4.4,
+    "main": 15.2,
+    "innate": 2.9,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 18.7
+    "total": 18.1
    },
    "C": {
-    "main": 20.7,
-    "innate": 5.9,
+    "main": 22.1,
+    "innate": 3.9,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 26.6
+    "total": 26
    },
    "R": {
-    "main": 24.3,
-    "innate": 6.6,
+    "main": 25.9,
+    "innate": 4.3,
     "options": 7.8,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 38.6
+    "total": 38
    },
    "SR": {
-    "main": 30,
-    "innate": 7.7,
+    "main": 32,
+    "innate": 5.1,
     "options": 17.9,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 55.6
+    "total": 54.9
    },
    "SSR": {
-    "main": 36.4,
-    "innate": 8.8,
+    "main": 38.9,
+    "innate": 5.8,
     "options": 30.3,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 75.5
+    "total": 75
    },
    "UR": {
-    "main": 43.5,
-    "innate": 10.1,
+    "main": 46.5,
+    "innate": 6.7,
     "options": 46.6,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 100.3
+    "total": 99.8
    },
    "L": {
-    "main": 45.7,
-    "innate": 11.7,
+    "main": 48.8,
+    "innate": 7.7,
     "options": 48.2,
     "classStat": 1.9,
     "skillBonus": 2.9,
     "gems": 12.6,
-    "total": 122.8
+    "total": 121.9
    },
    "E": {
-    "main": 47.1,
-    "innate": 13.2,
+    "main": 50.3,
+    "innate": 8.7,
     "options": 49.1,
     "classStat": 5.4,
     "skillBonus": 7,
     "gems": 21.6,
-    "total": 143.5
+    "total": 142.1
    }
   },
   "ranged": {
    "UC": {
-    "main": 13.7,
-    "innate": 4.5,
+    "main": 14.7,
+    "innate": 3,
+    "options": 0,
+    "classStat": 0,
+    "skillBonus": 0,
+    "gems": 0,
+    "total": 17.6
+   },
+   "C": {
+    "main": 21.3,
+    "innate": 4,
+    "options": 0,
+    "classStat": 0,
+    "skillBonus": 0,
+    "gems": 0,
+    "total": 25.3
+   },
+   "R": {
+    "main": 24.9,
+    "innate": 4.4,
+    "options": 7.8,
+    "classStat": 0,
+    "skillBonus": 0,
+    "gems": 0,
+    "total": 37.1
+   },
+   "SR": {
+    "main": 30.8,
+    "innate": 5.2,
+    "options": 17.9,
+    "classStat": 0,
+    "skillBonus": 0,
+    "gems": 0,
+    "total": 53.8
+   },
+   "SSR": {
+    "main": 37.4,
+    "innate": 5.9,
+    "options": 30.3,
+    "classStat": 0,
+    "skillBonus": 0,
+    "gems": 0,
+    "total": 73.6
+   },
+   "UR": {
+    "main": 44.7,
+    "innate": 6.8,
+    "options": 46.6,
+    "classStat": 0,
+    "skillBonus": 0,
+    "gems": 0,
+    "total": 98.1
+   },
+   "L": {
+    "main": 46.9,
+    "innate": 7.9,
+    "options": 48.2,
+    "classStat": 1.6,
+    "skillBonus": 2.8,
+    "gems": 12.6,
+    "total": 119.9
+   },
+   "E": {
+    "main": 48.4,
+    "innate": 8.9,
+    "options": 49.1,
+    "classStat": 4.5,
+    "skillBonus": 6.9,
+    "gems": 21.6,
+    "total": 139.4
+   }
+  },
+  "mage": {
+   "UC": {
+    "main": 15.3,
+    "innate": 2.9,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
@@ -253,215 +327,141 @@
     "total": 18.2
    },
    "C": {
-    "main": 19.9,
-    "innate": 6,
+    "main": 22.2,
+    "innate": 4,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 25.9
+    "total": 26.1
    },
    "R": {
-    "main": 23.3,
-    "innate": 6.7,
-    "options": 7.8,
-    "classStat": 0,
-    "skillBonus": 0,
-    "gems": 0,
-    "total": 37.8
-   },
-   "SR": {
-    "main": 28.8,
-    "innate": 7.8,
-    "options": 17.9,
-    "classStat": 0,
-    "skillBonus": 0,
-    "gems": 0,
-    "total": 54.5
-   },
-   "SSR": {
-    "main": 34.9,
-    "innate": 8.9,
-    "options": 30.3,
-    "classStat": 0,
-    "skillBonus": 0,
-    "gems": 0,
-    "total": 74.2
-   },
-   "UR": {
-    "main": 41.8,
-    "innate": 10.3,
-    "options": 46.6,
-    "classStat": 0,
-    "skillBonus": 0,
-    "gems": 0,
-    "total": 98.7
-   },
-   "L": {
-    "main": 43.8,
-    "innate": 11.8,
-    "options": 48.2,
-    "classStat": 1.6,
-    "skillBonus": 2.8,
-    "gems": 12.6,
-    "total": 120.8
-   },
-   "E": {
-    "main": 45.2,
-    "innate": 13.4,
-    "options": 49.1,
-    "classStat": 4.5,
-    "skillBonus": 6.9,
-    "gems": 21.6,
-    "total": 140.7
-   }
-  },
-  "mage": {
-   "UC": {
-    "main": 14.3,
+    "main": 26,
     "innate": 4.4,
-    "options": 0,
-    "classStat": 0,
-    "skillBonus": 0,
-    "gems": 0,
-    "total": 18.7
-   },
-   "C": {
-    "main": 20.8,
-    "innate": 5.9,
-    "options": 0,
-    "classStat": 0,
-    "skillBonus": 0,
-    "gems": 0,
-    "total": 26.7
-   },
-   "R": {
-    "main": 24.4,
-    "innate": 6.6,
     "options": 7.8,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 38.7
+    "total": 38.2
    },
    "SR": {
-    "main": 30.1,
-    "innate": 7.7,
+    "main": 32.1,
+    "innate": 5.1,
     "options": 17.9,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 55.6
+    "total": 55.1
    },
    "SSR": {
-    "main": 36.5,
-    "innate": 8.8,
+    "main": 39,
+    "innate": 5.9,
     "options": 30.3,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 75.6
+    "total": 75.1
    },
    "UR": {
-    "main": 43.7,
-    "innate": 10.1,
+    "main": 46.6,
+    "innate": 6.7,
     "options": 46.6,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 100.4
+    "total": 100
    },
    "L": {
-    "main": 45.9,
-    "innate": 11.6,
+    "main": 48.9,
+    "innate": 7.8,
     "options": 48.2,
     "classStat": 1.9,
     "skillBonus": 2.8,
     "gems": 12.6,
-    "total": 122.9
+    "total": 122.1
    },
    "E": {
-    "main": 47.3,
-    "innate": 13.2,
+    "main": 50.5,
+    "innate": 8.8,
     "options": 49.1,
     "classStat": 5.4,
     "skillBonus": 6.9,
     "gems": 21.6,
-    "total": 143.5
+    "total": 142.3
    }
   },
   "support": {
    "UC": {
-    "main": 14.6,
-    "innate": 4.4,
+    "main": 15.5,
+    "innate": 3,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 19
+    "total": 18.5
    },
    "C": {
-    "main": 21.1,
-    "innate": 6,
+    "main": 22.5,
+    "innate": 4,
     "options": 0,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 27.1
+    "total": 26.5
    },
    "R": {
-    "main": 24.8,
-    "innate": 6.6,
+    "main": 26.4,
+    "innate": 4.5,
     "options": 7.8,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 39.2
+    "total": 38.6
    },
    "SR": {
-    "main": 30.6,
-    "innate": 7.7,
+    "main": 32.6,
+    "innate": 5.2,
     "options": 17.9,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 56.2
+    "total": 55.7
    },
    "SSR": {
-    "main": 37.2,
-    "innate": 8.8,
+    "main": 39.6,
+    "innate": 5.9,
     "options": 30.3,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 76.3
+    "total": 75.9
    },
    "UR": {
-    "main": 44.5,
-    "innate": 10.2,
+    "main": 47.4,
+    "innate": 6.8,
     "options": 46.6,
     "classStat": 0,
     "skillBonus": 0,
     "gems": 0,
-    "total": 101.2
+    "total": 100.8
    },
    "L": {
-    "main": 46.7,
-    "innate": 11.7,
+    "main": 49.7,
+    "innate": 7.9,
     "options": 48.2,
     "classStat": 2.5,
     "skillBonus": 2.8,
     "gems": 12.6,
-    "total": 124.4
+    "total": 123.7
    },
    "E": {
-    "main": 48.1,
-    "innate": 13.3,
+    "main": 51.3,
+    "innate": 8.9,
     "options": 49.1,
     "classStat": 7.2,
     "skillBonus": 6.9,
     "gems": 21.6,
-    "total": 146.2
+    "total": 145
    }
   }
  },
@@ -470,12 +470,14 @@
    "atk": 7.26,
    "dr": 0.2789,
    "hp": 171.6,
-   "ultgain": 0.416,
+   "s1pow": 0.165,
+   "s2pow": 0.165,
    "atk_pct": 0.1727,
    "crit": 0.1169,
    "breakdmg": 0.787,
    "skilldmg": 0.3205,
    "cdr": 0.0956,
+   "ultgain": 0.35,
    "hp_pct": 0.2802,
    "mspd": 0.124,
    "aspd": 0.0576,
@@ -490,12 +492,14 @@
    "critdmg": 1.0552,
    "hp": 99,
    "aspd": 0.1236,
-   "ultgain": 0.416,
+   "s1pow": 0.165,
+   "s2pow": 0.165,
    "atk_pct": 0.1727,
    "crit": 0.1169,
    "breakdmg": 0.787,
    "skilldmg": 0.3205,
    "cdr": 0.0956,
+   "ultgain": 0.35,
    "hp_pct": 0.2802,
    "dr": 0.0797,
    "mspd": 0.124,
@@ -509,11 +513,13 @@
    "crit": 0.3461,
    "hp": 85.8,
    "mspd": 0.2065,
-   "ultgain": 0.416,
+   "s1pow": 0.165,
+   "s2pow": 0.165,
    "atk_pct": 0.1727,
    "breakdmg": 0.787,
    "skilldmg": 0.3205,
    "cdr": 0.0956,
+   "ultgain": 0.35,
    "hp_pct": 0.2802,
    "dr": 0.0797,
    "aspd": 0.0576,
@@ -528,10 +534,12 @@
    "skilldmg": 0.7885,
    "hp": 79.2,
    "cdr": 0.1286,
-   "ultgain": 0.416,
+   "s1pow": 0.165,
+   "s2pow": 0.165,
    "atk_pct": 0.1727,
    "crit": 0.1169,
    "breakdmg": 0.787,
+   "ultgain": 0.35,
    "hp_pct": 0.2802,
    "dr": 0.0797,
    "mspd": 0.124,
@@ -546,7 +554,9 @@
    "atk": 5.28,
    "heal": 0.7946,
    "hp": 92.4,
-   "ultgain": 0.4985,
+   "ultgain": 0.4325,
+   "s1pow": 0.165,
+   "s2pow": 0.165,
    "atk_pct": 0.1727,
    "crit": 0.1169,
    "breakdmg": 0.787,
@@ -601,7 +611,7 @@
   {
    "stat": "ultgain",
    "name": "필살기 충전",
-   "max": 1.784,
+   "max": 1.718,
    "cap": 0.8,
    "sources": "옵션(부위당 1줄) + E 보석 3개×6부위 + 주 스탯"
   },
@@ -659,1529 +669,749 @@
     "grade": "없음",
     "profile": "gimmick",
     "stage4": {
-     "win": 0.917,
-     "time": 62.5,
-     "hpLeft": 0.672
-    },
-    "elite4": {
-     "win": 0.75,
-     "time": 58.4,
-     "hpLeft": 0.462
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 121.1,
-     "hpLeft": 0.462
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.083,
-     "time": 59.4,
-     "hpLeft": 0.058
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 56.7,
-     "hpLeft": 0.56
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 130.8,
-     "hpLeft": 0.37
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.917,
-     "time": 58.5,
-     "hpLeft": 0.685
-    },
-    "elite4": {
      "win": 0.833,
-     "time": 50.2,
-     "hpLeft": 0.596
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 85.9,
-     "hpLeft": 0.522
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "UC",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.25,
-     "time": 93.7,
-     "hpLeft": 0.241
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 49.8,
-     "hpLeft": 0.626
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 102.7,
-     "hpLeft": 0.62
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "C",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 51.5,
-     "hpLeft": 0.778
-    },
-    "elite4": {
-     "win": 1,
-     "time": 46.1,
-     "hpLeft": 0.692
-    },
-    "boss": {
-     "win": 0.75,
-     "time": 83.8,
-     "hpLeft": 0.598
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "C",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.417,
-     "time": 109.3,
-     "hpLeft": 0.437
-    },
-    "elite4": {
-     "win": 1,
-     "time": 49.6,
-     "hpLeft": 0.714
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 92.5,
-     "hpLeft": 0.616
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 47.2,
-     "hpLeft": 0.697
-    },
-    "elite4": {
-     "win": 1,
-     "time": 41.2,
-     "hpLeft": 0.727
-    },
-    "boss": {
-     "win": 1,
-     "time": 62.2,
-     "hpLeft": 0.785
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.667,
-     "time": 66.1,
-     "hpLeft": 0.57
-    },
-    "elite4": {
-     "win": 1,
-     "time": 44.8,
-     "hpLeft": 0.785
-    },
-    "boss": {
-     "win": 0.833,
-     "time": 79.8,
-     "hpLeft": 0.647
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 39.3,
-     "hpLeft": 0.812
-    },
-    "elite4": {
-     "win": 1,
-     "time": 33.5,
-     "hpLeft": 0.774
-    },
-    "boss": {
-     "win": 1,
-     "time": 45.5,
-     "hpLeft": 0.839
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.833,
-     "time": 59.6,
-     "hpLeft": 0.683
-    },
-    "elite4": {
-     "win": 1,
-     "time": 37.4,
-     "hpLeft": 0.85
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 63.2,
-     "hpLeft": 0.741
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "SSR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 32.2,
-     "hpLeft": 0.881
-    },
-    "elite4": {
-     "win": 1,
-     "time": 27,
-     "hpLeft": 0.856
-    },
-    "boss": {
-     "win": 1,
-     "time": 31.8,
-     "hpLeft": 0.89
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "SSR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.917,
-     "time": 38.1,
-     "hpLeft": 0.767
-    },
-    "elite4": {
-     "win": 1,
-     "time": 30.3,
-     "hpLeft": 0.874
-    },
-    "boss": {
-     "win": 1,
-     "time": 48.7,
-     "hpLeft": 0.8
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "UR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 26.8,
-     "hpLeft": 0.858
-    },
-    "elite4": {
-     "win": 1,
-     "time": 24.6,
-     "hpLeft": 0.868
-    },
-    "boss": {
-     "win": 1,
-     "time": 24.1,
-     "hpLeft": 0.884
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "UR",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 29.7,
-     "hpLeft": 0.823
-    },
-    "elite4": {
-     "win": 1,
-     "time": 25.1,
-     "hpLeft": 0.908
-    },
-    "boss": {
-     "win": 1,
-     "time": 32.3,
-     "hpLeft": 0.855
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "L",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 21,
-     "hpLeft": 0.899
-    },
-    "elite4": {
-     "win": 1,
-     "time": 20.3,
-     "hpLeft": 0.892
-    },
-    "boss": {
-     "win": 1,
-     "time": 18.8,
-     "hpLeft": 0.914
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "L",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 27.5,
-     "hpLeft": 0.861
-    },
-    "elite4": {
-     "win": 1,
-     "time": 18.7,
-     "hpLeft": 0.927
-    },
-    "boss": {
-     "win": 1,
-     "time": 28.3,
-     "hpLeft": 0.881
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "E",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 18.1,
-     "hpLeft": 0.881
-    },
-    "elite4": {
-     "win": 1,
-     "time": 18.1,
-     "hpLeft": 0.871
-    },
-    "boss": {
-     "win": 1,
-     "time": 14.3,
-     "hpLeft": 0.902
-    }
-   },
-   {
-    "tier": 1,
-    "grade": "E",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 25.2,
-     "hpLeft": 0.869
-    },
-    "elite4": {
-     "win": 1,
-     "time": 18,
-     "hpLeft": 0.93
-    },
-    "boss": {
-     "win": 1,
-     "time": 22.4,
-     "hpLeft": 0.91
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "없음",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.583,
-     "time": 74.3,
-     "hpLeft": 0.417
-    },
-    "elite4": {
-     "win": 0.25,
-     "time": 62.2,
-     "hpLeft": 0.2
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 134.7,
-     "hpLeft": 0.396
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 59.7,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.583,
-     "time": 61.4,
-     "hpLeft": 0.481
-    },
-    "boss": {
-     "win": 0.417,
-     "time": 127.9,
-     "hpLeft": 0.354
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.917,
-     "time": 57,
-     "hpLeft": 0.683
-    },
-    "elite4": {
-     "win": 0.75,
-     "time": 51.5,
-     "hpLeft": 0.595
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 88.6,
-     "hpLeft": 0.58
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "UC",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.083,
-     "time": 64.3,
-     "hpLeft": 0.073
-    },
-    "elite4": {
-     "win": 0.583,
-     "time": 65.4,
-     "hpLeft": 0.513
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 109.7,
-     "hpLeft": 0.46
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "C",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
      "time": 64.4,
-     "hpLeft": 0.715
+     "hpLeft": 0.556
     },
     "elite4": {
-     "win": 0.917,
-     "time": 50,
-     "hpLeft": 0.613
-    },
-    "boss": {
-     "win": 0.75,
-     "time": 84.7,
-     "hpLeft": 0.609
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "C",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.333,
-     "time": 98.7,
-     "hpLeft": 0.299
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 53.6,
-     "hpLeft": 0.611
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 110.2,
-     "hpLeft": 0.517
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 58.8,
-     "hpLeft": 0.709
-    },
-    "elite4": {
-     "win": 1,
-     "time": 46.5,
-     "hpLeft": 0.713
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 70.6,
-     "hpLeft": 0.715
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
      "win": 0.417,
-     "time": 114.2,
-     "hpLeft": 0.512
-    },
-    "elite4": {
-     "win": 0.917,
-     "time": 46.6,
-     "hpLeft": 0.698
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 90.7,
-     "hpLeft": 0.642
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 44.2,
-     "hpLeft": 0.775
-    },
-    "elite4": {
-     "win": 1,
-     "time": 38,
-     "hpLeft": 0.724
-    },
-    "boss": {
-     "win": 1,
-     "time": 51.1,
-     "hpLeft": 0.823
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.333,
-     "time": 114.1,
-     "hpLeft": 0.53
-    },
-    "elite4": {
-     "win": 1,
-     "time": 41.9,
-     "hpLeft": 0.822
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 67.8,
-     "hpLeft": 0.687
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "SSR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 33.1,
-     "hpLeft": 0.864
-    },
-    "elite4": {
-     "win": 1,
-     "time": 31.2,
-     "hpLeft": 0.833
-    },
-    "boss": {
-     "win": 1,
-     "time": 34.6,
-     "hpLeft": 0.862
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "SSR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.833,
-     "time": 52.7,
-     "hpLeft": 0.691
-    },
-    "elite4": {
-     "win": 1,
-     "time": 33.9,
-     "hpLeft": 0.844
-    },
-    "boss": {
-     "win": 1,
-     "time": 53.4,
-     "hpLeft": 0.73
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "UR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 25,
-     "hpLeft": 0.864
-    },
-    "elite4": {
-     "win": 1,
-     "time": 25.4,
-     "hpLeft": 0.856
-    },
-    "boss": {
-     "win": 1,
-     "time": 26.5,
-     "hpLeft": 0.86
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "UR",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 31,
-     "hpLeft": 0.828
-    },
-    "elite4": {
-     "win": 1,
-     "time": 27.5,
-     "hpLeft": 0.896
-    },
-    "boss": {
-     "win": 1,
-     "time": 34.4,
-     "hpLeft": 0.861
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "L",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 21.8,
-     "hpLeft": 0.899
-    },
-    "elite4": {
-     "win": 1,
-     "time": 22.4,
-     "hpLeft": 0.872
-    },
-    "boss": {
-     "win": 1,
-     "time": 21.3,
-     "hpLeft": 0.908
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "L",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 28.4,
-     "hpLeft": 0.843
-    },
-    "elite4": {
-     "win": 1,
-     "time": 20.8,
-     "hpLeft": 0.919
-    },
-    "boss": {
-     "win": 1,
-     "time": 30.4,
-     "hpLeft": 0.866
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "E",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 19.2,
-     "hpLeft": 0.882
-    },
-    "elite4": {
-     "win": 1,
-     "time": 19.2,
-     "hpLeft": 0.882
-    },
-    "boss": {
-     "win": 1,
-     "time": 13.6,
-     "hpLeft": 0.898
-    }
-   },
-   {
-    "tier": 2,
-    "grade": "E",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 26.4,
-     "hpLeft": 0.855
-    },
-    "elite4": {
-     "win": 1,
-     "time": 17.8,
-     "hpLeft": 0.929
-    },
-    "boss": {
-     "win": 1,
-     "time": 22.9,
-     "hpLeft": 0.894
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "없음",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.25,
-     "time": 63.6,
-     "hpLeft": 0.2
-    },
-    "elite4": {
-     "win": 0.083,
-     "time": 61.7,
-     "hpLeft": 0.035
-    },
-    "boss": {
-     "win": 0.333,
-     "time": 136.1,
-     "hpLeft": 0.162
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 38.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.167,
-     "time": 59.5,
-     "hpLeft": 0.099
-    },
-    "boss": {
-     "win": 0.083,
-     "time": 90.9,
-     "hpLeft": 0.131
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.5,
-     "time": 80.8,
-     "hpLeft": 0.383
-    },
-    "elite4": {
-     "win": 0.5,
-     "time": 56.3,
-     "hpLeft": 0.415
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 98.6,
-     "hpLeft": 0.507
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "UC",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 38.5,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.5,
-     "time": 68.8,
-     "hpLeft": 0.432
+     "time": 67.3,
+     "hpLeft": 0.306
     },
     "boss": {
      "win": 0.417,
-     "time": 137.6,
+     "time": 128.1,
      "hpLeft": 0.463
     }
    },
    {
-    "tier": 3,
-    "grade": "C",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.833,
-     "time": 66.8,
-     "hpLeft": 0.587
-    },
-    "elite4": {
-     "win": 0.583,
-     "time": 64.9,
-     "hpLeft": 0.468
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 116.4,
-     "hpLeft": 0.456
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "C",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 57.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 57.1,
-     "hpLeft": 0.558
-    },
-    "boss": {
-     "win": 0.333,
-     "time": 133.5,
-     "hpLeft": 0.356
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.917,
-     "time": 60.3,
-     "hpLeft": 0.679
-    },
-    "elite4": {
-     "win": 0.917,
-     "time": 65.1,
-     "hpLeft": 0.612
-    },
-    "boss": {
-     "win": 0.75,
-     "time": 98.8,
-     "hpLeft": 0.602
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "R",
+    "tier": 1,
+    "grade": "없음",
     "profile": "brute",
     "stage4": {
      "win": 0.167,
-     "time": 111.1,
-     "hpLeft": 0.243
+     "time": 87,
+     "hpLeft": 0.145
     },
     "elite4": {
-     "win": 0.75,
-     "time": 53.4,
-     "hpLeft": 0.615
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 125.7,
-     "hpLeft": 0.451
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 47.4,
-     "hpLeft": 0.76
-    },
-    "elite4": {
-     "win": 1,
-     "time": 38.8,
-     "hpLeft": 0.668
-    },
-    "boss": {
-     "win": 1,
-     "time": 60.2,
-     "hpLeft": 0.784
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.333,
-     "time": 111.4,
-     "hpLeft": 0.373
-    },
-    "elite4": {
-     "win": 1,
-     "time": 47,
-     "hpLeft": 0.75
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 78.8,
-     "hpLeft": 0.675
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "SSR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 38.8,
-     "hpLeft": 0.815
-    },
-    "elite4": {
-     "win": 1,
-     "time": 36.1,
-     "hpLeft": 0.751
-    },
-    "boss": {
-     "win": 1,
-     "time": 38.1,
-     "hpLeft": 0.844
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "SSR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.333,
-     "time": 104.3,
-     "hpLeft": 0.448
-    },
-    "elite4": {
-     "win": 1,
-     "time": 36.8,
-     "hpLeft": 0.785
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 63.4,
-     "hpLeft": 0.686
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "UR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 32.2,
-     "hpLeft": 0.833
-    },
-    "elite4": {
-     "win": 1,
-     "time": 28.1,
-     "hpLeft": 0.801
-    },
-    "boss": {
-     "win": 1,
-     "time": 31.1,
-     "hpLeft": 0.861
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "UR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.833,
-     "time": 86.2,
-     "hpLeft": 0.686
-    },
-    "elite4": {
-     "win": 1,
-     "time": 30.2,
-     "hpLeft": 0.861
-    },
-    "boss": {
-     "win": 1,
-     "time": 43.6,
-     "hpLeft": 0.818
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "L",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 25.2,
-     "hpLeft": 0.884
-    },
-    "elite4": {
-     "win": 1,
-     "time": 23.9,
-     "hpLeft": 0.865
-    },
-    "boss": {
-     "win": 1,
-     "time": 22.7,
-     "hpLeft": 0.898
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "L",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 46.1,
-     "hpLeft": 0.791
-    },
-    "elite4": {
-     "win": 1,
-     "time": 26.5,
-     "hpLeft": 0.904
-    },
-    "boss": {
-     "win": 1,
-     "time": 32.2,
-     "hpLeft": 0.854
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "E",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 20.5,
-     "hpLeft": 0.866
-    },
-    "elite4": {
-     "win": 1,
-     "time": 19.8,
-     "hpLeft": 0.862
-    },
-    "boss": {
-     "win": 1,
-     "time": 17.6,
-     "hpLeft": 0.894
-    }
-   },
-   {
-    "tier": 3,
-    "grade": "E",
-    "profile": "brute",
-    "stage4": {
-     "win": 1,
-     "time": 27,
-     "hpLeft": 0.844
-    },
-    "elite4": {
-     "win": 1,
-     "time": 18.7,
-     "hpLeft": 0.922
-    },
-    "boss": {
-     "win": 1,
-     "time": 27.1,
-     "hpLeft": 0.875
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "없음",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
+     "win": 0.417,
      "time": 74.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 48.2,
-     "hpLeft": 0
+     "hpLeft": 0.358
     },
     "boss": {
-     "win": 0,
-     "time": 137.9,
-     "hpLeft": 0.071
+     "win": 0.333,
+     "time": 145.5,
+     "hpLeft": 0.442
     }
    },
    {
-    "tier": 4,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 25.7,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 56.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 35.7,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 4,
+    "tier": 1,
     "grade": "UC",
     "profile": "gimmick",
     "stage4": {
-     "win": 0.333,
-     "time": 77.1,
-     "hpLeft": 0.305
-    },
-    "elite4": {
-     "win": 0,
-     "time": 65.1,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 134.8,
-     "hpLeft": 0.295
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "UC",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 28.5,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.25,
-     "time": 67.3,
-     "hpLeft": 0.138
-    },
-    "boss": {
-     "win": 0.167,
-     "time": 84.1,
-     "hpLeft": 0.17
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "C",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.417,
-     "time": 88.7,
-     "hpLeft": 0.343
-    },
-    "elite4": {
-     "win": 0.25,
-     "time": 66.6,
-     "hpLeft": 0.179
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 129.5,
-     "hpLeft": 0.425
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "C",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 35.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.25,
-     "time": 61.6,
-     "hpLeft": 0.169
-    },
-    "boss": {
-     "win": 0.167,
-     "time": 94.7,
-     "hpLeft": 0.222
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.75,
-     "time": 73,
-     "hpLeft": 0.586
-    },
-    "elite4": {
-     "win": 0.417,
-     "time": 64.2,
-     "hpLeft": 0.326
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 108.4,
-     "hpLeft": 0.452
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.083,
-     "time": 70.8,
-     "hpLeft": 0.13
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 64.1,
-     "hpLeft": 0.581
-    },
-    "boss": {
-     "win": 0.417,
-     "time": 134.6,
-     "hpLeft": 0.558
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
      "win": 1,
-     "time": 65.7,
-     "hpLeft": 0.7
+     "time": 67.7,
+     "hpLeft": 0.66
     },
     "elite4": {
-     "win": 0.917,
-     "time": 57.5,
-     "hpLeft": 0.621
-    },
-    "boss": {
      "win": 1,
-     "time": 66.8,
-     "hpLeft": 0.746
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.333,
-     "time": 84.2,
-     "hpLeft": 0.264
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 54.3,
+     "time": 50.8,
      "hpLeft": 0.625
     },
     "boss": {
-     "win": 0.667,
-     "time": 96.1,
-     "hpLeft": 0.598
+     "win": 0.833,
+     "time": 81.9,
+     "hpLeft": 0.649
     }
    },
    {
-    "tier": 4,
-    "grade": "SSR",
+    "tier": 1,
+    "grade": "UC",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.25,
+     "time": 111.4,
+     "hpLeft": 0.279
+    },
+    "elite4": {
+     "win": 0.667,
+     "time": 62.1,
+     "hpLeft": 0.605
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 94.5,
+     "hpLeft": 0.596
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "C",
     "profile": "gimmick",
     "stage4": {
      "win": 1,
-     "time": 46.6,
-     "hpLeft": 0.756
+     "time": 50.8,
+     "hpLeft": 0.746
     },
     "elite4": {
-     "win": 1,
-     "time": 52.8,
-     "hpLeft": 0.688
+     "win": 0.917,
+     "time": 62.1,
+     "hpLeft": 0.632
     },
     "boss": {
-     "win": 1,
-     "time": 42.6,
-     "hpLeft": 0.796
+     "win": 0.75,
+     "time": 82.3,
+     "hpLeft": 0.641
     }
    },
    {
-    "tier": 4,
-    "grade": "SSR",
+    "tier": 1,
+    "grade": "C",
     "profile": "brute",
     "stage4": {
      "win": 0.333,
-     "time": 108,
-     "hpLeft": 0.339
+     "time": 111.9,
+     "hpLeft": 0.328
     },
     "elite4": {
-     "win": 1,
-     "time": 42.8,
-     "hpLeft": 0.756
+     "win": 0.833,
+     "time": 48.3,
+     "hpLeft": 0.666
     },
     "boss": {
      "win": 0.667,
-     "time": 77.9,
-     "hpLeft": 0.546
+     "time": 88.4,
+     "hpLeft": 0.599
     }
    },
    {
-    "tier": 4,
-    "grade": "UR",
+    "tier": 1,
+    "grade": "R",
     "profile": "gimmick",
     "stage4": {
      "win": 1,
-     "time": 34.4,
-     "hpLeft": 0.827
+     "time": 45.8,
+     "hpLeft": 0.725
     },
     "elite4": {
      "win": 1,
-     "time": 32.2,
-     "hpLeft": 0.799
+     "time": 54.6,
+     "hpLeft": 0.708
     },
     "boss": {
      "win": 1,
-     "time": 33.6,
-     "hpLeft": 0.844
+     "time": 59.9,
+     "hpLeft": 0.812
     }
    },
    {
-    "tier": 4,
-    "grade": "UR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.417,
-     "time": 101.7,
-     "hpLeft": 0.442
-    },
-    "elite4": {
-     "win": 1,
-     "time": 32.2,
-     "hpLeft": 0.837
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 51.6,
-     "hpLeft": 0.717
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "L",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 27.6,
-     "hpLeft": 0.866
-    },
-    "elite4": {
-     "win": 1,
-     "time": 27.2,
-     "hpLeft": 0.829
-    },
-    "boss": {
-     "win": 1,
-     "time": 25.3,
-     "hpLeft": 0.872
-    }
-   },
-   {
-    "tier": 4,
-    "grade": "L",
+    "tier": 1,
+    "grade": "R",
     "profile": "brute",
     "stage4": {
      "win": 0.667,
      "time": 68.9,
-     "hpLeft": 0.604
+     "hpLeft": 0.597
     },
     "elite4": {
      "win": 1,
-     "time": 28.2,
-     "hpLeft": 0.894
+     "time": 42.4,
+     "hpLeft": 0.737
     },
     "boss": {
-     "win": 1,
-     "time": 42,
-     "hpLeft": 0.809
+     "win": 0.917,
+     "time": 76,
+     "hpLeft": 0.64
     }
    },
    {
-    "tier": 4,
-    "grade": "E",
+    "tier": 1,
+    "grade": "SR",
     "profile": "gimmick",
     "stage4": {
+     "win": 1,
+     "time": 38.6,
+     "hpLeft": 0.819
+    },
+    "elite4": {
+     "win": 1,
+     "time": 34.9,
+     "hpLeft": 0.783
+    },
+    "boss": {
+     "win": 1,
+     "time": 47.5,
+     "hpLeft": 0.865
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.917,
+     "time": 51.4,
+     "hpLeft": 0.72
+    },
+    "elite4": {
+     "win": 1,
+     "time": 37.1,
+     "hpLeft": 0.818
+    },
+    "boss": {
+     "win": 1,
+     "time": 64.1,
+     "hpLeft": 0.717
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "SSR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 33.8,
+     "hpLeft": 0.833
+    },
+    "elite4": {
+     "win": 1,
+     "time": 28.9,
+     "hpLeft": 0.782
+    },
+    "boss": {
+     "win": 1,
+     "time": 32.6,
+     "hpLeft": 0.842
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.917,
+     "time": 53.3,
+     "hpLeft": 0.739
+    },
+    "elite4": {
+     "win": 1,
+     "time": 31,
+     "hpLeft": 0.899
+    },
+    "boss": {
+     "win": 1,
+     "time": 43.5,
+     "hpLeft": 0.841
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "UR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 25.9,
+     "hpLeft": 0.846
+    },
+    "elite4": {
+     "win": 1,
+     "time": 22.7,
+     "hpLeft": 0.858
+    },
+    "boss": {
      "win": 1,
      "time": 23.7,
-     "hpLeft": 0.854
-    },
-    "elite4": {
-     "win": 1,
-     "time": 24,
-     "hpLeft": 0.832
-    },
-    "boss": {
-     "win": 1,
-     "time": 20.2,
-     "hpLeft": 0.883
+     "hpLeft": 0.871
     }
    },
    {
-    "tier": 4,
+    "tier": 1,
+    "grade": "UR",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 29.8,
+     "hpLeft": 0.814
+    },
+    "elite4": {
+     "win": 1,
+     "time": 24.6,
+     "hpLeft": 0.916
+    },
+    "boss": {
+     "win": 1,
+     "time": 33.5,
+     "hpLeft": 0.867
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "L",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 22.5,
+     "hpLeft": 0.883
+    },
+    "elite4": {
+     "win": 1,
+     "time": 20.9,
+     "hpLeft": 0.868
+    },
+    "boss": {
+     "win": 1,
+     "time": 20.4,
+     "hpLeft": 0.899
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "L",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 28.2,
+     "hpLeft": 0.822
+    },
+    "elite4": {
+     "win": 1,
+     "time": 20.7,
+     "hpLeft": 0.928
+    },
+    "boss": {
+     "win": 1,
+     "time": 28.9,
+     "hpLeft": 0.891
+    }
+   },
+   {
+    "tier": 1,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 18.9,
+     "hpLeft": 0.871
+    },
+    "elite4": {
+     "win": 1,
+     "time": 18.5,
+     "hpLeft": 0.874
+    },
+    "boss": {
+     "win": 1,
+     "time": 15.1,
+     "hpLeft": 0.864
+    }
+   },
+   {
+    "tier": 1,
     "grade": "E",
     "profile": "brute",
     "stage4": {
+     "win": 1,
+     "time": 25.8,
+     "hpLeft": 0.841
+    },
+    "elite4": {
+     "win": 1,
+     "time": 18.5,
+     "hpLeft": 0.926
+    },
+    "boss": {
+     "win": 1,
+     "time": 23.5,
+     "hpLeft": 0.913
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "없음",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.417,
+     "time": 93.7,
+     "hpLeft": 0.419
+    },
+    "elite4": {
+     "win": 0.25,
+     "time": 68.9,
+     "hpLeft": 0.218
+    },
+    "boss": {
+     "win": 0.5,
+     "time": 109.3,
+     "hpLeft": 0.378
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.167,
+     "time": 69.8,
+     "hpLeft": 0.1
+    },
+    "elite4": {
+     "win": 0.25,
+     "time": 70.1,
+     "hpLeft": 0.223
+    },
+    "boss": {
+     "win": 0.25,
+     "time": 136.7,
+     "hpLeft": 0.305
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.917,
+     "time": 62.9,
+     "hpLeft": 0.648
+    },
+    "elite4": {
+     "win": 0.75,
+     "time": 67.1,
+     "hpLeft": 0.468
+    },
+    "boss": {
      "win": 0.833,
-     "time": 64.6,
-     "hpLeft": 0.729
-    },
-    "elite4": {
-     "win": 1,
-     "time": 23.8,
-     "hpLeft": 0.909
-    },
-    "boss": {
-     "win": 1,
-     "time": 30,
-     "hpLeft": 0.851
+     "time": 91.8,
+     "hpLeft": 0.587
     }
    },
    {
-    "tier": 5,
-    "grade": "없음",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 62.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 51.4,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 96.4,
-     "hpLeft": 0.111
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 23.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 52.6,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 26.1,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 74.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 53.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 149.4,
-     "hpLeft": 0.203
-    }
-   },
-   {
-    "tier": 5,
+    "tier": 2,
     "grade": "UC",
     "profile": "brute",
     "stage4": {
-     "win": 0,
-     "time": 23,
-     "hpLeft": 0
+     "win": 0.333,
+     "time": 88.9,
+     "hpLeft": 0.22
     },
     "elite4": {
-     "win": 0,
-     "time": 52.3,
-     "hpLeft": 0
+     "win": 0.5,
+     "time": 72,
+     "hpLeft": 0.465
     },
     "boss": {
-     "win": 0,
-     "time": 34.7,
-     "hpLeft": 0
+     "win": 0.5,
+     "time": 134.2,
+     "hpLeft": 0.535
     }
    },
    {
-    "tier": 5,
+    "tier": 2,
     "grade": "C",
     "profile": "gimmick",
     "stage4": {
-     "win": 0.167,
-     "time": 79,
-     "hpLeft": 0.123
+     "win": 1,
+     "time": 59.8,
+     "hpLeft": 0.696
+    },
+    "elite4": {
+     "win": 0.75,
+     "time": 66,
+     "hpLeft": 0.543
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 82.3,
+     "hpLeft": 0.552
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "C",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.333,
+     "time": 111.7,
+     "hpLeft": 0.323
+    },
+    "elite4": {
+     "win": 0.5,
+     "time": 70.3,
+     "hpLeft": 0.537
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 95.7,
+     "hpLeft": 0.557
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 55.9,
+     "hpLeft": 0.706
+    },
+    "elite4": {
+     "win": 1,
+     "time": 57.4,
+     "hpLeft": 0.678
+    },
+    "boss": {
+     "win": 0.917,
+     "time": 73.4,
+     "hpLeft": 0.718
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.5,
+     "time": 92.2,
+     "hpLeft": 0.476
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 48.3,
+     "hpLeft": 0.671
+    },
+    "boss": {
+     "win": 0.75,
+     "time": 94.5,
+     "hpLeft": 0.619
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "SR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 42.3,
+     "hpLeft": 0.799
+    },
+    "elite4": {
+     "win": 1,
+     "time": 42.4,
+     "hpLeft": 0.711
+    },
+    "boss": {
+     "win": 1,
+     "time": 49.9,
+     "hpLeft": 0.849
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.583,
+     "time": 90,
+     "hpLeft": 0.609
+    },
+    "elite4": {
+     "win": 1,
+     "time": 38.9,
+     "hpLeft": 0.798
+    },
+    "boss": {
+     "win": 0.833,
+     "time": 68.1,
+     "hpLeft": 0.656
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "SSR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 34.2,
+     "hpLeft": 0.833
+    },
+    "elite4": {
+     "win": 1,
+     "time": 31.2,
+     "hpLeft": 0.728
+    },
+    "boss": {
+     "win": 1,
+     "time": 36.2,
+     "hpLeft": 0.834
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.583,
+     "time": 75.6,
+     "hpLeft": 0.624
+    },
+    "elite4": {
+     "win": 1,
+     "time": 33.5,
+     "hpLeft": 0.863
+    },
+    "boss": {
+     "win": 1,
+     "time": 53.4,
+     "hpLeft": 0.761
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "UR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 28.2,
+     "hpLeft": 0.838
+    },
+    "elite4": {
+     "win": 1,
+     "time": 25.6,
+     "hpLeft": 0.833
+    },
+    "boss": {
+     "win": 1,
+     "time": 25.6,
+     "hpLeft": 0.859
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "UR",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 31.4,
+     "hpLeft": 0.788
+    },
+    "elite4": {
+     "win": 1,
+     "time": 27.5,
+     "hpLeft": 0.902
+    },
+    "boss": {
+     "win": 1,
+     "time": 37.5,
+     "hpLeft": 0.855
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "L",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 21.5,
+     "hpLeft": 0.896
+    },
+    "elite4": {
+     "win": 1,
+     "time": 20.7,
+     "hpLeft": 0.874
+    },
+    "boss": {
+     "win": 1,
+     "time": 22.9,
+     "hpLeft": 0.896
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "L",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 28.6,
+     "hpLeft": 0.817
+    },
+    "elite4": {
+     "win": 1,
+     "time": 21.6,
+     "hpLeft": 0.929
+    },
+    "boss": {
+     "win": 1,
+     "time": 31.5,
+     "hpLeft": 0.859
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 20.4,
+     "hpLeft": 0.863
+    },
+    "elite4": {
+     "win": 1,
+     "time": 19.3,
+     "hpLeft": 0.857
+    },
+    "boss": {
+     "win": 1,
+     "time": 16.3,
+     "hpLeft": 0.875
+    }
+   },
+   {
+    "tier": 2,
+    "grade": "E",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 25.9,
+     "hpLeft": 0.825
+    },
+    "elite4": {
+     "win": 1,
+     "time": 18.9,
+     "hpLeft": 0.931
+    },
+    "boss": {
+     "win": 1,
+     "time": 24.2,
+     "hpLeft": 0.894
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "없음",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.333,
+     "time": 79.1,
+     "hpLeft": 0.281
+    },
+    "elite4": {
+     "win": 0,
+     "time": 62.7,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0.417,
+     "time": 132.6,
+     "hpLeft": 0.252
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 49.4,
+     "hpLeft": 0
     },
     "elite4": {
      "win": 0,
@@ -2189,9 +1419,789 @@
      "hpLeft": 0
     },
     "boss": {
+     "win": 0.167,
+     "time": 149.5,
+     "hpLeft": 0.345
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.5,
+     "time": 83.3,
+     "hpLeft": 0.356
+    },
+    "elite4": {
+     "win": 0.5,
+     "time": 62.5,
+     "hpLeft": 0.376
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 109.3,
+     "hpLeft": 0.469
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "UC",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.25,
+     "time": 65.3,
+     "hpLeft": 0.218
+    },
+    "elite4": {
+     "win": 0.417,
+     "time": 79.6,
+     "hpLeft": 0.351
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 147.4,
+     "hpLeft": 0.524
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "C",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.833,
+     "time": 64.2,
+     "hpLeft": 0.599
+    },
+    "elite4": {
+     "win": 0.417,
+     "time": 68.5,
+     "hpLeft": 0.352
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 94.6,
+     "hpLeft": 0.465
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "C",
+    "profile": "brute",
+    "stage4": {
      "win": 0.083,
-     "time": 152.2,
-     "hpLeft": 0.147
+     "time": 66.1,
+     "hpLeft": 0.078
+    },
+    "elite4": {
+     "win": 0.5,
+     "time": 62.7,
+     "hpLeft": 0.394
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 143.8,
+     "hpLeft": 0.551
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.917,
+     "time": 60.5,
+     "hpLeft": 0.624
+    },
+    "elite4": {
+     "win": 0.583,
+     "time": 68.1,
+     "hpLeft": 0.449
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 98.2,
+     "hpLeft": 0.59
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.333,
+     "time": 98.8,
+     "hpLeft": 0.398
+    },
+    "elite4": {
+     "win": 0.667,
+     "time": 66,
+     "hpLeft": 0.61
+    },
+    "boss": {
+     "win": 0.5,
+     "time": 121.2,
+     "hpLeft": 0.454
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "SR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 49.1,
+     "hpLeft": 0.778
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 52.4,
+     "hpLeft": 0.662
+    },
+    "boss": {
+     "win": 1,
+     "time": 57,
+     "hpLeft": 0.776
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.583,
+     "time": 71,
+     "hpLeft": 0.496
+    },
+    "elite4": {
+     "win": 1,
+     "time": 46.7,
+     "hpLeft": 0.74
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 103,
+     "hpLeft": 0.583
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "SSR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 38.9,
+     "hpLeft": 0.799
+    },
+    "elite4": {
+     "win": 1,
+     "time": 38.3,
+     "hpLeft": 0.729
+    },
+    "boss": {
+     "win": 1,
+     "time": 40.8,
+     "hpLeft": 0.791
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.5,
+     "time": 85,
+     "hpLeft": 0.598
+    },
+    "elite4": {
+     "win": 1,
+     "time": 36.8,
+     "hpLeft": 0.834
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 77.8,
+     "hpLeft": 0.644
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "UR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 31.7,
+     "hpLeft": 0.849
+    },
+    "elite4": {
+     "win": 1,
+     "time": 29.1,
+     "hpLeft": 0.808
+    },
+    "boss": {
+     "win": 1,
+     "time": 29,
+     "hpLeft": 0.858
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "UR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.75,
+     "time": 53,
+     "hpLeft": 0.695
+    },
+    "elite4": {
+     "win": 1,
+     "time": 27.8,
+     "hpLeft": 0.894
+    },
+    "boss": {
+     "win": 1,
+     "time": 42.3,
+     "hpLeft": 0.805
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "L",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 26.1,
+     "hpLeft": 0.891
+    },
+    "elite4": {
+     "win": 1,
+     "time": 25.3,
+     "hpLeft": 0.866
+    },
+    "boss": {
+     "win": 1,
+     "time": 23.3,
+     "hpLeft": 0.882
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "L",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 61,
+     "hpLeft": 0.76
+    },
+    "elite4": {
+     "win": 1,
+     "time": 24.3,
+     "hpLeft": 0.912
+    },
+    "boss": {
+     "win": 1,
+     "time": 31.9,
+     "hpLeft": 0.864
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 20.7,
+     "hpLeft": 0.855
+    },
+    "elite4": {
+     "win": 1,
+     "time": 20.4,
+     "hpLeft": 0.853
+    },
+    "boss": {
+     "win": 1,
+     "time": 18.8,
+     "hpLeft": 0.873
+    }
+   },
+   {
+    "tier": 3,
+    "grade": "E",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 27.3,
+     "hpLeft": 0.818
+    },
+    "elite4": {
+     "win": 1,
+     "time": 19.4,
+     "hpLeft": 0.926
+    },
+    "boss": {
+     "win": 1,
+     "time": 26.8,
+     "hpLeft": 0.867
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "없음",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 84.5,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 64,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 141.7,
+     "hpLeft": 0.075
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 36.3,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 62,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 69.7,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.333,
+     "time": 92.3,
+     "hpLeft": 0.312
+    },
+    "elite4": {
+     "win": 0,
+     "time": 62.7,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0.5,
+     "time": 128.3,
+     "hpLeft": 0.372
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "UC",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 44.3,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.25,
+     "time": 68.6,
+     "hpLeft": 0.142
+    },
+    "boss": {
+     "win": 0.083,
+     "time": 136.1,
+     "hpLeft": 0.276
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "C",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.417,
+     "time": 86.3,
+     "hpLeft": 0.321
+    },
+    "elite4": {
+     "win": 0.333,
+     "time": 63.7,
+     "hpLeft": 0.266
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 108,
+     "hpLeft": 0.405
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "C",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 45.4,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.083,
+     "time": 67,
+     "hpLeft": 0.071
+    },
+    "boss": {
+     "win": 0.25,
+     "time": 151.5,
+     "hpLeft": 0.418
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.417,
+     "time": 72.7,
+     "hpLeft": 0.389
+    },
+    "elite4": {
+     "win": 0.333,
+     "time": 64,
+     "hpLeft": 0.292
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 94.8,
+     "hpLeft": 0.561
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 43.2,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.5,
+     "time": 71.4,
+     "hpLeft": 0.454
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 146.4,
+     "hpLeft": 0.498
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "SR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.917,
+     "time": 61.8,
+     "hpLeft": 0.668
+    },
+    "elite4": {
+     "win": 0.75,
+     "time": 75.6,
+     "hpLeft": 0.514
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 85.3,
+     "hpLeft": 0.596
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.333,
+     "time": 53,
+     "hpLeft": 0.278
+    },
+    "elite4": {
+     "win": 0.583,
+     "time": 68.6,
+     "hpLeft": 0.511
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 140.3,
+     "hpLeft": 0.47
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "SSR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.833,
+     "time": 49.4,
+     "hpLeft": 0.674
+    },
+    "elite4": {
+     "win": 0.833,
+     "time": 52.1,
+     "hpLeft": 0.525
+    },
+    "boss": {
+     "win": 1,
+     "time": 50.9,
+     "hpLeft": 0.795
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.25,
+     "time": 107.2,
+     "hpLeft": 0.318
+    },
+    "elite4": {
+     "win": 0.75,
+     "time": 46.3,
+     "hpLeft": 0.643
+    },
+    "boss": {
+     "win": 0.417,
+     "time": 99.1,
+     "hpLeft": 0.511
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "UR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 35.3,
+     "hpLeft": 0.831
+    },
+    "elite4": {
+     "win": 1,
+     "time": 33.3,
+     "hpLeft": 0.779
+    },
+    "boss": {
+     "win": 1,
+     "time": 33.6,
+     "hpLeft": 0.831
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "UR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.5,
+     "time": 73.7,
+     "hpLeft": 0.61
+    },
+    "elite4": {
+     "win": 1,
+     "time": 33.3,
+     "hpLeft": 0.873
+    },
+    "boss": {
+     "win": 0.917,
+     "time": 50.1,
+     "hpLeft": 0.709
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "L",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 30.6,
+     "hpLeft": 0.869
+    },
+    "elite4": {
+     "win": 1,
+     "time": 32.6,
+     "hpLeft": 0.807
+    },
+    "boss": {
+     "win": 1,
+     "time": 25.6,
+     "hpLeft": 0.873
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "L",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.75,
+     "time": 35,
+     "hpLeft": 0.669
+    },
+    "elite4": {
+     "win": 1,
+     "time": 27.8,
+     "hpLeft": 0.898
+    },
+    "boss": {
+     "win": 1,
+     "time": 35.2,
+     "hpLeft": 0.813
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 24.1,
+     "hpLeft": 0.861
+    },
+    "elite4": {
+     "win": 1,
+     "time": 22.8,
+     "hpLeft": 0.827
+    },
+    "boss": {
+     "win": 1,
+     "time": 21.9,
+     "hpLeft": 0.848
+    }
+   },
+   {
+    "tier": 4,
+    "grade": "E",
+    "profile": "brute",
+    "stage4": {
+     "win": 1,
+     "time": 30.1,
+     "hpLeft": 0.806
+    },
+    "elite4": {
+     "win": 1,
+     "time": 23.3,
+     "hpLeft": 0.906
+    },
+    "boss": {
+     "win": 1,
+     "time": 28.7,
+     "hpLeft": 0.861
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "없음",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 54.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 102.7,
+     "hpLeft": 0.063
+    },
+    "boss": {
+     "win": 0,
+     "time": 119.9,
+     "hpLeft": 0.158
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 30.4,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 76.5,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 30.7,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 91.3,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 80.7,
+     "hpLeft": 0.018
+    },
+    "boss": {
+     "win": 0.083,
+     "time": 140.9,
+     "hpLeft": 0.13
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "UC",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 33.8,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 75.7,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 111.5,
+     "hpLeft": 0.111
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "C",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.083,
+     "time": 96.8,
+     "hpLeft": 0.087
+    },
+    "elite4": {
+     "win": 0,
+     "time": 74.1,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 134.3,
+     "hpLeft": 0.055
     }
    },
    {
@@ -2200,98 +2210,98 @@
     "profile": "brute",
     "stage4": {
      "win": 0,
-     "time": 22.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 56.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 52,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.25,
-     "time": 82.2,
-     "hpLeft": 0.182
-    },
-    "elite4": {
-     "win": 0.083,
-     "time": 59.3,
-     "hpLeft": 0.056
-    },
-    "boss": {
-     "win": 0.417,
-     "time": 138.3,
-     "hpLeft": 0.524
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 28.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.333,
-     "time": 78.9,
-     "hpLeft": 0.157
-    },
-    "boss": {
-     "win": 0.25,
-     "time": 90.4,
-     "hpLeft": 0.201
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.667,
-     "time": 64.9,
-     "hpLeft": 0.598
-    },
-    "elite4": {
-     "win": 0.417,
-     "time": 77.3,
-     "hpLeft": 0.33
-    },
-    "boss": {
-     "win": 0.5,
-     "time": 95.2,
-     "hpLeft": 0.431
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
      "time": 32.4,
      "hpLeft": 0
     },
     "elite4": {
-     "win": 0.5,
-     "time": 81.8,
-     "hpLeft": 0.396
+     "win": 0,
+     "time": 68.4,
+     "hpLeft": 0
     },
     "boss": {
+     "win": 0.083,
+     "time": 111.5,
+     "hpLeft": 0.202
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
      "win": 0.25,
-     "time": 116.9,
-     "hpLeft": 0.329
+     "time": 104.9,
+     "hpLeft": 0.212
+    },
+    "elite4": {
+     "win": 0.25,
+     "time": 69.3,
+     "hpLeft": 0.166
+    },
+    "boss": {
+     "win": 0.5,
+     "time": 110.9,
+     "hpLeft": 0.508
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 32.9,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.083,
+     "time": 81.9,
+     "hpLeft": 0.06
+    },
+    "boss": {
+     "win": 0.083,
+     "time": 128.2,
+     "hpLeft": 0.225
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "SR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.417,
+     "time": 81.9,
+     "hpLeft": 0.37
+    },
+    "elite4": {
+     "win": 0.25,
+     "time": 67.9,
+     "hpLeft": 0.188
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 111.1,
+     "hpLeft": 0.571
+    }
+   },
+   {
+    "tier": 5,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 41.1,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.5,
+     "time": 72.7,
+     "hpLeft": 0.422
+    },
+    "boss": {
+     "win": 0.167,
+     "time": 142.2,
+     "hpLeft": 0.386
     }
    },
    {
@@ -2300,18 +2310,18 @@
     "profile": "gimmick",
     "stage4": {
      "win": 0.75,
-     "time": 58.2,
-     "hpLeft": 0.582
+     "time": 55.3,
+     "hpLeft": 0.627
     },
     "elite4": {
-     "win": 0.75,
-     "time": 71.3,
-     "hpLeft": 0.514
+     "win": 0.5,
+     "time": 83.2,
+     "hpLeft": 0.414
     },
     "boss": {
-     "win": 0.917,
-     "time": 54.9,
-     "hpLeft": 0.663
+     "win": 0.75,
+     "time": 62.7,
+     "hpLeft": 0.552
     }
    },
    {
@@ -2319,19 +2329,19 @@
     "grade": "SSR",
     "profile": "brute",
     "stage4": {
-     "win": 0.25,
-     "time": 41.6,
-     "hpLeft": 0.24
+     "win": 0.083,
+     "time": 40.2,
+     "hpLeft": 0.083
     },
     "elite4": {
-     "win": 0.667,
-     "time": 50.9,
-     "hpLeft": 0.613
+     "win": 0.5,
+     "time": 64.5,
+     "hpLeft": 0.422
     },
     "boss": {
      "win": 0.333,
-     "time": 96.7,
-     "hpLeft": 0.43
+     "time": 134.9,
+     "hpLeft": 0.537
     }
    },
    {
@@ -2339,19 +2349,19 @@
     "grade": "UR",
     "profile": "gimmick",
     "stage4": {
-     "win": 1,
-     "time": 49.2,
-     "hpLeft": 0.719
+     "win": 0.917,
+     "time": 52.5,
+     "hpLeft": 0.703
     },
     "elite4": {
      "win": 1,
-     "time": 37.6,
-     "hpLeft": 0.749
+     "time": 38.3,
+     "hpLeft": 0.694
     },
     "boss": {
      "win": 1,
-     "time": 38.9,
-     "hpLeft": 0.763
+     "time": 41.2,
+     "hpLeft": 0.706
     }
    },
    {
@@ -2359,18 +2369,18 @@
     "grade": "UR",
     "profile": "brute",
     "stage4": {
-     "win": 0.25,
-     "time": 105.7,
-     "hpLeft": 0.36
+     "win": 0.333,
+     "time": 74.2,
+     "hpLeft": 0.271
     },
     "elite4": {
      "win": 1,
-     "time": 40.9,
-     "hpLeft": 0.769
+     "time": 39.8,
+     "hpLeft": 0.78
     },
     "boss": {
-     "win": 0.75,
-     "time": 71.7,
+     "win": 0.667,
+     "time": 105.9,
      "hpLeft": 0.645
     }
    },
@@ -2380,18 +2390,18 @@
     "profile": "gimmick",
     "stage4": {
      "win": 1,
-     "time": 31.2,
-     "hpLeft": 0.814
+     "time": 35.5,
+     "hpLeft": 0.787
     },
     "elite4": {
      "win": 1,
-     "time": 32.8,
-     "hpLeft": 0.81
+     "time": 31.8,
+     "hpLeft": 0.786
     },
     "boss": {
      "win": 1,
-     "time": 31.3,
-     "hpLeft": 0.85
+     "time": 30.6,
+     "hpLeft": 0.827
     }
    },
    {
@@ -2399,888 +2409,208 @@
     "grade": "L",
     "profile": "brute",
     "stage4": {
-     "win": 0.5,
-     "time": 90.4,
-     "hpLeft": 0.553
+     "win": 0.75,
+     "time": 40.4,
+     "hpLeft": 0.679
     },
     "elite4": {
-     "win": 1,
-     "time": 31.3,
-     "hpLeft": 0.893
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 50,
-     "hpLeft": 0.727
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "E",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 26.1,
-     "hpLeft": 0.83
-    },
-    "elite4": {
-     "win": 1,
-     "time": 28.4,
-     "hpLeft": 0.82
-    },
-    "boss": {
-     "win": 1,
-     "time": 24.9,
-     "hpLeft": 0.851
-    }
-   },
-   {
-    "tier": 5,
-    "grade": "E",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.917,
-     "time": 58.2,
-     "hpLeft": 0.743
-    },
-    "elite4": {
-     "win": 1,
-     "time": 27.1,
-     "hpLeft": 0.896
-    },
-    "boss": {
-     "win": 1,
-     "time": 41.7,
-     "hpLeft": 0.785
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "없음",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 38.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 92.1,
-     "hpLeft": 0.042
-    },
-    "boss": {
-     "win": 0,
-     "time": 37.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 22.1,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 74,
-     "hpLeft": 0.021
-    },
-    "boss": {
-     "win": 0,
-     "time": 19.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 42.2,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 52.8,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 89,
-     "hpLeft": 0.048
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "UC",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 23.5,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 54.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 22.2,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "C",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 58.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 51.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 115,
-     "hpLeft": 0.113
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "C",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 23.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 55.7,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 26,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 82.8,
-     "hpLeft": 0.05
-    },
-    "elite4": {
-     "win": 0,
-     "time": 54.2,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 128.1,
-     "hpLeft": 0.179
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 22.7,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 58.8,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 36.6,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.167,
-     "time": 72.3,
-     "hpLeft": 0.137
-    },
-    "elite4": {
-     "win": 0,
-     "time": 52.4,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0.333,
-     "time": 132.8,
-     "hpLeft": 0.425
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 23.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.083,
-     "time": 59.8,
-     "hpLeft": 0.078
-    },
-    "boss": {
-     "win": 0,
-     "time": 45.1,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "SSR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.583,
-     "time": 67.1,
-     "hpLeft": 0.481
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 57.3,
-     "hpLeft": 0.476
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 72.4,
-     "hpLeft": 0.482
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "SSR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.083,
-     "time": 26.8,
-     "hpLeft": 0.051
-    },
-    "elite4": {
-     "win": 0.5,
-     "time": 88,
-     "hpLeft": 0.495
-    },
-    "boss": {
-     "win": 0.333,
-     "time": 71.3,
-     "hpLeft": 0.272
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "UR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.583,
-     "time": 57.1,
-     "hpLeft": 0.408
-    },
-    "elite4": {
-     "win": 0.833,
-     "time": 59.3,
-     "hpLeft": 0.55
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 48.9,
-     "hpLeft": 0.733
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "UR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.167,
-     "time": 65.7,
-     "hpLeft": 0.131
-    },
-    "elite4": {
-     "win": 0.667,
-     "time": 57.6,
-     "hpLeft": 0.547
-    },
-    "boss": {
-     "win": 0.333,
-     "time": 114.3,
-     "hpLeft": 0.487
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "L",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.917,
-     "time": 48.4,
-     "hpLeft": 0.739
-    },
-    "elite4": {
-     "win": 1,
-     "time": 48.1,
-     "hpLeft": 0.757
-    },
-    "boss": {
-     "win": 1,
-     "time": 36.4,
-     "hpLeft": 0.821
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "L",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.25,
-     "time": 79.9,
-     "hpLeft": 0.345
-    },
-    "elite4": {
-     "win": 1,
-     "time": 54,
-     "hpLeft": 0.768
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 52.5,
-     "hpLeft": 0.446
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "E",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 1,
-     "time": 28.6,
-     "hpLeft": 0.761
-    },
-    "elite4": {
-     "win": 1,
-     "time": 32,
-     "hpLeft": 0.821
-    },
-    "boss": {
-     "win": 1,
-     "time": 29.9,
-     "hpLeft": 0.839
-    }
-   },
-   {
-    "tier": 6,
-    "grade": "E",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.917,
-     "time": 52.3,
-     "hpLeft": 0.756
-    },
-    "elite4": {
-     "win": 1,
-     "time": 31.4,
-     "hpLeft": 0.888
-    },
-    "boss": {
-     "win": 1,
-     "time": 43.4,
-     "hpLeft": 0.797
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "없음",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 30.8,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 132.5,
-     "hpLeft": 0.085
-    },
-    "boss": {
-     "win": 0,
-     "time": 26.9,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 21.2,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 125.2,
-     "hpLeft": 0.064
-    },
-    "boss": {
-     "win": 0,
-     "time": 23.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 33.2,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 76.6,
-     "hpLeft": 0.021
-    },
-    "boss": {
-     "win": 0,
-     "time": 32.4,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "UC",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 21.6,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 60.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 23.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "C",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 37.3,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 65.7,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 54.8,
-     "hpLeft": 0.053
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "C",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 20.9,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 56.5,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 21.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 43.4,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 63.1,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 62.1,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 22,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 61.5,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 19.5,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "SR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 65.1,
-     "hpLeft": 0.021
-    },
-    "elite4": {
-     "win": 0,
-     "time": 54.4,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0.25,
-     "time": 117.8,
-     "hpLeft": 0.278
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "SR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 22.1,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 55.4,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 25,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "SSR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.083,
-     "time": 100.1,
-     "hpLeft": 0.195
-    },
-    "elite4": {
-     "win": 0.083,
-     "time": 55.1,
-     "hpLeft": 0.042
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 77,
-     "hpLeft": 0.5
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "SSR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 22.3,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.167,
-     "time": 80.7,
-     "hpLeft": 0.161
-    },
-    "boss": {
-     "win": 0,
-     "time": 30.5,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "UR",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.5,
-     "time": 62.4,
-     "hpLeft": 0.375
-    },
-    "elite4": {
-     "win": 0.5,
-     "time": 57.8,
-     "hpLeft": 0.342
-    },
-    "boss": {
-     "win": 0.583,
-     "time": 61.1,
-     "hpLeft": 0.507
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "UR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 26.3,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.583,
-     "time": 51.6,
-     "hpLeft": 0.461
-    },
-    "boss": {
-     "win": 0.083,
-     "time": 91.2,
-     "hpLeft": 0.198
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "L",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0.917,
-     "time": 66.9,
-     "hpLeft": 0.663
-    },
-    "elite4": {
-     "win": 1,
-     "time": 75.6,
-     "hpLeft": 0.64
-    },
-    "boss": {
-     "win": 0.917,
-     "time": 44.9,
-     "hpLeft": 0.696
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "L",
-    "profile": "brute",
-    "stage4": {
-     "win": 0.167,
-     "time": 32.9,
-     "hpLeft": 0.164
-    },
-    "elite4": {
-     "win": 0.917,
-     "time": 47.5,
-     "hpLeft": 0.653
-    },
-    "boss": {
-     "win": 0.667,
-     "time": 62.3,
-     "hpLeft": 0.551
-    }
-   },
-   {
-    "tier": 7,
-    "grade": "E",
-    "profile": "gimmick",
-    "stage4": {
      "win": 1,
      "time": 31.9,
-     "hpLeft": 0.81
-    },
-    "elite4": {
-     "win": 1,
-     "time": 47.8,
-     "hpLeft": 0.757
+     "hpLeft": 0.869
     },
     "boss": {
      "win": 1,
-     "time": 34.2,
-     "hpLeft": 0.806
+     "time": 45.7,
+     "hpLeft": 0.817
     }
    },
    {
-    "tier": 7,
+    "tier": 5,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 28.8,
+     "hpLeft": 0.818
+    },
+    "elite4": {
+     "win": 1,
+     "time": 36.1,
+     "hpLeft": 0.803
+    },
+    "boss": {
+     "win": 1,
+     "time": 24.1,
+     "hpLeft": 0.841
+    }
+   },
+   {
+    "tier": 5,
     "grade": "E",
     "profile": "brute",
     "stage4": {
-     "win": 0.417,
-     "time": 107,
-     "hpLeft": 0.586
+     "win": 0.917,
+     "time": 32.7,
+     "hpLeft": 0.717
     },
     "elite4": {
      "win": 1,
-     "time": 31.1,
-     "hpLeft": 0.854
+     "time": 26.6,
+     "hpLeft": 0.914
     },
     "boss": {
-     "win": 0.833,
-     "time": 79.4,
-     "hpLeft": 0.682
+     "win": 1,
+     "time": 40.7,
+     "hpLeft": 0.801
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
     "grade": "없음",
     "profile": "gimmick",
     "stage4": {
      "win": 0,
-     "time": 28,
+     "time": 34.8,
      "hpLeft": 0
     },
     "elite4": {
      "win": 0,
-     "time": 145.6,
-     "hpLeft": 0.085
-    },
-    "boss": {
-     "win": 0,
-     "time": 24.1,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 8,
-    "grade": "없음",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 20.2,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 142.5,
-     "hpLeft": 0.085
-    },
-    "boss": {
-     "win": 0,
-     "time": 23.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 8,
-    "grade": "UC",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 32.7,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 124.7,
+     "time": 108.8,
      "hpLeft": 0.064
     },
     "boss": {
      "win": 0,
-     "time": 24.5,
+     "time": 54,
      "hpLeft": 0
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 26.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 105.1,
+     "hpLeft": 0.064
+    },
+    "boss": {
+     "win": 0,
+     "time": 26.4,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 42.5,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 116.6,
+     "hpLeft": 0.072
+    },
+    "boss": {
+     "win": 0,
+     "time": 81.2,
+     "hpLeft": 0.061
+    }
+   },
+   {
+    "tier": 6,
     "grade": "UC",
     "profile": "brute",
     "stage4": {
      "win": 0,
-     "time": 22.1,
+     "time": 31.6,
      "hpLeft": 0
     },
     "elite4": {
      "win": 0,
-     "time": 106.5,
-     "hpLeft": 0.042
+     "time": 94.1,
+     "hpLeft": 0.021
     },
     "boss": {
      "win": 0,
-     "time": 22.3,
+     "time": 29.9,
      "hpLeft": 0
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
     "grade": "C",
     "profile": "gimmick",
     "stage4": {
      "win": 0,
-     "time": 33.8,
+     "time": 60.4,
      "hpLeft": 0
     },
     "elite4": {
      "win": 0,
-     "time": 85.2,
-     "hpLeft": 0
+     "time": 114.6,
+     "hpLeft": 0.085
     },
     "boss": {
      "win": 0,
-     "time": 28,
-     "hpLeft": 0
+     "time": 118.1,
+     "hpLeft": 0.172
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
     "grade": "C",
     "profile": "brute",
     "stage4": {
      "win": 0,
-     "time": 23,
+     "time": 27,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 81.4,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 75.8,
+     "hpLeft": 0.036
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.083,
+     "time": 75.8,
+     "hpLeft": 0.08
+    },
+    "elite4": {
+     "win": 0,
+     "time": 74.3,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 157.3,
+     "hpLeft": 0.235
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 34.1,
      "hpLeft": 0
     },
     "elite4": {
@@ -3290,188 +2620,868 @@
     },
     "boss": {
      "win": 0,
-     "time": 24.3,
-     "hpLeft": 0
+     "time": 59.8,
+     "hpLeft": 0.061
     }
    },
    {
-    "tier": 8,
-    "grade": "R",
-    "profile": "gimmick",
-    "stage4": {
-     "win": 0,
-     "time": 38.9,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 68.3,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 40,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 8,
-    "grade": "R",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 23,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0,
-     "time": 67.6,
-     "hpLeft": 0
-    },
-    "boss": {
-     "win": 0,
-     "time": 21.3,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 8,
+    "tier": 6,
     "grade": "SR",
     "profile": "gimmick",
     "stage4": {
-     "win": 0,
-     "time": 47,
-     "hpLeft": 0
+     "win": 0.25,
+     "time": 100.6,
+     "hpLeft": 0.215
     },
     "elite4": {
      "win": 0,
-     "time": 50.9,
+     "time": 69,
      "hpLeft": 0
     },
     "boss": {
-     "win": 0,
-     "time": 76.9,
-     "hpLeft": 0
+     "win": 0.25,
+     "time": 136.3,
+     "hpLeft": 0.359
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
     "grade": "SR",
     "profile": "brute",
     "stage4": {
      "win": 0,
-     "time": 24.1,
+     "time": 28.5,
      "hpLeft": 0
     },
     "elite4": {
-     "win": 0,
-     "time": 51.3,
-     "hpLeft": 0
+     "win": 0.333,
+     "time": 94.2,
+     "hpLeft": 0.178
     },
     "boss": {
      "win": 0,
-     "time": 22.6,
-     "hpLeft": 0
+     "time": 101.6,
+     "hpLeft": 0.177
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
     "grade": "SSR",
     "profile": "gimmick",
     "stage4": {
-     "win": 0.083,
-     "time": 69.4,
-     "hpLeft": 0.042
+     "win": 0.417,
+     "time": 79.9,
+     "hpLeft": 0.278
     },
     "elite4": {
-     "win": 0,
-     "time": 46.3,
-     "hpLeft": 0
+     "win": 0.083,
+     "time": 67.1,
+     "hpLeft": 0.06
+    },
+    "boss": {
+     "win": 0.417,
+     "time": 69.6,
+     "hpLeft": 0.346
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.083,
+     "time": 43.9,
+     "hpLeft": 0.073
+    },
+    "elite4": {
+     "win": 0.417,
+     "time": 72.5,
+     "hpLeft": 0.4
     },
     "boss": {
      "win": 0.333,
-     "time": 102.4,
-     "hpLeft": 0.338
+     "time": 134.6,
+     "hpLeft": 0.553
     }
    },
    {
-    "tier": 8,
-    "grade": "SSR",
-    "profile": "brute",
-    "stage4": {
-     "win": 0,
-     "time": 21.1,
-     "hpLeft": 0
-    },
-    "elite4": {
-     "win": 0.167,
-     "time": 59.4,
-     "hpLeft": 0.092
-    },
-    "boss": {
-     "win": 0,
-     "time": 18.5,
-     "hpLeft": 0
-    }
-   },
-   {
-    "tier": 8,
+    "tier": 6,
     "grade": "UR",
     "profile": "gimmick",
     "stage4": {
-     "win": 0.25,
-     "time": 63.9,
-     "hpLeft": 0.201
+     "win": 0.833,
+     "time": 52.6,
+     "hpLeft": 0.689
     },
     "elite4": {
-     "win": 0.167,
-     "time": 56.4,
-     "hpLeft": 0.14
+     "win": 0.75,
+     "time": 67.4,
+     "hpLeft": 0.435
     },
     "boss": {
-     "win": 0.5,
-     "time": 86.9,
-     "hpLeft": 0.465
+     "win": 0.833,
+     "time": 72.8,
+     "hpLeft": 0.617
     }
    },
    {
-    "tier": 8,
+    "tier": 6,
     "grade": "UR",
     "profile": "brute",
     "stage4": {
+     "win": 0.25,
+     "time": 73,
+     "hpLeft": 0.313
+    },
+    "elite4": {
+     "win": 0.75,
+     "time": 61.7,
+     "hpLeft": 0.684
+    },
+    "boss": {
+     "win": 0.167,
+     "time": 109.4,
+     "hpLeft": 0.321
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "L",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.917,
+     "time": 50.7,
+     "hpLeft": 0.723
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 64.4,
+     "hpLeft": 0.796
+    },
+    "boss": {
+     "win": 1,
+     "time": 44.6,
+     "hpLeft": 0.747
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "L",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.417,
+     "time": 91.5,
+     "hpLeft": 0.528
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 62.4,
+     "hpLeft": 0.755
+    },
+    "boss": {
+     "win": 0.667,
+     "time": 100.4,
+     "hpLeft": 0.654
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 42.2,
+     "hpLeft": 0.82
+    },
+    "elite4": {
+     "win": 1,
+     "time": 29.2,
+     "hpLeft": 0.8
+    },
+    "boss": {
+     "win": 1,
+     "time": 33,
+     "hpLeft": 0.831
+    }
+   },
+   {
+    "tier": 6,
+    "grade": "E",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.667,
+     "time": 71.9,
+     "hpLeft": 0.665
+    },
+    "elite4": {
+     "win": 1,
+     "time": 30.4,
+     "hpLeft": 0.861
+    },
+    "boss": {
+     "win": 0.833,
+     "time": 85.6,
+     "hpLeft": 0.701
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "없음",
+    "profile": "gimmick",
+    "stage4": {
      "win": 0,
-     "time": 23.1,
+     "time": 30.5,
      "hpLeft": 0
     },
     "elite4": {
-     "win": 0.25,
-     "time": 60.6,
-     "hpLeft": 0.239
+     "win": 0,
+     "time": 131.8,
+     "hpLeft": 0.085
     },
     "boss": {
      "win": 0,
-     "time": 47.2,
+     "time": 35.4,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 25.8,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 128.1,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 26.4,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 35.6,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 133.6,
+     "hpLeft": 0.072
+    },
+    "boss": {
+     "win": 0,
+     "time": 69.5,
+     "hpLeft": 0.03
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "UC",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 27.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 122,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 26.4,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "C",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 45,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 131.5,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 68.8,
      "hpLeft": 0.046
     }
    },
    {
+    "tier": 7,
+    "grade": "C",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 27.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 111.3,
+     "hpLeft": 0.064
+    },
+    "boss": {
+     "win": 0,
+     "time": 26.6,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 49.1,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 100.4,
+     "hpLeft": 0.036
+    },
+    "boss": {
+     "win": 0,
+     "time": 105.4,
+     "hpLeft": 0.18
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 24.8,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 87.1,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 25.5,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "SR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 73.2,
+     "hpLeft": 0.021
+    },
+    "elite4": {
+     "win": 0,
+     "time": 80.6,
+     "hpLeft": 0.021
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 129,
+     "hpLeft": 0.369
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 25,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 79.1,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 68.9,
+     "hpLeft": 0.107
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "SSR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.083,
+     "time": 74.8,
+     "hpLeft": 0.081
+    },
+    "elite4": {
+     "win": 0,
+     "time": 72.5,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0.5,
+     "time": 118.4,
+     "hpLeft": 0.534
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 29,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.333,
+     "time": 74.8,
+     "hpLeft": 0.309
+    },
+    "boss": {
+     "win": 0,
+     "time": 100.9,
+     "hpLeft": 0.182
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "UR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.333,
+     "time": 57,
+     "hpLeft": 0.224
+    },
+    "elite4": {
+     "win": 0.583,
+     "time": 76,
+     "hpLeft": 0.408
+    },
+    "boss": {
+     "win": 0.417,
+     "time": 78,
+     "hpLeft": 0.416
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "UR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 28.2,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.417,
+     "time": 55.8,
+     "hpLeft": 0.389
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 111.5,
+     "hpLeft": 0.472
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "L",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.75,
+     "time": 43,
+     "hpLeft": 0.613
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 64.7,
+     "hpLeft": 0.592
+    },
+    "boss": {
+     "win": 0.833,
+     "time": 44.7,
+     "hpLeft": 0.65
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "L",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.333,
+     "time": 56,
+     "hpLeft": 0.285
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 58.6,
+     "hpLeft": 0.744
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 119.7,
+     "hpLeft": 0.548
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "E",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 1,
+     "time": 33.8,
+     "hpLeft": 0.824
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 84.5,
+     "hpLeft": 0.708
+    },
+    "boss": {
+     "win": 0.917,
+     "time": 34.2,
+     "hpLeft": 0.763
+    }
+   },
+   {
+    "tier": 7,
+    "grade": "E",
+    "profile": "brute",
+    "stage4": {
+     "win": 0.667,
+     "time": 73.3,
+     "hpLeft": 0.652
+    },
+    "elite4": {
+     "win": 0.917,
+     "time": 52.7,
+     "hpLeft": 0.834
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 110.2,
+     "hpLeft": 0.631
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "없음",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 28.8,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 154.3,
+     "hpLeft": 0.107
+    },
+    "boss": {
+     "win": 0,
+     "time": 26.9,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "없음",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 25.8,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 166.7,
+     "hpLeft": 0.13
+    },
+    "boss": {
+     "win": 0,
+     "time": 23,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "UC",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 31,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 128.1,
+     "hpLeft": 0.072
+    },
+    "boss": {
+     "win": 0,
+     "time": 33.5,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "UC",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 26.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 140.8,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 24.4,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "C",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 33.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 126.9,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 48,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "C",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 28.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 125.4,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 25.9,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "R",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 41.4,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 123,
+     "hpLeft": 0.075
+    },
+    "boss": {
+     "win": 0,
+     "time": 44.2,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "R",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 26.7,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 121.2,
+     "hpLeft": 0.085
+    },
+    "boss": {
+     "win": 0,
+     "time": 27.4,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "SR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 48.1,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 102.9,
+     "hpLeft": 0.064
+    },
+    "boss": {
+     "win": 0,
+     "time": 108.3,
+     "hpLeft": 0.13
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "SR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 24.9,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 94.7,
+     "hpLeft": 0.021
+    },
+    "boss": {
+     "win": 0,
+     "time": 36.2,
+     "hpLeft": 0
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "SSR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0,
+     "time": 73.2,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 81.2,
+     "hpLeft": 0.021
+    },
+    "boss": {
+     "win": 0.333,
+     "time": 103.9,
+     "hpLeft": 0.312
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "SSR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 26.4,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0,
+     "time": 78.3,
+     "hpLeft": 0
+    },
+    "boss": {
+     "win": 0,
+     "time": 48.1,
+     "hpLeft": 0.061
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "UR",
+    "profile": "gimmick",
+    "stage4": {
+     "win": 0.25,
+     "time": 61.6,
+     "hpLeft": 0.148
+    },
+    "elite4": {
+     "win": 0.083,
+     "time": 59.8,
+     "hpLeft": 0.064
+    },
+    "boss": {
+     "win": 0.583,
+     "time": 85.7,
+     "hpLeft": 0.456
+    }
+   },
+   {
+    "tier": 8,
+    "grade": "UR",
+    "profile": "brute",
+    "stage4": {
+     "win": 0,
+     "time": 29.1,
+     "hpLeft": 0
+    },
+    "elite4": {
+     "win": 0.25,
+     "time": 69.1,
+     "hpLeft": 0.201
+    },
+    "boss": {
+     "win": 0,
+     "time": 64.2,
+     "hpLeft": 0.116
+    }
+   },
+   {
     "tier": 8,
     "grade": "L",
     "profile": "gimmick",
     "stage4": {
-     "win": 0.5,
-     "time": 76.8,
-     "hpLeft": 0.48
+     "win": 0.417,
+     "time": 75.8,
+     "hpLeft": 0.278
     },
     "elite4": {
-     "win": 0.583,
-     "time": 45.6,
-     "hpLeft": 0.373
+     "win": 0.333,
+     "time": 68.7,
+     "hpLeft": 0.19
     },
     "boss": {
-     "win": 0.75,
-     "time": 58.9,
-     "hpLeft": 0.641
+     "win": 0.417,
+     "time": 60.6,
+     "hpLeft": 0.394
     }
    },
    {
@@ -3480,18 +3490,18 @@
     "profile": "brute",
     "stage4": {
      "win": 0,
-     "time": 27.6,
+     "time": 31.1,
      "hpLeft": 0
     },
     "elite4": {
      "win": 0.75,
-     "time": 66.1,
-     "hpLeft": 0.62
+     "time": 71.9,
+     "hpLeft": 0.524
     },
     "boss": {
      "win": 0.333,
-     "time": 84.2,
-     "hpLeft": 0.353
+     "time": 105,
+     "hpLeft": 0.359
     }
    },
    {
@@ -3499,19 +3509,19 @@
     "grade": "E",
     "profile": "gimmick",
     "stage4": {
-     "win": 1,
-     "time": 64.6,
-     "hpLeft": 0.796
+     "win": 0.833,
+     "time": 43.2,
+     "hpLeft": 0.712
     },
     "elite4": {
-     "win": 0.833,
-     "time": 36.4,
-     "hpLeft": 0.687
+     "win": 1,
+     "time": 42.4,
+     "hpLeft": 0.75
     },
     "boss": {
      "win": 0.917,
-     "time": 36.2,
-     "hpLeft": 0.715
+     "time": 42,
+     "hpLeft": 0.684
     }
    },
    {
@@ -3519,19 +3529,19 @@
     "grade": "E",
     "profile": "brute",
     "stage4": {
-     "win": 0.167,
-     "time": 88.5,
-     "hpLeft": 0.326
+     "win": 0.417,
+     "time": 74.9,
+     "hpLeft": 0.475
     },
     "elite4": {
-     "win": 1,
-     "time": 35.9,
-     "hpLeft": 0.803
+     "win": 0.833,
+     "time": 37.9,
+     "hpLeft": 0.747
     },
     "boss": {
-     "win": 0.667,
-     "time": 72,
-     "hpLeft": 0.571
+     "win": 0.333,
+     "time": 108.5,
+     "hpLeft": 0.511
     }
    }
   ]
@@ -3540,107 +3550,107 @@
   {
    "tier": 1,
    "recGrade": "UC",
-   "power": 18.7,
+   "power": 18.1,
    "mult": 1
   },
   {
    "tier": 2,
    "recGrade": "C",
-   "power": 26.6,
+   "power": 26,
    "mult": 1.067
   },
   {
    "tier": 3,
    "recGrade": "R",
-   "power": 38.6,
+   "power": 38,
    "mult": 1.168
   },
   {
    "tier": 4,
    "recGrade": "SR",
-   "power": 55.5,
-   "mult": 1.31
+   "power": 54.9,
+   "mult": 1.311
   },
   {
    "tier": 5,
    "recGrade": "SSR",
-   "power": 75.4,
-   "mult": 1.478
+   "power": 74.9,
+   "mult": 1.481
   },
   {
    "tier": 6,
    "recGrade": "UR",
-   "power": 100.2,
-   "mult": 1.687
+   "power": 99.7,
+   "mult": 1.691
   },
   {
    "tier": 7,
    "recGrade": "L",
-   "power": 122.8,
-   "mult": 1.878
+   "power": 122,
+   "mult": 1.88
   },
   {
    "tier": 8,
    "recGrade": "E",
-   "power": 143.8,
-   "mult": 2.054
+   "power": 142.5,
+   "mult": 2.053
   }
  ],
  "bruteIndex": [
   {
    "tier": 1,
    "recGrade": "UC",
-   "gimmickWin": 0.81,
+   "gimmickWin": 0.94,
    "bruteWin": 0.53,
-   "bruteNeedsGradesAbove": 3
+   "bruteNeedsGradesAbove": 2
   },
   {
    "tier": 2,
    "recGrade": "C",
-   "gimmickWin": 0.89,
-   "bruteWin": 0.53,
+   "gimmickWin": 0.81,
+   "bruteWin": 0.5,
    "bruteNeedsGradesAbove": 3
   },
   {
    "tier": 3,
    "recGrade": "R",
-   "gimmickWin": 0.86,
-   "bruteWin": 0.47,
+   "gimmickWin": 0.72,
+   "bruteWin": 0.5,
    "bruteNeedsGradesAbove": 3
   },
   {
    "tier": 4,
    "recGrade": "SR",
-   "gimmickWin": 0.97,
-   "bruteWin": 0.56,
+   "gimmickWin": 0.75,
+   "bruteWin": 0.42,
    "bruteNeedsGradesAbove": 3
   },
   {
    "tier": 5,
    "recGrade": "SSR",
-   "gimmickWin": 0.81,
-   "bruteWin": 0.42,
-   "bruteNeedsGradesAbove": 3
+   "gimmickWin": 0.67,
+   "bruteWin": 0.31,
+   "bruteNeedsGradesAbove": 2
   },
   {
    "tier": 6,
    "recGrade": "UR",
-   "gimmickWin": 0.78,
+   "gimmickWin": 0.81,
    "bruteWin": 0.39,
-   "bruteNeedsGradesAbove": 2
+   "bruteNeedsGradesAbove": null
   },
   {
    "tier": 7,
    "recGrade": "L",
-   "gimmickWin": 0.94,
-   "bruteWin": 0.58,
+   "gimmickWin": 0.83,
+   "bruteWin": 0.61,
    "bruteNeedsGradesAbove": null
   },
   {
    "tier": 8,
    "recGrade": "E",
    "gimmickWin": 0.92,
-   "bruteWin": 0.61,
+   "bruteWin": 0.53,
    "bruteNeedsGradesAbove": null
   }
  ]

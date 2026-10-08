@@ -50,6 +50,8 @@ STATS = [
     dict(key='dotdmg',   name='지속 피해',        unit='%', pct=True,  pw=0.06),
     dict(key='ccdur',    name='기절·도발 지속',   unit='%', pct=True,  pw=0.10, gimmick=True),
     dict(key='breakdmg', name='그로기 피해',      unit='%', pct=True,  pw=0.10, gimmick=True, note='그로기 게이지를 더 크게 깎는다 (공략 스탯)'),
+    dict(key='s1pow',    name='① 스킬 위력',      unit='%', pct=True,  pw=0.12, note='소울 메달 주 스탯 (갑옷 스킬)'),
+    dict(key='s2pow',    name='② 스킬 위력',      unit='%', pct=True,  pw=0.12, note='소울 메달 주 스탯 (무기 스킬)'),
     dict(key='vsbroken', name='그로기 적 피해',   unit='%', pct=True,  pw=0.10, gimmick=True, note='그로기 상태 적에게 주는 피해 (공략 스탯)'),
 ]
 
@@ -253,6 +255,50 @@ def drop_row(source, tier):
 
 DROP_SOURCES = [('battle', '일반 전투 보상(3택1 중 장비 카드)'), ('elite', '정예 처치'), ('boss', '보스 처치(장비 1 + 보석 1)'), ('shop', '던전 상인 판매')]
 
+
+# ------------------------------------------------------------------ 강화 (docs/GAME_DESIGN.md 3장)
+# rate: 성공 확률 / stones·gold: 1회 비용 / 실패 보정: 실패마다 기본 확률의 10%씩(최대 2배), 장인의 기운 += 현재 확률 × 0.465
+ENHANCE = dict(
+    mainPerLevel=0.06,          # 강화 1단계당 주 스탯 +6%
+    failBonusStep=0.10, failBonusMax=1.0, artisanFactor=0.465,
+    capByGrade={'UC': 5, 'C': 7, 'R': 9, 'SR': 11, 'SSR': 13, 'UR': 15, 'L': 15, 'E': 15},
+    visualTiers=[5, 10, 15],
+    levels=[  # 목표 단계별 (index 0 = +1)
+        dict(rate=1.00, stones=1, gold=20), dict(rate=1.00, stones=1, gold=30), dict(rate=0.95, stones=2, gold=40),
+        dict(rate=0.90, stones=2, gold=55), dict(rate=0.85, stones=3, gold=70), dict(rate=0.75, stones=3, gold=90),
+        dict(rate=0.65, stones=4, gold=110), dict(rate=0.55, stones=4, gold=135), dict(rate=0.45, stones=5, gold=160),
+        dict(rate=0.35, stones=6, gold=190), dict(rate=0.25, stones=7, gold=230), dict(rate=0.18, stones=8, gold=270),
+        dict(rate=0.12, stones=10, gold=320), dict(rate=0.08, stones=12, gold=380), dict(rate=0.05, stones=15, gold=450),
+    ],
+)
+# 분해 시 강화석 (등급별) / 강화석 획득 (전투 종류별)
+DISMANTLE = {'UC': 1, 'C': 2, 'R': 3, 'SR': 5, 'SSR': 8, 'UR': 12, 'L': 18, 'E': 25}
+STONE_REWARD = {'battle': 2, 'elite': 4, 'boss': 8}
+
+# ------------------------------------------------------------------ 갑옷 랜덤 패시브 (이름 고정, 등급 = 배율)
+# kind: stat(mods 가산) / hook(전투 규칙) / trade(장점 + 고정 단점). v = UC 기준 수치, 등급 배율 PASSIVE_MULT 적용. pen = 고정 단점(배율 없음)
+PASSIVE_MULT = {'UC': 1.0, 'C': 1.15, 'R': 1.3, 'SR': 1.5, 'SSR': 1.75, 'UR': 2.0, 'L': 2.3, 'E': 2.6}
+# 패시브 등급 굴림: 장비 등급과 같음 / -1 / -2 / 그 아래 (장비 등급 이하)
+PASSIVE_GRADE_ROLL = [25, 35, 25, 15]
+PASSIVES = [
+    dict(key='iron_heart',  name='무쇠 심장',     min='UC', kind='stat', stat='hp_pct',   v=0.03,  text='최대 HP +{v}'),
+    dict(key='trained_arm', name='단련된 팔',     min='UC', kind='stat', stat='atk_pct',  v=0.02,  text='공격력 +{v}'),
+    dict(key='light_feet',  name='가벼운 발',     min='UC', kind='stat', stat='mspd',     v=0.06,  text='이동 속도 +{v}'),
+    dict(key='clear_mind',  name='맑은 정신',     min='C',  kind='stat', stat='cdr',      v=0.025, text='쿨타임 -{v}'),
+    dict(key='oath_guard',  name='수호의 맹세',   min='C',  kind='stat', stat='dr',       v=0.02,  text='받는 피해 -{v}'),
+    dict(key='breaker',     name='부수는 손',     min='R',  kind='stat', stat='breakdmg', v=0.06,  text='그로기 피해 +{v}'),
+    dict(key='hawk_eye',    name='매의 눈',       min='R',  kind='stat', stat='crit',     v=0.025, text='치명타 확률 +{v}'),
+    dict(key='finisher',    name='결정타',        min='R',  kind='stat', stat='vsbroken', v=0.06,  text='그로기 적에게 피해 +{v}'),
+    dict(key='firefly',     name='반딧불 신호',   min='SR', kind='hook', v=8,     unit='',  text='차지·호출을 끊으면 필살기 게이지 +{v}'),
+    dict(key='first_breath',name='첫 숨결',       min='SR', kind='hook', v=10,    unit='',  text='전투 시작 시 필살기 게이지 +{v}'),
+    dict(key='stubborn',    name='끈질긴 생명',   min='SSR',kind='hook', v=1.0,   unit='초', text='HP 25% 이하가 되면 {v} 무적 (전투당 1회)'),
+    dict(key='hunter_rain', name='여우비',        min='SSR',kind='hook', v=0.2,   text='적이 그로기에 빠지면 ② 쿨타임 {v} 감소'),
+    dict(key='old_root',    name='늙은 참나무의 뿌리', min='UR', kind='trade', stat='breakdmg', v=0.08, pen=dict(stat='mspd', v=-0.2),  text='그로기 피해 +{v}', penText='이동 속도 -20%'),
+    dict(key='berserk',     name='광전사의 피',   min='UR', kind='trade', stat='atk_pct', v=0.06, pen=dict(stat='dr', v=-0.12), text='공격력 +{v}', penText='받는 피해 +12%'),
+    dict(key='moon_oath',   name='달빛 맹세',     min='L',  kind='trade', stat='vsbroken', v=0.16, pen=dict(stat='nonbroken', v=-0.2), text='그로기 적에게 피해 +{v}', penText='그로기 게이지가 있는 적이 그로기가 아닐 때 피해 -20%'),
+    dict(key='first_light', name='숲의 첫 숨',    min='E',  kind='trade', stat='ultpow', v=0.13, pen=dict(stat='ultonlybreak', v=1), text='필살기 위력 +{v}', penText='필살기 게이지는 그로기 적이 있을 때만 참'),
+]
+
 # ------------------------------------------------------------------ 생성
 def fmt_v(v, unit):
     if unit in ('%', '%p') and v < 1 and unit == '%' and False: return v
@@ -271,11 +317,12 @@ def build():
                 elif slot == 'armor':
                     main = [('hp', round(c['baseHp'] * 0.10, 1)), ARMOR_SUB[ck]]
                 else:
-                    main = [MEDAL_MAIN[ck], ('ultgain', 0.020)]
+                    # 소울 메달 = 직업 특성 스탯 + ①(갑옷)/②(무기) 스킬 위력 강화. 필살기 변형은 캐릭터 중복 돌파로 이동
+                    main = [MEDAL_MAIN[ck], ('s1pow' if n == 0 else 's2pow', 0.10)]
                 items.append(dict(
                     id=f'{ck}_{slot}_{n + 1}', name=name, slot=slot, cls=ck, line=n + 1,
                     main=[dict(stat=k, base=v) for k, v in main],
-                    innate=dict(key=eff['key'], text=eff['text'], base=eff['base'], unit=eff['unit'], pw=eff['pw'], skill=eff['skill']),
+                    innate=None if slot == 'medal' else dict(key=eff['key'], text=eff['text'], base=eff['base'], unit=eff['unit'], pw=eff['pw'], skill=eff['skill']),
                 ))
     # 공통 장신구
     for slot, lines in ACCESSORIES.items():
@@ -291,11 +338,17 @@ def build():
         gems=GEMS, gemEffectCount=GEM_EFFECT_COUNT, gemMult=GEM_MULT, gemExtraRatio=GEM_EXTRA_RATIO, gemSkillExtras=GEM_SKILL_EXTRAS,
         tiers=TIERS, dropSources=[dict(key=k, name=v) for k, v in DROP_SOURCES], drops=drops,
         caps={s['key']: s['cap'] for s in STATS if 'cap' in s},
+        enhance=ENHANCE, dismantle=DISMANTLE, stoneReward=STONE_REWARD,
+        passives=PASSIVES, passiveMult=PASSIVE_MULT, passiveGradeRoll=PASSIVE_GRADE_ROLL,
     )
     os.makedirs(os.path.join(OUT, 'csv'), exist_ok=True)
     with open(os.path.join(OUT, 'equipment_db.json'), 'w', encoding='utf-8') as f:
         json.dump(db, f, ensure_ascii=False, indent=1)
     write_csvs(db)
+    # 게임 빌드용 데이터 (src/js에 포함되어 단일 HTML로 묶임)
+    with open(os.path.join(os.path.dirname(__file__), '..', 'src', 'js', '01b_equip_db.js'), 'w', encoding='utf-8') as f:
+        f.write('// ===== 01b_equip_db.js : 장비 DB (tools/gen_equipment_db.py가 생성 — 직접 수정하지 말 것) =====\n')
+        f.write('const EQUIP_DB = ' + json.dumps(db, ensure_ascii=False, separators=(',', ':')) + ';\n')
     print(f'items={len(items)} (직업 {sum(1 for i in items if i["cls"] != "common")} + 공통 {sum(1 for i in items if i["cls"] == "common")}), options={len(OPTIONS)}, gems={len(GEMS)}')
 
 def wcsv(name, header, rows):

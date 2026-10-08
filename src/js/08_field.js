@@ -1,4 +1,4 @@
-// ===== 08_field.js : 필드 (쿼터뷰 숲속 마을 광장) =====
+// ===== 08_field.js : 마을 (쿼터뷰 숲속 마을 광장: 대장간·보관함·원정 포털) =====
 const FIELD = {
   W: 1600, H: 1000,
   start: { x: 520, y: 640 },
@@ -8,6 +8,8 @@ const FIELD = {
   trees: [[260, 300, 1.3], [180, 720, 1.0], [980, 210, 1.5], [1460, 640, 1.2], [1180, 820, 1.0], [420, 900, 0.9], [80, 470, 1.1], [1520, 220, 1.0], [880, 900, 1.1]],
   houses: [[420, 330, 0], [960, 430, 1]],
   well: { x: 700, y: 700 },
+  smith: { x: 430, y: 540 },
+  storage: { x: 930, y: 610 },
 };
 
 const FieldScene = {
@@ -35,13 +37,14 @@ const FieldScene = {
     for (let i = 0; i < 90; i++) this.flowers.push({ x: rng() * FIELD.W, y: rng() * FIELD.H, c: ['#ffd34a', '#f4a7a0', '#e8e8ff', '#c89af0'][Math.floor(rng() * 4)], p: rng() * 6 });
     this.obstacles = FIELD.trees.map(([x, y, s]) => ({ x, y, r: 26 * s }))
       .concat(FIELD.houses.map(([x, y]) => ({ x, y: y - 10, r: 70 })))
-      .concat([{ x: FIELD.well.x, y: FIELD.well.y, r: 34 }]);
+      .concat([{ x: FIELD.well.x, y: FIELD.well.y, r: 34 }, { x: FIELD.smith.x + 34, y: FIELD.smith.y, r: 22 }, { x: FIELD.storage.x, y: FIELD.storage.y, r: 24 }]);
     this.buildGround();
     const ui = Game.ui;
     const top = el('div', 'f-top');
-    top.appendChild(el('div', 'f-title', '🌲 숲속 마을 광장'));
+    top.appendChild(el('div', 'f-title', '🌲 숲속 마을'));
     const r = el('div', 'f-right');
     r.appendChild(btn('던전 입구로 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
+    r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
     r.appendChild(btn('👥 파티 편성', 'small', () => openPartySelect(Game.run, () => this.rebuildParty()), { id: 'btn-party' }));
     r.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(Game.run), { id: 'btn-f-strategy' }));
     top.appendChild(r);
@@ -62,7 +65,8 @@ const FieldScene = {
 
   refreshRes() {
     const run = Game.run;
-    this.resBox.innerHTML = `<span>🍞 식량 ${run.food}</span><span>● ${run.gold}</span><span>파티 ${partyIds(run).map((id) => HEROES[id].name).join('·')}</span>`;
+    const p = Game.profile;
+    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>💎 ${p.stones}</span><span>🍞 ${run.food}</span><span>난이도 ${EQ.tierInfo(p.tier).name}</span><span>파티 ${partyIds(run).map((id) => HEROES[id].name).join('·')}</span>`;
   },
 
   interactables() {
@@ -70,6 +74,8 @@ const FieldScene = {
       { key: 'portal', x: FIELD.portal.x, y: FIELD.portal.y + 40, label: '던전 입장' },
       { key: 'guide', x: FIELD.guide.x, y: FIELD.guide.y, label: '대화' },
       { key: 'chest', x: FIELD.chest.x, y: FIELD.chest.y, label: Game.run.gotSupply ? '빈 상자' : '열기' },
+      { key: 'smith', x: FIELD.smith.x, y: FIELD.smith.y, label: '강화' },
+      { key: 'storage', x: FIELD.storage.x, y: FIELD.storage.y, label: '장비' },
     ];
   },
 
@@ -93,20 +99,39 @@ const FieldScene = {
       Sfx.play('coin');
       Game.toast(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD}, 회복약 +1`, 2200);
       this.refreshRes();
+    } else if (it.key === 'smith') {
+      openBlacksmith(() => this.refreshRes());
+    } else if (it.key === 'storage') {
+      openInventory({ onClose: () => this.refreshRes() });
     } else if (it.key === 'guide') {
       this.openGuide(0);
     } else if (it.key === 'portal') {
       const box = el('div', 'confirm-box');
       box.appendChild(el('div', 'modal-title', '고블린 굴에 들어갈까요?'));
+      box.appendChild(this.tierPicker(() => this.interact(it)));
       box.appendChild(el('div', 'portal-party', partyIds(run).map((id) => `<span>${HEROES[id].name}<small>${HEROES[id].roleName}</small></span>`).join('')));
       box.appendChild(el('p', '', `파티 ${partyAlive(run).length}/${CONST.PARTY_SIZE}명 · 식량 ${run.food} · 회복약 ${run.potions} · 골드 ${run.gold}` + (run.gotSupply ? '' : '<br><b class="warn">보급 상자를 아직 열지 않았어요!</b>')));
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장!', 'primary', () => { Game.closeModal(); Sfx.play('door'); Game.go('map'); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장!', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }
+  },
+
+  // 난이도 선택: 보스를 잡으면 다음 단계 해금
+  tierPicker(onChange) {
+    const p = Game.profile;
+    const wrap = el('div', 'tier-pick');
+    for (let t = 0; t <= Math.min(p.unlockedTier, EQ.DB.tiers.length); t++) {
+      const ti = EQ.tierInfo(t);
+      const b = btn(`${ti.name}${t ? `<small>T${t}</small>` : ''}`, 'tier-btn' + (p.tier === t ? ' on' : ''), () => { p.tier = t; Game.run.tier = t; saveProfile(); this.refreshRes(); onChange(); }, { id: 'tier-' + t });
+      wrap.appendChild(b);
+    }
+    const ti = EQ.tierInfo(p.tier);
+    wrap.appendChild(el('div', 'tier-desc', p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade} 이상` : '장비 없이도 도전할 수 있는 기본 난이도'));
+    return wrap;
   },
 
   openGuide(page) {
@@ -299,12 +324,14 @@ const FieldScene = {
     for (const [x, y, v] of FIELD.houses) objs.push({ y, draw: () => this.drawHouse(ctx, x, y, v) });
     objs.push({ y: FIELD.well.y, draw: () => this.drawWell(ctx, FIELD.well.x, FIELD.well.y) });
     objs.push({ y: FIELD.chest.y, draw: () => this.drawChest(ctx, FIELD.chest.x, FIELD.chest.y, run.gotSupply) });
+    objs.push({ y: FIELD.smith.y, draw: () => this.drawSmith(ctx, FIELD.smith.x, FIELD.smith.y, t, L) });
+    objs.push({ y: FIELD.storage.y, draw: () => this.drawStorage(ctx, FIELD.storage.x, FIELD.storage.y) });
     objs.push({ y: FIELD.guide.y, draw: () => { this.shadow(ctx, FIELD.guide.x, FIELD.guide.y, 16); drawSprite(ctx, 'guide', FIELD.guide.x, FIELD.guide.y, { scale: 2, t, flip: L.x < FIELD.guide.x, blinking: (t % 4) < 0.12 }); } });
     this.followers.forEach((f) => {
       const h = HEROES[f.id];
-      objs.push({ y: f.y, draw: () => this.drawWalker(ctx, h.sprite, f, t, false) });
+      objs.push({ y: f.y, draw: () => this.drawWalker(ctx, f.id, f, t, false) });
     });
-    objs.push({ y: L.y, draw: () => this.drawWalker(ctx, HEROES[partyIds(run)[0]].sprite, L, t, true) });
+    objs.push({ y: L.y, draw: () => this.drawWalker(ctx, partyIds(run)[0], L, t, true) });
     objs.sort((a, b) => a.y - b.y);
     for (const o of objs) o.draw();
     // 상호작용 표시
@@ -314,7 +341,7 @@ const FieldScene = {
       if (it.key === 'chest' && run.gotSupply) continue;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자' }[it.key];
+      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함' }[it.key];
       const ly = it.key === 'portal' ? it.y - 150 : it.y - 62;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(label, it.x, ly + bob); ctx.fillText(label, it.x, ly + bob);
       if (it.key !== 'portal') { ctx.fillText('▼', it.x, ly + 14 + bob); }
@@ -353,14 +380,38 @@ const FieldScene = {
 
   shadow(ctx, x, y, r) { ctx.fillStyle = 'rgba(0,30,20,0.35)'; ctx.beginPath(); ctx.ellipse(x, y + 2, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill(); },
 
-  drawWalker(ctx, sprite, w, t, isLeader) {
+  drawWalker(ctx, heroId, w, t, isLeader) {
+    const sprite = HEROES[heroId].sprite, look = heroLook(heroId);
     const bob = w.moving ? Math.abs(Math.sin(t * 12 + w.x * 0.01)) * 3 : 0;
     this.shadow(ctx, w.x, w.y, 16);
     if (isLeader) {
       ctx.strokeStyle = '#7dff8a'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.ellipse(w.x, w.y + 2, 22 + Math.sin(t * 5) * 1.5, 9, 0, 0, Math.PI * 2); ctx.stroke();
     }
+    drawArmorAura(ctx, look, w.x, w.y - bob, 2, t);
     drawSprite(ctx, sprite, w.x, w.y - bob, { scale: 2, t, flip: w.flip, phase: w.x * 0.01, blinking: ((t + w.x * 0.003) % 3.4) < 0.12, squash: w.moving ? 1 + Math.sin(t * 24) * 0.03 : 1 });
+    drawWeaponGlow(ctx, sprite, look, w.x, w.y - bob, 2, w.flip, t);
+  },
+  // 대장간: 모루 + 화로 + 대장장이 (임시로 길잡이 스프라이트 사용)
+  drawSmith(ctx, x, y, t, L) {
+    this.shadow(ctx, x + 34, y, 26);
+    ctx.fillStyle = '#5a4a44'; ctx.fillRect(x - 70, y - 60, 40, 56);           // 화로
+    ctx.fillStyle = '#2a1e1a'; ctx.fillRect(x - 64, y - 40, 28, 22);
+    const fl = 0.6 + Math.sin(t * 9) * 0.25 + Math.sin(t * 13) * 0.15;
+    const g = ctx.createRadialGradient(x - 50, y - 30, 2, x - 50, y - 30, 40);
+    g.addColorStop(0, `rgba(255,170,60,${fl})`); g.addColorStop(1, 'rgba(255,120,40,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - 100, y - 70, 100, 80);
+    ctx.fillStyle = '#ffb040'; ctx.fillRect(x - 60, y - 32, 20, 10);
+    ctx.fillStyle = '#3c3c46'; ctx.fillRect(x + 20, y - 24, 30, 10); ctx.fillRect(x + 28, y - 14, 14, 14); ctx.fillRect(x + 22, y, 26, 4); // 모루
+    ctx.fillStyle = '#5c5c6a'; ctx.fillRect(x + 20, y - 24, 30, 3);
+    if ((t % 1.4) < 0.08) { ctx.fillStyle = '#fff2a0'; for (let i = 0; i < 5; i++) ctx.fillRect(x + 34 + Math.cos(i) * 10, y - 30 - Math.sin(i * 2) * 8, 2, 2); }
+    drawSprite(ctx, 'guide', x, y, { scale: 2, t, flip: L.x < x, blinking: (t % 3.7) < 0.12 });
+  },
+  drawStorage(ctx, x, y) {
+    this.shadow(ctx, x, y, 26);
+    ctx.fillStyle = '#4a3a6a'; ctx.fillRect(x - 26, y - 34, 52, 34);
+    ctx.fillStyle = '#6a5a9a'; ctx.fillRect(x - 28, y - 42, 56, 12);
+    ctx.fillStyle = '#f0c860'; ctx.fillRect(x - 4, y - 32, 8, 10); ctx.fillRect(x - 26, y - 20, 52, 3);
   },
   drawTrunk(ctx, x, y, s) {
     ctx.fillStyle = 'rgba(0,30,20,0.3)'; ctx.beginPath(); ctx.ellipse(x + 10, y + 4, 34 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();

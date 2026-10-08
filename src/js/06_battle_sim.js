@@ -37,7 +37,13 @@ class BattleSim {
     opts.heroes.forEach((h, i) => this.heroes.push(this._makeHero(h, i, opts.heroes.length)));
     this._spawnWave(0, true);
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
+    for (const h of this.aliveHeroes()) { const pv = this.passive(h, 'first_breath'); if (pv) h.ult = Math.min(100, h.ult + pv); }
   }
+
+  // 갑옷 패시브(전투 규칙형) 수치. 없으면 0
+  passive(u, key) { return (u.mods && u.mods.passives && u.mods.passives[key]) || 0; }
+  // 차지·호출을 끊었을 때 (반딧불 신호)
+  _onCancel(src) { const v = src && this.passive(src, 'firefly'); if (v) this._gainUltRaw(src, v); }
 
   // ------------------------------------------------------------ 생성
   _makeHero(h, i, n) {
@@ -342,12 +348,12 @@ class BattleSim {
       }
     }
     if (u.charge) {
-      if (stunned) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
+      if (stunned) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); this._onCancel(u.statuses.stun.src); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
       else { u.charge.t -= dt; if (u.charge.t <= 0) this._chargeImpact(u); }
       return;
     }
     if (u.call) {
-      if (stunned) { u.call = null; u.callCd = d.callEvery; this.events.push({ type: 'callCancel', unit: u }); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
+      if (stunned) { u.call = null; u.callCd = d.callEvery; this.events.push({ type: 'callCancel', unit: u }); this._onCancel(u.statuses.stun.src); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
       else { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._summon(new Array(d.callCount).fill('goblin'), u); } }
       return;
     }
@@ -429,6 +435,7 @@ class BattleSim {
   // ------------------------------------------------------------ 피해/회복
   _damage(src, tgt, raw, info) {
     if (!tgt.alive) return 0;
+    if (tgt.statuses.invuln) return 0;
     info = info || {};
     let dmg = raw, crit = false;
     if (!info.dot) {
@@ -438,10 +445,15 @@ class BattleSim {
     dmg *= 1 - tgt.defPct;
     if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - tgt.armor;                       // 방어 태세
     if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
+    if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
     dmg = Math.max(1, Math.round(dmg));
+    if (tgt.side === 'hero' && !tgt.stubbornUsed && tgt.hp - dmg < tgt.maxHp * 0.25 && tgt.hp - dmg > 0) { // 끈질긴 생명
+      const v = this.passive(tgt, 'stubborn');
+      if (v) { tgt.stubbornUsed = true; tgt.statuses.invuln = { t: v }; this.events.push({ type: 'passive', unit: tgt, name: '끈질긴 생명' }); }
+    }
     tgt.hp -= dmg;
     tgt.anim.hurt = 0.18;
     if (src && src.stats) src.stats.dealt += dmg;
@@ -466,6 +478,7 @@ class BattleSim {
       tgt.poise = 0; tgt.broken = CONST.BREAK_DUR;
       tgt.charge = null; tgt.call = null;
       this.events.push({ type: 'break', unit: tgt });
+      for (const h of this.aliveHeroes()) { const v = this.passive(h, 'hunter_rain'); if (v) h.cds.s2 = Math.max(0, h.cds.s2 - this.skillCdMax(h, 's2') * v); } // 여우비
     }
   }
 
@@ -483,6 +496,10 @@ class BattleSim {
   }
 
   _gainUlt(h, amt) {
+    if (h.mods && h.mods.ultonlybreak && !this.enemies.some((e) => e.alive && e.broken > 0)) return; // 숲의 첫 숨 단점
+    this._gainUltRaw(h, amt);
+  }
+  _gainUltRaw(h, amt) {
     if (!h.alive) return;
     const before = h.ult;
     h.ult = Math.min(100, h.ult + amt * (this.relics.has('stardust') ? 1.3 : 1) * (1 + Math.min((h.mods && h.mods.ultgain) || 0, CONST.STAT_CAPS.ultgain)));
@@ -509,7 +526,7 @@ class BattleSim {
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
   skillDef(h, slot) { return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
   skillUp(h, slot) { return h.upgrades[slot] || { power: 0, cd: 0 }; }
-  skillCdMax(h, slot) { const d = this.skillDef(h, slot); return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd) * (1 - Math.min((h.mods && h.mods.cdr) || 0, CONST.STAT_CAPS.cdr)); }
+  skillCdMax(h, slot) { const d = this.skillDef(h, slot); const m = h.mods || {}; return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd) * (1 - Math.min((m.cdr || 0) + (m[slot + 'cd'] || 0), CONST.STAT_CAPS.cdr)); }
 
   canCast(h, slot) {
     if (!h || !h.alive || this.outcome || this.introT > 0) return false;
@@ -552,7 +569,7 @@ class BattleSim {
   cast(h, slot, spec) {
     if (!this.canCast(h, slot)) return false;
     const sk = this.skillDef(h, slot);
-    const pmul = 1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower;
+    const pmul = (1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower) * (1 + ((h.mods && h.mods[slot === 'ult' ? 'ultpow' : slot + 'pow']) || 0));
     const dmul = pmul * (1 + ((h.mods && h.mods.skilldmg) || 0)); // 스킬 피해 보정 (회복에는 미적용)
     spec = spec || {};
     if ((sk.target === 'enemy' || sk.target === 'ally') && (!spec.unit || !spec.unit.alive)) return false;

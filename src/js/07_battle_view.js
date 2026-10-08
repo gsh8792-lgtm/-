@@ -12,14 +12,16 @@ const BattleScene = {
     const waves = encounterFor(node);
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
-      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades };
+      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods };
     });
+    const ti = EQ.tierInfo(run.tier);
     this.sim = new BattleSim({
       seed: hashSeed(run.seed, 'battle', node.stage, node.row, node.type),
       stage: node.stage, waves, heroes,
       relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
+      tier: { hp: ti.hp, atk: ti.atk },
     });
     this.acc = 0;
     this.t = 0;
@@ -484,6 +486,7 @@ const BattleScene = {
         Sfx.play('crit'); this.shake = 8; this.hitstop = 0.12;
         this.fx.push({ type: 'flash', t: 0, dur: 0.3, color: 'rgba(255,220,120,' });
         break;
+      case 'passive': this.popup(e.unit.x, this.unitTop(e.unit) - 22, e.name, '#fff6c0', 16, { label: true }); break;
       case 'breakEnd': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '방어 태세', '#9fd0ff', 16); break;
       case 'enrage': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22); break;
       case 'warcry': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성!', '#ffb04a', 18); this.shake = 4; break;
@@ -570,6 +573,7 @@ const BattleScene = {
     run.stats.battles++;
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
     if (outcome === 'win' && !gaveUp) {
+      grantBattleLoot(run, this.node);
       if (this.node.type === 'boss') { run.result = 'victory'; Game.go('result'); }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
       else Game.go('reward', { node: this.node });
@@ -806,10 +810,13 @@ const BattleScene = {
     const squash = u.anim.cast > 0 ? 1 + Math.sin((u.anim.cast / 0.3) * Math.PI) * 0.06 : (u.anim.hurt > 0 ? 0.94 : 1);
     const walk = u.moving ? Math.abs(Math.sin(t * 12 + u.uid)) * 3 : 0;
     const so = { scale: sc, flip: u.face < 0, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, squash };
+    const look = u.side === 'hero' ? heroLook(u.key) : null;
+    if (look) drawArmorAura(ctx, look, x, y - walk, sc, t);
     if (tint === 'white') { // 피격/차지 섬광: 원래 그림 위에 반투명 흰색
       drawSprite(ctx, u.sprite, x, y - walk, so);
       drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'white', alpha: u.charge ? 0.7 : 0.5 }));
     } else drawSprite(ctx, u.sprite, x, y - walk, Object.assign(so, { tint, tintAlpha }));
+    if (look) drawWeaponGlow(ctx, u.sprite, look, x, y - walk, sc, u.face < 0, t);
     if (u.moving && Math.random() < 0.08) this.fx.push({ type: 'dust', x: u.x - u.face * 8, y: u.y, vx: -u.face * 20, vy: -20, t: 0, dur: 0.4 });
     const top = y - s.h * sc;
     if (u.statuses.stun) for (let i = 0; i < 3; i++) { const a = t * 5 + i * 2.1; ctx.fillStyle = '#ffd34a'; ctx.fillRect(x + Math.cos(a) * 16 - 2, top - 4 + Math.sin(a) * 4, 5, 5); }

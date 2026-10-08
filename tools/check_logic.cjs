@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '05_map.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
-const ctx = { console }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '04b_equip.js', '05_map.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={EQ,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { EQ, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 const typeCount = {};
 for (let seed = 1; seed <= 1000; seed++) {
@@ -70,5 +70,48 @@ if (sa !== sb) fail++;
   const dodgeOk = stay && go && !stay.none && go.lost < stay.lost * 0.5;
   console.log('drag dodge:', dodgeOk ? 'OK' : 'FAIL', JSON.stringify({ stay, go }));
   if (!dodgeOk) fail++;
+}
+// 장비: 생성 규칙 3,000개 + 강화 + 능력치 합산
+{
+  const rng = makeRng(99), p = EQ.newProfile();
+  const errs = [];
+  const G = EQ.G;
+  for (let n = 0; n < 3000; n++) {
+    const base = EQ.DB.items[n % EQ.DB.items.length], grade = EQ.GRADES[Math.floor(rng() * 8)];
+    const it = EQ.rollItem(rng, p, { base: base.id, grade });
+    const g = G[grade];
+    if (it.opts.length !== g.opt) errs.push(`opt count ${grade} ${it.opts.length}`);
+    if (new Set(it.opts.map((o) => o.stat)).size !== it.opts.length) errs.push('dup option');
+    if (it.gems.length < g.gem[0] || it.gems.length > g.gem[1]) errs.push(`gem slots ${grade} ${it.gems.length}`);
+    if (grade === 'E' && !it.cls) errs.push('E without class stat');
+    if (grade === 'L' && it.cls && it.sb.length) errs.push('L with both class stat and skill bonus');
+    if (it.sb.length > g.skill[1]) errs.push('skill bonus count');
+    if ((base.slot === 'armor') !== !!it.passive) errs.push('passive only on armor');
+    if (it.passive && G[it.passive.grade].idx > g.idx) errs.push('passive grade above item grade');
+    if (it.passive && G[EQ.PASSIVE[it.passive.key].min].idx > G[it.passive.grade].idx) errs.push('passive below its min grade');
+  }
+  // 강화: 확률 표, 장인의 기운이 차면 확정 성공, 한도
+  const it = EQ.rollItem(rng, p, { base: 'melee_weapon_1', grade: 'UR' });
+  p.stones = 1e6; p.gold = 1e9;
+  let tries = 0;
+  while (it.enh < 15 && tries < 5000) { EQ.tryEnhance(p, it, rng); tries++; }
+  if (it.enh !== 15) errs.push('could not reach +15');
+  if (EQ.tryEnhance(p, it, rng).reason !== 'max') errs.push('enhance past cap');
+  const t2 = EQ.rollItem(rng, p, { base: 'melee_weapon_1', grade: 'UR' }); t2.enh = 14;
+  const never = () => 0.999999; let n2 = 0; // 항상 실패하는 rng → 장인의 기운으로만 성공
+  while (t2.enh < 15 && n2 < 200) { EQ.tryEnhance(p, t2, never); n2++; }
+  if (t2.enh !== 15) errs.push('artisan energy never guaranteed success');
+  const uc = EQ.rollItem(rng, p, { base: 'melee_weapon_1', grade: 'UC' }); uc.enh = 5;
+  if (EQ.enhanceInfo(uc) !== null) errs.push('UC cap should be +5');
+  // 능력치 합산: 장착 → maxHp·atk 증가, 같은 패시브는 최고 등급 하나만
+  const q = EQ.newProfile();
+  const w = EQ.rollItem(rng, q, { base: 'melee_weapon_1', grade: 'SR' }); q.inv.push(w); EQ.equip(q, 'danbi', w);
+  const ar = EQ.rollItem(rng, q, { base: 'melee_armor_1', grade: 'SR' }); q.inv.push(ar); EQ.equip(q, 'danbi', ar);
+  const lo = EQ.heroLoadout(q, 'danbi');
+  if (!(lo.maxHp > HEROES.danbi.hp) || !(lo.mods.atk > 0)) errs.push('loadout does not add stats');
+  const w15 = Object.assign({}, w, { enh: 15 });
+  if (!(EQ.mainStats(w15)[0].v > EQ.mainStats(w)[0].v * 1.85)) errs.push('enhance main stat +90% at +15');
+  console.log('equipment:', errs.length ? 'FAIL ' + [...new Set(errs)].join(' | ') : 'OK', `(3000 items, +15 in ${tries} tries, pity success after ${n2} fails)`);
+  if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);
