@@ -14,6 +14,7 @@ class BattleSim {
     this.waves = opts.waves.map((w) => w.slice());
     this.partyScale = PARTY_ENEMY_SCALE[clamp(opts.partySize || opts.heroes.length, 1, 3)] || 1;
     this.tier = opts.tier || { hp: 1, atk: 1 }; // 난이도 단계 배율 (보스 포함 모든 적)
+    this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
     this.aiProfile = opts.aiProfile || 'none';
@@ -61,6 +62,7 @@ class BattleSim {
       x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
+      levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
       upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0, ultDef: h.ultDef || null, casting: null,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
@@ -205,9 +207,11 @@ class BattleSim {
         const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
         let tx = t.x - keep;
         if (this.order === 'hold' && anchor && anchor.melee) tx = Math.min(tx, anchor.x - (u.role === 'support' ? 120 : 70));
-        if (u.role === 'support') { // 서포터는 가장 다친 아군 쪽으로
-          const hurt = this.aliveHeroes().reduce((a, b) => (this.hpPct(b) < this.hpPct(a) ? b : a), u);
-          tx = Math.min(tx, hurt.x - 90); u.ty = hurt.y + 14;
+        if (u.role === 'support') { // 서포터: 평타 사거리는 지키되, 많이 다친 동료가 있으면 그 뒤에 붙는다 (회복은 거리 제한 없음)
+          tx = Math.max(tx, t.x - u.reach * 0.9);
+          u.ty = t.y + 18;
+          const hurt = this.aliveHeroes().filter((b) => b !== u && this.hpPct(b) < 0.6).reduce((a, b) => (!a || this.hpPct(b) < this.hpPct(a) ? b : a), null);
+          if (hurt) { tx = Math.min(tx, hurt.x - 50); u.ty = hurt.y + 14; }
         } else u.ty = t.y + ((u.uid % 3) - 1) * 18;
         // 너무 가까이 붙은 적이 있으면 뒤로 빠진다
         const near = this.nearest(u, enemies);
@@ -218,17 +222,18 @@ class BattleSim {
       if (u.charge || u.call || u.def.immobile) { u.tx = u.x; u.ty = u.y; return; }
       const heroes = this.aliveHeroes();
       if (!heroes.length) return;
-      if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) u.target = tt; }
+      if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) { u.target = tt; u.retarget = CONST.TAUNT_LINGER; } } // 도발이 끝나도 잠시 탱커를 계속 노린다
       else if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC * 2;
         const back = u.def.huntsBackline ? heroes.filter((h) => !h.melee) : [];
-        u.target = back.length ? this.nearest(u, back) : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
+        const tankAggro = u.def.abilities.includes('boss') && heroes.find((h) => h.role === 'tank' && this.dist(u, h) < 320); // 보스는 가까운 탱커를 먼저 노린다 (위협)
+        u.target = back.length ? this.nearest(u, back) : tankAggro ? tankAggro : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
       }
       if (intro) { u.tx = F.ENEMY_SPAWN_X - (u.uid % 3) * 30; u.ty = u.y; return; }
       const t = u.target;
       const r = this.attackRange(u, t) * 0.8;
       // 같은 대상을 노리는 적들은 둘러싸듯 흩어진다
-      const slot = (u.uid % 5) - 2;
+      const slot = u.size > 1 ? 0 : (u.uid % 5) - 2; // 큰 적은 흩어지지 않는다 (사거리 밖에 멈추는 일 방지)
       u.tx = t.x + (u.x >= t.x ? 1 : -1) * (r + Math.abs(slot) * 8); u.ty = t.y + slot * 14;
     }
   }
@@ -331,6 +336,17 @@ class BattleSim {
     u.atkTimer -= dt * speed * (u.statuses.slow ? 1 - u.statuses.slow.value : 1);
     if (u.atkTimer > 0) return;
     let tgt = u.target && u.target.alive ? u.target : null;
+    // 보스 추격: 대상이 사거리 밖에 오래 있으면 덮쳐 든다 (멀리서 끌기만으로는 버틸 수 없게)
+    if (u.side === 'enemy' && u.def.abilities.includes('boss') && tgt && u.x < 960) {
+      if (this.dist(u, tgt) > this.attackRange(u, tgt) + 20) u.chase = (u.chase || 0) + u.atkInterval * 0.5 + 0.15;
+      else u.chase = 0;
+      if (u.chase >= CONST.BOSS_LEAP_AFTER) {
+        u.chase = 0;
+        const side = u.x >= tgt.x ? 1 : -1;
+        u.x = clamp(tgt.x + side * this.attackRange(u, tgt) * 0.7, CONST.FIELD_X0, CONST.FIELD_X1); u.y = tgt.y;
+        this.events.push({ type: 'dash', unit: u }); this.events.push({ type: 'bossLeap', unit: u, target: tgt });
+      }
+    }
     // 후퇴 중이거나 대상이 멀면, 사거리 안의 아무 적이나
     if (!tgt || this.dist(u, tgt) > this.attackRange(u, tgt)) {
       const foes = u.side === 'hero' ? this.aliveEnemies() : this.aliveHeroes();
@@ -454,6 +470,24 @@ class BattleSim {
     }
   }
 
+  // 짓누름: 지금 스택만큼 피해 배율을 돌려주고 한 스택 쌓는다 (버티는 중이면 쌓이지 않음)
+  _crush(h) {
+    const s = h.statuses.crush;
+    const n = s ? s.n : 0;
+    const res = this.crushRes(h);
+    if (!h.statuses.guard && !h.statuses.invuln) {
+      h.statuses.crush = { t: CONST.CRUSH_DUR, n: Math.min(CONST.CRUSH_MAX, n + 1) };
+      if (n + 1 >= 3 && res < 0.5 && !(s && s.warned)) { h.statuses.crush.warned = true; this.events.push({ type: 'crushWarn', unit: h }); }
+      else if (s && s.warned) h.statuses.crush.warned = true;
+    }
+    return 1 + n * CONST.CRUSH_STEP * (1 - res);
+  }
+  crushRes(h) {
+    let r = h.role === 'tank' ? CONST.CRUSH_RES.tank : h.def.traits.includes('sturdy') ? CONST.CRUSH_RES.sturdy : 0;
+    r = 1 - (1 - r) * (1 - Math.min(0.8, (h.mods && h.mods.crushres) || 0));
+    return r;
+  }
+
   _atkOf(u) {
     let m = 1;
     if (u.statuses.fruit) m += u.statuses.fruit.value;
@@ -488,6 +522,9 @@ class BattleSim {
       if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
     }
     dmg *= 1 - tgt.defPct;
+    if (src && src.side === 'hero' && src.levelGap) dmg *= levelGapMult(src.levelGap).dealt;
+    if (tgt.side === 'hero' && tgt.levelGap && src && src.side === 'enemy') dmg *= levelGapMult(tgt.levelGap).taken;
+    if (info.basic && tgt.side === 'hero' && src && src.side === 'enemy' && src.def.abilities.includes('boss')) dmg *= this._crush(tgt);
     if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - (tgt.armorBoost > 0 ? Math.max(tgt.armor, tgt.armorBoostV || CONST.UNBLOCKED_CALL_ARMOR) : tgt.armor); // 방어 태세
     if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
@@ -879,7 +916,10 @@ class BattleSim {
       case 'enemyCountGte': return this.aliveEnemies().length >= c.param;
       case 'saveForCharge': { // 차지·호출 능력을 가진 적이 있으면 그 순간에만, 없으면 바로
         const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && this.canPartyCancel(e));
-        return !threats.length || threats.some((e) => e.charge || e.call);
+        if (!threats.length || threats.some((e) => e.charge || e.call)) return true;
+        // 짓누름이 쌓인 동료를 보스가 때리고 있으면 시선을 뺏는다 (차지가 곧 오면 아껴 둔다)
+        const soon = threats.some((e) => e.def.abilities.includes('charge') && e.chargeCd < 2.5);
+        return !soon && this.aliveEnemies().some((e) => e.def.abilities.includes('boss') && e.target && e.target !== h && e.target.alive && e.target.statuses.crush && e.target.statuses.crush.n >= 2);
       }
       case 'auto': { // 필살기 종류에 맞춰 자동: 부활 / 회복 / 그로기 만들기 / 무방비 수확
         const sk = this.skillDef(h, slot);

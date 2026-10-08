@@ -22,6 +22,13 @@ const CONST = {
   ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 궁극기 게이지(%)
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
+  // 짓누름: 보스 평타가 같은 대상에 쌓이는 압박 (탱커가 아니면 오래 못 버팀)
+  TAUNT_LINGER: 3,                    // 도발이 끝난 뒤에도 탱커를 노리는 시간
+  BOSS_LEAP_AFTER: 4,                 // 보스가 대상을 이 시간(초) 넘게 못 따라잡으면 덮친다
+  CRUSH_STEP: 0.4, CRUSH_MAX: 5, CRUSH_DUR: 8,
+  CRUSH_RES: { tank: 0.85, sturdy: 0.6 },     // 스택 효과 감소 (직업 탱커 / 든든함 특성)
+  // 레벨 차이 보정 (파티 전투 레벨 − 던전 레벨). 낮으면 크게 불리, 높으면 점점 딜찍누
+  LEVEL_GAP: { dealtUp: 0.03, dealtUpMax: 3, takenUp: 0.025, takenUpMin: 0.3, dealtDown: 0.025, dealtDownMin: 0.35, takenDown: 0.03, takenDownMax: 2.5 },
   ULT_GAIN_HEAL: 0.08,               // 회복량 1당 (서포터 필살기도 제때 차도록)
   HITSTOP_MS: 60,
   CONFIRM_SLOWMO_SEC: 0.2,
@@ -72,10 +79,17 @@ const CONST = {
 };
 
 // 스테이지별 적 능력치 배율 (스테이지 1..5)
+// 레벨 차이(g = 파티 − 던전) → 주는 피해·받는 피해 배율
+function levelGapMult(g) {
+  const L = CONST.LEVEL_GAP;
+  if (g >= 0) return { dealt: Math.min(L.dealtUpMax, 1 + L.dealtUp * g), taken: Math.max(L.takenUpMin, 1 - L.takenUp * g) };
+  return { dealt: Math.max(L.dealtDownMin, 1 + L.dealtDown * g), taken: Math.min(L.takenDownMax, 1 - L.takenDown * g) };
+}
 const STAGE_SCALE = [1.0, 1.15, 1.3, 1.5, 1.5];
 
 // ---------------------------------------------------------------- 상태이상
 const STATUS = {
+  crush:  { name: '짓누름', short: '짓', color: '#b0603a', desc: '보스 평타에 맞을 때마다 쌓인다. 쌓일수록 보스 평타 피해 증가. 탱커는 거의 영향이 없다.' },
   stun:   { name: '기절', short: '기', color: '#ffd34a', desc: '행동 불가. 차지 공격을 캔슬한다.' },
   bleed:  { name: '출혈', short: '출', color: '#e0524a', desc: '초당 지속 피해.' },
   burn:   { name: '화상', short: '화', color: '#ff8a2a', desc: '지속 피해 + 받는 회복량 -50%.' },
@@ -309,5 +323,6 @@ const HINTS = {
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
   battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
   break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 맞춰야 해요. 같은 직업은 한 번만 쳐요.`,
+  crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 데려가거나, 장비로 레벨을 올려 버티세요.',
   charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
 };

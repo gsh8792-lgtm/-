@@ -212,4 +212,40 @@ if (sa !== sb) fail++;
   console.log('break roles:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(interrupt sum, shake, stun DR, break growth/lock, turtle, stag, queen buds)');
   if (errs.length) fail++;
 }
+// 보스 압박 (짓누름 · 탱커 위협 · 덮치기) + 레벨 차이 + 서포터 평타
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = (ids, opts) => { const sim = new BattleSim(Object.assign({ seed: 9, stage: 5, waves: [['ogre_chief']], strategy: st0, autoMode: false, partySize: ids.length, heroes: ids.map((id) => ({ id, hp: 9999, maxHp: 9999, upgrades: {} })) }, opts || {})); for (let i = 0; i < 90; i++) sim.step(1 / 60); return sim; };
+  const avgHit = (sim, b, h, n) => { let s = 0; for (let i = 0; i < n; i++) { const hp = h.hp; sim._damage(b, h, 100, { basic: true, noCrit: true }); s += hp - h.hp; } return s / n; };
+  // 1) 짓누름: 근딜은 맞을수록 크게 아프고, 탱커는 거의 그대로, 버티는 중이면 쌓이지 않음
+  { const sim = mk(['tobi', 'danbi', 'bori']); const b = sim.enemies[0]; const [t, d] = sim.heroes;
+    const d1 = avgHit(sim, b, d, 1), d6 = avgHit(sim, b, d, 6), t1 = avgHit(sim, b, t, 1), t6 = avgHit(sim, b, t, 6);
+    if (!(d.statuses.crush && d.statuses.crush.n === 5)) errs.push('crush cap');
+    if (!(d6 / d1 > 1.8)) errs.push('crush too weak on melee ' + (d6 / d1).toFixed(2)); if (!(t6 / t1 < 1.3)) errs.push('crush too strong on tank ' + (t6 / t1).toFixed(2));
+    const g = sim.heroes[2]; g.statuses.guard = { t: 3, value: 0 }; sim._damage(b, g, 100, { basic: true }); if (g.statuses.crush) errs.push('crush stacked while guarding'); }
+  // 2) 보스는 가까운 탱커를 먼저 노린다 / 짓누름 쌓인 동료를 탱커가 도발로 구한다
+  { const sim = mk(['danbi', 'tobi', 'bori']); const b = sim.enemies[0]; b.retarget = 0; b.target = null; sim.step(1 / 60); if (!b.target || b.target.role !== 'tank') errs.push('boss ignored tank ' + (b.target && b.target.key)); }
+  { const sim = mk(['tobi', 'danbi', 'bori']); const b = sim.enemies[0]; const [t, d] = sim.heroes; b.chargeCd = 9; b.target = d; d.statuses.crush = { t: 8, n: 3 };
+    if (!sim.checkCond(t, 's1', { cond: 'saveForCharge' })) errs.push('tank did not peel crushed ally'); }
+  // 3) 멀리서 끌기만 하면 보스가 덮친다
+  { const sim = mk(['byeolbi']); const b = sim.enemies[0]; const h = sim.heroes[0]; b.x = 700; h.x = 60; b.target = h; b.retarget = 99; b.speed = 0; let leap = false;
+    for (let i = 0; i < 60 * 8 && !leap; i++) { sim.step(1 / 60); leap = sim.events.some((e) => e.type === 'bossLeap'); sim.events.length = 0; } if (!leap) errs.push('no boss leap'); }
+  // 4) 레벨 차이: 낮으면 불리, 높으면 유리, 단조
+  { const L = ctx.levelGapMult || vm.runInContext('levelGapMult', ctx); let pd = 0, pt = 9;
+    for (let g = -40; g <= 80; g += 5) { const m = L(g); if (m.dealt < pd || m.taken > pt) errs.push('gap not monotonic at ' + g); pd = m.dealt; pt = m.taken; }
+    if (!(L(-10).taken > 1.2 && L(30).dealt > 1.8 && L(30).taken < 0.3 + 0.01 + 0.25)) errs.push('gap curve');
+    const s0 = mk(['danbi']), s1 = mk(['danbi'], { levelGap: 20 }); const hit = (s) => { const b = s.enemies[0], h = s.heroes[0]; const hp = b.hp; s._damage(h, b, 100, { noCrit: true }); return hp - b.hp; };
+    if (!(hit(s1) > hit(s0) * 1.4)) errs.push('levelGap not applied'); }
+  // 5) 전투 레벨: 장비 등급·강화로 오른다
+  { const p = EQ.newProfile(); const r = makeRng(3); if (EQ.heroLevel(p, 'tobi') !== 0) errs.push('no-gear level');
+    for (const slot of EQ.SLOTS) { const base = Object.values(EQ.BASE).find((b) => b.slot === slot && (b.cls === 'tank' || b.cls === 'common')); const it = EQ.rollItem(r, p, { base: base.id, grade: 'C' }); it.enh = 4; p.inv.push(it); p.equip.tobi[slot] = it.uid; }
+    if (EQ.heroLevel(p, 'tobi') !== 24) errs.push('gear level ' + EQ.heroLevel(p, 'tobi')); if (EQ.tierLevel(2) !== 25) errs.push('tier level ' + EQ.tierLevel(2)); }
+  // 6) 서포터도 평타 사거리 안에서 싸운다
+  { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const sim = new BattleSim({ seed: 3, stage: 5, waves: [['ogre_chief']], strategy: st, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
+    let shots = 0; while (!sim.outcome && sim.time < 40) { sim.step(1 / 60); shots += sim.events.filter((e) => e.type === 'projectile' && e.from.key === 'bori').length; sim.events.length = 0; }
+    if (shots < 16) errs.push('support rarely attacks ' + shots); }
+  console.log('boss pressure:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(crush, tank aggro/peel, leap, level gap, gear level, support attacks)');
+  if (errs.length) fail++;
+}
 process.exit(fail ? 1 : 0);

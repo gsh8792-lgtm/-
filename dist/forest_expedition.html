@@ -427,6 +427,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .tier-btn { min-height: 64px; min-width: 70px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; padding: 2px 8px; }
 .tier-btn.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold) inset; }
 .tier-desc { width: 100%; text-align: center; color: var(--muted); font-size: 13px; }
+.tier-desc .warn { color: #ff9a6a; }
 .reward-loot, .result-loot { text-align: center; font-size: 15px; margin: 6px 0; line-height: 1.6; }
 .rc-icon .ic { margin: 0 auto; }
 .bs-box .inv-body { grid-template-columns: 330px 1fr; }
@@ -564,6 +565,13 @@ const CONST = {
   ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 궁극기 게이지(%)
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
+  // 짓누름: 보스 평타가 같은 대상에 쌓이는 압박 (탱커가 아니면 오래 못 버팀)
+  TAUNT_LINGER: 3,                    // 도발이 끝난 뒤에도 탱커를 노리는 시간
+  BOSS_LEAP_AFTER: 4,                 // 보스가 대상을 이 시간(초) 넘게 못 따라잡으면 덮친다
+  CRUSH_STEP: 0.4, CRUSH_MAX: 5, CRUSH_DUR: 8,
+  CRUSH_RES: { tank: 0.85, sturdy: 0.6 },     // 스택 효과 감소 (직업 탱커 / 든든함 특성)
+  // 레벨 차이 보정 (파티 전투 레벨 − 던전 레벨). 낮으면 크게 불리, 높으면 점점 딜찍누
+  LEVEL_GAP: { dealtUp: 0.03, dealtUpMax: 3, takenUp: 0.025, takenUpMin: 0.3, dealtDown: 0.025, dealtDownMin: 0.35, takenDown: 0.03, takenDownMax: 2.5 },
   ULT_GAIN_HEAL: 0.08,               // 회복량 1당 (서포터 필살기도 제때 차도록)
   HITSTOP_MS: 60,
   CONFIRM_SLOWMO_SEC: 0.2,
@@ -614,10 +622,17 @@ const CONST = {
 };
 
 // 스테이지별 적 능력치 배율 (스테이지 1..5)
+// 레벨 차이(g = 파티 − 던전) → 주는 피해·받는 피해 배율
+function levelGapMult(g) {
+  const L = CONST.LEVEL_GAP;
+  if (g >= 0) return { dealt: Math.min(L.dealtUpMax, 1 + L.dealtUp * g), taken: Math.max(L.takenUpMin, 1 - L.takenUp * g) };
+  return { dealt: Math.max(L.dealtDownMin, 1 + L.dealtDown * g), taken: Math.min(L.takenDownMax, 1 - L.takenDown * g) };
+}
 const STAGE_SCALE = [1.0, 1.15, 1.3, 1.5, 1.5];
 
 // ---------------------------------------------------------------- 상태이상
 const STATUS = {
+  crush:  { name: '짓누름', short: '짓', color: '#b0603a', desc: '보스 평타에 맞을 때마다 쌓인다. 쌓일수록 보스 평타 피해 증가. 탱커는 거의 영향이 없다.' },
   stun:   { name: '기절', short: '기', color: '#ffd34a', desc: '행동 불가. 차지 공격을 캔슬한다.' },
   bleed:  { name: '출혈', short: '출', color: '#e0524a', desc: '초당 지속 피해.' },
   burn:   { name: '화상', short: '화', color: '#ff8a2a', desc: '지속 피해 + 받는 회복량 -50%.' },
@@ -851,6 +866,7 @@ const HINTS = {
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
   battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
   break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 맞춰야 해요. 같은 직업은 한 번만 쳐요.`,
+  crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 데려가거나, 장비로 레벨을 올려 버티세요.',
   charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
 };
 
@@ -2377,6 +2393,17 @@ const EQ = (() => {
   }
   function dropGem(rng, p, tier) { return rollGem(rng, p, dropGrade(rng, 'boss', tier)); }
 
+  // 전투 레벨: 장비 레벨(등급 × 10 + 강화) 6부위 평균. 던전 레벨과의 차이가 전투 보정(levelGapMult)이 된다
+  // (캐릭터 레벨이 생기면 여기에 더한다)
+  function itemLevel(item) { return (G[item.grade].idx + 1) * 10 + (item.enh || 0); }
+  function heroLevel(p, heroId) {
+    let sum = 0;
+    for (const s of SLOTS) { const uid = p.equip[heroId] && p.equip[heroId][s]; const item = uid && findItem(p, uid); if (item) sum += itemLevel(item); }
+    return Math.round(sum / SLOTS.length);
+  }
+  function tierLevel(t) { return t ? (G[DB.tiers[t - 1].recGrade].idx + 1) * 10 + 5 : 0; }
+  function levelGap(p, heroId, t) { return heroLevel(p, heroId) - tierLevel(t); }
+
   // 난이도 단계: 0 = 기본 던전(장비 없이 깰 수 있는 데모 난이도), 1~8 = EQUIP_DB.tiers
   function tierInfo(t) {
     if (!t) return { tier: 0, name: '기본', hp: 1, atk: 1, recGrade: null };
@@ -2404,7 +2431,7 @@ const EQ = (() => {
     heroClass, usableBy, newProfile, loadProfile, saveProfile, findItem, findGem, equippedBy,
     rollItem, rollPassive, rollGem, mainStats, itemEffects, heroLoadout, itemScore, passiveValue, gemEffects,
     enhanceCap, enhanceInfo, tryEnhance, visualTier, equip, unequip, dismantle, socket, unsocket,
-    dropGrade, dropItem, dropGem, tierInfo, fmtStat, passiveText, itemName,
+    dropGrade, dropItem, dropGem, tierInfo, itemLevel, heroLevel, tierLevel, levelGap, fmtStat, passiveText, itemName,
   };
 })();
 
@@ -2811,6 +2838,7 @@ class BattleSim {
     this.waves = opts.waves.map((w) => w.slice());
     this.partyScale = PARTY_ENEMY_SCALE[clamp(opts.partySize || opts.heroes.length, 1, 3)] || 1;
     this.tier = opts.tier || { hp: 1, atk: 1 }; // 난이도 단계 배율 (보스 포함 모든 적)
+    this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
     this.aiProfile = opts.aiProfile || 'none';
@@ -2858,6 +2886,7 @@ class BattleSim {
       x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
+      levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
       upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0, ultDef: h.ultDef || null, casting: null,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
@@ -3002,9 +3031,11 @@ class BattleSim {
         const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
         let tx = t.x - keep;
         if (this.order === 'hold' && anchor && anchor.melee) tx = Math.min(tx, anchor.x - (u.role === 'support' ? 120 : 70));
-        if (u.role === 'support') { // 서포터는 가장 다친 아군 쪽으로
-          const hurt = this.aliveHeroes().reduce((a, b) => (this.hpPct(b) < this.hpPct(a) ? b : a), u);
-          tx = Math.min(tx, hurt.x - 90); u.ty = hurt.y + 14;
+        if (u.role === 'support') { // 서포터: 평타 사거리는 지키되, 많이 다친 동료가 있으면 그 뒤에 붙는다 (회복은 거리 제한 없음)
+          tx = Math.max(tx, t.x - u.reach * 0.9);
+          u.ty = t.y + 18;
+          const hurt = this.aliveHeroes().filter((b) => b !== u && this.hpPct(b) < 0.6).reduce((a, b) => (!a || this.hpPct(b) < this.hpPct(a) ? b : a), null);
+          if (hurt) { tx = Math.min(tx, hurt.x - 50); u.ty = hurt.y + 14; }
         } else u.ty = t.y + ((u.uid % 3) - 1) * 18;
         // 너무 가까이 붙은 적이 있으면 뒤로 빠진다
         const near = this.nearest(u, enemies);
@@ -3015,17 +3046,18 @@ class BattleSim {
       if (u.charge || u.call || u.def.immobile) { u.tx = u.x; u.ty = u.y; return; }
       const heroes = this.aliveHeroes();
       if (!heroes.length) return;
-      if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) u.target = tt; }
+      if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) { u.target = tt; u.retarget = CONST.TAUNT_LINGER; } } // 도발이 끝나도 잠시 탱커를 계속 노린다
       else if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC * 2;
         const back = u.def.huntsBackline ? heroes.filter((h) => !h.melee) : [];
-        u.target = back.length ? this.nearest(u, back) : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
+        const tankAggro = u.def.abilities.includes('boss') && heroes.find((h) => h.role === 'tank' && this.dist(u, h) < 320); // 보스는 가까운 탱커를 먼저 노린다 (위협)
+        u.target = back.length ? this.nearest(u, back) : tankAggro ? tankAggro : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
       }
       if (intro) { u.tx = F.ENEMY_SPAWN_X - (u.uid % 3) * 30; u.ty = u.y; return; }
       const t = u.target;
       const r = this.attackRange(u, t) * 0.8;
       // 같은 대상을 노리는 적들은 둘러싸듯 흩어진다
-      const slot = (u.uid % 5) - 2;
+      const slot = u.size > 1 ? 0 : (u.uid % 5) - 2; // 큰 적은 흩어지지 않는다 (사거리 밖에 멈추는 일 방지)
       u.tx = t.x + (u.x >= t.x ? 1 : -1) * (r + Math.abs(slot) * 8); u.ty = t.y + slot * 14;
     }
   }
@@ -3128,6 +3160,17 @@ class BattleSim {
     u.atkTimer -= dt * speed * (u.statuses.slow ? 1 - u.statuses.slow.value : 1);
     if (u.atkTimer > 0) return;
     let tgt = u.target && u.target.alive ? u.target : null;
+    // 보스 추격: 대상이 사거리 밖에 오래 있으면 덮쳐 든다 (멀리서 끌기만으로는 버틸 수 없게)
+    if (u.side === 'enemy' && u.def.abilities.includes('boss') && tgt && u.x < 960) {
+      if (this.dist(u, tgt) > this.attackRange(u, tgt) + 20) u.chase = (u.chase || 0) + u.atkInterval * 0.5 + 0.15;
+      else u.chase = 0;
+      if (u.chase >= CONST.BOSS_LEAP_AFTER) {
+        u.chase = 0;
+        const side = u.x >= tgt.x ? 1 : -1;
+        u.x = clamp(tgt.x + side * this.attackRange(u, tgt) * 0.7, CONST.FIELD_X0, CONST.FIELD_X1); u.y = tgt.y;
+        this.events.push({ type: 'dash', unit: u }); this.events.push({ type: 'bossLeap', unit: u, target: tgt });
+      }
+    }
     // 후퇴 중이거나 대상이 멀면, 사거리 안의 아무 적이나
     if (!tgt || this.dist(u, tgt) > this.attackRange(u, tgt)) {
       const foes = u.side === 'hero' ? this.aliveEnemies() : this.aliveHeroes();
@@ -3251,6 +3294,24 @@ class BattleSim {
     }
   }
 
+  // 짓누름: 지금 스택만큼 피해 배율을 돌려주고 한 스택 쌓는다 (버티는 중이면 쌓이지 않음)
+  _crush(h) {
+    const s = h.statuses.crush;
+    const n = s ? s.n : 0;
+    const res = this.crushRes(h);
+    if (!h.statuses.guard && !h.statuses.invuln) {
+      h.statuses.crush = { t: CONST.CRUSH_DUR, n: Math.min(CONST.CRUSH_MAX, n + 1) };
+      if (n + 1 >= 3 && res < 0.5 && !(s && s.warned)) { h.statuses.crush.warned = true; this.events.push({ type: 'crushWarn', unit: h }); }
+      else if (s && s.warned) h.statuses.crush.warned = true;
+    }
+    return 1 + n * CONST.CRUSH_STEP * (1 - res);
+  }
+  crushRes(h) {
+    let r = h.role === 'tank' ? CONST.CRUSH_RES.tank : h.def.traits.includes('sturdy') ? CONST.CRUSH_RES.sturdy : 0;
+    r = 1 - (1 - r) * (1 - Math.min(0.8, (h.mods && h.mods.crushres) || 0));
+    return r;
+  }
+
   _atkOf(u) {
     let m = 1;
     if (u.statuses.fruit) m += u.statuses.fruit.value;
@@ -3285,6 +3346,9 @@ class BattleSim {
       if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
     }
     dmg *= 1 - tgt.defPct;
+    if (src && src.side === 'hero' && src.levelGap) dmg *= levelGapMult(src.levelGap).dealt;
+    if (tgt.side === 'hero' && tgt.levelGap && src && src.side === 'enemy') dmg *= levelGapMult(tgt.levelGap).taken;
+    if (info.basic && tgt.side === 'hero' && src && src.side === 'enemy' && src.def.abilities.includes('boss')) dmg *= this._crush(tgt);
     if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - (tgt.armorBoost > 0 ? Math.max(tgt.armor, tgt.armorBoostV || CONST.UNBLOCKED_CALL_ARMOR) : tgt.armor); // 방어 태세
     if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
@@ -3676,7 +3740,10 @@ class BattleSim {
       case 'enemyCountGte': return this.aliveEnemies().length >= c.param;
       case 'saveForCharge': { // 차지·호출 능력을 가진 적이 있으면 그 순간에만, 없으면 바로
         const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && this.canPartyCancel(e));
-        return !threats.length || threats.some((e) => e.charge || e.call);
+        if (!threats.length || threats.some((e) => e.charge || e.call)) return true;
+        // 짓누름이 쌓인 동료를 보스가 때리고 있으면 시선을 뺏는다 (차지가 곧 오면 아껴 둔다)
+        const soon = threats.some((e) => e.def.abilities.includes('charge') && e.chargeCd < 2.5);
+        return !soon && this.aliveEnemies().some((e) => e.def.abilities.includes('boss') && e.target && e.target !== h && e.target.alive && e.target.statuses.crush && e.target.statuses.crush.n >= 2);
       }
       case 'auto': { // 필살기 종류에 맞춰 자동: 부활 / 회복 / 그로기 만들기 / 무방비 수확
         const sk = this.skillDef(h, slot);
@@ -3752,7 +3819,7 @@ const BattleScene = {
     const waves = encounterFor(node);
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
-      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, ultDef: GACHA.ultFor(Game.profile, id) };
+      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, levelGap: EQ.levelGap(Game.profile, id, run.tier), ultDef: GACHA.ultFor(Game.profile, id) };
     });
     const ti = EQ.tierInfo(run.tier);
     this.sim = new BattleSim({
@@ -4224,6 +4291,8 @@ const BattleScene = {
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓눌림!', '#ff9a6a', 17, { label: true }); break;
+      case 'bossLeap': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '덮치기!', '#ff9a6a', 18, { label: true }); this.shake = Math.max(this.shake, 6); break;
       case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
       case 'immune': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '면역', '#cfcfcf', 15); break;
       case 'break':
@@ -4679,7 +4748,8 @@ const BattleScene = {
       const st = STATUS[k];
       if (!st) continue;
       const t = u.statuses[k].t;
-      s += `<span class="sti" style="background:${st.color}">${st.short}${isFinite(t) ? `<i>${Math.ceil(t)}</i>` : ''}</span>`;
+      const n = u.statuses[k].n; // 스택형(짓누름)은 남은 시간 대신 겹 수
+      s += `<span class="sti" style="background:${st.color}">${st.short}${n ? `<i>${n}</i>` : isFinite(t) ? `<i>${Math.ceil(t)}</i>` : ''}</span>`;
     }
     return s;
   },
@@ -4901,7 +4971,10 @@ const FieldScene = {
       wrap.appendChild(b);
     }
     const ti = EQ.tierInfo(p.tier);
-    wrap.appendChild(el('div', 'tier-desc', p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade} 이상` : '장비 없이도 도전할 수 있는 기본 난이도'));
+    const ids = partyIds(Game.run), lv = Math.round(ids.reduce((a, id) => a + EQ.heroLevel(p, id), 0) / Math.max(1, ids.length)), dl = EQ.tierLevel(p.tier);
+    const gap = lv - dl, gm = levelGapMult(gap);
+    const gapTxt = gap === 0 ? '레벨 같음' : `레벨 차 ${gap > 0 ? '+' : ''}${gap}: 주는 피해 ${Math.round((gm.dealt - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.dealt - 1) * 100)}% · 받는 피해 ${Math.round((gm.taken - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.taken - 1) * 100)}%`;
+    wrap.appendChild(el('div', 'tier-desc', `던전 Lv ${dl} · 파티 Lv ${lv} (${gapTxt})<br>` + (p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade}` : '기본 난이도') + (gap < 20 && !ids.some((id) => HEROES[id].role === 'tank') ? '<br><b class="warn">탱커 없이는 보스를 버티기 어려워요</b>' : '')));
     return wrap;
   },
 
@@ -5920,7 +5993,7 @@ function openPartySelect(run, onDone) {
       c.id = 'ps-' + id;
       c.appendChild(portraitCanvas(d.sprite, 84));
       const sk = d.skills.map((s) => SKILLS[s].name).join(' · ');
-      c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
+      c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>Lv ${EQ.heroLevel(Game.profile, id)} · HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
       if (on) c.appendChild(el('div', 'ps-badge', String(pick.indexOf(id) + 1)));
       c.addEventListener('click', () => {
         Sfx.play('click');
@@ -6102,7 +6175,7 @@ function openInventory(opts) {
     const atk = def.atk * (1 + (lo.mods.atk_pct || 0)) + (lo.mods.atk || 0);
     const statLines = Object.keys(lo.mods).filter((k) => k !== 'atk' && k !== 'atk_pct' && k !== 'passives' && Math.abs(lo.mods[k]) > 1e-6).map((k) => EQ.fmtStat(k, lo.mods[k]));
     const psv = Object.values(lo.passives).map((ps) => `「${EQ.PASSIVE[ps.key].name}」`);
-    hp.appendChild(el('div', 'inv-stats', `<div class="is-name">${def.name} <small>${def.roleName}</small></div><div class="is-main"><span>HP <b>${lo.maxHp}</b></span><span>공격력 <b>${Math.round(atk)}</b></span></div><div class="is-list">${statLines.concat(psv).join(' · ') || '<span class="muted">장비 없음</span>'}</div>`));
+    hp.appendChild(el('div', 'inv-stats', `<div class="is-name">${def.name} <small>${def.roleName} · 전투 Lv ${EQ.heroLevel(p, st.hero)}</small></div><div class="is-main"><span>HP <b>${lo.maxHp}</b></span><span>공격력 <b>${Math.round(atk)}</b></span></div><div class="is-list">${statLines.concat(psv).join(' · ') || '<span class="muted">장비 없음</span>'}</div>`));
     const grid = el('div', 'inv-slots');
     for (const s of EQ.SLOTS) {
       const uid = p.equip[st.hero][s], item = uid && EQ.findItem(p, uid);

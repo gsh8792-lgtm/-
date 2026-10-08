@@ -12,6 +12,8 @@ const args = process.argv.slice(2);
 const mode = args.find((a) => !a.startsWith('--')) || 'archetypes';
 const N = +(args[args.indexOf('--n') + 1] || 0) || (mode === 'chars' ? 24 : 60);
 if (args.includes('--v1')) CONST.BREAK_V2 = false;
+const GAP = args.includes('--gap') ? +args[args.indexOf('--gap') + 1] : 0;
+const NO_CRUSH = args.includes('--nocrush'); if (NO_CRUSH) CONST.CRUSH_STEP = 0;
 const BOSSES = ENCOUNTERS.boss[5].map((w) => w[0][0]);
 const bossWaves = (b) => ENCOUNTERS.boss[5].find((w) => w[0][0] === b);
 
@@ -25,8 +27,8 @@ function strategy(profile) {
 }
 const STRAT = { smart: strategy('smart'), brute: strategy('brute') };
 
-function fight(ids, boss, seed, profile, ults) {
-  const sim = new BattleSim({ seed, stage: 5, waves: bossWaves(boss), strategy: STRAT[profile], partySize: ids.length,
+function fight(ids, boss, seed, profile, ults, gap) {
+  const sim = new BattleSim({ seed, levelGap: gap === undefined ? GAP : gap, stage: 5, waves: bossWaves(boss), strategy: STRAT[profile], partySize: ids.length,
     heroes: ids.map((id) => { const u = (ults && ults[id]) || { k: 'A', bt: 0 }; return { id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {}, ultDef: ultDefFor(id, u.k, u.bt) }; }) });
   // 끊기 놓친 시전 vs 끊은 시전
   let cancels = 0, casts = 0;
@@ -36,12 +38,14 @@ function fight(ids, boss, seed, profile, ults) {
     sim.events.length = 0;
   }
   const b = sim.enemies.find((e) => e.key === boss);
-  return { win: sim.outcome === 'win', time: sim.time, breaks: sim.breakLog.length, first: sim.breakLog[0], poise: sim.poiseLog, cancels, casts, enrage: b ? b.enrageStacks : 0 };
+  const sup = sim.heroes.find((h) => h.role === 'support');
+  return { supDealt: sup ? sup.stats.dealt : 0, deaths: sim.heroes.filter((h) => !h.alive).length, win: sim.outcome === 'win', time: sim.time, breaks: sim.breakLog.length, first: sim.breakLog[0], poise: sim.poiseLog, cancels, casts, enrage: b ? b.enrageStacks : 0 };
 }
-function cell(ids, boss, profile, ults, n) {
-  const r = { n, wins: 0, breaks: 0, firsts: [], zeroWins: 0, time: 0, poise: {}, cancels: 0, casts: 0 };
+function cell(ids, boss, profile, ults, n, gap) {
+  const r = { n, supDealt: 0, deaths: 0, wins: 0, breaks: 0, firsts: [], zeroWins: 0, time: 0, poise: {}, cancels: 0, casts: 0 };
   for (let s = 0; s < n; s++) {
-    const f = fight(ids, boss, 7000 + s * 13, profile, ults);
+    const f = fight(ids, boss, 7000 + s * 13, profile, ults, gap);
+    r.supDealt += f.supDealt; r.deaths += f.deaths;
     r.wins += f.win; r.breaks += f.breaks; r.time += f.time; r.cancels += f.cancels; r.casts += f.casts;
     if (f.first !== undefined) r.firsts.push(f.first);
     if (f.win && !f.breaks) r.zeroWins++;
@@ -50,7 +54,7 @@ function cell(ids, boss, profile, ults, n) {
   const tot = Object.values(r.poise).reduce((a, b) => a + b, 0) || 1;
   const share = {}; for (const k in r.poise) share[k] = +(r.poise[k] / tot).toFixed(3);
   const med = r.firsts.length ? r.firsts.sort((a, b) => a - b)[Math.floor(r.firsts.length / 2)] : null;
-  return { win: +(r.wins / n).toFixed(3), breaks: +(r.breaks / n).toFixed(2), firstMed: med && +med.toFixed(1), zeroWin: +(r.zeroWins / Math.max(1, r.wins)).toFixed(3), time: +(r.time / n).toFixed(1), share, cancelRate: +(r.cancels / Math.max(1, r.casts)).toFixed(2) };
+  return { supDealt: Math.round(r.supDealt / n), deaths: +(r.deaths / n).toFixed(2), win: +(r.wins / n).toFixed(3), breaks: +(r.breaks / n).toFixed(2), firstMed: med && +med.toFixed(1), zeroWin: +(r.zeroWins / Math.max(1, r.wins)).toFixed(3), time: +(r.time / n).toFixed(1), share, cancelRate: +(r.cancels / Math.max(1, r.casts)).toFixed(2) };
 }
 const pct = (x) => (x * 100).toFixed(0).padStart(3) + '%';
 const outDir = path.join(ROOT, 'data/balance'); fs.mkdirSync(outDir, { recursive: true });
@@ -87,13 +91,39 @@ if (mode === 'archetypes') {
   fs.writeFileSync(path.join(outDir, `break_lab_archetypes${CONST.BREAK_V2 ? '' : '_v1'}.json`), JSON.stringify(out, null, 1));
 }
 
+if (mode === 'pressure') {
+  // 탱커 유무 × 레벨 차이 × 보스: 동레벨이면 탱커(또는 아주 단단한 근딜) 없이는 버티기 힘들고, 레벨 차가 크면 딜찍누
+  const COMPS = [
+    ['탱커+근딜+서포터', ['tobi', 'danbi', 'bori']],
+    ['성기사+암살자+음유', ['leon', 'kai', 'lumi']],
+    ['망자기사+원딜+치유사', ['gor', 'byeolbi', 'sera']],
+    ['투사(단단한 근딜)+원딜+서포터', ['bran', 'byeolbi', 'bori']],
+    ['근딜+원딜+서포터', ['danbi', 'byeolbi', 'bori']],
+    ['매지션+원딜+서포터', ['byeolbi', 'soldam', 'bori']],
+    ['딜러 3', ['danbi', 'byeolbi', 'soldam']],
+  ];
+  const GAPS = (process.env.GAPS || '-10,0,10,20,30').split(',').map(Number);
+  const out = { n: N, bosses: BOSSES, gaps: GAPS, rows: [] };
+  console.log(`레벨 차이 × 조합 (셀당 ${N}판, 보스 4종 평균 승률 · 판당 전사자)\n`);
+  console.log('조합'.padEnd(24) + GAPS.map((g) => ((g > 0 ? '+' : '') + g).padStart(12)).join(''));
+  for (const [name, ids] of COMPS) {
+    const row = { name, ids, cells: {} };
+    for (const g of GAPS) { row.cells[g] = {}; for (const b of BOSSES) row.cells[g][b] = cell(ids, b, 'smart', null, N, g); }
+    out.rows.push(row);
+    console.log(name.padEnd(24) + GAPS.map((g) => { const cs = BOSSES.map((b) => row.cells[g][b]); const w = cs.reduce((a, c) => a + c.win, 0) / cs.length, d = cs.reduce((a, c) => a + c.deaths, 0) / cs.length; return `${pct(w)} ${d.toFixed(1)}`.padStart(12); }).join(''));
+    console.log(''.padEnd(24) + '  └ 보스별 (동레벨): ' + BOSSES.map((b) => `${ENEMIES[b].name} ${pct(row.cells[0] ? row.cells[0][b].win : 0)} 서포터딜 ${row.cells[0] ? row.cells[0][b].supDealt : '-'}`).join(' · '));
+  }
+  fs.writeFileSync(path.join(outDir, 'break_lab_pressure.json'), JSON.stringify(out, null, 1));
+}
+
 if (mode === 'chars') {
   // 기준 파티: 탱커 자리 → [X, danbi, bori] / 근딜 → [tobi, X, bori] / 원딜 → [tobi, X, bori] / 매지션 → [tobi, X, bori] / 서포터 → [tobi, danbi, X]
   // 탱커 없는 기준도 함께: [X(비탱커), byeolbi|danbi, bori]
   const base = (c) => c.role === 'tank' ? [c.id, 'danbi', 'bori'] : c.role === 'support' ? ['tobi', 'danbi', c.id] : ['tobi', c.id, 'bori'];
   const baseNT = (c) => c.role === 'tank' ? null : c.role === 'support' ? ['byeolbi', 'danbi', c.id] : [c.id, c.role === 'ranged' ? 'danbi' : 'byeolbi', 'bori'];
   const KS = [['A', 0], ['B', 0], ['C', 0], ['A2', 5], ['B2', 5], ['C2', 5]];
-  const out = { v2: CONST.BREAK_V2, n: N, bosses: BOSSES, chars: [] };
+  const NT_GAP = +(process.env.NT_GAP || 15);
+  const out = { v2: CONST.BREAK_V2, n: N, ntGap: NT_GAP, bosses: BOSSES, chars: [] };
   console.log(`캐릭터 × 필살기 × 보스 (셀당 ${N}판) — 승률 / 그로기 횟수\n`);
   for (const c of CHARACTERS) {
     const rec = { id: c.id, name: c.name, role: c.role, ults: {} };
@@ -103,7 +133,7 @@ if (mode === 'chars') {
       for (const b of BOSSES) {
         r.withTank[b] = cell(base(c), b, 'smart', ults, N);
         const nt = baseNT(c);
-        if (nt) r.noTank[b] = cell(nt, b, 'smart', ults, N);
+        if (nt) r.noTank[b] = cell(nt, b, 'smart', ults, N, NT_GAP); // 탱커 없는 파티는 동레벨로는 못 버티므로 '장비로 보완한' 레벨 차에서 잰다
       }
       rec.ults[k] = r;
       const sk = ultDefFor(c.id, k, bt);

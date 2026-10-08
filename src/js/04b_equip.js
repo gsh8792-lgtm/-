@@ -236,6 +236,17 @@ const EQ = (() => {
   }
   function dropGem(rng, p, tier) { return rollGem(rng, p, dropGrade(rng, 'boss', tier)); }
 
+  // 전투 레벨: 장비 레벨(등급 × 10 + 강화) 6부위 평균. 던전 레벨과의 차이가 전투 보정(levelGapMult)이 된다
+  // (캐릭터 레벨이 생기면 여기에 더한다)
+  function itemLevel(item) { return (G[item.grade].idx + 1) * 10 + (item.enh || 0); }
+  function heroLevel(p, heroId) {
+    let sum = 0;
+    for (const s of SLOTS) { const uid = p.equip[heroId] && p.equip[heroId][s]; const item = uid && findItem(p, uid); if (item) sum += itemLevel(item); }
+    return Math.round(sum / SLOTS.length);
+  }
+  function tierLevel(t) { return t ? (G[DB.tiers[t - 1].recGrade].idx + 1) * 10 + 5 : 0; }
+  function levelGap(p, heroId, t) { return heroLevel(p, heroId) - tierLevel(t); }
+
   // 난이도 단계: 0 = 기본 던전(장비 없이 깰 수 있는 데모 난이도), 1~8 = EQUIP_DB.tiers
   function tierInfo(t) {
     if (!t) return { tier: 0, name: '기본', hp: 1, atk: 1, recGrade: null };
@@ -263,6 +274,6 @@ const EQ = (() => {
     heroClass, usableBy, newProfile, loadProfile, saveProfile, findItem, findGem, equippedBy,
     rollItem, rollPassive, rollGem, mainStats, itemEffects, heroLoadout, itemScore, passiveValue, gemEffects,
     enhanceCap, enhanceInfo, tryEnhance, visualTier, equip, unequip, dismantle, socket, unsocket,
-    dropGrade, dropItem, dropGem, tierInfo, fmtStat, passiveText, itemName,
+    dropGrade, dropItem, dropGem, tierInfo, itemLevel, heroLevel, tierLevel, levelGap, fmtStat, passiveText, itemName,
   };
 })();

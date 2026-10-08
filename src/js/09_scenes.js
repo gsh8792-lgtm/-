@@ -676,7 +676,7 @@ function openPartySelect(run, onDone) {
       c.id = 'ps-' + id;
       c.appendChild(portraitCanvas(d.sprite, 84));
       const sk = d.skills.map((s) => SKILLS[s].name).join(' · ');
-      c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
+      c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>Lv ${EQ.heroLevel(Game.profile, id)} · HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
       if (on) c.appendChild(el('div', 'ps-badge', String(pick.indexOf(id) + 1)));
       c.addEventListener('click', () => {
         Sfx.play('click');

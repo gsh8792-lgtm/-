@@ -136,7 +136,10 @@ const FieldScene = {
       wrap.appendChild(b);
     }
     const ti = EQ.tierInfo(p.tier);
-    wrap.appendChild(el('div', 'tier-desc', p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade} 이상` : '장비 없이도 도전할 수 있는 기본 난이도'));
+    const ids = partyIds(Game.run), lv = Math.round(ids.reduce((a, id) => a + EQ.heroLevel(p, id), 0) / Math.max(1, ids.length)), dl = EQ.tierLevel(p.tier);
+    const gap = lv - dl, gm = levelGapMult(gap);
+    const gapTxt = gap === 0 ? '레벨 같음' : `레벨 차 ${gap > 0 ? '+' : ''}${gap}: 주는 피해 ${Math.round((gm.dealt - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.dealt - 1) * 100)}% · 받는 피해 ${Math.round((gm.taken - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.taken - 1) * 100)}%`;
+    wrap.appendChild(el('div', 'tier-desc', `던전 Lv ${dl} · 파티 Lv ${lv} (${gapTxt})<br>` + (p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade}` : '기본 난이도') + (gap < 20 && !ids.some((id) => HEROES[id].role === 'tank') ? '<br><b class="warn">탱커 없이는 보스를 버티기 어려워요</b>' : '')));
     return wrap;
   },
 

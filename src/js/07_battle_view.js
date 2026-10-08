@@ -12,7 +12,7 @@ const BattleScene = {
     const waves = encounterFor(node);
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
-      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, ultDef: GACHA.ultFor(Game.profile, id) };
+      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, levelGap: EQ.levelGap(Game.profile, id, run.tier), ultDef: GACHA.ultFor(Game.profile, id) };
     });
     const ti = EQ.tierInfo(run.tier);
     this.sim = new BattleSim({
@@ -484,6 +484,8 @@ const BattleScene = {
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓눌림!', '#ff9a6a', 17, { label: true }); break;
+      case 'bossLeap': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '덮치기!', '#ff9a6a', 18, { label: true }); this.shake = Math.max(this.shake, 6); break;
       case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
       case 'immune': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '면역', '#cfcfcf', 15); break;
       case 'break':
@@ -939,7 +941,8 @@ const BattleScene = {
       const st = STATUS[k];
       if (!st) continue;
       const t = u.statuses[k].t;
-      s += `<span class="sti" style="background:${st.color}">${st.short}${isFinite(t) ? `<i>${Math.ceil(t)}</i>` : ''}</span>`;
+      const n = u.statuses[k].n; // 스택형(짓누름)은 남은 시간 대신 겹 수
+      s += `<span class="sti" style="background:${st.color}">${st.short}${n ? `<i>${n}</i>` : isFinite(t) ? `<i>${Math.ceil(t)}</i>` : ''}</span>`;
     }
     return s;
   },

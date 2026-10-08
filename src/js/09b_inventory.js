@@ -150,7 +150,7 @@ function openInventory(opts) {
     const atk = def.atk * (1 + (lo.mods.atk_pct || 0)) + (lo.mods.atk || 0);
     const statLines = Object.keys(lo.mods).filter((k) => k !== 'atk' && k !== 'atk_pct' && k !== 'passives' && Math.abs(lo.mods[k]) > 1e-6).map((k) => EQ.fmtStat(k, lo.mods[k]));
     const psv = Object.values(lo.passives).map((ps) => `「${EQ.PASSIVE[ps.key].name}」`);
-    hp.appendChild(el('div', 'inv-stats', `<div class="is-name">${def.name} <small>${def.roleName}</small></div><div class="is-main"><span>HP <b>${lo.maxHp}</b></span><span>공격력 <b>${Math.round(atk)}</b></span></div><div class="is-list">${statLines.concat(psv).join(' · ') || '<span class="muted">장비 없음</span>'}</div>`));
+    hp.appendChild(el('div', 'inv-stats', `<div class="is-name">${def.name} <small>${def.roleName} · 전투 Lv ${EQ.heroLevel(p, st.hero)}</small></div><div class="is-main"><span>HP <b>${lo.maxHp}</b></span><span>공격력 <b>${Math.round(atk)}</b></span></div><div class="is-list">${statLines.concat(psv).join(' · ') || '<span class="muted">장비 없음</span>'}</div>`));
     const grid = el('div', 'inv-slots');
     for (const s of EQ.SLOTS) {
       const uid = p.equip[st.hero][s], item = uid && EQ.findItem(p, uid);

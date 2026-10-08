@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const rd = (f) => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'data/balance', f), 'utf8')); } catch (e) { return null; } };
-const A = rd('break_lab_archetypes.json'), V1 = rd('break_lab_archetypes_v1.json'), C = rd('break_lab_chars.json');
+const P = rd('break_lab_pressure.json'), A = rd('break_lab_archetypes.json'), V1 = rd('break_lab_archetypes_v1.json'), C = rd('break_lab_chars.json');
 const BN = { ogre_chief: '오우거 대족장', thorn_queen: '가시덩굴 여왕', mist_stag: '안개 사슴왕', swamp_turtle: '늪거북 장로' };
 const FAV = { ogre_chief: '탱커', thorn_queen: '매지션', mist_stag: '근딜', swamp_turtle: '원딜·서포터' };
 const p = (x) => Math.round(x * 100) + '%';
@@ -11,6 +11,18 @@ const L = [];
 L.push('# 그로기 역할 분담 검증 결과', '');
 L.push('> 자동 생성: `node tools/break_lab.cjs archetypes|chars` → `node tools/break_lab_report.cjs`. 헤드리스 전투 시뮬(같은 장비 없음, 보스전, HP 가득). 승률은 판 수가 적으면 ±10%p 정도 흔들린다.', '');
 const bosses = (A || C).bosses;
+if (P) {
+  L.push(`## 0. 보스 압박 × 레벨 차이 (셀당 ${P.n}판, 보스 4종)`, '');
+  L.push('레벨 차이 = 파티 전투 레벨(장비 레벨) − 던전 레벨. 칸 = 보스 4종 평균 승률 · 판당 전사자. 동레벨이면 탱커(또는 든든한 근딜) 없이는 버티지 못하고, 레벨 차가 크면 딜찍누가 된다.', '');
+  L.push('| 조합 | ' + P.gaps.map((g) => (g > 0 ? '+' : '') + g).join(' | ') + ' |');
+  L.push('|---|' + P.gaps.map(() => '---').join('|') + '|');
+  for (const r of P.rows) L.push(`| ${r.name} | ` + P.gaps.map((g) => { const cs = P.bosses.map((b) => r.cells[g][b]); const w = cs.reduce((a, c) => a + c.win, 0) / cs.length, d = cs.reduce((a, c) => a + c.deaths, 0) / cs.length; return `${p(w)} · ${d.toFixed(1)}`; }).join(' | ') + ' |');
+  L.push('', '동레벨 보스별 승률:', '');
+  L.push('| 조합 | ' + P.bosses.map((b) => BN[b]).join(' | ') + ' |');
+  L.push('|---|' + P.bosses.map(() => '---').join('|') + '|');
+  for (const r of P.rows) if (r.cells[0]) L.push(`| ${r.name} | ` + P.bosses.map((b) => p(r.cells[0][b].win)).join(' | ') + ' |');
+  L.push('');
+}
 if (A) {
   L.push(`## 1. 조합 원형 × 보스 (규칙 V2, 셀당 ${A.n}판)`, '');
   L.push('보스별 우대 직업: ' + bosses.map((b) => `${BN[b]} = ${FAV[b]}`).join(' · '), '');
@@ -33,7 +45,7 @@ if (A && V1) {
 }
 if (C) {
   L.push(`## 3. 캐릭터 × 필살기 × 보스 (셀당 ${C.n}판)`, '');
-  L.push('각 캐릭터를 기준 파티의 같은 직업 자리에 넣어 측정. **탱커 있는 기준**: 탱커 자리면 [캐릭터, 단비, 보리], 서포터면 [토비, 단비, 캐릭터], 그 외 [토비, 캐릭터, 보리]. **탱커 없는 기준**: 원딜이면 [캐릭터, 단비, 보리], 그 외 딜러면 [캐릭터, 별비, 보리], 서포터면 [별비, 단비, 캐릭터]. 변주(A2/B2/C2)는 5돌파, 기본(A/B/C)은 0돌파.', '');
+  L.push('각 캐릭터를 기준 파티의 같은 직업 자리에 넣어 측정. **탱커 있는 기준**: 탱커 자리면 [캐릭터, 단비, 보리], 서포터면 [토비, 단비, 캐릭터], 그 외 [토비, 캐릭터, 보리]. **탱커 없는 기준** (레벨 +${C.ntGap || 0}, 장비로 보완한 상태): 원딜이면 [캐릭터, 단비, 보리], 그 외 딜러면 [캐릭터, 별비, 보리], 서포터면 [별비, 단비, 캐릭터]. 변주(A2/B2/C2)는 5돌파, 기본(A/B/C)은 0돌파.', '');
   const KS = ['A', 'B', 'C', 'A2', 'B2', 'C2'];
   L.push('| 캐릭터 | 필살기 | ' + bosses.map((b) => BN[b] + ' (탱/無)').join(' | ') + ' |');
   L.push('|---|---|' + bosses.map(() => '---').join('|') + '|');

@@ -417,6 +417,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .tier-btn { min-height: 64px; min-width: 70px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 14px; padding: 2px 8px; }
 .tier-btn.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold) inset; }
 .tier-desc { width: 100%; text-align: center; color: var(--muted); font-size: 13px; }
+.tier-desc .warn { color: #ff9a6a; }
 .reward-loot, .result-loot { text-align: center; font-size: 15px; margin: 6px 0; line-height: 1.6; }
 .rc-icon .ic { margin: 0 auto; }
 .bs-box .inv-body { grid-template-columns: 330px 1fr; }
