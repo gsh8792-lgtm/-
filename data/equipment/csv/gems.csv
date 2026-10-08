@@ -1,0 +1,10 @@
+﻿Key,Name,Stat,BaseAtUC
+ruby,루비,atk_pct,0.008
+sapphire,사파이어,hp_pct,0.01
+emerald,에메랄드,cdr,0.004
+topaz,토파즈,crit,0.0045
+amethyst,자수정,skilldmg,0.008
+diamond,다이아,dr,0.0035
+opal,오팔,ultgain,0.01
+pearl,진주,heal,0.01
+obsidian,흑요석,breakdmg,0.018

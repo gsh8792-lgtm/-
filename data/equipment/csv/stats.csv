@@ -1,0 +1,18 @@
+﻿Key,Name,IsPercent,Cap
+atk,공격력,False,
+hp,체력,False,
+atk_pct,공격력%,True,
+hp_pct,체력%,True,
+dr,받는 피해 감소,True,0.5
+aspd,공격 속도,True,0.5
+crit,치명타 확률,True,0.6
+critdmg,치명타 피해,True,
+skilldmg,스킬 피해,True,
+cdr,쿨타임 감소,True,0.4
+heal,회복량,True,
+ultgain,필살기 충전,True,0.8
+mspd,이동 속도,True,0.5
+dotdmg,지속 피해,True,
+ccdur,기절·도발 지속,True,
+breakdmg,그로기 피해,True,
+vsbroken,그로기 적 피해,True,

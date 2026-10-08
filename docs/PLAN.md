@@ -49,3 +49,10 @@
   코드 드로잉의 한계상 상용 3D 렌더 원화 수준은 아니며, 실제 원화가 생기면 `SPRITE_IMAGE_OVERRIDES`에 PNG 경로만 넣으면 교체된다.
 - 전투: 고정 대형 + 전술 정지 → **실시간 자유 이동 + 스킬 3개(① 기본 ② 상황 ③ 필살기) + 탭/끌기 조작 + 작전 명령**으로 변경.
 - 파티: 최대 **3인**(`CONST.PARTY_SIZE`). 로스터 5명 중 필드에서 편성, 던전 입장 후 고정. 적 체력은 출전 인원 배율(`PARTY_ENEMY_SCALE`).
+- 공략(기믹): 큰 적은 **방어 태세 + 그로기 게이지**. 기절·스킬·차지 끊기로 게이지를 깎으면 6초 무방비(방어 해제, 피해 +50%). 비슷한 등급에서 딜만 밀어붙이면 불리하도록 조정.
+- 개별 명령: 캐릭터(얼굴 또는 전장의 캐릭터)를 끌어 지점에 놓으면 이동, 적 위에 놓으면 그 적 공격. 작전 버튼을 누르면 개별 명령 해제.
+
+## 장비 DB (1단계)
+- 원본: `tools/gen_equipment_db.py` → `data/equipment/equipment_db.json` + `csv/`
+- 밸런스: `node tools/equip_balance.cjs` (전투력 분석 + 난이도×등급 시뮬 매트릭스, 기믹 공략 vs 딜만) → `balance_report.json`
+- 엑셀: `python3 tools/build_equipment_xlsx.py` → `docs/equipment_db.xlsx` (등급별 수치는 수식)

@@ -1,0 +1,16 @@
+﻿Stat,MinAtR,MaxAtR,Weight,Slots
+atk_pct,0.018,0.026,10,*
+hp_pct,0.025,0.035,12,*
+dr,0.02,0.03,7,"armor,belt,medal"
+aspd,0.03,0.045,7,"weapon,ring,necklace"
+crit,0.03,0.045,7,"weapon,ring,necklace,medal"
+critdmg,0.09,0.13,7,"weapon,ring,necklace,medal"
+skilldmg,0.045,0.065,9,*
+cdr,0.035,0.05,6,"armor,necklace,medal"
+heal,0.06,0.09,6,"weapon,armor,necklace,medal"
+ultgain,0.07,0.1,6,*
+mspd,0.1,0.15,4,"armor,belt"
+dotdmg,0.15,0.22,5,"weapon,ring,medal"
+ccdur,0.12,0.18,7,"weapon,armor,medal,belt"
+breakdmg,0.12,0.18,9,*
+vsbroken,0.12,0.18,8,"weapon,ring,necklace,medal"

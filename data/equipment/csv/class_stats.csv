@@ -1,0 +1,6 @@
+﻿Class,Stat,ValueL,ValueE
+tank,dr,0.02,0.02
+melee,critdmg,0.09,0.09
+ranged,crit,0.025,0.025
+mage,skilldmg,0.045,0.045
+support,heal,0.06,0.06
