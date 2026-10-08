@@ -1,0 +1,312 @@
+// 헤드리스 E2E 검증: node tools/e2e.mjs [outDir]
+// - 버튼 커버리지(모든 장면) / 5스테이지 완주 / 전멸 → 결과 화면 / 모바일 해상도 스크린샷 / 콘솔 에러 0
+import { chromium } from 'playwright';
+import path from 'path';
+import fs from 'fs';
+
+const OUT = process.argv[2] || 'test-output';
+fs.mkdirSync(OUT, { recursive: true });
+const URL = 'file://' + path.resolve('dist/forest_expedition.html');
+const report = { checks: [], errors: [], runs: [], fps: {} };
+const ok = (name, pass, info) => { report.checks.push({ name, pass: !!pass, info: info || '' }); console.log(`${pass ? 'PASS' : 'FAIL'}  ${name}${info ? '  — ' + info : ''}`); };
+
+const browser = await chromium.launch();
+async function newPage(vp) {
+  const ctx = await browser.newContext({ viewport: vp || { width: 1280, height: 720 }, hasTouch: true, isMobile: !!(vp && vp.mobile) });
+  const p = await ctx.newPage();
+  p.on('pageerror', (e) => report.errors.push('pageerror: ' + e.message));
+  p.on('console', (m) => { if (m.type() === 'error') report.errors.push('console: ' + m.text()); });
+  await p.goto(URL);
+  await p.waitForTimeout(300);
+  return p;
+}
+const scene = (p) => p.evaluate(() => window.GAME.Game.sceneName);
+const vis = async (p, sel) => (await p.locator(sel).count()) > 0 && (await p.locator(sel).first().isVisible());
+async function clickIf(p, sel) { if (await vis(p, sel)) { await p.locator(sel).first().click(); await p.waitForTimeout(80); return true; } return false; }
+async function dismissHints(p) { for (let i = 0; i < 3; i++) if (!(await clickIf(p, '#hint-ok'))) break; }
+
+// ---------------------------------------------------------------- 1. 한 판 자동 진행 (정책: 전투 우선, HP 낮으면 휴식)
+async function playRun(p, seed, opts) {
+  opts = opts || {};
+  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1 }; G.debug.simMult = 6; G.scenes.title.start(s); }, seed);
+  await p.waitForTimeout(200);
+  if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
+  // 보급 상자 → 포털
+  await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((i) => i.key === 'chest')); });
+  // 궁극기 자동 사용 (게임 내 전략 설정 기능)
+  await p.evaluate(() => { const r = window.GAME.Game.run; for (const k in r.strategy) r.strategy[k].ultAuto = true; });
+  await p.click('#btn-automove');
+  await p.waitForSelector('#portal-yes', { timeout: 20000 });
+  await p.click('#portal-yes');
+  const log = [];
+  const t0 = Date.now();
+  for (let step = 0; step < 200 && Date.now() - t0 < 240000; step++) {
+    await dismissHints(p);
+    const sc = await scene(p);
+    if (sc === 'result') break;
+    if (sc === 'map') {
+      const choice = await p.evaluate((pref) => {
+        const G = window.GAME.Game, run = G.run;
+        const nodes = run.map.stages.flat().filter((n) => window.GAME.canMoveTo(run, n));
+        const hpPct = Object.values(run.heroes).filter((h) => run.party.includes(h.id) && !h.dead).reduce((a, h) => a + h.hp / h.maxHp, 0) / run.party.length;
+        const rank = (n) => (hpPct < 0.6 && n.type === 'rest' ? -10 : 0) + (pref[n.type] || 0);
+        nodes.sort((a, b) => rank(a) - rank(b));
+        return nodes[0] ? { stage: nodes[0].stage, row: nodes[0].row, type: nodes[0].type } : null;
+      }, opts.pref || { battle: 1, event: 2, shop: 3, rest: 2, tree: 4, elite: 5, boss: 0 });
+      if (!choice) break;
+      log.push(`${choice.stage}:${choice.type}`);
+      await p.click(`.map-node[data-stage="${choice.stage}"][data-row="${choice.row}"]`);
+      await p.click('#btn-node-go');
+      await p.waitForTimeout(150);
+      if (await vis(p, '#pb-start')) { await p.click('#pb-auto'); await p.click('#pb-start'); }
+      continue;
+    }
+    if (sc === 'battle') {
+      try { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 120000 }); }
+      catch (e) { console.log('STUCK', await p.evaluate(() => { const G = window.GAME.Game, S = G.scene, sim = S.sim; return JSON.stringify({ modal: G.modalOpen, ov: G.overlay.innerText.slice(0, 80), paused: S.paused, tg: !!S.targeting, t: sim.time, out: sim.outcome, end: S.endTimer, wave: sim.waveIndex, en: sim.enemies.filter((e) => e.alive).map((e) => [e.key, Math.round(e.hp), Math.round(e.x)]), he: sim.heroes.map((h) => [h.key, Math.round(h.hp)]), err: G.lastError }); })); throw e; }
+      continue;
+    }
+    if (sc === 'reward') { if (await vis(p, '#reward-0')) { await p.click('#reward-0'); await p.click('#btn-reward-confirm'); } else await p.click('#btn-continue'); continue; }
+    if (sc === 'event') {
+      const n = await p.locator('.event-choices .btn:not([disabled])').count();
+      if (n) { await p.locator('.event-choices .btn:not([disabled])').first().click(); await p.waitForTimeout(100); }
+      await p.click('#btn-continue');
+      continue;
+    }
+    if (sc === 'shop') { await clickIf(p, '#shop-buy-0'); await p.click('#btn-continue'); continue; }
+    if (sc === 'rest') { if (!(await clickIf(p, '#rest-food:not([disabled])'))) await clickIf(p, '#rest-hungry'); await p.click('#btn-continue'); continue; }
+    if (sc === 'tree') { await p.click('#tree-leave'); continue; }
+    await p.waitForTimeout(200);
+  }
+  const res = await p.evaluate(() => { const r = window.GAME.Game.run; return { result: r.result, stage: r.pos.stage, nodes: r.stats.nodes, battles: r.stats.battles, dead: Object.values(r.heroes).filter((h) => h.dead).map((h) => h.id), sec: Math.round((performance.now() - r.stats.startTime) / 1000) }; });
+  return Object.assign(res, { path: log.join(' → ') });
+}
+
+// ---------------------------------------------------------------- 실행
+{
+  const p = await newPage();
+  // 완주: 여러 시드
+  let wins = 0;
+  for (const seed of [101, 202, 303, 404, 505]) {
+    const r = await playRun(p, seed, { party: ['tobi', 'soldam', 'bori'] });
+    report.runs.push(Object.assign({ seed, party: 'tobi+soldam+bori' }, r));
+    console.log(`run seed=${seed}: ${r.result} stage=${r.stage} nodes=${r.nodes} battles=${r.battles} dead=[${r.dead}] path=${r.path}`);
+    if (r.result === 'victory') wins++;
+    if (seed === 101) await p.screenshot({ path: `${OUT}/run_result.png` });
+  }
+  ok('5스테이지 완주 (보스 격파) 최소 1회', wins >= 1, `${wins}/5 시드 승리 (자동 전투 정책, 시뮬 6배속)`);
+  // 결과 화면 버튼
+  await p.evaluate(() => { window.GAME.Game.run.result = 'victory'; window.GAME.Game.go('result'); });
+  await p.click('#res-same'); ok('결과: 같은 시드로 다시 → 필드', (await scene(p)) === 'field');
+  await p.evaluate(() => { window.GAME.Game.run.result = 'defeat'; window.GAME.Game.go('result'); });
+  await p.click('#res-new'); ok('결과: 새 원정 → 필드', (await scene(p)) === 'field');
+  await p.evaluate(() => window.GAME.Game.go('result'));
+  await p.click('#res-title'); ok('결과: 타이틀', (await scene(p)) === 'title');
+  await p.close();
+}
+
+// 전멸 → 결과 화면 (실제 전투에서 HP 1로 시작)
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; G.go('map'); });
+  await p.click('.map-node.reachable >> nth=0');
+  await p.click('#btn-node-go');
+  if (await vis(p, '#pb-start')) await p.click('#pb-start');
+  else await p.evaluate(() => { const G = window.GAME.Game; G.go('battle', { node: { stage: 1, row: 0, type: 'battle', enc: 0 } }); });
+  if ((await scene(p)) !== 'battle') await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 1, row: 0, type: 'battle', enc: 0 } }));
+  await p.waitForFunction(() => window.GAME.Game.sceneName === 'result', null, { timeout: 60000 });
+  const dead = await p.evaluate(() => ({ res: window.GAME.Game.run.result, dead: Object.values(window.GAME.Game.run.heroes).filter((h) => h.dead).length, title: document.querySelector('.result-title').textContent }));
+  ok('전원 사망 → 결과 화면(패배)', dead.res === 'defeat' && dead.dead === 3, JSON.stringify(dead));
+  await p.screenshot({ path: `${OUT}/defeat_result.png` });
+  await p.close();
+}
+
+// ---------------------------------------------------------------- 2. 버튼 커버리지
+{
+  const p = await newPage();
+  // 타이틀
+  await p.click('#btn-seed'); await p.fill('#seed-input', '12345'); await p.click('#seed-ok');
+  ok('타이틀: 시드 입력 적용', (await p.textContent('.title-seed')).includes('12345'));
+  await p.click('#btn-seed'); await p.click('#seed-cancel');
+  await p.click('#btn-title-help'); ok('타이틀: 규칙 안내 열림', await vis(p, '.help-box')); await p.click('#help-close');
+  await p.click('#btn-sound'); await p.click('#btn-sound');
+  await p.click('#btn-start'); ok('타이틀 → 필드', (await scene(p)) === 'field');
+  ok('필드: 첫 플레이 힌트 표시', await vis(p, '#hint-ok')); await p.click('#hint-ok');
+  // 필드
+  await p.click('#btn-party'); await p.click('#ps-tobi'); await p.click('#ps-byeolbi'); await p.click('#ps-soldam');
+  await p.click('#ps-ok');
+  ok('필드: 파티 편성 변경 (최대 3인)', JSON.stringify(await p.evaluate(() => window.GAME.Game.run.party)) === JSON.stringify(['danbi', 'bori', 'byeolbi']), JSON.stringify(await p.evaluate(() => window.GAME.Game.run.party)));
+  await p.click('#btn-party'); await p.click('#ps-soldam');
+  ok('필드: 4번째 선택 거부', (await p.evaluate(() => document.querySelectorAll('.ps-card.on').length)) === 3);
+  await p.click('#ps-cancel');
+  await p.click('#btn-f-strategy'); await p.click('#stab-bori'); await p.selectOption('#sr-cond-0', 'always'); await p.click('#ult-auto'); await p.click('#strat-reset'); await p.click('#strat-close');
+  ok('필드: 전략 편집 열기/수정/기본값/닫기', !(await vis(p, '.strat-box')));
+  // 길잡이 대화 (탭 → 자동 이동 → 대화)
+  await p.evaluate(() => { const F = window.GAME.Game.scene; F.autoMove('guide'); });
+  await p.waitForSelector('#guide-next', { timeout: 15000 });
+  await p.click('#guide-next'); await p.click('#guide-next'); ok('필드: 길잡이 대화 3페이지', await vis(p, '#guide-close')); await p.click('#guide-close');
+  await p.evaluate(() => { const F = window.GAME.Game.scene; F.autoMove('chest'); });
+  await p.waitForFunction(() => window.GAME.Game.run.gotSupply, null, { timeout: 15000 });
+  ok('필드: 보급 상자 → 식량 +2', (await p.evaluate(() => window.GAME.Game.run.food)) === 3);
+  // 조이스틱 이동
+  const bb = await p.locator('#cv').boundingBox(); const k = bb.width / 960;
+  const before = await p.evaluate(() => ({ ...window.GAME.Game.scene.leader }));
+  await p.mouse.move(bb.x + 104 * k, bb.y + 432 * k); await p.mouse.down(); await p.mouse.move(bb.x + 150 * k, bb.y + 432 * k, { steps: 4 });
+  await p.waitForTimeout(700); await p.mouse.up();
+  const after = await p.evaluate(() => ({ ...window.GAME.Game.scene.leader }));
+  ok('필드: 가상 조이스틱 이동', after.x > before.x + 20, `x ${before.x.toFixed(0)} → ${after.x.toFixed(0)}`);
+  // 탭 이동
+  await p.mouse.click(bb.x + 600 * k, bb.y + 300 * k); await p.waitForTimeout(800);
+  const after2 = await p.evaluate(() => ({ ...window.GAME.Game.scene.leader }));
+  ok('필드: 탭 이동', Math.abs(after2.x - after.x) + Math.abs(after2.y - after.y) > 20);
+  const fol = await p.evaluate(() => window.GAME.Game.scene.followers.length);
+  ok('필드: 파티원 뒤따름 (리더 제외 2명)', fol === 2);
+  await p.waitForTimeout(1500); await clickIf(p, '#guide-close'); await clickIf(p, '#portal-no');
+  await p.screenshot({ path: `${OUT}/field.png` });
+  await p.click('#btn-automove');
+  await p.waitForSelector('#portal-no', { timeout: 20000 });
+  await p.click('#portal-no');
+  await p.click('#btn-interact'); await p.click('#portal-party'); await p.click('#ps-ok');
+  await p.click('#portal-yes');
+  ok('포털 → 지도', (await scene(p)) === 'map'); await dismissHints(p);
+  // 지도
+  await p.click('#btn-help'); await p.click('#help-close');
+  await p.click('#btn-strategy'); await p.click('#strat-close');
+  await p.click('#btn-potion'); ok('지도: 회복약 대상 선택 창', await vis(p, '.pick-box')); await p.click('.pick-box .btn.ghost');
+  const locked = p.locator('.map-node.locked').first(); await locked.click();
+  ok('지도: 갈 수 없는 방 → 이동 버튼 없음', !(await vis(p, '#btn-node-go')));
+  await p.click('#btn-node-cancel');
+  await p.locator('.map-node.reachable').first().click(); ok('지도: 갈 수 있는 방 → 이동 버튼', await vis(p, '#btn-node-go'));
+  await p.screenshot({ path: `${OUT}/map.png` });
+  await p.click('#btn-node-cancel');
+  // 전투 (직접 진입: 차지 오우거 포함 조우)
+  await p.evaluate(() => { const G = window.GAME.Game; G.run.party = ['tobi', 'danbi', 'bori']; G.go('battle', { node: { stage: 3, row: 0, type: 'battle', waves: [['ogre', 'goblin_caller', 'goblin']] } }); });
+  await dismissHints(p);
+  await p.click('#btn-speed'); ok('전투: 배속 2x', (await p.textContent('#btn-speed')).includes('2x')); await p.click('#btn-speed');
+  await p.click('#btn-manual'); ok('전투: 수동 전환', await p.evaluate(() => !window.GAME.Game.run.autoMode));
+  await p.click('#btn-bpotion'); ok('전투: 회복약 → 전술 정지', await p.evaluate(() => window.GAME.Game.scene.targeting && window.GAME.Game.scene.targeting.kind === 'potion')); await p.click('#btn-t-cancel');
+  await p.click('#btn-pause'); ok('전투: 일시정지 메뉴', await vis(p, '#pause-resume'));
+  await p.click('#pause-sound'); await p.click('#pause-sound');
+  await p.click('#pause-strategy'); await p.click('#strat-close');
+  await p.click('#pause-giveup'); await p.click('#giveup-no'); await p.click('#pause-resume');
+  // 차지 → 방패 강타로 캔슬
+  await p.waitForFunction(() => window.GAME.Game.scene.sim && window.GAME.Game.scene.sim.enemies.some((e) => e.alive && e.charge), null, { timeout: 30000 });
+  await dismissHints(p);
+  await p.screenshot({ path: `${OUT}/battle_charge.png` });
+  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'tobi'); S.sim.heroes.find((h) => h.key === 'tobi').cds.s2 = 0; });
+  await p.click('#btn-skill-s2');
+  const tsel = await p.evaluate(() => { const tg = window.GAME.Game.scene.targeting; return tg && tg.sel && tg.sel.key; });
+  ok('전투: 차지 중이면 방패 강타 기본 타겟 = 차지 중인 적', tsel === 'ogre', String(tsel));
+  const t1 = await p.evaluate(() => window.GAME.Game.scene.sim.time); await p.waitForTimeout(300);
+  ok('전투: 타겟팅 중 시간 정지(시뮬 시간 고정)', (await p.evaluate(() => window.GAME.Game.scene.sim.time)) === t1);
+  await p.locator('.chip').first().click();
+  await p.click('#btn-t-confirm');
+  await p.waitForTimeout(600);
+  const cancelled = await p.evaluate(() => { const o = window.GAME.Game.scene.sim.enemies.find((e) => e.key === 'ogre'); return !o.charge && !!o.statuses.stun; });
+  ok('전투: 기절로 차지 공격 캔슬', cancelled);
+  // 범위 스킬 드래그
+  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'danbi'); S.selHero.cds.s2 = 0; });
+  await p.click('#btn-skill-s2');
+  const x0 = await p.evaluate(() => window.GAME.Game.scene.targeting.x);
+  await p.mouse.move(bb.x + 600 * k, bb.y + 330 * k); await p.mouse.down(); await p.mouse.move(bb.x + 530 * k, bb.y + 330 * k, { steps: 4 });
+  const x1 = await p.evaluate(() => window.GAME.Game.scene.targeting.x); await p.mouse.up();
+  ok('전투: 범위 드래그로 위치 이동', x1 !== x0, `${x0 && x0.toFixed(0)} → ${x1.toFixed(0)}`);
+  await p.screenshot({ path: `${OUT}/battle_area.png` });
+  await p.click('#btn-t-cancel'); ok('전투: 취소 → 재개', await p.evaluate(() => !window.GAME.Game.scene.targeting));
+  // 단일 타겟 → 빈 곳 탭 취소
+  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'danbi'); S.selHero.cds.s1 = 0; });
+  await p.click('#btn-skill-s1'); await p.mouse.click(bb.x + 480 * k, bb.y + 150 * k);
+  ok('전투: 빈 곳 탭 → 타겟팅 취소', await p.evaluate(() => !window.GAME.Game.scene.targeting));
+  // 궁극기 (컷인)
+  await p.evaluate(() => { const S = window.GAME.Game.scene; S.selHero = S.sim.heroes.find((h) => h.key === 'bori'); S.selHero.ult = 100; });
+  await p.click('#btn-skill-ult'); await p.waitForTimeout(250);
+  ok('전투: 궁극기 컷인 연출', await p.evaluate(() => !!window.GAME.Game.scene.cutin));
+  await p.screenshot({ path: `${OUT}/battle_ult.png` });
+  await p.click('#btn-auto');
+  await p.evaluate(() => { window.GAME.Game.debug.simMult = 8; });
+  await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 120000 });
+  ok('전투 승리 → 보상 화면', (await scene(p)) === 'reward', await scene(p));
+  await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; });
+  await p.screenshot({ path: `${OUT}/reward.png` });
+  await p.click('#reward-1'); ok('보상: 카드 선택 → 확정 활성', !(await p.locator('#btn-reward-confirm').isDisabled()));
+  await p.click('#btn-reward-confirm'); ok('보상 확정 → 지도', (await scene(p)) === 'map');
+  // 이벤트 4종 (모든 선택지)
+  for (const ev of ['cart', 'well', 'goblin_merchant', 'wounded']) {
+    const n = await p.evaluate((e) => window.GAME.EVENTS[e].choices.length, ev);
+    for (let i = 0; i < n; i++) {
+      await p.evaluate((e) => { const G = window.GAME.Game; G.run.gold = 200; G.run.food = 3; G.go('event', { node: { stage: 2, row: 1, type: 'event', event: e } }); }, ev);
+      const dis = await p.locator(`#event-choice-${i}`).isDisabled();
+      if (dis) continue;
+      await p.click(`#event-choice-${i}`);
+      ok(`이벤트 ${ev} 선택지 ${i + 1} → 결과`, await vis(p, '.event-result'), (await p.textContent('.event-result')).slice(0, 40));
+      if (ev === 'goblin_merchant' && i === 1) { await p.click('#btn-continue'); ok('이벤트 전투 진입', (await scene(p)) === 'battle'); await dismissHints(p); }
+      else await p.click('#btn-continue');
+    }
+  }
+  if ((await scene(p)) === 'battle') { await p.evaluate(() => { window.GAME.Game.debug.simMult = 8; }); await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 120000 }); await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; }); await clickIf(p, '#btn-continue'); }
+  await p.screenshot({ path: `${OUT}/event.png` });
+  // 상점
+  await p.evaluate(() => { const G = window.GAME.Game; G.run.gold = 300; G.go('shop', { node: { stage: 2, row: 2, type: 'shop' } }); });
+  const g0 = await p.evaluate(() => window.GAME.Game.run.gold);
+  for (const i of [0, 1, 2, 3]) await clickIf(p, `#shop-buy-${i}:not([disabled])`);
+  ok('상점: 구매 (회복약/식량/횃불/유물)', (await p.evaluate(() => window.GAME.Game.run.gold)) < g0, `${g0} → ${await p.evaluate(() => window.GAME.Game.run.gold)}`);
+  await p.click('#shop-usepotion'); await p.click('.pick-box .btn.ghost');
+  await p.screenshot({ path: `${OUT}/shop.png` });
+  await p.click('#btn-continue'); ok('상점 → 지도', (await scene(p)) === 'map');
+  // 휴식
+  await p.evaluate(() => { const G = window.GAME.Game; for (const id of G.run.party) G.run.heroes[id].hp = Math.round(G.run.heroes[id].maxHp * 0.3); G.go('rest', {}); });
+  const f0 = await p.evaluate(() => window.GAME.Game.run.food);
+  await p.click('#rest-food');
+  const hp = await p.evaluate(() => { const r = window.GAME.Game.run; return r.party.map((id) => r.heroes[id].hp / r.heroes[id].maxHp); });
+  ok('휴식: 식량 1 소모 + HP 40% 회복', (await p.evaluate(() => window.GAME.Game.run.food)) === f0 - 1 && hp.every((x) => Math.abs(x - 0.7) < 0.02), hp.map((x) => x.toFixed(2)).join(','));
+  await p.screenshot({ path: `${OUT}/rest.png` });
+  await p.click('#rest-strategy'); await p.click('#strat-close');
+  await p.click('#btn-continue');
+  // 고목
+  await p.evaluate(() => window.GAME.Game.go('tree', {}));
+  await p.click('#tree-deal-small'); await p.locator('.tree-box .pcard.selectable').first().click(); await p.click('#tree-confirm');
+  ok('고목: HP 희생 → 열매 버프', await p.evaluate(() => !!window.GAME.Game.run.fruit && window.GAME.Game.run.fruit.battles === 3));
+  await p.screenshot({ path: `${OUT}/tree.png` });
+  await p.click('#btn-continue');
+  await p.close();
+}
+
+// ---------------------------------------------------------------- 3. 모바일 해상도 레이아웃
+for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 667, height: 375, name: 'iphoneSE_land' }, { width: 915, height: 412, name: 'galaxy_land' }, { width: 1920, height: 1080, name: 'fhd' }, { width: 390, height: 844, name: 'portrait' }]) {
+  const p = await newPage(Object.assign({ mobile: vp.width < 1000 }, vp));
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1 }; G.scenes.title.start(9); G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } }); });
+  await p.waitForTimeout(1800);
+  await p.screenshot({ path: `${OUT}/mobile_${vp.name}_battle.png` });
+  // 터치 타겟 크기 (실제 화면 px): 전투/지도/필드의 모든 보이는 버튼·칩·초상화
+  const measure = () => p.evaluate(() => {
+    let min = 1e9, which = '';
+    for (const e of document.querySelectorAll('#ui button, #ui .bport, #ui select')) { const r = e.getBoundingClientRect(); if (!r.width || getComputedStyle(e).visibility === 'hidden' || e.offsetParent === null) continue; const m = Math.min(r.width, r.height); if (m < min) { min = m; which = e.id || e.className; } }
+    return { min, which };
+  });
+  const tBattle = await measure();
+  await p.evaluate(() => window.GAME.Game.go('map')); await p.waitForTimeout(200);
+  const tMap = await measure();
+  await p.evaluate(() => window.GAME.Game.go('field')); await p.waitForTimeout(200);
+  const tField = await measure();
+  await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } })); await p.waitForTimeout(1500);
+  const minTouch = [tBattle, tMap, tField].reduce((a, b) => (b.min < a.min ? b : a));
+  if (vp.name !== 'portrait') ok(`모바일(${vp.name}): 터치 타겟 최소 ≥ 44px (전투·지도·필드)`, minTouch.min >= 43.5, `전투 ${tBattle.min.toFixed(1)} · 지도 ${tMap.min.toFixed(1)} · 필드 ${tField.min.toFixed(1)}px (최소: ${minTouch.which})`);
+  // 레터박스: 스테이지가 화면 안에 있음
+  const fit = await p.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: innerWidth, h: innerHeight }; });
+  ok(`해상도(${vp.name}): 16:9 레터박스 안에 맞음`, fit.l >= -1 && fit.t >= -1 && fit.r <= fit.w + 1 && fit.b <= fit.h + 1, JSON.stringify(fit));
+  if (vp.name === 'portrait') ok('세로 화면: 회전 안내 표시', await vis(p, '#rotate'));
+  // fps (헤드리스 소프트웨어 렌더 기준)
+  await p.waitForTimeout(2000);
+  report.fps[vp.name] = await p.evaluate(() => Math.round(window.GAME.Game.fps));
+  await p.evaluate(() => { window.GAME.Game.go('map'); }); await p.waitForTimeout(300);
+  await p.screenshot({ path: `${OUT}/mobile_${vp.name}_map.png` });
+  await p.close();
+}
+
+await browser.close();
+const errs = [...new Set(report.errors)];
+ok('콘솔/페이지 에러 0건', errs.length === 0, errs.slice(0, 5).join(' | '));
+const pass = report.checks.filter((c) => c.pass).length;
+console.log(`\n${pass}/${report.checks.length} checks passed. fps(headless SW): ${JSON.stringify(report.fps)}`);
+fs.writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
+process.exit(pass === report.checks.length ? 0 : 1);

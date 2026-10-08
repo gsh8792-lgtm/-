@@ -1,0 +1,9 @@
+{
+  "name": "forest-expedition-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.js",
+    "test": "node tools/build.js && node tools/e2e.mjs"
+  }
+}
