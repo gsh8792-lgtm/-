@@ -23,7 +23,11 @@ const CONST = {
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
   HITSTOP_MS: 60,
-  CONFIRM_SLOWMO_SEC: 0.2,           // 확정 후 감속 시간(실시간)
+  CONFIRM_SLOWMO_SEC: 0.2,
+  // 동작 고정: 공격/스킬 동작 중에는 이동으로 캔슬할 수 없다 (이동 명령은 동작이 끝난 뒤 실행)
+  ACT_LOCK_ATTACK: 0.3,
+  ACT_LOCK_SKILL: 0.5,
+  ACT_LOCK_ULT: 0.9,           // 확정 후 감속 시간(실시간)
   CONFIRM_SLOWMO_SCALE: 0.25,
   // 실시간 자유 이동 전장 (바닥 영역, 논리 px)
   FIELD_X0: 40, FIELD_X1: 920, FIELD_Y0: 318, FIELD_Y1: 420,

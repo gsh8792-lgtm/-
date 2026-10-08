@@ -54,7 +54,7 @@ class BattleSim {
       x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
-      upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0,
+      upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
     };
@@ -233,13 +233,14 @@ class BattleSim {
     this.events.push({ type: 'command', unit: h, cmd: h.cmd });
     return true;
   }
+  travelling(u) { return !!(u.cmd && u.cmd.type === 'move' && Math.hypot(u.x - u.cmd.x, u.y - u.cmd.y) > 6); }
   clearCommands() { for (const h of this.heroes) h.cmd = null; }
 
   _move(dt) {
     const F = CONST;
     const all = this.heroes.concat(this.enemies).filter((u) => u.alive);
     for (const u of all) {
-      if (u.statuses.stun || u.charge || u.call || u.broken > 0) { u.moving = false; continue; }
+      if (u.statuses.stun || u.charge || u.call || u.broken > 0 || u.actLock > 0) { u.moving = false; continue; }
       const dx = u.tx - u.x, dy = u.ty - u.y;
       const d = Math.hypot(dx, dy);
       const fast = (u.side === 'enemy' && u.x > 960) || this.introT > 0 ? 2.2 : 1;
@@ -289,6 +290,7 @@ class BattleSim {
       u.cds.s1 = Math.max(0, u.cds.s1 - dt);
       u.cds.s2 = Math.max(0, u.cds.s2 - dt);
       u.castLock = Math.max(0, u.castLock - dt);
+      u.actLock = Math.max(0, u.actLock - dt);
       this._gainUlt(u, CONST.ULT_GAIN_TIME * dt);
     }
     const stunned = !!u.statuses.stun;
@@ -305,6 +307,7 @@ class BattleSim {
       if (!u.alive || u.charge || u.call) return;
     }
     if (stunned) return;
+    if (this.travelling(u)) return; // 이동 명령 수행 중: 새 공격을 시작하지 않음
     const speed = u.statuses.enrage ? 1 / (u.def.enrageSpeed || 0.6) : 1;
     u.atkTimer -= dt * speed;
     if (u.atkTimer > 0) return;
@@ -391,6 +394,7 @@ class BattleSim {
   }
 
   _basicAttack(u, tgt) {
+    if (u.side === 'hero') u.actLock = Math.max(u.actLock, CONST.ACT_LOCK_ATTACK);
     if (u.melee) {
       u.anim.lunge = 0.22; u.anim.lungeX = (tgt.x - u.x) * 0.4; u.anim.lungeY = (tgt.y - u.y) * 0.4;
       u.face = tgt.x >= u.x ? 1 : -1;
@@ -556,6 +560,7 @@ class BattleSim {
     if (slot === 'ult') { h.ult = 0; this.events.push({ type: 'ult', unit: h, skill: sk }); }
     else h.cds[slot] = this.skillCdMax(h, slot);
     h.castLock = 0.35;
+    h.actLock = Math.max(h.actLock, slot === 'ult' ? CONST.ACT_LOCK_ULT : CONST.ACT_LOCK_SKILL);
     h.anim.cast = 0.3;
     const atk = this._atkOf(h);
     const fxDelay = { meteor: 0.55, arrowrain: 0.5, nova: 0.35, starbolt: 0.22, pierce: 0.16, snipe: 0.3 }[sk.fx] || 0.08;
@@ -660,12 +665,14 @@ class BattleSim {
   // 전략 ON: 스킬별 설정(자동 여부 · 조건 · 대상)대로 시전
   _heroAI() {
     for (const h of this.heroes) {
-      if (!h.alive || h.castLock > 0 || h.statuses.stun) continue;
+      if (!h.alive || h.castLock > 0 || h.statuses.stun || this.travelling(h)) continue;
       const st = this.strategy[h.key] || AI_PRESETS[h.key];
       for (const slot of ['s2', 'ult', 's1']) {
         const c = st[slot];
         if (!c || !c.auto || !this.canCast(h, slot) || !this.checkCond(h, slot, c)) continue;
         const spec = this.resolveTarget(h, slot, c.target);
+        // 위치 명령으로 자리를 지키는 근접 캐릭터는 자동 스킬로 돌진해 자리를 이탈하지 않는다
+        if (spec && spec.unit && h.melee && h.cmd && h.cmd.type === 'move' && this.skillDef(h, slot).target === 'enemy' && this.dist(h, spec.unit) > this.attackRange(h, spec.unit) + 10) continue;
         if (spec && this.cast(h, slot, spec)) break;
       }
     }

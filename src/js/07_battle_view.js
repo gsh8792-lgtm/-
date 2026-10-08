@@ -218,7 +218,7 @@ const BattleScene = {
     if (!ok) return;
     Sfx.play('click');
     if (d.unit) this.popup(d.unit.x, this.unitTop(d.unit) - 18, `${d.h.name} 공격`, '#ffb0a0', 16, { label: true });
-    else this.popup(d.fx, d.fy - 50, `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
+    else this.popup(d.fx, d.fy - 50, d.h.actLock > 0 ? `${d.h.name} 동작 후 이동` : `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
   },
 
   explainCant(h, slot) {
@@ -735,7 +735,7 @@ const BattleScene = {
     const cd = this.cmdDrag;
     if (cd) {
       ctx.fillStyle = 'rgba(30,60,90,0.22)'; ctx.fillRect(0, 0, 960, 540);
-      ctx.strokeStyle = cd.over ? 'rgba(200,240,255,0.95)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
+      ctx.strokeStyle = !cd.over ? 'rgba(255,255,255,0.5)' : cd.h.actLock > 0 ? 'rgba(255,180,90,0.95)' : 'rgba(200,240,255,0.95)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
       ctx.beginPath(); ctx.moveTo(cd.h.x, cd.h.y - 20); ctx.lineTo(cd.unit ? cd.unit.x : cd.fx, cd.unit ? cd.unit.y - 20 : cd.fy); ctx.stroke(); ctx.setLineDash([]);
       if (cd.over && cd.unit) this.drawTargetArc(ctx, cd.h, cd.unit, t);
       else if (cd.over) this.drawMoveMark(ctx, cd.fx, cd.fy, t, 1);

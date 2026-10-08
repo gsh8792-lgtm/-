@@ -109,7 +109,7 @@ async function playRun(p, seed, opts) {
 // 전멸 → 결과 화면 (실제 전투에서 HP 1로 시작)
 {
   const p = await newPage();
-  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; G.go('map'); });
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; for (const k in r.strategy) for (const sl of ['s1', 's2', 'ult']) r.strategy[k][sl].auto = false; G.go('map'); });
   await p.click('.map-node.reachable >> nth=0');
   await p.click('#btn-node-go');
   if (await vis(p, '#pb-start')) await p.click('#pb-start');
