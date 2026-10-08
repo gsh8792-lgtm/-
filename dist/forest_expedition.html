@@ -737,49 +737,112 @@ function stitch(ctx, pts, color) { ctx.save(); ctx.setLineDash([1.6, 1.4]); line
 // ---------------------------------------------------------------- 공용 신체 파츠
 const SKIN = '#f1c8a2';
 
+// 눈. style: big(크고 둥근) | sharp(날카롭게 올라간) | gentle(처진 순한) | sleepy(반쯤 감긴) | narrow(작고 가는) | round(아이같이 동그란)
 function eye(ctx, cx, cy, w, h, iris, opt) {
   opt = opt || {};
-  if (opt.blink) { curve(ctx, cx - w, cy + 0.5, cx, cy + h * 0.55, cx + w, cy + 0.2, INK, 1.4); return; }
+  const st = opt.style || 'big';
+  const tilt = st === 'sharp' ? -0.9 : st === 'gentle' ? 0.8 : 0;        // 눈꼬리 기울기
+  if (st === 'narrow') h *= 0.55;
+  if (st === 'sharp') h *= 0.72;
+  if (st === 'round') { w *= 1.08; h *= 1.05; }
+  if (opt.blink) { curve(ctx, cx - w, cy + 0.5, cx, cy + h * 0.6 + 0.6, cx + w, cy + 0.2 + tilt, INK, 1.4); return; }
   ctx.save();
-  ctx.beginPath(); ctx.ellipse(cx, cy, w, h, 0, 0, 7); ctx.fillStyle = opt.sclera || '#fffaf2'; ctx.fill();
+  ctx.beginPath();
+  // 흰자: 바깥 눈꼬리를 tilt만큼 올리고/내린다
+  ctx.moveTo(cx - w, cy);
+  ctx.bezierCurveTo(cx - w, cy - h * 1.25, cx + w, cy - h * 1.25 + tilt, cx + w, cy + tilt * 0.6);
+  ctx.bezierCurveTo(cx + w, cy + h * 1.2, cx - w, cy + h * 1.2, cx - w, cy);
+  ctx.fillStyle = opt.sclera || '#fffaf2'; ctx.fill();
   ctx.clip();
+  const ir = st === 'narrow' ? 0.6 : st === 'round' ? 0.86 : 0.78;
   const g = ctx.createLinearGradient(cx, cy - h, cx, cy + h);
-  g.addColorStop(0, DK(iris, 0.55)); g.addColorStop(0.55, iris); g.addColorStop(1, LT(iris, 0.45));
-  ctx.beginPath(); ctx.ellipse(cx + w * 0.12, cy + h * 0.1, w * 0.78, h * 0.86, 0, 0, 7); ctx.fillStyle = g; ctx.fill();
-  ctx.fillStyle = DK(iris, 0.8);
-  if (opt.slit) { ctx.beginPath(); ctx.ellipse(cx + w * 0.12, cy + h * 0.1, w * 0.18, h * 0.7, 0, 0, 7); ctx.fill(); }
-  else { ctx.beginPath(); ctx.ellipse(cx + w * 0.15, cy + h * 0.15, w * 0.36, h * 0.42, 0, 0, 7); ctx.fill(); }
+  g.addColorStop(0, DK(iris, 0.6)); g.addColorStop(0.55, iris); g.addColorStop(1, LT(iris, 0.5));
+  ctx.beginPath(); ctx.ellipse(cx + w * 0.12, cy + h * 0.12, w * ir, h * (st === 'narrow' ? 1.3 : 0.9), 0, 0, 7); ctx.fillStyle = g; ctx.fill();
+  ctx.fillStyle = DK(iris, 0.82);
+  if (opt.slit) { ctx.beginPath(); ctx.ellipse(cx + w * 0.12, cy + h * 0.1, w * 0.18, h * 0.75, 0, 0, 7); ctx.fill(); }
+  else { ctx.beginPath(); ctx.ellipse(cx + w * 0.15, cy + h * 0.15, w * ir * 0.45, h * 0.45, 0, 0, 7); ctx.fill(); }
   ctx.fillStyle = '#ffffff';
-  ctx.beginPath(); ctx.ellipse(cx - w * 0.2, cy - h * 0.3, w * 0.28, h * 0.22, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.arc(cx + w * 0.4, cy + h * 0.45, w * 0.13, 0, 7); ctx.fill();
+  const hl = st === 'round' ? 1.3 : st === 'narrow' ? 0.6 : 1;
+  ctx.beginPath(); ctx.ellipse(cx - w * 0.2, cy - h * 0.28, w * 0.28 * hl, h * 0.24 * hl, 0, 0, 7); ctx.fill();
+  if (st !== 'narrow') { ctx.beginPath(); ctx.arc(cx + w * 0.4, cy + h * 0.45, w * 0.13 * hl, 0, 7); ctx.fill(); }
+  // 반쯤 감긴 눈꺼풀
+  if (st === 'sleepy' || st === 'gentle') {
+    ctx.fillStyle = opt.skin || SKIN;
+    ctx.beginPath(); ctx.rect(cx - w * 1.2, cy - h * 1.4, w * 2.4, h * (st === 'sleepy' ? 0.95 : 0.55)); ctx.fill();
+  }
   ctx.restore();
-  ctx.beginPath(); ctx.moveTo(cx - w * 1.1, cy - h * 0.35); ctx.quadraticCurveTo(cx, cy - h * 1.35, cx + w * 1.15, cy - h * 0.55);
-  ctx.strokeStyle = opt.lash || INK; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.stroke();
-  if (!opt.noTail) line(ctx, [cx + w * 1.0, cy - h * 0.6, cx + w * 1.45, cy - h * 0.85], opt.lash || INK, 1.1);
-  curve(ctx, cx - w * 0.7, cy + h * 0.95, cx, cy + h * 1.15, cx + w * 0.8, cy + h * 0.85, 'rgba(60,30,30,0.45)', 0.6);
+  // 윗 속눈썹
+  const lidY = st === 'sleepy' ? cy - h * 0.45 : st === 'gentle' ? cy - h * 0.85 : cy - h * 1.15;
+  ctx.beginPath(); ctx.moveTo(cx - w * 1.1, cy - h * 0.2);
+  ctx.quadraticCurveTo(cx, lidY - (st === 'sleepy' ? 0 : h * 0.15), cx + w * 1.15, cy - h * 0.45 + tilt);
+  ctx.strokeStyle = opt.lash || INK; ctx.lineWidth = opt.lashW || (st === 'narrow' ? 1.3 : 1.7); ctx.lineCap = 'round'; ctx.stroke();
+  if (!opt.noTail && st !== 'narrow') line(ctx, [cx + w * 1.0, cy - h * 0.5 + tilt, cx + w * 1.5, cy - h * 0.75 + tilt * 1.4], opt.lash || INK, 1.1);
+  if (opt.lowerLash !== false) curve(ctx, cx - w * 0.7, cy + h * 0.95, cx, cy + h * 1.15, cx + w * 0.8, cy + h * 0.85 + tilt * 0.3, 'rgba(60,30,30,0.45)', 0.6);
 }
 
-function humanFace(ctx, hc, iris, blink, opt) {
-  opt = opt || {};
-  const skin = opt.skin || SKIN;
+// 얼굴형 경로 (머리 중심 ≈ (2,-80), 턱 끝 ≈ y -57)
+const FACE_SHAPES = {
+  round:  (c) => { c.moveTo(-19, -84); c.bezierCurveTo(-20, -105, 23, -107, 23, -84); c.bezierCurveTo(24, -68, 16, -59.5, 4, -59); c.bezierCurveTo(-8, -59, -18, -66, -19, -84); },
+  square: (c) => { c.moveTo(-19, -86); c.bezierCurveTo(-20, -106, 24, -108, 24, -86); c.lineTo(23, -70); c.quadraticCurveTo(21, -60, 12, -57.5); c.lineTo(-2, -57.5); c.quadraticCurveTo(-15, -60, -18, -70); c.closePath(); },
+  long:   (c) => { c.moveTo(-17, -86); c.bezierCurveTo(-18, -106, 21, -108, 21, -86); c.bezierCurveTo(22, -70, 14, -57, 4, -55); c.bezierCurveTo(-6, -55, -16, -64, -17, -86); },
+  sharp:  (c) => { c.moveTo(-18, -84); c.bezierCurveTo(-19, -104, 22, -106, 22, -84); c.bezierCurveTo(22, -72, 14, -61, 6, -56.5); c.bezierCurveTo(0, -57, -16, -67, -18, -84); },
+  child:  (c) => { c.moveTo(-20, -84); c.bezierCurveTo(-21, -108, 24, -110, 24, -84); c.bezierCurveTo(24, -69, 15, -61, 3, -61); c.bezierCurveTo(-9, -61, -19, -68, -20, -84); },
+};
+
+// 사람 얼굴. f = { skin, hair, iris, shape, eye, brow, mouth, extras:[...] }
+// brow: thick(굵고 일자) | thin(가늘게 아치) | angry(치켜올라감) | worried(八자)
+// mouth: smile | smirk | flat | open | grin | gentle
+// extras: freckles | stubble | scar | bandage | glasses | mole | wrinkles | blushBig
+function humanFace(ctx, f, blink) {
+  const skin = f.skin || SKIN;
+  const shape = FACE_SHAPES[f.shape || 'round'];
+  const chinY = { round: -59, square: -57.5, long: -55, sharp: -56.5, child: -61 }[f.shape || 'round'];
   blob(ctx, -18.5, -74, 3.6, 5, skin, 'skin', { ink: DK(skin, 0.6) });
-  paint(ctx, (c) => {
-    c.moveTo(-18, -84);
-    c.bezierCurveTo(-19, -104, 21, -106, 22, -84);
-    c.bezierCurveTo(23, -70, 16, -59, 5, -57.5);
-    c.bezierCurveTo(-6, -57, -17, -66, -18, -84);
-  }, skin, [-19, -104, 23, -57], 'skin', { lx: 0.55, ly: 0.35, ink: DK(skin, 0.62) });
-  ctx.fillStyle = 'rgba(236,120,104,0.32)';
-  ctx.beginPath(); ctx.ellipse(-6, -68, 4, 2.2, 0, 0, 7); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(17, -68.5, 3.2, 2, 0, 0, 7); ctx.fill();
-  const bc = DK(hc, 0.35);
-  curve(ctx, -9, -84.5, -4, opt.angry ? -84 : -86.5, 0, opt.angry ? -83 : -85, bc, 1.3);
-  curve(ctx, 8, opt.angry ? -83 : -85.5, 13, opt.angry ? -84.5 : -87.5, 19, -85.5, bc, 1.3);
-  eye(ctx, -4, -76, 3.6, 4.8, iris, { blink, lash: opt.lash });
-  eye(ctx, 12.5, -76, 4.3, 5.3, iris, { blink, lash: opt.lash });
-  line(ctx, [7.5, -70.5, 8.6, -68.6], 'rgba(150,80,60,0.6)', 0.9);
-  if (opt.mouth === 'open') blob(ctx, 6, -63.4, 2.2, 1.5, '#b4524a', 'skin', { ink: '#5a2a24', lw: 0.8 });
-  else curve(ctx, 3.5, -63.8, 6.5, opt.mouth === 'flat' ? -63.6 : -62.4, 9, -64.2, '#7a3a30', 1);
+  paint(ctx, shape, skin, [-20, -108, 24, chinY], 'skin', { lx: 0.55, ly: 0.35, ink: DK(skin, 0.62) });
+  const has = (x) => f.extras && f.extras.includes(x);
+  // 볼 터치
+  ctx.fillStyle = has('blushBig') ? 'rgba(240,110,100,0.42)' : 'rgba(236,120,104,0.28)';
+  ctx.beginPath(); ctx.ellipse(-6, -67.5, has('blushBig') ? 5 : 4, 2.3, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(17.5, -68, has('blushBig') ? 4 : 3.2, 2, 0, 0, 7); ctx.fill();
+  if (has('stubble')) { ctx.fillStyle = 'rgba(70,45,30,0.32)'; ctx.beginPath(); shape(ctx); ctx.save(); ctx.clip(); ctx.fillRect(-20, -66, 46, 12); ctx.restore(); for (let i = 0; i < 26; i++) { ctx.fillStyle = 'rgba(60,35,20,0.45)'; ctx.fillRect(-12 + (i * 7.3) % 32, -63 + (i * 3.1) % 6, 0.6, 0.6); } }
+  if (has('freckles')) { ctx.fillStyle = 'rgba(170,90,50,0.6)'; for (const [x, y] of [[-8, -70], [-5, -71.5], [-3, -69.5], [14, -71], [17, -70], [19, -71.8]]) { ctx.beginPath(); ctx.arc(x, y, 0.55, 0, 7); ctx.fill(); } }
+  if (has('wrinkles')) { curve(ctx, -10, -66, -8, -63, -6, -61, 'rgba(120,70,50,0.5)', 0.7); curve(ctx, 18, -66, 17, -63, 15, -61, 'rgba(120,70,50,0.5)', 0.7); line(ctx, [-6, -90, 12, -90.5], 'rgba(120,70,50,0.35)', 0.6); }
+  // 눈썹
+  const bc = DK(f.hair, 0.4);
+  const bw = f.brow === 'thick' ? 2.6 : f.brow === 'thin' ? 0.9 : 1.4;
+  const B = {
+    thick:   [[-10, -86, -4, -87, 1, -85.5], [7, -85.5, 13, -87.5, 20, -86]],
+    thin:    [[-9, -85, -4, -88.5, 0, -86.5], [8, -86.5, 13, -89.5, 19, -87]],
+    angry:   [[-9, -87, -4, -86, 0.5, -83.5], [7.5, -83.5, 13, -86, 19.5, -87.5]],
+    worried: [[-9, -84, -4, -86, 0, -87.5], [8, -87.5, 13, -86.5, 19, -84]],
+  }[f.brow || 'thin'];
+  for (const b of B) curve(ctx, b[0], b[1], b[2], b[3], b[4], b[5], bc, bw);
+  const big = f.eye === 'round' ? 1.12 : f.eye === 'narrow' ? 0.9 : 1;
+  eye(ctx, -4, -76, 3.6 * big, 4.8 * big, f.iris, { blink, style: f.eye, skin });
+  eye(ctx, 12.5, -76, 4.3 * big, 5.3 * big, f.iris, { blink, style: f.eye, skin });
+  if (has('mole')) { ctx.fillStyle = '#5a3020'; ctx.beginPath(); ctx.arc(17.5, -70.5, 0.7, 0, 7); ctx.fill(); }
+  if (has('scar')) { line(ctx, [18.5, -70.5, 21.5, -63.5], 'rgba(170,70,60,0.75)', 1); line(ctx, [18.6, -68, 21, -68.6], 'rgba(170,70,60,0.6)', 0.7); line(ctx, [19.6, -65.5, 22, -66.1], 'rgba(170,70,60,0.6)', 0.7); }
+  if (has('glasses')) {
+    ctx.strokeStyle = '#6a4a20'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(-4, -75.5, 6.2, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(12.5, -75.5, 6.8, 0, 7); ctx.stroke();
+    line(ctx, [2.2, -76, 5.7, -76], '#6a4a20', 1.1); line(ctx, [-10, -77, -18, -78], '#6a4a20', 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.28)'; ctx.beginPath(); ctx.ellipse(10, -79, 2.5, 1.4, -0.5, 0, 7); ctx.fill();
+  }
+  // 코
+  if (f.shape === 'square' || f.nose === 'big') { curve(ctx, 7, -73, 9.5, -69, 7, -67.5, 'rgba(140,70,50,0.65)', 1); }
+  else line(ctx, [7.5, -70.5, 8.6, -68.6], 'rgba(150,80,60,0.6)', 0.9);
+  if (has('bandage')) { paint(ctx, poly([4, -69.5, 12, -71, 12.5, -68.2, 4.5, -66.8]), '#efe2c8', [4, -71, 12.5, -66.8], 'cloth', { lw: 0.6, ink: '#a08a6a' }); line(ctx, [6.8, -69.8, 7.1, -67.4], 'rgba(160,130,100,0.6)', 0.5); line(ctx, [9.8, -70.3, 10.1, -67.9], 'rgba(160,130,100,0.6)', 0.5); }
+  // 입
+  const my = chinY + (f.shape === 'long' ? 7.5 : 5.6);
+  switch (f.mouth || 'smile') {
+    case 'flat': line(ctx, [3.5, my, 9.5, my - 0.2], '#7a3a30', 1.1); break;
+    case 'smirk': curve(ctx, 3, my + 0.2, 7, my + 0.6, 10.5, my - 1.4, '#7a3a30', 1.1); break;
+    case 'open': paint(ctx, (c) => { c.moveTo(3, my - 0.8); c.quadraticCurveTo(6.5, my + 4, 10, my - 0.8); c.closePath(); }, '#a8443c', [3, my - 1, 10, my + 3], 'skin', { ink: '#5a2a24', lw: 0.8 }); break;
+    case 'grin': paint(ctx, (c) => { c.moveTo(2, my - 1); c.quadraticCurveTo(6.5, my + 3.6, 11.5, my - 1.2); c.closePath(); }, '#ffffff', [2, my - 1, 11.5, my + 3], 'cloth', { ink: '#5a2a24', lw: 0.9 }); break;
+    case 'gentle': curve(ctx, 4, my - 0.4, 6.8, my + 1.2, 9.4, my - 0.6, '#9a4a40', 0.9); break;
+    default: curve(ctx, 3.5, my - 0.2, 6.5, my + 1.4, 9.5, my - 0.4, '#7a3a30', 1);
+  }
 }
 
 function drawBoot(ctx, x, base, h) {
@@ -806,6 +869,7 @@ function glow(ctx, x, y, r, rgb, a) {
 const ART = {
   // ===== 토비 — 수호기사 (탱커)
   knight: {
+    build: { sx: 1.18, sy: 1.1, hs: 0.95 }, // 크고 떡 벌어진 체격
     top: 106, box: [-46, -116, 50, 6], headBox: [-26, -108, 30, -52],
     back(ctx) {
       shape(ctx, [-16, -56, -6, -56, -10, -18, -22, -8, -30, -14, -26, -40], '#8e2c2c', 'cloth', { smooth: true });
@@ -840,7 +904,7 @@ const ART = {
     },
     head(ctx, blink) {
       shape(ctx, [-19, -86, -14, -93, 20, -93, 23, -84, 18, -80, 10, -86, 0, -82, -10, -84, -16, -76], '#6a4128', 'cloth', { smooth: true });
-      humanFace(ctx, '#6a4128', '#4a6ea0', blink, { mouth: 'flat' });
+      humanFace(ctx, { skin: '#e4b48a', hair: '#4e2e1c', iris: '#6a4a30', shape: 'square', eye: 'narrow', brow: 'thick', mouth: 'flat', extras: ['stubble', 'bandage'] }, blink);
       shape(ctx, [-12, -92, 22, -92, 22, -84, 17, -86, 14, -82, 9, -86, 4, -83, -1, -87, -8, -84, -14, -86], '#6a4128', 'cloth', { smooth: true });
       paint(ctx, (c) => { c.moveTo(-22, -84); c.bezierCurveTo(-24, -112, 26, -114, 25, -86); c.lineTo(20, -89); c.quadraticCurveTo(0, -95, -17, -88); c.closePath(); }, '#8d96a3', [-24, -112, 26, -84], 'metal', { lw: 1.8 });
       paint(ctx, (c) => { c.moveTo(-21, -88); c.quadraticCurveTo(1, -97, 24, -89); c.lineTo(24.5, -85.5); c.quadraticCurveTo(1, -93, -21.5, -84.5); c.closePath(); }, '#d8b048', [-22, -97, 25, -84], 'gold', { lw: 0.9 });
@@ -852,6 +916,7 @@ const ART = {
 
   // ===== 단비 — 검사 (근딜)
   sword: {
+    build: { sx: 0.95, sy: 1.04, hs: 0.97 }, // 탄탄하고 날렵
     top: 104, box: [-46, -122, 58, 6], headBox: [-26, -106, 30, -52],
     back(ctx) {
       shape(ctx, [-12, -96, -6, -94, -14, -78, -22, -60, -30, -50, -32, -60, -28, -76, -20, -92], '#9a4a2a', 'cloth', { smooth: true, ink: '#4a1e10' });
@@ -883,7 +948,7 @@ const ART = {
     },
     head(ctx, blink) {
       shape(ctx, [-20, -82, -20, -98, -8, -106, 12, -106, 24, -96, 24, -80, 20, -70, 18, -82, -16, -82, -18, -66], '#9a4a2a', 'cloth', { smooth: true, ink: '#4a1e10' });
-      humanFace(ctx, '#9a4a2a', '#3e7a5a', blink, { angry: true });
+      humanFace(ctx, { skin: '#f3cba6', hair: '#9a4a2a', iris: '#3e7a5a', shape: 'sharp', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: ['scar'] }, blink);
       shape(ctx, [-18, -94, -6, -104, 14, -104, 25, -94, 24, -84, 20, -88, 15, -83, 12, -90, 5, -84, 2, -91, -6, -85, -10, -91, -17, -82], '#9a4a2a', 'cloth', { smooth: true, ink: '#4a1e10' });
       hairStrands(ctx, [-6, -100, 0, -96, 2, -90, 8, -101, 12, -96, 13, -89], 'rgba(60,20,10,0.45)');
       line(ctx, [-4, -101, 10, -103], 'rgba(255,220,180,0.45)', 1.6);
@@ -894,6 +959,7 @@ const ART = {
 
   // ===== 별비 — 궁수 (원딜)
   archer: {
+    build: { sx: 0.88, sy: 1.0, hs: 0.97 }, // 마른 체형
     top: 110, box: [-46, -118, 50, 6], headBox: [-26, -110, 30, -52],
     back(ctx) {
       paint(ctx, poly([-22, -66, -15, -69, -5, -32, -12, -29]), '#7a5236', [-22, -69, -5, -29], 'leather');
@@ -924,7 +990,7 @@ const ART = {
     head(ctx, blink) {
       shape(ctx, [-24, -70, -24, -98, -10, -112, 12, -112, 26, -100, 27, -80, 22, -66, 14, -88, -14, -88, -18, -64], '#3e5a34', 'cloth', { smooth: true });
       shape(ctx, [-18, -84, -16, -98, 20, -98, 22, -80, 18, -70, -14, -70], '#d8b060', 'cloth', { smooth: true, ink: '#6a4a18' });
-      humanFace(ctx, '#c8a050', '#5a7ab0', blink);
+      humanFace(ctx, { skin: '#f6d6b6', hair: '#c8a050', iris: '#5a8ab8', shape: 'long', eye: 'sleepy', brow: 'thin', mouth: 'flat', extras: ['freckles'] }, blink);
       shape(ctx, [-17, -92, -8, -102, 12, -102, 23, -92, 22, -84, 17, -89, 13, -84, 9, -91, 3, -85, -2, -92, -10, -86, -15, -88], '#e0b866', 'cloth', { smooth: true, ink: '#6a4a18' });
       line(ctx, [-6, -99, 10, -100], 'rgba(255,250,220,0.6)', 1.4);
       for (let i = 0; i < 5; i++) blob(ctx, 20 + (i % 2) * 1.2, -78 + i * 4.5, 2.8, 2.6, '#d8b060', 'cloth', { ink: '#6a4a18', lw: 0.8 });
@@ -936,6 +1002,7 @@ const ART = {
 
   // ===== 솔담 — 마법사 (매지션)
   mage: {
+    build: { sx: 0.9, sy: 0.8, hs: 1.07 }, // 작은 소년 마법사
     top: 128, box: [-46, -140, 52, 6], headBox: [-28, -114, 30, -50],
     back(ctx) { shape(ctx, [-18, -54, 14, -54, 20, -6, 0, 0, -22, -6], '#3a2c62', 'cloth', { smooth: true }); },
     body(ctx) {
@@ -959,8 +1026,8 @@ const ART = {
       hand(ctx, 22.5, -43);
     },
     head(ctx, blink) {
-      shape(ctx, [-22, -60, -22, -96, 22, -96, 24, -60, 18, -56, 16, -80, -16, -80, -16, -56], '#2e3a62', 'cloth', { smooth: true, ink: '#141a30' });
-      humanFace(ctx, '#2e3a62', '#8a5ab0', blink, { mouth: 'flat' });
+      shape(ctx, [-23, -70, -23, -98, 23, -98, 25, -70, 19, -66, 16, -80, -17, -80, -18, -66], '#2e3a62', 'cloth', { smooth: true, ink: '#141a30' });
+      humanFace(ctx, { skin: '#f8d8bc', hair: '#2e3a62', iris: '#8a5ab0', shape: 'child', eye: 'round', brow: 'worried', mouth: 'open', extras: ['glasses', 'blushBig'] }, blink);
       shape(ctx, [-18, -92, 22, -92, 22, -82, 17, -86, 12, -82, 7, -88, 2, -83, -4, -88, -10, -83, -16, -86], '#2e3a62', 'cloth', { smooth: true, ink: '#141a30' });
       line(ctx, [-6, -90, 8, -90.5], 'rgba(180,200,255,0.4)', 1.2);
       paint(ctx, ell(1, -92, 34, 8, -0.04), '#43306e', [-33, -100, 35, -84], 'cloth', { ink: '#1e1238' });
@@ -972,6 +1039,7 @@ const ART = {
 
   // ===== 보리 — 사제 (서포터)
   priest: {
+    build: { sx: 0.9, sy: 1.12, hs: 0.94 }, // 키 크고 가녀림
     top: 108, box: [-46, -122, 50, 6], headBox: [-26, -106, 30, -52],
     back(ctx) {
       shape(ctx, [-22, -86, -14, -92, -12, -60, -18, -30, -26, -34, -26, -60], '#f0c4bc', 'cloth', { smooth: true, ink: '#8a4a4a' });
@@ -1000,7 +1068,7 @@ const ART = {
     },
     head(ctx, blink) {
       shape(ctx, [-21, -66, -22, -96, 22, -98, 24, -66, 20, -56, 17, -80, -16, -80, -17, -58], '#f2bfb8', 'cloth', { smooth: true, ink: '#8a4a4a' });
-      humanFace(ctx, '#c88a8a', '#4a9a7a', blink);
+      humanFace(ctx, { skin: '#f8dcc8', hair: '#c88a8a', iris: '#4a9a7a', shape: 'long', eye: 'gentle', brow: 'thin', mouth: 'gentle', extras: ['mole'] }, blink);
       shape(ctx, [-18, -92, -6, -104, 14, -104, 24, -92, 23, -82, 18, -87, 14, -81, 9, -88, 4, -83, -1, -89, -8, -83, -14, -87, -18, -82], '#f2bfb8', 'cloth', { smooth: true, ink: '#8a4a4a' });
       hairStrands(ctx, [-4, -100, 2, -95, 3, -89, 10, -101, 13, -95, 13, -88], 'rgba(150,80,80,0.4)');
       line(ctx, [-6, -100, 10, -101.5], 'rgba(255,255,255,0.6)', 1.6);
@@ -1011,22 +1079,26 @@ const ART = {
 
   // ===== 고블린
   goblin: {
+    build: { sx: 1.0, sy: 0.9, hs: 1.1, neck: -46 }, // 작고 구부정, 큰 머리
     top: 82, box: [-52, -96, 52, 6], headBox: [-34, -88, 34, -40], skin: '#7e9150',
     body(ctx) { goblinBody(ctx, this.skin, false); },
     head(ctx, blink) { goblinHead(ctx, this.skin, blink, false); },
   },
   goblinHorn: {
+    build: { sx: 1.25, sy: 0.95, hs: 1.04, neck: -46 }, // 뚱뚱한 나팔수
     top: 92, box: [-52, -116, 56, 6], headBox: [-34, -96, 34, -40], skin: '#879a56',
     body(ctx) { goblinBody(ctx, this.skin, true); },
     head(ctx, blink) { goblinHead(ctx, this.skin, blink, true); },
   },
   // ===== 오크 / 오크 대장
   orc: {
+    build: { sx: 1.08, sy: 1.05, hs: 1.0, neck: -60 },
     top: 112, box: [-56, -124, 66, 6], headBox: [-30, -116, 34, -56], skin: '#6f8258',
     body(ctx) { orcBody(ctx, this.skin, false); },
     head(ctx, blink) { orcHead(ctx, this.skin, blink, false); },
   },
   orcCaptain: {
+    build: { sx: 1.15, sy: 1.1, hs: 1.0, neck: -60 },
     top: 124, box: [-60, -136, 72, 6], headBox: [-30, -122, 34, -56], skin: '#64784e',
     back(ctx) { shape(ctx, [-20, -66, 16, -66, 24, -6, 2, 0, -28, -4], '#8a2424', 'cloth', { smooth: true, ink: '#3a0c0c' }); },
     body(ctx) { orcBody(ctx, this.skin, true); },
@@ -1039,6 +1111,7 @@ const ART = {
     head(ctx, blink) { ogreHead(ctx, this.skin, blink, false); },
   },
   ogreChief: {
+    build: { sx: 1.08, sy: 1.06, hs: 1.0, neck: -96 },
     top: 170, box: [-82, -182, 96, 8], headBox: [-36, -176, 40, -94], skin: '#b4835c',
     back(ctx) { shape(ctx, [-34, -116, 30, -118, 44, -20, 4, -8, -46, -16], '#6a4a30', 'leather', { smooth: true, ink: '#2a1a10' }); hairStrands(ctx, [-30, -60, -36, -40, -40, -20, 30, -70, 36, -50, 38, -26], 'rgba(30,15,5,0.5)'); },
     body(ctx) { ogreBody(ctx, this.skin, true); },
@@ -1057,7 +1130,7 @@ const ART = {
     },
     head(ctx, blink) {
       shape(ctx, [-22, -64, -24, -94, -8, -106, 12, -106, 26, -94, 26, -66, 18, -58, -16, -58], '#6a5440', 'cloth', { smooth: true });
-      humanFace(ctx, '#d8d4dc', '#6a7a8a', blink, { mouth: 'flat' });
+      humanFace(ctx, { skin: '#e8c0a0', hair: '#d8d4dc', iris: '#6a7a8a', shape: 'long', eye: 'gentle', brow: 'thick', mouth: 'flat', extras: ['wrinkles'] }, blink);
       shape(ctx, [-12, -70, -6, -66, 6, -66, 18, -70, 18, -60, 10, -48, 2, -44, -6, -50, -12, -60], '#e8e4ec', 'cloth', { smooth: true, ink: '#7a7480' });
       shape(ctx, [-16, -90, 22, -90, 20, -84, -14, -84], '#e8e4ec', 'cloth', { smooth: true, ink: '#7a7480', lw: 0.9 });
       ctx.beginPath(); ctx.moveTo(-22, -66); ctx.quadraticCurveTo(-24, -104, 2, -104); ctx.quadraticCurveTo(26, -104, 26, -66);
@@ -1209,6 +1282,21 @@ function ogreBody(ctx, skin, chief) {
   hand(ctx, 45, -56, skin, 7);
 }
 
+// 체형(build)에 맞춰 box/top/headBox를 보정 (모듈 로드 시 1회)
+(function normalizeBuilds() {
+  for (const name in ART) {
+    const d = ART[name], bd = d.build;
+    if (!bd) continue;
+    const neck = bd.neck || -58;
+    const hy = (y) => neck * bd.sy + (y - neck) * bd.hs;
+    const [x0, y0, x1, y1] = d.box;
+    d.box = [Math.min(x0 * bd.sx, x0 * bd.hs) - 2, Math.min(y0 * bd.sy, hy(y0)) - 2, Math.max(x1 * bd.sx, x1 * bd.hs) + 2, Math.max(y1, y1 * bd.sy)];
+    d.top = -hy(-d.top);
+    const [hx0, hy0, hx1, hy1] = d.headBox;
+    d.headBox = [hx0 * bd.hs, hy(hy0), hx1 * bd.hs, hy(hy1)];
+  }
+})();
+
 // ---------------------------------------------------------------- 캐시 & 그리기
 const SpriteCache = {};
 const _imgCache = {};
@@ -1227,6 +1315,12 @@ function renderLayer(name, layer, variant, k) {
   cv.width = Math.ceil((x1 - x0) * k); cv.height = Math.ceil((y1 - y0) * k);
   const c = cv.getContext('2d');
   c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+  const bd = d.build;
+  if (bd) { // 체형: 몸은 (sx, sy), 머리는 목 기준으로 hs 배율
+    const neck = bd.neck || -58;
+    if (layer === 'head') { c.translate(0, neck * bd.sy); c.scale(bd.hs, bd.hs); c.translate(0, -neck); }
+    else c.scale(bd.sx, bd.sy);
+  }
   fn.call(d, c, variant === 'blink');
   // 통일 조명: 위 따뜻한 빛 / 아래 차가운 그림자 (모든 캐릭터 공통)
   c.setTransform(1, 0, 0, 1, 0, 0);
