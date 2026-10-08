@@ -22,6 +22,7 @@ const CONST = {
   ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 궁극기 게이지(%)
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
+  ULT_GAIN_HEAL: 0.08,               // 회복량 1당 (서포터 필살기도 제때 차도록)
   HITSTOP_MS: 60,
   CONFIRM_SLOWMO_SEC: 0.2,
   // 동작 고정: 공격/스킬 동작 중에는 이동으로 캔슬할 수 없다 (이동 명령은 동작이 끝난 뒤 실행)
@@ -50,6 +51,18 @@ const CONST = {
   POISE_SKILL: 10,       // 피해 스킬 1타
   POISE_STUN: 55,        // 기절 부여
   POISE_CANCEL: 100,     // 차지/호출을 끊었을 때 추가 (카운터: 공략의 핵심)
+  // 그로기 역할 분담 (docs/GAME_DESIGN.md · reports/그로기 역할 분담 설계.md)
+  BREAK_V2: true,              // false면 이전 규칙 (비교 측정용)
+  SHAKE_DUR: 8, SHAKE_MAX: 12, SHAKE_MULT: 1.5, SHAKE_REGEN_DELAY: 1.5, // 흔들림: 회복 0 + 그로기 ×1.5
+  // 끊기 칸: 큰 적의 차지·호출은 3칸, 작은 적·꽃봉오리는 1칸. 2초 안에 채우면 끊김. 기절은 한 번에 전부
+  INTERRUPT_RESIST: 3, INTERRUPT_RESIST_SMALL: 1, INTERRUPT_WINDOW: 2.0, INTERRUPT_PIP_POISE: 17, // 못 채운 칸은 1칸당 그로기 17
+  INTERRUPT_SAME_ROLE: 0,      // 같은 직업은 한 번만 친다 → 직업을 섞어야 끊긴다
+  STUN_DR_WINDOW: 15, STUN_DR: [1, 0.6, 0.3],   // 기절 점감
+  BREAK_GROWTH: 0.15, BREAK_GROWTH_CAP: 1.3, BREAK_LOCK: 3, // 반복 그로기 임계 증가 · 그로기 후 잠금
+  ULT_POISE_OUTSIDE: 0.5,      // 필살기 추가 그로기: 흔들림 밖에서는 절반
+  UNBLOCKED_ENRAGE_FROM: 3, UNBLOCKED_ENRAGE_STACK: 0.1, // 끊지 못한 차지 3회째부터 격노 스택
+  UNBLOCKED_CALL_ARMOR: 0.8, UNBLOCKED_CALL_DUR: 10,      // 끊지 못한 호출: 방어 태세 강화
+  SOFT_ENRAGE_STEP: 0.05,      // 보스 소프트 인레이지: 10초마다 공격력 +5%
   // 장비 스탯 상한 (장비 DB 밸런스 분석 결과)
   STAT_CAPS: { dr: 0.5, cdr: 0.4, crit: 0.6, aspd: 0.5, mspd: 0.5, ultgain: 0.8 },
   // 전역 밸런스 배율 (초안 수치는 테이블에 그대로 두고 여기서 조정)
@@ -72,6 +85,7 @@ const STATUS = {
   regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '초당 회복.' },
   enrage: { name: '광폭', short: '광', color: '#ff4a3a', desc: '공격 속도 증가.' },
   fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매: 공격력 증가.' },
+  resonance: { name: '공명', short: '공', color: '#ffe680', desc: '주는 그로기 피해 증가.' },
   invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '피해를 받지 않는다.' },
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
 };
@@ -107,19 +121,19 @@ const SKILLS = {
   tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
   tobi_ult: { name: '철벽',       target: 'party',     cd: 0,  power: 0,   effects: [{ status: 'guard', dur: 7, value: 0.45, to: 'party' }], fx: 'wall', desc: '7초간 파티 받는 피해 -45%.' },
 
-  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈.' },
+  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈. 끊기 ●● (정면에서는 ●).' },
   danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '근거리 범위 베기.' },
   danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 강한 출혈.' },
 
-  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '대상 취약(받는 피해 +25%).' },
+  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '취약 부여. 끊기 ●●, 흔들림 +3초.' },
   byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정 범위 화살비.' },
   byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '단일 대상 초강력 사격.' },
 
   soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '화상 부여.' },
-  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '지정 범위에 유성우.' },
+  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우. 범위 안 모든 적 끊기 ●.' },
   soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해.' },
 
-  bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [], fx: 'heal', desc: '아군 1명 회복.' },
+  bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 5초간 그로기 피해 +30%.' },
   bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 내 아군 회복.' },
   bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (초당 최대HP 4.5%).' },
 };
@@ -148,7 +162,9 @@ const AI_CONDITIONS = {
   enemyCharging:{ name: '적이 차지 중',    param: null },
   enemyCountGte:{ name: '적 N마리 이상',   param: [2, 3, 4] },
   breakWindow:  { name: '그로기 타이밍',   param: null },
-  saveForCharge:{ name: '차지 대비 아껴두기', param: null }, // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
+  saveForCharge:{ name: '차지 대비 아껴두기', param: null },
+  smartInterrupt:{ name: '끊기 타이밍 고려', param: null },
+  auto:         { name: '필살기에 맞게 자동', param: null }, // 부활·회복·그로기 만들기·무방비 수확을 필살기 종류로 판단 // 다음 차지·호출 전에 쿨이 돌아오면 사용, 아니면 끊기용으로 아낌 // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
 };
 const AI_SKILL_SLOTS = { s1: '① 기본', s2: '② 상황', ult: '③ 필살기' };
 const AI_TARGET_RULES = {
@@ -161,11 +177,11 @@ const AI_TARGET_RULES = {
 };
 // 기본 프리셋: ① 자동 / ② 수동(추천 표시, 자동으로 켜면 추천 상황에 사용) / ③ 수동 대기
 const AI_PRESETS = {
-  tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'hint', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
-  danbi:   { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
-  byeolbi: { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'smartInterrupt', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
+  danbi:   { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  byeolbi: { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
   soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'nearest' } },
-  bori:    { s1: { auto: true, cond: 'allyHpBelow', param: 80, target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },
+  bori:    { s1: { auto: true, cond: 'always', target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },
 };
 
 // ---------------------------------------------------------------- 적
@@ -176,11 +192,17 @@ const ENEMIES = {
   orc:           { name: '오크', armor: 0.25, poise: 60, moveSpeed: 66,          hp: 260,  atk: 26, atkInterval: 1.7,  def: 0.1,  size: 1.2, sprite: 'orc',     color: '#5a8a4a', gold: 10, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.6 },
   ogre:          { name: '오우거', armor: 0.5, poise: 120, moveSpeed: 46,        hp: 620,  atk: 48, atkInterval: 2.4,  def: 0.1,  size: 1.6, sprite: 'ogre',    color: '#d29a68', gold: 20, abilities: ['charge'], chargeEvery: 8, chargeTime: 3, chargeMult: 4.0, chargeR: 80 },
   orc_captain:   { name: '오크 대장', armor: 0.45, poise: 130, moveSpeed: 60,     hp: 820,  atk: 32, atkInterval: 1.6,  def: 0.15, size: 1.4, sprite: 'orcCaptain', color: '#4a7a3a', gold: 40, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 3.4, chargeR: 64 },
-  ogre_chief:    { name: '오우거 대족장', armor: 0.7, poise: 220, moveSpeed: 40, hp: 3000, atk: 34, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 4.6, chargeR: 90,
+  ogre_chief:    { name: '오우거 대족장', armor: 0.7, poise: 220, moveSpeed: 40, hp: 3600, atk: 38, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 4.6, chargeR: 90, softEnrage: 110,
                    phases: [ // HP 비율 이하가 되면 진입
                      { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 3.5 },
                      { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 4.0, enrage: true },
                    ] },
+  // ---- 보스 로테이션 (그로기 역할 분담 검증용)
+  thorn_queen:   { name: '가시덩굴 여왕', armor: 0.7, poise: 220, moveSpeed: 36, hp: 2300, atk: 30, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'thornQueen', color: '#6a9a4a', gold: 0, abilities: ['charge', 'boss', 'buds'], chargeEvery: 12, chargeTime: 3, chargeMult: 3.4, chargeR: 90, softEnrage: 150, budEvery: 13, budFirst: 6, budRegrow: 18, budCount: 3, calledArmor: 0.8, calledArmorDur: 10, calledHeal: 0.02 },
+  thorn_bud:     { name: '가시 꽃봉오리', moveSpeed: 0, hp: 420, atk: 1, atkInterval: 99, def: 0.2, size: 1.2, sprite: 'thornBud', color: '#c86ab0', gold: 0, abilities: [], immobile: true, callEvery: 13, callCast: 2.6, callCount: 1, callUnit: 'goblin', interruptResist: 1 },
+  mist_stag:     { name: '안개 사슴왕', armor: 0.8, poise: 220, moveSpeed: 52, hp: 3200, atk: 34, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'mistStag', color: '#a8b8c8', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 10, chargeTime: 2.8, chargeMult: 4.0, chargeR: 90, backOnly: 0.3, softEnrage: 120, huntsBackline: true, frontRangedDmg: 0.6,
+                   phases: [{ at: 0.5, name: '2페이즈: 안개 장막', stunImmune: true, summon: ['goblin', 'goblin'] }] },
+  swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
 };
 
 // 조우 테이블: 스테이지 → 웨이브 배열 목록 (하나를 시드로 선택)
@@ -196,7 +218,8 @@ const ENCOUNTERS = {
     3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']] ],
     4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']] ],
   },
-  boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']] ] },
+  // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
+  boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
 };
 
 // ---------------------------------------------------------------- 지도 노드
@@ -285,6 +308,6 @@ const HINTS = {
   field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
   battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
-  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 기절과 강타로 파란 게이지를 깎으면 ${CONST.BREAK_DUR}초간 그로기 상태가 되어 무방비로 피해를 받아요.`,
+  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 맞춰야 해요. 같은 직업은 한 번만 쳐요.`,
   charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
 };

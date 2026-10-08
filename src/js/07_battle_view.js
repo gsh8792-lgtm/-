@@ -42,7 +42,7 @@ const BattleScene = {
     for (let i = 0; i < 26; i++) this.dust.push({ x: Math.random() * 960, y: 60 + Math.random() * 300, s: 0.5 + Math.random() * 1.5, p: Math.random() * 6 });
     this.buildHud();
     this.consumeEvents();
-    this.banner = { text: node.type === 'boss' ? '보스: 오우거 대족장' : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
   },
@@ -481,6 +481,11 @@ const BattleScene = {
       case 'callStart': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18); Sfx.play('summon'); break;
       case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20); Sfx.play('cancel'); break;
       case 'summon': this.smoke(e.unit.x, e.unit.y - 20, 0.8); break;
+      case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
+      case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
+      case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
+      case 'immune': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '면역', '#cfcfcf', 15); break;
       case 'break':
         this.popup(e.unit.x, this.unitTop(e.unit) - 24, '그로기!', '#ffd34a', 34, { crit: true, dur: 1.2 });
         this.banner = { text: '그로기!', sub: `${e.unit.name} 무방비`, t: 0, dur: 1.3 };
@@ -492,7 +497,7 @@ const BattleScene = {
       case 'breakEnd': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '방어 태세', '#9fd0ff', 16); break;
       case 'enrage': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22); break;
       case 'warcry': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성!', '#ffb04a', 18); this.shake = 4; break;
-      case 'phase': this.banner = { text: e.name, sub: '오우거 대족장이 분노한다!', t: 0, dur: 2.0, danger: true }; Sfx.play('phase'); this.shake = 10; break;
+      case 'phase': this.banner = { text: e.name, sub: `${e.unit.name}의 패턴이 바뀐다!`, t: 0, dur: 2.0, danger: true }; Sfx.play('phase'); this.shake = 10; break;
       case 'wave': if (e.index > 0) this.banner = { text: `웨이브 ${e.index + 1}/${e.total}`, sub: '적이 몰려온다!', t: 0, dur: 1.4 }; break;
       case 'end':
         this.endTimer = e.outcome === 'win' ? 1.3 : 1.6;
@@ -626,6 +631,7 @@ const BattleScene = {
       setBar(c.hp, u.hp / u.maxHp);
       if (c.po) { setBar(c.po, u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax); c.po.classList.toggle('broken', u.broken > 0); }
       c.root.classList.toggle('broken', u.broken > 0);
+      c.root.classList.toggle('shaken', u.shaken > 0 && !(u.broken > 0));
       const s = this.statusIcons(u);
       if (s !== c.last) { c.st.innerHTML = s; c.last = s; }
       const casting = u.charge || u.call;
@@ -825,7 +831,20 @@ const BattleScene = {
     if (u.poiseMax) {
       const pf = u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 4, bw + 2, 5);
-      ctx.fillStyle = u.broken > 0 ? '#ffd34a' : '#5aa8ff'; ctx.fillRect(x - bw / 2, top - 3, bw * pf, 3);
+      ctx.fillStyle = u.broken > 0 ? '#ffd34a' : u.shaken > 0 ? '#ffb050' : '#5aa8ff'; ctx.fillRect(x - bw / 2, top - 3, bw * pf, 3);
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'; for (let i = 1; i < 5; i++) ctx.fillRect(x - bw / 2 + bw * i / 5 - 0.5, top - 4, 1, 5); // 5칸 눈금
+      if (u.charge || u.call) { // 끊기 칸: 빈 원 → 채워진 원
+        const res = u.def.interruptResist || (u.size > 1 ? CONST.INTERRUPT_RESIST : CONST.INTERRUPT_RESIST_SMALL);
+        const got = u.intr ? Math.min(res, u.intr.pts) : 0;
+        const cy = top - 24, w = res * 18 + 8;
+        ctx.fillStyle = 'rgba(10,16,30,0.75)'; ctx.beginPath(); ctx.roundRect(x - w / 2, cy - 10, w, 20, 10); ctx.fill();
+        for (let i = 0; i < res; i++) {
+          const cx = x + (i - (res - 1) / 2) * 18;
+          ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, Math.PI * 2);
+          ctx.fillStyle = i < got ? '#9fd0ff' : 'rgba(40,60,90,0.9)'; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = i < got ? '#ffffff' : '#9fd0ff'; ctx.stroke();
+        }
+      }
     }
     if (u.casting) { // 긴 시전 (이동 불가)
       const pf = 1 - u.casting.t / u.casting.total;

@@ -663,10 +663,17 @@ const SPRITE_VARIANTS = {
   priest_c: { base: 'priest', build: { sx: 0.96, sy: 1.08, hs: 0.95 }, face: { shape: 'long', eye: 'sleepy', brow: 'thin', mouth: 'gentle', extras: [] },
     swap: { '#f2ece0': '#e0e8f8', '#5aa0e0': '#8a9ae8', '#3e6aa8': '#4a5aa8', '#d8b048': '#c8d0e0', '#ecc85a': '#d8e0f0', '#c88a8a': '#9aa8d0', '#f2bfb8': '#c8d4f0', '#8a4a4a': '#4a5a8a', '#4a9a7a': '#5a6ab8' } },
 };
+// 보스 임시 외형: 기존 보스·몬스터 그림에 색 필터
+Object.assign(SPRITE_VARIANTS, {
+  thornQueen: { base: 'ogreChief', filter: 'hue-rotate(75deg) saturate(1.3)', swap: {} },
+  mistStag: { base: 'ogreChief', filter: 'grayscale(0.7) brightness(1.2) hue-rotate(180deg)', swap: {} },
+  swampTurtle: { base: 'ogreChief', filter: 'hue-rotate(40deg) saturate(0.7) brightness(0.9)', swap: {} },
+  thornBud: { base: 'goblinHorn', filter: 'hue-rotate(250deg) saturate(1.4)', swap: {} },
+});
 for (const name in SPRITE_VARIANTS) {
   const v = SPRITE_VARIANTS[name], b = ART[v.base];
   const swap = {}; for (const k in v.swap) swap[k.toLowerCase()] = v.swap[k];
-  ART[name] = Object.assign(Object.create(b), { box: b.box.slice(), headBox: b.headBox.slice(), top: b.top, build: Object.assign({}, b.build, v.build), swap, face: v.face });
+  ART[name] = Object.assign(Object.create(b), { box: b.box.slice(), headBox: b.headBox.slice(), top: b.top, build: b.build || v.build ? Object.assign({}, b.build, v.build) : undefined, swap, face: v.face, filter: v.filter });
 }
 
 // 체형(build)에 맞춰 box/top/headBox를 보정 (모듈 로드 시 1회)
@@ -709,6 +716,7 @@ function renderLayer(name, layer, variant, k) {
     else c.scale(bd.sx, bd.sy);
   }
   _CS = d.swap || null; _FO = d.face || null;
+  if (d.filter) c.filter = d.filter;
   try { fn.call(d, c, variant === 'blink'); } finally { _CS = null; _FO = null; }
   // 통일 조명: 위 따뜻한 빛 / 아래 차가운 그림자 (모든 캐릭터 공통)
   c.setTransform(1, 0, 0, 1, 0, 0);

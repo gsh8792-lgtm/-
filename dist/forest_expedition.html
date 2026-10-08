@@ -464,6 +464,9 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .gr-tag.new { background: var(--gold); color: #2b1d10; }
 .gr-tag.bt { background: #3a6a4a; }
 .loot.ticket { color: #d8c0ff; }
+.chip.shaken { border-color: #ffb050; box-shadow: 0 0 8px 1px rgba(255,176,80,0.7); }
+.bar.poise { position: relative; }
+.bar.poise::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(20% - 1px), rgba(0,0,0,0.75) calc(20% - 1px), rgba(0,0,0,0.75) 20%); pointer-events: none; }
 
 </style>
 </head>
@@ -561,6 +564,7 @@ const CONST = {
   ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 궁극기 게이지(%)
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
+  ULT_GAIN_HEAL: 0.08,               // 회복량 1당 (서포터 필살기도 제때 차도록)
   HITSTOP_MS: 60,
   CONFIRM_SLOWMO_SEC: 0.2,
   // 동작 고정: 공격/스킬 동작 중에는 이동으로 캔슬할 수 없다 (이동 명령은 동작이 끝난 뒤 실행)
@@ -589,6 +593,18 @@ const CONST = {
   POISE_SKILL: 10,       // 피해 스킬 1타
   POISE_STUN: 55,        // 기절 부여
   POISE_CANCEL: 100,     // 차지/호출을 끊었을 때 추가 (카운터: 공략의 핵심)
+  // 그로기 역할 분담 (docs/GAME_DESIGN.md · reports/그로기 역할 분담 설계.md)
+  BREAK_V2: true,              // false면 이전 규칙 (비교 측정용)
+  SHAKE_DUR: 8, SHAKE_MAX: 12, SHAKE_MULT: 1.5, SHAKE_REGEN_DELAY: 1.5, // 흔들림: 회복 0 + 그로기 ×1.5
+  // 끊기 칸: 큰 적의 차지·호출은 3칸, 작은 적·꽃봉오리는 1칸. 2초 안에 채우면 끊김. 기절은 한 번에 전부
+  INTERRUPT_RESIST: 3, INTERRUPT_RESIST_SMALL: 1, INTERRUPT_WINDOW: 2.0, INTERRUPT_PIP_POISE: 17, // 못 채운 칸은 1칸당 그로기 17
+  INTERRUPT_SAME_ROLE: 0,      // 같은 직업은 한 번만 친다 → 직업을 섞어야 끊긴다
+  STUN_DR_WINDOW: 15, STUN_DR: [1, 0.6, 0.3],   // 기절 점감
+  BREAK_GROWTH: 0.15, BREAK_GROWTH_CAP: 1.3, BREAK_LOCK: 3, // 반복 그로기 임계 증가 · 그로기 후 잠금
+  ULT_POISE_OUTSIDE: 0.5,      // 필살기 추가 그로기: 흔들림 밖에서는 절반
+  UNBLOCKED_ENRAGE_FROM: 3, UNBLOCKED_ENRAGE_STACK: 0.1, // 끊지 못한 차지 3회째부터 격노 스택
+  UNBLOCKED_CALL_ARMOR: 0.8, UNBLOCKED_CALL_DUR: 10,      // 끊지 못한 호출: 방어 태세 강화
+  SOFT_ENRAGE_STEP: 0.05,      // 보스 소프트 인레이지: 10초마다 공격력 +5%
   // 장비 스탯 상한 (장비 DB 밸런스 분석 결과)
   STAT_CAPS: { dr: 0.5, cdr: 0.4, crit: 0.6, aspd: 0.5, mspd: 0.5, ultgain: 0.8 },
   // 전역 밸런스 배율 (초안 수치는 테이블에 그대로 두고 여기서 조정)
@@ -611,6 +627,7 @@ const STATUS = {
   regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '초당 회복.' },
   enrage: { name: '광폭', short: '광', color: '#ff4a3a', desc: '공격 속도 증가.' },
   fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매: 공격력 증가.' },
+  resonance: { name: '공명', short: '공', color: '#ffe680', desc: '주는 그로기 피해 증가.' },
   invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '피해를 받지 않는다.' },
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
 };
@@ -646,19 +663,19 @@ const SKILLS = {
   tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
   tobi_ult: { name: '철벽',       target: 'party',     cd: 0,  power: 0,   effects: [{ status: 'guard', dur: 7, value: 0.45, to: 'party' }], fx: 'wall', desc: '7초간 파티 받는 피해 -45%.' },
 
-  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈.' },
+  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈. 끊기 ●● (정면에서는 ●).' },
   danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '근거리 범위 베기.' },
   danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 강한 출혈.' },
 
-  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '대상 취약(받는 피해 +25%).' },
+  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '취약 부여. 끊기 ●●, 흔들림 +3초.' },
   byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정 범위 화살비.' },
   byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '단일 대상 초강력 사격.' },
 
   soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '화상 부여.' },
-  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '지정 범위에 유성우.' },
+  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우. 범위 안 모든 적 끊기 ●.' },
   soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해.' },
 
-  bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [], fx: 'heal', desc: '아군 1명 회복.' },
+  bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 5초간 그로기 피해 +30%.' },
   bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 내 아군 회복.' },
   bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (초당 최대HP 4.5%).' },
 };
@@ -687,7 +704,9 @@ const AI_CONDITIONS = {
   enemyCharging:{ name: '적이 차지 중',    param: null },
   enemyCountGte:{ name: '적 N마리 이상',   param: [2, 3, 4] },
   breakWindow:  { name: '그로기 타이밍',   param: null },
-  saveForCharge:{ name: '차지 대비 아껴두기', param: null }, // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
+  saveForCharge:{ name: '차지 대비 아껴두기', param: null },
+  smartInterrupt:{ name: '끊기 타이밍 고려', param: null },
+  auto:         { name: '필살기에 맞게 자동', param: null }, // 부활·회복·그로기 만들기·무방비 수확을 필살기 종류로 판단 // 다음 차지·호출 전에 쿨이 돌아오면 사용, 아니면 끊기용으로 아낌 // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
 };
 const AI_SKILL_SLOTS = { s1: '① 기본', s2: '② 상황', ult: '③ 필살기' };
 const AI_TARGET_RULES = {
@@ -700,11 +719,11 @@ const AI_TARGET_RULES = {
 };
 // 기본 프리셋: ① 자동 / ② 수동(추천 표시, 자동으로 켜면 추천 상황에 사용) / ③ 수동 대기
 const AI_PRESETS = {
-  tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'hint', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
-  danbi:   { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
-  byeolbi: { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'smartInterrupt', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
+  danbi:   { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  byeolbi: { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
   soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'nearest' } },
-  bori:    { s1: { auto: true, cond: 'allyHpBelow', param: 80, target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },
+  bori:    { s1: { auto: true, cond: 'always', target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },
 };
 
 // ---------------------------------------------------------------- 적
@@ -715,11 +734,17 @@ const ENEMIES = {
   orc:           { name: '오크', armor: 0.25, poise: 60, moveSpeed: 66,          hp: 260,  atk: 26, atkInterval: 1.7,  def: 0.1,  size: 1.2, sprite: 'orc',     color: '#5a8a4a', gold: 10, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.6 },
   ogre:          { name: '오우거', armor: 0.5, poise: 120, moveSpeed: 46,        hp: 620,  atk: 48, atkInterval: 2.4,  def: 0.1,  size: 1.6, sprite: 'ogre',    color: '#d29a68', gold: 20, abilities: ['charge'], chargeEvery: 8, chargeTime: 3, chargeMult: 4.0, chargeR: 80 },
   orc_captain:   { name: '오크 대장', armor: 0.45, poise: 130, moveSpeed: 60,     hp: 820,  atk: 32, atkInterval: 1.6,  def: 0.15, size: 1.4, sprite: 'orcCaptain', color: '#4a7a3a', gold: 40, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 3.4, chargeR: 64 },
-  ogre_chief:    { name: '오우거 대족장', armor: 0.7, poise: 220, moveSpeed: 40, hp: 3000, atk: 34, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 4.6, chargeR: 90,
+  ogre_chief:    { name: '오우거 대족장', armor: 0.7, poise: 220, moveSpeed: 40, hp: 3600, atk: 38, fixedScale: true, atkInterval: 2.2,  def: 0.15, size: 2.0, sprite: 'ogreChief', color: '#c88a58', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 9, chargeTime: 3, chargeMult: 4.6, chargeR: 90, softEnrage: 110,
                    phases: [ // HP 비율 이하가 되면 진입
                      { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 3.5 },
                      { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 4.0, enrage: true },
                    ] },
+  // ---- 보스 로테이션 (그로기 역할 분담 검증용)
+  thorn_queen:   { name: '가시덩굴 여왕', armor: 0.7, poise: 220, moveSpeed: 36, hp: 2300, atk: 30, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'thornQueen', color: '#6a9a4a', gold: 0, abilities: ['charge', 'boss', 'buds'], chargeEvery: 12, chargeTime: 3, chargeMult: 3.4, chargeR: 90, softEnrage: 150, budEvery: 13, budFirst: 6, budRegrow: 18, budCount: 3, calledArmor: 0.8, calledArmorDur: 10, calledHeal: 0.02 },
+  thorn_bud:     { name: '가시 꽃봉오리', moveSpeed: 0, hp: 420, atk: 1, atkInterval: 99, def: 0.2, size: 1.2, sprite: 'thornBud', color: '#c86ab0', gold: 0, abilities: [], immobile: true, callEvery: 13, callCast: 2.6, callCount: 1, callUnit: 'goblin', interruptResist: 1 },
+  mist_stag:     { name: '안개 사슴왕', armor: 0.8, poise: 220, moveSpeed: 52, hp: 3200, atk: 34, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'mistStag', color: '#a8b8c8', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 10, chargeTime: 2.8, chargeMult: 4.0, chargeR: 90, backOnly: 0.3, softEnrage: 120, huntsBackline: true, frontRangedDmg: 0.6,
+                   phases: [{ at: 0.5, name: '2페이즈: 안개 장막', stunImmune: true, summon: ['goblin', 'goblin'] }] },
+  swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
 };
 
 // 조우 테이블: 스테이지 → 웨이브 배열 목록 (하나를 시드로 선택)
@@ -735,7 +760,8 @@ const ENCOUNTERS = {
     3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']] ],
     4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']] ],
   },
-  boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']] ] },
+  // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
+  boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
 };
 
 // ---------------------------------------------------------------- 지도 노드
@@ -824,7 +850,7 @@ const HINTS = {
   field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
   battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
-  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 기절과 강타로 파란 게이지를 깎으면 ${CONST.BREAK_DUR}초간 그로기 상태가 되어 무방비로 피해를 받아요.`,
+  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 맞춰야 해요. 같은 직업은 한 번만 쳐요.`,
   charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
 };
 
@@ -1038,6 +1064,7 @@ const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
       AI_PRESETS[c.id] = JSON.parse(JSON.stringify(AI_PRESETS[CLASS_BASE[c.role]]));
     }
     HEROES[c.id].title = c.title;
+    AI_PRESETS[c.id].ult.cond = 'auto'; // 필살기를 바꿔 끼워도 알맞은 때 쓰도록
     // 필살기 풀: A/B/C + 변주 A2/B2/C2
     for (const k of ['A', 'B', 'C']) {
       const u = c.ults[k];
@@ -1735,10 +1762,17 @@ const SPRITE_VARIANTS = {
   priest_c: { base: 'priest', build: { sx: 0.96, sy: 1.08, hs: 0.95 }, face: { shape: 'long', eye: 'sleepy', brow: 'thin', mouth: 'gentle', extras: [] },
     swap: { '#f2ece0': '#e0e8f8', '#5aa0e0': '#8a9ae8', '#3e6aa8': '#4a5aa8', '#d8b048': '#c8d0e0', '#ecc85a': '#d8e0f0', '#c88a8a': '#9aa8d0', '#f2bfb8': '#c8d4f0', '#8a4a4a': '#4a5a8a', '#4a9a7a': '#5a6ab8' } },
 };
+// 보스 임시 외형: 기존 보스·몬스터 그림에 색 필터
+Object.assign(SPRITE_VARIANTS, {
+  thornQueen: { base: 'ogreChief', filter: 'hue-rotate(75deg) saturate(1.3)', swap: {} },
+  mistStag: { base: 'ogreChief', filter: 'grayscale(0.7) brightness(1.2) hue-rotate(180deg)', swap: {} },
+  swampTurtle: { base: 'ogreChief', filter: 'hue-rotate(40deg) saturate(0.7) brightness(0.9)', swap: {} },
+  thornBud: { base: 'goblinHorn', filter: 'hue-rotate(250deg) saturate(1.4)', swap: {} },
+});
 for (const name in SPRITE_VARIANTS) {
   const v = SPRITE_VARIANTS[name], b = ART[v.base];
   const swap = {}; for (const k in v.swap) swap[k.toLowerCase()] = v.swap[k];
-  ART[name] = Object.assign(Object.create(b), { box: b.box.slice(), headBox: b.headBox.slice(), top: b.top, build: Object.assign({}, b.build, v.build), swap, face: v.face });
+  ART[name] = Object.assign(Object.create(b), { box: b.box.slice(), headBox: b.headBox.slice(), top: b.top, build: b.build || v.build ? Object.assign({}, b.build, v.build) : undefined, swap, face: v.face, filter: v.filter });
 }
 
 // 체형(build)에 맞춰 box/top/headBox를 보정 (모듈 로드 시 1회)
@@ -1781,6 +1815,7 @@ function renderLayer(name, layer, variant, k) {
     else c.scale(bd.sx, bd.sy);
   }
   _CS = d.swap || null; _FO = d.face || null;
+  if (d.filter) c.filter = d.filter;
   try { fn.call(d, c, variant === 'blink'); } finally { _CS = null; _FO = null; }
   // 통일 조명: 위 따뜻한 빛 / 아래 차가운 그림자 (모든 캐릭터 공통)
   c.setTransform(1, 0, 0, 1, 0, 0);
@@ -2457,7 +2492,7 @@ function generateMap(seed) {
       return node;
     }));
   }
-  stages.push([{ stage: CONST.STAGES, row: 1, type: 'boss', enc: 0 }]);
+  stages.push([{ stage: CONST.STAGES, row: 1, type: 'boss', enc: rng.int(0, ENCOUNTERS.boss[CONST.STAGES].length - 1) }]); // 원정마다 보스가 다르다
   return { seed, stages };
 }
 
@@ -2796,6 +2831,7 @@ class BattleSim {
     this.enemies = [];
     this.kills = 0;
     this.introT = CONST.BATTLE_INTRO;
+    this.poiseLog = {}; this.breakLog = [];
     opts.heroes.forEach((h, i) => this.heroes.push(this._makeHero(h, i, opts.heroes.length)));
     this._spawnWave(0, true);
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
@@ -2846,7 +2882,8 @@ class BattleSim {
       call: null, callCd: def.callEvery ? def.callEvery * (0.5 + this.rng() * 0.3) : 0,
       warcryCd: def.warcryEvery ? def.warcryEvery * 0.6 : 0,
       phase: 0, enraged: false,
-      armor: def.armor || 0, poiseMax: def.poise || 0, poise: def.poise || 0, broken: 0,
+      armor: def.armor || 0, poiseMax: def.poise || 0, poise: def.poise || 0, broken: 0, poiseBase: def.poise || 0,
+      shaken: 0, regenDelay: 0, breakLock: 0, breaks: 0, stunHist: [], intr: null, unblocked: 0, enrageStacks: 0, armorBoost: 0,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
     };
   }
@@ -2958,8 +2995,9 @@ class BattleSim {
       }
       if (u.melee) { // 대상에게 붙는다 (대상 앞쪽, 살짝 위아래로 어긋나게)
         const r = this.attackRange(u, t) * 0.8;
-        const side = u.x <= t.x ? -1 : 1;
-        u.tx = t.x + side * r; u.ty = t.y + ((u.uid % 3) - 1) * 10;
+        let side = u.x <= t.x ? -1 : 1;
+        if (CONST.BREAK_V2 && t.poiseMax && u.role === 'melee' && t.face) side = -t.face; // 큰 적은 등 뒤에서 (후방 끊기)
+        u.tx = clamp(t.x + side * r, CONST.FIELD_X0, CONST.FIELD_X1); u.ty = t.y + ((u.uid % 3) - 1) * 10;
       } else {
         const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
         let tx = t.x - keep;
@@ -2974,13 +3012,14 @@ class BattleSim {
         u.tx = tx;
       }
     } else {
-      if (u.charge || u.call) { u.tx = u.x; u.ty = u.y; return; }
+      if (u.charge || u.call || u.def.immobile) { u.tx = u.x; u.ty = u.y; return; }
       const heroes = this.aliveHeroes();
       if (!heroes.length) return;
       if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) u.target = tt; }
       else if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC * 2;
-        u.target = u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes);
+        const back = u.def.huntsBackline ? heroes.filter((h) => !h.melee) : [];
+        u.target = back.length ? this.nearest(u, back) : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
       }
       if (intro) { u.tx = F.ENEMY_SPAWN_X - (u.uid % 3) * 30; u.ty = u.y; return; }
       const t = u.target;
@@ -3066,10 +3105,18 @@ class BattleSim {
     if (u.side === 'enemy' && u.poiseMax) {
       if (u.broken > 0) {
         u.broken -= dt;
-        if (u.broken <= 0) { u.broken = 0; u.poise = u.poiseMax; this.events.push({ type: 'breakEnd', unit: u }); }
+        if (u.broken <= 0) { u.broken = 0; u.poise = u.poiseMax; if (CONST.BREAK_V2) u.breakLock = CONST.BREAK_LOCK; this.events.push({ type: 'breakEnd', unit: u }); }
         return; // 그로기: 행동 불가
       }
-      u.poise = Math.min(u.poiseMax, u.poise + CONST.POISE_REGEN * dt);
+      if (!CONST.BREAK_V2) u.poise = Math.min(u.poiseMax, u.poise + CONST.POISE_REGEN * dt);
+      else {
+        u.breakLock = Math.max(0, u.breakLock - dt);
+        if (u.armorBoost > 0) u.armorBoost = Math.max(0, u.armorBoost - dt);
+        if (u.intr) { u.intr.t -= dt; if (u.intr.t <= 0 || !(u.charge || u.call)) this._interruptFail(u); }
+        if (u.shaken > 0) { u.shaken -= dt; if (u.shaken <= 0) { u.shaken = 0; u.regenDelay = CONST.SHAKE_REGEN_DELAY; this.events.push({ type: 'shakeEnd', unit: u }); } }
+        else if (u.regenDelay > 0) u.regenDelay -= dt;
+        else if (!(u.def.markStopsRegen && (u.statuses.vuln || u.statuses.exposed))) u.poise = Math.min(u.poiseMax, u.poise + (u.def.poiseRegen || CONST.POISE_REGEN) * (u.def.regenHalfBelow && u.hp < u.maxHp * u.def.regenHalfBelow ? 0.5 : 1) * dt);
+      }
     }
     if (u.side === 'enemy') {
       this._enemyAbilities(u, dt, stunned);
@@ -3105,21 +3152,23 @@ class BattleSim {
         if (ph.chargeEvery) u.chargeEvery = ph.chargeEvery;
         if (ph.chargeMult) u.chargeMult = ph.chargeMult;
         if (ph.enrage) { u.statuses.enrage = { t: Infinity }; u.enraged = true; }
+        if (ph.stunImmune) { u.stunImmune = true; delete u.statuses.stun; }
         u.chargeCd = Math.min(u.chargeCd, 2.5);
         this.events.push({ type: 'phase', unit: u, name: ph.name, phase: u.phase + 1 });
         if (ph.summon) this._summon(ph.summon, u);
       }
     }
     if (u.charge) {
-      if (stunned) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); this._onCancel(u.statuses.stun.src); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
-      else { u.charge.t -= dt; if (u.charge.t <= 0) this._chargeImpact(u); }
+      if (stunned && !d.stunNoCancel) this._cancelCast(u, (u.statuses.stun || {}).src);
+      else if (!stunned) { u.charge.t -= dt; if (u.charge.t <= 0) this._chargeImpact(u); }
       return;
     }
     if (u.call) {
-      if (stunned) { u.call = null; u.callCd = d.callEvery; this.events.push({ type: 'callCancel', unit: u }); this._onCancel(u.statuses.stun.src); this._poiseHit(u.statuses.stun.src, u, CONST.POISE_CANCEL); }
-      else { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._summon(new Array(d.callCount).fill('goblin'), u); } }
+      if (stunned && !d.stunNoCancel) this._cancelCast(u, (u.statuses.stun || {}).src);
+      else if (!stunned) { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._callComplete(u); } }
       return;
     }
+    if (d.abilities.includes('buds') && u.x <= 960) this._buds(u, dt);
     if (stunned || u.x > 960) return;
     if (d.abilities.includes('charge')) {
       u.chargeCd -= dt;
@@ -3142,12 +3191,37 @@ class BattleSim {
     }
   }
 
+  // 가시덩굴 여왕: 꽃봉오리 2개를 유지하고, 모든 꽃봉오리가 동시에 호출을 시작한다
+  _buds(u, dt) {
+    const d = u.def;
+    if (!u.buds) { u.buds = []; u.budCd = d.budFirst; for (let i = 0; i < (d.budCount || 2); i++) u.buds.push({ unit: null, regrow: 0 }); }
+    u.buds.forEach((b, i) => {
+      if (b.unit && b.unit.alive) return;
+      if (b.unit && !b.unit.alive && !b.regrow) b.regrow = d.budRegrow;
+      if (b.regrow > 0) { b.regrow -= dt; if (b.regrow > 0) return; }
+      const e = this._makeEnemy('thorn_bud', clamp(Math.min(u.x, 800) - 40 + i * 30, CONST.FIELD_X0, 830), (CONST.FIELD_Y0 + CONST.FIELD_Y1) / 2 + (i - 1) * 26);
+      e.callHost = u; b.unit = e; b.regrow = 0;
+      this.enemies.push(e); this.events.push({ type: 'summon', unit: e, by: u });
+    });
+    if (u.statuses.stun || u.broken > 0) return;
+    u.budCd -= dt;
+    if (u.budCd <= 0) {
+      u.budCd = d.budEvery;
+      for (const b of u.buds) if (b.unit && b.unit.alive && !b.unit.call) { b.unit.call = { t: b.unit.def.callCast, total: b.unit.def.callCast }; this.events.push({ type: 'callStart', unit: b.unit }); }
+    }
+  }
+
   inChargeZone(h, c) { const dx = (h.x - c.cx) / c.r, dy = (h.y - c.cy) / (c.r * 0.45); return dx * dx + dy * dy <= 1; }
 
   _chargeImpact(u) {
     const c = u.charge;
     u.charge = null;
     u.chargeCd = u.chargeEvery;
+    u.intr = null;
+    if (CONST.BREAK_V2 && u.poiseMax) { // 끊지 못한 차지 누적 → 격노 스택
+      u.unblocked++;
+      if (u.unblocked >= CONST.UNBLOCKED_ENRAGE_FROM) { u.enrageStacks++; this.events.push({ type: 'enrageStack', unit: u, n: u.enrageStacks }); }
+    }
     const inZone = this.aliveHeroes().filter((h) => this.inChargeZone(h, c));
     // 탱커 막기: 도발(①) 또는 철벽(③)으로 '버티는 중'인 탱커만 동료 피해를 대신 받아낸다 (타이밍 기믹)
     const tank = inZone.find((h) => h.role === 'tank' && h.statuses.guard);
@@ -3182,6 +3256,10 @@ class BattleSim {
     if (u.statuses.fruit) m += u.statuses.fruit.value;
     if (u.statuses.warcry) m += u.statuses.warcry.value;
     if (u.statuses.inspire) m += u.statuses.inspire.value;
+    if (u.side === 'enemy') {
+      if (u.enrageStacks) m += u.enrageStacks * CONST.UNBLOCKED_ENRAGE_STACK;
+      if (CONST.BREAK_V2 && u.def.softEnrage && this.time > u.def.softEnrage) m += CONST.SOFT_ENRAGE_STEP * Math.floor((this.time - u.def.softEnrage) / 10 + 1);
+    }
     if (u.side === 'hero' && u.def.traits.includes('brave')) m += 0.4 * (1 - u.hp / u.maxHp);
     if (u.side === 'hero' && this.focus && u.target === this.focus) m += 0.1; // 집중 공격 보너스
     return u.atk * m;
@@ -3207,10 +3285,11 @@ class BattleSim {
       if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
     }
     dmg *= 1 - tgt.defPct;
-    if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - tgt.armor;                       // 방어 태세
+    if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - (tgt.armorBoost > 0 ? Math.max(tgt.armor, tgt.armorBoostV || CONST.UNBLOCKED_CALL_ARMOR) : tgt.armor); // 방어 태세
     if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
     if (src && src.statuses && src.statuses.weaken) dmg *= 1 - src.statuses.weaken.value;
+    if (src && !src.melee && src.side === 'hero' && tgt.def.frontRangedDmg && (src.x - tgt.x) * tgt.face > 0) dmg *= tgt.def.frontRangedDmg; // 사슴왕 안개: 정면 원거리 피해 감소
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
@@ -3232,7 +3311,7 @@ class BattleSim {
     if (tgt.stats) tgt.stats.taken += dmg;
     if (src && src.side === 'hero') this._gainUlt(src, dmg * CONST.ULT_GAIN_DEAL);
     if (tgt.side === 'hero') this._gainUlt(tgt, dmg * CONST.ULT_GAIN_TAKE);
-    if (src && src.side === 'hero' && !info.dot) this._poiseHit(src, tgt, info.skill ? CONST.POISE_SKILL : CONST.POISE_BASIC);
+    if (src && src.side === 'hero' && !info.dot) this._poiseHit(src, tgt, info.skill ? CONST.POISE_SKILL : CONST.POISE_BASIC, info.skill ? 'skill' : 'basic');
     this.events.push({ type: 'hit', target: tgt, src, amount: dmg, crit, dot: info.dot || null, charge: !!info.charge, skill: info.skill || null });
     if (tgt.hp <= 0) {
       tgt.hp = 0; tgt.alive = false; tgt.charge = null; tgt.call = null; tgt.statuses = {};
@@ -3243,15 +3322,71 @@ class BattleSim {
   }
 
   // 그로기 게이지 감소 → 0이면 그로기
-  _poiseHit(src, tgt, amount) {
+  // 그로기 게이지 감소 → 0이면 그로기. kind: basic|skill|stun|cancel|ult|intrfail (통계·규칙용)
+  _poiseHit(src, tgt, amount, kind) {
     if (!tgt.alive || !tgt.poiseMax || tgt.broken > 0) return;
-    tgt.poise -= amount * (1 + ((src && src.mods && src.mods.breakdmg) || 0));
+    let m = 1 + ((src && src.mods && src.mods.breakdmg) || 0);
+    if (CONST.BREAK_V2) {
+      if (tgt.breakLock > 0) return;
+      if (tgt.shaken > 0 && (kind === 'basic' || kind === 'skill' || kind === 'ult')) m *= CONST.SHAKE_MULT;
+      if (src && src.statuses && src.statuses.resonance) m *= 1 + src.statuses.resonance.value; // 서포터 증폭
+      if (tgt.statuses.exposed) m *= 1 + tgt.statuses.exposed.value;
+      if (src && tgt.def.backOnly && (src.x - tgt.x) * tgt.face > 0) m *= tgt.def.backOnly; // 정면 피격 그로기 감소 (안개 사슴왕)
+      if (kind === 'stun' && tgt.def.stunMult) m *= tgt.def.stunMult;
+    }
+    const amt = amount * m;
+    this.poiseLog[kind || 'other'] = (this.poiseLog[kind || 'other'] || 0) + amt;
+    tgt.poise -= amt;
     if (tgt.poise <= 0) {
       tgt.poise = 0; tgt.broken = CONST.BREAK_DUR;
-      tgt.charge = null; tgt.call = null;
+      tgt.charge = null; tgt.call = null; tgt.intr = null; tgt.shaken = 0;
+      tgt.breaks++; tgt.stunHist = [];
+      if (CONST.BREAK_V2) tgt.poiseMax = Math.min(tgt.poiseBase * CONST.BREAK_GROWTH_CAP, tgt.poiseBase * (1 + CONST.BREAK_GROWTH * tgt.breaks));
+      this.breakLog.push(this.time);
       this.events.push({ type: 'break', unit: tgt });
       for (const h of this.aliveHeroes()) { const v = this.passive(h, 'hunter_rain'); if (v) h.cds.s2 = Math.max(0, h.cds.s2 - this.skillCdMax(h, 's2') * v); } // 여우비
     }
+  }
+  // 흔들림: 회복 정지 + 그로기 ×1.5. extend면 연장(최대 12초)
+  _shake(tgt, dur, extend) {
+    if (!CONST.BREAK_V2 || !tgt.poiseMax || tgt.broken > 0) return;
+    const was = tgt.shaken > 0;
+    tgt.shaken = extend ? Math.min(CONST.SHAKE_MAX, tgt.shaken + dur) : Math.max(tgt.shaken, dur);
+    tgt.regenDelay = 0;
+    if (!was) this.events.push({ type: 'shake', unit: tgt });
+  }
+  // 차지·호출 끊기 (기절 또는 끊기 포인트 합산 성공)
+  _cancelCast(u, src) {
+    const wasCall = !!u.call;
+    if (u.charge) { u.charge = null; u.chargeCd = u.chargeEvery * 0.8; this.events.push({ type: 'chargeCancel', unit: u }); }
+    if (u.call) { u.call = null; u.callCd = u.def.callEvery; this.events.push({ type: 'callCancel', unit: u }); }
+    u.intr = null;
+    this._onCancel(src);
+    if (u.poiseMax) { this._poiseHit(src, u, CONST.POISE_CANCEL, 'cancel'); this._shake(u, CONST.SHAKE_DUR); }
+    return wasCall;
+  }
+  // 끊기 포인트: 2초 창 안에 합산, 저항 이상이면 끊김
+  _interrupt(src, u, pts) {
+    if (!(u.charge || u.call)) return false;
+    if (!CONST.BREAK_V2) return false;
+    const resist = u.def.interruptResist || (u.size > 1 ? CONST.INTERRUPT_RESIST : CONST.INTERRUPT_RESIST_SMALL);
+    if (!u.intr) u.intr = { pts: 0, t: CONST.INTERRUPT_WINDOW, src, roles: {} };
+    const role = (src && src.role) || 'other';
+    u.intr.pts += u.intr.roles[role] ? Math.floor(pts * CONST.INTERRUPT_SAME_ROLE) : pts; // 같은 직업은 한 번만
+    u.intr.roles[role] = (u.intr.roles[role] || 0) + 1;
+    this.events.push({ type: 'interrupt', unit: u, pts: u.intr.pts, resist });
+    if (u.intr.pts >= resist) { this._cancelCast(u, src); return true; }
+    return false;
+  }
+  _interruptFail(u) { // 실패한 끊기 시도는 절반을 그로기로
+    const it = u.intr; u.intr = null;
+    if (it && it.pts > 0 && u.poiseMax) this._poiseHit(it.src, u, it.pts * CONST.INTERRUPT_PIP_POISE, 'intrfail');
+  }
+  // 끊지 못한 호출: 소환 + 방어 태세 강화
+  _callComplete(u) {
+    const d = u.def;
+    this._summon(new Array(d.callCount || 1).fill(d.callUnit || 'goblin'), u.callHost || u);
+    if (CONST.BREAK_V2) { const host = u.callHost || u; if (host.def.calledHeal && host.alive) this._heal(null, host, host.maxHp * host.def.calledHeal, true); if (host.poiseMax) { host.armorBoost = host.def.calledArmorDur || CONST.UNBLOCKED_CALL_DUR; host.armorBoostV = host.def.calledArmor || CONST.UNBLOCKED_CALL_ARMOR; this.events.push({ type: 'armorUp', unit: host }); } }
   }
 
   _heal(src, tgt, amount, silent) {
@@ -3263,6 +3398,7 @@ class BattleSim {
     if (a <= 0) return 0;
     tgt.hp += a;
     if (src && src.stats) src.stats.healed += a;
+    if (src && src.side === 'hero' && !silent) this._gainUlt(src, a * CONST.ULT_GAIN_HEAL);
     this.events.push({ type: 'heal', target: tgt, amount: a, quiet: !!silent });
     return a;
   }
@@ -3275,11 +3411,12 @@ class BattleSim {
     if (!h.alive) return;
     const before = h.ult;
     h.ult = Math.min(100, h.ult + amt * (this.relics.has('stardust') ? 1.3 : 1) * (1 + Math.min((h.mods && h.mods.ultgain) || 0, CONST.STAT_CAPS.ultgain)));
-    if (before < 100 && h.ult >= 100) this.events.push({ type: 'ultReady', unit: h });
+    if (before < 100 && h.ult >= 100) { h.ultFullAt = this.time; this.events.push({ type: 'ultReady', unit: h }); }
   }
 
   _applyStatus(src, tgt, eff) {
     if (!tgt.alive) return;
+    if (eff.status === 'stun' && tgt.stunImmune) { this.events.push({ type: 'immune', unit: tgt }); return; }
     let dur = eff.dur;
     const sm = (src && src.mods) || {};
     if ((eff.status === 'stun' || eff.status === 'taunt') && sm.ccdur) dur *= 1 + sm.ccdur;
@@ -3292,7 +3429,17 @@ class BattleSim {
     if (prev) s.acc = prev.acc;
     tgt.statuses[eff.status] = s;
     this.events.push({ type: 'status', target: tgt, status: eff.status });
-    if (eff.status === 'stun' && tgt.side === 'enemy') this._poiseHit(src, tgt, CONST.POISE_STUN);
+    if (eff.status === 'stun' && tgt.side === 'enemy') {
+      let dr = 1;
+      if (CONST.BREAK_V2 && tgt.poiseMax) { // 15초 안 반복 기절은 점감
+        tgt.stunHist = tgt.stunHist.filter((t) => this.time - t < CONST.STUN_DR_WINDOW);
+        dr = CONST.STUN_DR[Math.min(tgt.stunHist.length, CONST.STUN_DR.length - 1)];
+        tgt.stunHist.push(this.time);
+        s.t = dur * dr * (tgt.def.stunMult || 1);
+      }
+      this._poiseHit(src, tgt, CONST.POISE_STUN * dr, 'stun');
+      this._shake(tgt, CONST.SHAKE_DUR);
+    }
   }
 
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
@@ -3310,7 +3457,9 @@ class BattleSim {
   // ② 상황 스킬 추천 상태: '' | 'hint'(추천) | 'now'(위험 대응)
   skillHint(h, slot) {
     const sk = this.skillDef(h, slot);
-    if (!sk.hint || !h.alive) return '';
+    if (!h.alive) return '';
+    if (sk.interrupt && this.aliveEnemies().some((e) => (e.charge || e.call) && e.x < 960)) return 'now';
+    if (!sk.hint) return '';
     switch (sk.hint) {
       case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call) ? 'now' : '';
       case 'nearEnemies': return this.aliveEnemies().filter((e) => this.dist(h, e) <= sk.areaR + 10).length >= 2 ? 'hint' : '';
@@ -3441,7 +3590,12 @@ class BattleSim {
       delete e.statuses[sk.detonate.status];
       if (burst > 0) this._damage(h, e, burst, { dot: sk.detonate.status, burst: true });
     }
-    if (sk.poise && e.alive && e.poiseMax) this._poiseHit(h, e, sk.poise);
+    if (sk.interrupt && e.alive && (e.charge || e.call)) {
+      const back = (h.x - e.x) * e.face < 0; // 적이 보는 방향의 반대편 = 후방
+      this._interrupt(h, e, Math.max(1, Math.floor(sk.interrupt * (sk.interruptBack && !back ? sk.interruptBack : 1))));
+    }
+    if (sk.shakeExtend && e.alive && e.shaken > 0) this._shake(e, sk.shakeExtend, true);
+    if (sk.poise && e.alive && e.poiseMax) this._poiseHit(h, e, sk.poise * (CONST.BREAK_V2 && !(e.shaken > 0) ? CONST.ULT_POISE_OUTSIDE : 1), 'ult');
     if (d && sk.lifesteal && h.alive) this._heal(h, h, d * sk.lifesteal, true);
     if (d && sk.partyHeal) { const al = this.aliveHeroes(); for (const a of al) this._heal(h, a, d * sk.partyHeal / al.length, true); }
     return d;
@@ -3461,8 +3615,10 @@ class BattleSim {
     const enemies = this.aliveEnemies(), allies = this.aliveHeroes();
     const lowestAlly = () => allies.reduce((a, b) => (!a || this.hpPct(b) < this.hpPct(a) ? b : a), null);
     rule = rule || (sk.target === 'ally' || sk.target === 'area_ally' ? 'lowestAlly' : sk.hint === 'enemyCharging' ? 'charging' : 'focus');
+    const casting = sk.interrupt ? enemies.find((e) => (e.charge || e.call) && this.dist(h, e) <= Math.max(this.attackRange(h, e), 240)) : null;
     const pickEnemy = () => {
       if (!enemies.length) return null;
+      if (casting) return casting; // 끊기 스킬은 시전 중인 적 우선
       if (rule === 'charging') return enemies.find((e) => e.charge) || enemies.find((e) => e.call) || (this.focus && this.focus.alive ? this.focus : this.nearest(h, enemies));
       if (rule === 'focus' && this.focus && this.focus.alive) return this.focus;
       if (rule === 'weakest') return enemies.reduce((a, b) => (b.hp < a.hp ? b : a));
@@ -3471,9 +3627,21 @@ class BattleSim {
     };
     switch (sk.target) {
       case 'enemy': { const u = pickEnemy(); return u ? { unit: u } : null; }
-      case 'ally': { const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly(); return u && (u.hp < u.maxHp || sk.shieldPct) ? { unit: u } : null; }
+      case 'ally': {
+        const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly();
+        if (u && (u.hp < u.maxHp || sk.shieldPct)) return { unit: u };
+        if (sk.effects.some((e) => e.status === 'resonance')) { // 다친 아군이 없으면 그로기 담당에게 공명
+          const pick = allies.filter((a) => a !== h).sort((a, b) => b.atk - a.atk)[0];
+          return pick ? { unit: pick } : null;
+        }
+        return null;
+      }
       case 'area_enemy': {
         if (!enemies.length) return null;
+        if (casting) { // 끊기: 시전 중인 적들을 최대한 많이 포함
+          const p = this.bestAreaPoint(sk.areaR, enemies.filter((e) => e.charge || e.call));
+          return { x: p.x, y: p.y };
+        }
         const p = this.bestAreaPoint(sk.areaR, enemies);
         return { x: p.x, y: p.y };
       }
@@ -3487,6 +3655,17 @@ class BattleSim {
     }
   }
 
+  // 파티의 끊기 수단(기절 + 끊기 포인트)으로 이 적의 차지·호출을 끊을 수 있는가
+  canPartyCancel(e) {
+    const resist = e.def.interruptResist || (e.size > 1 ? CONST.INTERRUPT_RESIST : CONST.INTERRUPT_RESIST_SMALL);
+    let pts = 0; const roles = {};
+    for (const h of this.aliveHeroes()) for (const slot of ['s1', 's2']) {
+      const sk = this.skillDef(h, slot);
+      if (sk.effects.some((x) => x.status === 'stun') && !e.def.stunNoCancel && !e.stunImmune) return true;
+      if (sk.interrupt && !roles[h.role]) { pts += sk.interrupt; roles[h.role] = 1; }
+    }
+    return CONST.BREAK_V2 && pts >= resist;
+  }
   checkCond(h, slot, c) {
     switch (c.cond) {
       case 'always': return true;
@@ -3496,8 +3675,30 @@ class BattleSim {
       case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call);
       case 'enemyCountGte': return this.aliveEnemies().length >= c.param;
       case 'saveForCharge': { // 차지·호출 능력을 가진 적이 있으면 그 순간에만, 없으면 바로
-        const threats = this.aliveEnemies().filter((e) => e.def.abilities.includes('charge') || e.def.abilities.includes('caller'));
+        const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && this.canPartyCancel(e));
         return !threats.length || threats.some((e) => e.charge || e.call);
+      }
+      case 'auto': { // 필살기 종류에 맞춰 자동: 부활 / 회복 / 그로기 만들기 / 무방비 수확
+        const sk = this.skillDef(h, slot);
+        const big = this.aliveEnemies().filter((e) => e.poiseMax && e.x < 960);
+        if (sk.revive) return this.heroes.some((u) => !u.alive);
+        const healer = (sk.heal || sk.healPct || sk.shieldPct) && !sk.power;
+        if (healer) return this.aliveHeroes().some((a) => this.hpPct(a) <= 0.6);
+        if (!sk.power && sk.effects.some((e) => e.status === 'regen')) return this.aliveHeroes().some((a) => this.hpPct(a) <= 0.7);
+        const defensive = !sk.power && sk.effects.some((e) => ['guard', 'invuln', 'taunt', 'shield'].includes(e.status));
+        if (defensive) return this.aliveEnemies().some((e) => e.charge) || this.aliveHeroes().some((a) => this.hpPct(a) <= 0.55); // 방어형: 차지가 오거나 위험할 때
+        const breaker = sk.poise || sk.interrupt || sk.effects.some((e) => e.status === 'stun');
+        if (breaker) return !big.length || big.some((e) => e.shaken > 0 || e.charge || e.call);
+        if (!big.length || big.some((e) => e.broken > 0)) return true;
+        if (h.ultFullAt !== undefined && this.time - h.ultFullAt > 8) return true; // 너무 오래 아끼지 않음
+        return !big.some((e) => e.poise / e.poiseMax <= 0.4 || (e.shaken > 0 && e.poise / e.poiseMax <= 0.7));
+      }
+      case 'smartInterrupt': { // 끊기 스킬: 지금 시전 중인 적이 있거나, 다음 차지·호출 전에 쿨이 돌아오면 사용
+        const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && e.x < 960);
+        if (!threats.length || threats.some((e) => e.charge || e.call)) return true;
+        if (!threats.some((e) => this.canPartyCancel(e))) return true; // 아껴도 못 끊는 상대면 그냥 사용
+        const next = Math.min(...threats.map((e) => Math.min(e.def.abilities.includes('charge') ? e.chargeCd : 99, e.def.abilities.includes('caller') ? e.callCd : 99)));
+        return next > this.skillCdMax(h, slot) + 0.5;
       }
       case 'breakWindow': { // 그로기 중이면 지금, 그로기가 임박(게이지 45% 이하)하면 아껴둠, 아니면 바로
         const big = this.aliveEnemies().filter((e) => e.poiseMax);
@@ -3581,7 +3782,7 @@ const BattleScene = {
     for (let i = 0; i < 26; i++) this.dust.push({ x: Math.random() * 960, y: 60 + Math.random() * 300, s: 0.5 + Math.random() * 1.5, p: Math.random() * 6 });
     this.buildHud();
     this.consumeEvents();
-    this.banner = { text: node.type === 'boss' ? '보스: 오우거 대족장' : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
   },
@@ -4020,6 +4221,11 @@ const BattleScene = {
       case 'callStart': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18); Sfx.play('summon'); break;
       case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20); Sfx.play('cancel'); break;
       case 'summon': this.smoke(e.unit.x, e.unit.y - 20, 0.8); break;
+      case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
+      case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
+      case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
+      case 'immune': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '면역', '#cfcfcf', 15); break;
       case 'break':
         this.popup(e.unit.x, this.unitTop(e.unit) - 24, '그로기!', '#ffd34a', 34, { crit: true, dur: 1.2 });
         this.banner = { text: '그로기!', sub: `${e.unit.name} 무방비`, t: 0, dur: 1.3 };
@@ -4031,7 +4237,7 @@ const BattleScene = {
       case 'breakEnd': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '방어 태세', '#9fd0ff', 16); break;
       case 'enrage': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22); break;
       case 'warcry': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '함성!', '#ffb04a', 18); this.shake = 4; break;
-      case 'phase': this.banner = { text: e.name, sub: '오우거 대족장이 분노한다!', t: 0, dur: 2.0, danger: true }; Sfx.play('phase'); this.shake = 10; break;
+      case 'phase': this.banner = { text: e.name, sub: `${e.unit.name}의 패턴이 바뀐다!`, t: 0, dur: 2.0, danger: true }; Sfx.play('phase'); this.shake = 10; break;
       case 'wave': if (e.index > 0) this.banner = { text: `웨이브 ${e.index + 1}/${e.total}`, sub: '적이 몰려온다!', t: 0, dur: 1.4 }; break;
       case 'end':
         this.endTimer = e.outcome === 'win' ? 1.3 : 1.6;
@@ -4165,6 +4371,7 @@ const BattleScene = {
       setBar(c.hp, u.hp / u.maxHp);
       if (c.po) { setBar(c.po, u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax); c.po.classList.toggle('broken', u.broken > 0); }
       c.root.classList.toggle('broken', u.broken > 0);
+      c.root.classList.toggle('shaken', u.shaken > 0 && !(u.broken > 0));
       const s = this.statusIcons(u);
       if (s !== c.last) { c.st.innerHTML = s; c.last = s; }
       const casting = u.charge || u.call;
@@ -4364,7 +4571,20 @@ const BattleScene = {
     if (u.poiseMax) {
       const pf = u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 4, bw + 2, 5);
-      ctx.fillStyle = u.broken > 0 ? '#ffd34a' : '#5aa8ff'; ctx.fillRect(x - bw / 2, top - 3, bw * pf, 3);
+      ctx.fillStyle = u.broken > 0 ? '#ffd34a' : u.shaken > 0 ? '#ffb050' : '#5aa8ff'; ctx.fillRect(x - bw / 2, top - 3, bw * pf, 3);
+      ctx.fillStyle = 'rgba(0,0,0,0.7)'; for (let i = 1; i < 5; i++) ctx.fillRect(x - bw / 2 + bw * i / 5 - 0.5, top - 4, 1, 5); // 5칸 눈금
+      if (u.charge || u.call) { // 끊기 칸: 빈 원 → 채워진 원
+        const res = u.def.interruptResist || (u.size > 1 ? CONST.INTERRUPT_RESIST : CONST.INTERRUPT_RESIST_SMALL);
+        const got = u.intr ? Math.min(res, u.intr.pts) : 0;
+        const cy = top - 24, w = res * 18 + 8;
+        ctx.fillStyle = 'rgba(10,16,30,0.75)'; ctx.beginPath(); ctx.roundRect(x - w / 2, cy - 10, w, 20, 10); ctx.fill();
+        for (let i = 0; i < res; i++) {
+          const cx = x + (i - (res - 1) / 2) * 18;
+          ctx.beginPath(); ctx.arc(cx, cy, 6.5, 0, Math.PI * 2);
+          ctx.fillStyle = i < got ? '#9fd0ff' : 'rgba(40,60,90,0.9)'; ctx.fill();
+          ctx.lineWidth = 2; ctx.strokeStyle = i < got ? '#ffffff' : '#9fd0ff'; ctx.stroke();
+        }
+      }
     }
     if (u.casting) { // 긴 시전 (이동 불가)
       const pf = 1 - u.casting.t / u.casting.total;
@@ -4687,7 +4907,7 @@ const FieldScene = {
 
   openGuide(page) {
     const pages = [
-      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 다섯 개의 방을 지나면 오우거 대족장이 기다리지.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 캠프에서 제대로 쉴 수 없어.' },
+      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 다섯 개의 방을 지나면 굴의 주인이 기다리지. 원정마다 다른 놈이 나오니 상대를 보고 동료를 고르게.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 캠프에서 제대로 쉴 수 없어.' },
       { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방 종류는 미리 보이니 길을 잘 고르게.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
       { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. <b>기절</b>로 흔들어 놓고 비틀거릴 때 몰아치게.<br><br>오우거가 힘을 모으면 <b>토비의 방패 강타</b>로 끊거나 붉은 원 밖으로 피하게. 쓰러진 동료는... 이번 원정에선 돌아오지 못하네.' },
     ];
@@ -5034,7 +5254,7 @@ const TitleScene = {
     const ui = Game.ui;
     const box = el('div', 'title-box');
     box.appendChild(el('div', 'title-logo', '숲속 원정대'));
-    box.appendChild(el('div', 'title-sub', '고블린 굴의 오우거 대족장'));
+    box.appendChild(el('div', 'title-sub', '고블린 굴의 주인들'));
     const col = el('div', 'btn-col');
     col.appendChild(btn('원정 시작', 'primary big', () => this.start(this.seed), { id: 'btn-start' }));
     col.appendChild(btn('시드 입력', '', () => this.seedDialog(), { id: 'btn-seed' }));
@@ -5091,7 +5311,7 @@ function openPreBattle(node) {
   const run = Game.run;
   const waves = encounterFor(node);
   const box = el('div', 'prebattle-box');
-  box.appendChild(el('div', 'modal-title', node.type === 'boss' ? '보스 — 오우거 대족장' : node.type === 'elite' ? '정예 전투' : '전투'));
+  box.appendChild(el('div', 'modal-title', node.type === 'boss' ? '보스 — ' + ENEMIES[encounterFor(node)[0][0]].name : node.type === 'elite' ? '정예 전투' : '전투'));
   const wl = el('div', 'pb-waves');
   waves.forEach((w, i) => {
     const row = el('div', 'pb-wave');
@@ -5575,7 +5795,7 @@ const ResultScene = {
     const ui = Game.ui;
     const box = el('div', 'result-box ' + (win ? 'win' : 'lose'));
     box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
-    box.appendChild(el('div', 'result-sub', win ? '오우거 대족장을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
+    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
     const settle = settleRun(run);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `

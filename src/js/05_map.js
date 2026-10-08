@@ -35,7 +35,7 @@ function generateMap(seed) {
       return node;
     }));
   }
-  stages.push([{ stage: CONST.STAGES, row: 1, type: 'boss', enc: 0 }]);
+  stages.push([{ stage: CONST.STAGES, row: 1, type: 'boss', enc: rng.int(0, ENCOUNTERS.boss[CONST.STAGES].length - 1) }]); // 원정마다 보스가 다르다
   return { seed, stages };
 }
 

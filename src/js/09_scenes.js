@@ -10,7 +10,7 @@ const TitleScene = {
     const ui = Game.ui;
     const box = el('div', 'title-box');
     box.appendChild(el('div', 'title-logo', '숲속 원정대'));
-    box.appendChild(el('div', 'title-sub', '고블린 굴의 오우거 대족장'));
+    box.appendChild(el('div', 'title-sub', '고블린 굴의 주인들'));
     const col = el('div', 'btn-col');
     col.appendChild(btn('원정 시작', 'primary big', () => this.start(this.seed), { id: 'btn-start' }));
     col.appendChild(btn('시드 입력', '', () => this.seedDialog(), { id: 'btn-seed' }));
@@ -67,7 +67,7 @@ function openPreBattle(node) {
   const run = Game.run;
   const waves = encounterFor(node);
   const box = el('div', 'prebattle-box');
-  box.appendChild(el('div', 'modal-title', node.type === 'boss' ? '보스 — 오우거 대족장' : node.type === 'elite' ? '정예 전투' : '전투'));
+  box.appendChild(el('div', 'modal-title', node.type === 'boss' ? '보스 — ' + ENEMIES[encounterFor(node)[0][0]].name : node.type === 'elite' ? '정예 전투' : '전투'));
   const wl = el('div', 'pb-waves');
   waves.forEach((w, i) => {
     const row = el('div', 'pb-wave');
@@ -551,7 +551,7 @@ const ResultScene = {
     const ui = Game.ui;
     const box = el('div', 'result-box ' + (win ? 'win' : 'lose'));
     box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
-    box.appendChild(el('div', 'result-sub', win ? '오우거 대족장을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
+    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
     const settle = settleRun(run);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `

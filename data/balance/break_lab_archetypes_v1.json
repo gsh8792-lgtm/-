@@ -1,0 +1,814 @@
+{
+ "v2": false,
+ "n": 40,
+ "bosses": [
+  "ogre_chief",
+  "thorn_queen",
+  "mist_stag",
+  "swamp_turtle"
+ ],
+ "rows": [
+  {
+   "name": "T 탱커+딜+서포터",
+   "ids": [
+    "tobi",
+    "danbi",
+    "bori"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 1,
+     "breaks": 3.95,
+     "firstMed": 17.2,
+     "zeroWin": 0,
+     "time": 102.9,
+     "share": {
+      "skill": 0.221,
+      "stun": 0.269,
+      "cancel": 0.38,
+      "basic": 0.13
+     },
+     "cancelRate": 0.58
+    },
+    "thorn_queen": {
+     "win": 1,
+     "breaks": 3.17,
+     "firstMed": 19.6,
+     "zeroWin": 0,
+     "time": 115.9,
+     "share": {
+      "skill": 0.209,
+      "stun": 0.278,
+      "cancel": 0.439,
+      "basic": 0.074
+     },
+     "cancelRate": 0.28
+    },
+    "mist_stag": {
+     "win": 1,
+     "breaks": 2.5,
+     "firstMed": 18.7,
+     "zeroWin": 0,
+     "time": 144.8,
+     "share": {
+      "skill": 0.343,
+      "stun": 0.15,
+      "cancel": 0.228,
+      "basic": 0.279
+     },
+     "cancelRate": 0.29
+    },
+    "swamp_turtle": {
+     "win": 1,
+     "breaks": 4.67,
+     "firstMed": 38.7,
+     "zeroWin": 0,
+     "time": 196.1,
+     "share": {
+      "skill": 0.333,
+      "basic": 0.248,
+      "stun": 0.419
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "T 성기사+암살자+음유",
+   "ids": [
+    "leon",
+    "kai",
+    "lumi"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 1,
+     "breaks": 3.23,
+     "firstMed": 17.3,
+     "zeroWin": 0,
+     "time": 92.7,
+     "share": {
+      "skill": 0.139,
+      "stun": 0.28,
+      "cancel": 0.439,
+      "basic": 0.141
+     },
+     "cancelRate": 0.63
+    },
+    "thorn_queen": {
+     "win": 1,
+     "breaks": 2.52,
+     "firstMed": 19.6,
+     "zeroWin": 0,
+     "time": 98.5,
+     "share": {
+      "skill": 0.17,
+      "basic": 0.087,
+      "stun": 0.282,
+      "cancel": 0.461
+     },
+     "cancelRate": 0.28
+    },
+    "mist_stag": {
+     "win": 0.925,
+     "breaks": 2,
+     "firstMed": 18.8,
+     "zeroWin": 0,
+     "time": 120.1,
+     "share": {
+      "skill": 0.237,
+      "stun": 0.178,
+      "cancel": 0.296,
+      "basic": 0.289
+     },
+     "cancelRate": 0.37
+    },
+    "swamp_turtle": {
+     "win": 1,
+     "breaks": 3,
+     "firstMed": 50.2,
+     "zeroWin": 0,
+     "time": 163.1,
+     "share": {
+      "basic": 0.301,
+      "skill": 0.246,
+      "stun": 0.453
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "TT 탱커 2",
+   "ids": [
+    "tobi",
+    "gor",
+    "bori"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 1,
+     "breaks": 14.18,
+     "firstMed": 6.5,
+     "zeroWin": 0,
+     "time": 199,
+     "share": {
+      "skill": 0.083,
+      "stun": 0.459,
+      "cancel": 0.394,
+      "basic": 0.063
+     },
+     "cancelRate": 0.84
+    },
+    "thorn_queen": {
+     "win": 0.1,
+     "breaks": 12.72,
+     "firstMed": 7.9,
+     "zeroWin": 0,
+     "time": 258.8,
+     "share": {
+      "skill": 0.083,
+      "stun": 0.456,
+      "cancel": 0.414,
+      "basic": 0.046
+     },
+     "cancelRate": 0.31
+    },
+    "mist_stag": {
+     "win": 0,
+     "breaks": 6.17,
+     "firstMed": 8,
+     "zeroWin": 0,
+     "time": 257.4,
+     "share": {
+      "skill": 0.179,
+      "stun": 0.285,
+      "cancel": 0.259,
+      "basic": 0.277
+     },
+     "cancelRate": 0.31
+    },
+    "swamp_turtle": {
+     "win": 0,
+     "breaks": 7.58,
+     "firstMed": 38.2,
+     "zeroWin": 0,
+     "time": 260,
+     "share": {
+      "basic": 0.191,
+      "skill": 0.125,
+      "stun": 0.685
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 원딜+근딜+서포터",
+   "ids": [
+    "danbi",
+    "byeolbi",
+    "bori"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 78.3,
+     "share": {
+      "skill": 0.608,
+      "basic": 0.392
+     },
+     "cancelRate": 0
+    },
+    "thorn_queen": {
+     "win": 0.525,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 1,
+     "time": 131.1,
+     "share": {
+      "skill": 0.727,
+      "basic": 0.273
+     },
+     "cancelRate": 0
+    },
+    "mist_stag": {
+     "win": 0.8,
+     "breaks": 0.82,
+     "firstMed": 86.3,
+     "zeroWin": 0.031,
+     "time": 113.9,
+     "share": {
+      "skill": 0.611,
+      "basic": 0.389
+     },
+     "cancelRate": 0
+    },
+    "swamp_turtle": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 260,
+     "share": {
+      "skill": 0.502,
+      "basic": 0.498
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 매지션+원딜+서포터",
+   "ids": [
+    "byeolbi",
+    "soldam",
+    "bori"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 0.275,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 1,
+     "time": 102.1,
+     "share": {
+      "skill": 0.624,
+      "basic": 0.376
+     },
+     "cancelRate": 0
+    },
+    "thorn_queen": {
+     "win": 0.95,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 1,
+     "time": 119.4,
+     "share": {
+      "skill": 0.631,
+      "basic": 0.369
+     },
+     "cancelRate": 0
+    },
+    "mist_stag": {
+     "win": 0.675,
+     "breaks": 0.68,
+     "firstMed": 163.4,
+     "zeroWin": 0,
+     "time": 175.5,
+     "share": {
+      "skill": 0.6,
+      "basic": 0.4
+     },
+     "cancelRate": 0
+    },
+    "swamp_turtle": {
+     "win": 1,
+     "breaks": 1,
+     "firstMed": 179,
+     "zeroWin": 0,
+     "time": 188.6,
+     "share": {
+      "skill": 0.601,
+      "basic": 0.399
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 근딜+매지션+서포터",
+   "ids": [
+    "kai",
+    "seori",
+    "sera"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 0.5,
+     "breaks": 1.52,
+     "firstMed": 76.4,
+     "zeroWin": 0,
+     "time": 158.9,
+     "share": {
+      "skill": 0.34,
+      "basic": 0.209,
+      "ult": 0.089,
+      "stun": 0.163,
+      "cancel": 0.199
+     },
+     "cancelRate": 0.16
+    },
+    "thorn_queen": {
+     "win": 0.675,
+     "breaks": 1.07,
+     "firstMed": 54.1,
+     "zeroWin": 0,
+     "time": 128.2,
+     "share": {
+      "skill": 0.329,
+      "basic": 0.141,
+      "ult": 0.091,
+      "stun": 0.167,
+      "cancel": 0.271
+     },
+     "cancelRate": 0.14
+    },
+    "mist_stag": {
+     "win": 0.8,
+     "breaks": 1.05,
+     "firstMed": 46.1,
+     "zeroWin": 0,
+     "time": 145.9,
+     "share": {
+      "skill": 0.462,
+      "basic": 0.32,
+      "ult": 0.066,
+      "stun": 0.054,
+      "cancel": 0.098
+     },
+     "cancelRate": 0.11
+    },
+    "swamp_turtle": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 260,
+     "share": {
+      "skill": 0.442,
+      "basic": 0.305,
+      "ult": 0.089,
+      "stun": 0.164
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 원딜2+서포터",
+   "ids": [
+    "haram",
+    "mir",
+    "lumi"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 70.9,
+     "share": {
+      "skill": 0.614,
+      "basic": 0.386
+     },
+     "cancelRate": 0
+    },
+    "thorn_queen": {
+     "win": 0.875,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 1,
+     "time": 130.4,
+     "share": {
+      "skill": 0.579,
+      "basic": 0.421
+     },
+     "cancelRate": 0
+    },
+    "mist_stag": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 159.7,
+     "share": {
+      "skill": 0.544,
+      "basic": 0.456
+     },
+     "cancelRate": 0
+    },
+    "swamp_turtle": {
+     "win": 0.125,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 1,
+     "time": 215.4,
+     "share": {
+      "skill": 0.54,
+      "basic": 0.46
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 근딜+원딜+매지션",
+   "ids": [
+    "bran",
+    "byeolbi",
+    "seori"
+   ],
+   "profile": "smart",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 0,
+     "breaks": 0.2,
+     "firstMed": 43.1,
+     "zeroWin": 0,
+     "time": 58.3,
+     "share": {
+      "skill": 0.455,
+      "basic": 0.176,
+      "ult": 0.06,
+      "stun": 0.11,
+      "cancel": 0.199
+     },
+     "cancelRate": 0.21
+    },
+    "thorn_queen": {
+     "win": 0.275,
+     "breaks": 1.07,
+     "firstMed": 38.9,
+     "zeroWin": 0,
+     "time": 97.7,
+     "share": {
+      "skill": 0.372,
+      "basic": 0.105,
+      "ult": 0.119,
+      "stun": 0.156,
+      "cancel": 0.248
+     },
+     "cancelRate": 0.13
+    },
+    "mist_stag": {
+     "win": 0,
+     "breaks": 0.28,
+     "firstMed": 47.2,
+     "zeroWin": 0,
+     "time": 62.5,
+     "share": {
+      "skill": 0.47,
+      "basic": 0.194,
+      "ult": 0.054,
+      "stun": 0.1,
+      "cancel": 0.181
+     },
+     "cancelRate": 0.19
+    },
+    "swamp_turtle": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 72.1,
+     "share": {
+      "skill": 0.579,
+      "basic": 0.251,
+      "ult": 0.06,
+      "stun": 0.11
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 원딜2 (미르 B 마비)",
+   "ids": [
+    "haram",
+    "mir",
+    "lumi"
+   ],
+   "profile": "smart",
+   "ults": {
+    "mir": {
+     "k": "B",
+     "bt": 0
+    }
+   },
+   "cells": {
+    "ogre_chief": {
+     "win": 0.775,
+     "breaks": 1.82,
+     "firstMed": 39,
+     "zeroWin": 0,
+     "time": 85.1,
+     "share": {
+      "skill": 0.359,
+      "basic": 0.217,
+      "ult": 0.069,
+      "stun": 0.126,
+      "cancel": 0.229
+     },
+     "cancelRate": 0.27
+    },
+    "thorn_queen": {
+     "win": 0.75,
+     "breaks": 0.75,
+     "firstMed": 86.8,
+     "zeroWin": 0.033,
+     "time": 120.1,
+     "share": {
+      "skill": 0.415,
+      "basic": 0.328,
+      "ult": 0.044,
+      "stun": 0.076,
+      "cancel": 0.137
+     },
+     "cancelRate": 0.06
+    },
+    "mist_stag": {
+     "win": 0.675,
+     "breaks": 1.8,
+     "firstMed": 51.6,
+     "zeroWin": 0,
+     "time": 153.9,
+     "share": {
+      "skill": 0.397,
+      "basic": 0.317,
+      "ult": 0.067,
+      "stun": 0.078,
+      "cancel": 0.142
+     },
+     "cancelRate": 0.16
+    },
+    "swamp_turtle": {
+     "win": 0.925,
+     "breaks": 1.9,
+     "firstMed": 87.6,
+     "zeroWin": 0,
+     "time": 194,
+     "share": {
+      "skill": 0.416,
+      "basic": 0.347,
+      "ult": 0.085,
+      "stun": 0.152
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "B 원딜2 (미르 B2 신경독)",
+   "ids": [
+    "haram",
+    "mir",
+    "lumi"
+   ],
+   "profile": "smart",
+   "ults": {
+    "mir": {
+     "k": "B2",
+     "bt": 5
+    }
+   },
+   "cells": {
+    "ogre_chief": {
+     "win": 0.775,
+     "breaks": 1.82,
+     "firstMed": 39,
+     "zeroWin": 0,
+     "time": 85.2,
+     "share": {
+      "skill": 0.363,
+      "basic": 0.221,
+      "ult": 0.067,
+      "stun": 0.124,
+      "cancel": 0.225
+     },
+     "cancelRate": 0.26
+    },
+    "thorn_queen": {
+     "win": 0.75,
+     "breaks": 0.78,
+     "firstMed": 86.9,
+     "zeroWin": 0.033,
+     "time": 118.8,
+     "share": {
+      "skill": 0.409,
+      "basic": 0.325,
+      "ult": 0.046,
+      "stun": 0.08,
+      "cancel": 0.14
+     },
+     "cancelRate": 0.06
+    },
+    "mist_stag": {
+     "win": 0.5,
+     "breaks": 1.85,
+     "firstMed": 51.6,
+     "zeroWin": 0,
+     "time": 146.3,
+     "share": {
+      "skill": 0.389,
+      "basic": 0.308,
+      "ult": 0.068,
+      "stun": 0.085,
+      "cancel": 0.15
+     },
+     "cancelRate": 0.17
+    },
+    "swamp_turtle": {
+     "win": 0.925,
+     "breaks": 1.9,
+     "firstMed": 87.8,
+     "zeroWin": 0,
+     "time": 194.3,
+     "share": {
+      "skill": 0.415,
+      "basic": 0.346,
+      "ult": 0.084,
+      "stun": 0.154
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "D 딜만 (탱커 조합)",
+   "ids": [
+    "tobi",
+    "danbi",
+    "bori"
+   ],
+   "profile": "brute",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 1,
+     "breaks": 2.92,
+     "firstMed": 38.2,
+     "zeroWin": 0,
+     "time": 117.1,
+     "share": {
+      "skill": 0.335,
+      "basic": 0.194,
+      "stun": 0.344,
+      "cancel": 0.127
+     },
+     "cancelRate": 0.17
+    },
+    "thorn_queen": {
+     "win": 0.775,
+     "breaks": 0.6,
+     "firstMed": 59.3,
+     "zeroWin": 0.548,
+     "time": 205.9,
+     "share": {
+      "skill": 0.505,
+      "stun": 0.219,
+      "basic": 0.217,
+      "cancel": 0.059
+     },
+     "cancelRate": 0.07
+    },
+    "mist_stag": {
+     "win": 0.975,
+     "breaks": 2,
+     "firstMed": 38.2,
+     "zeroWin": 0,
+     "time": 126.7,
+     "share": {
+      "basic": 0.282,
+      "skill": 0.438,
+      "stun": 0.207,
+      "cancel": 0.073
+     },
+     "cancelRate": 0.1
+    },
+    "swamp_turtle": {
+     "win": 1,
+     "breaks": 4.97,
+     "firstMed": 38.3,
+     "zeroWin": 0,
+     "time": 173.3,
+     "share": {
+      "skill": 0.4,
+      "basic": 0.203,
+      "stun": 0.397
+     },
+     "cancelRate": 0
+    }
+   }
+  },
+  {
+   "name": "D 딜만 (딜러 3)",
+   "ids": [
+    "danbi",
+    "byeolbi",
+    "soldam"
+   ],
+   "profile": "brute",
+   "ults": null,
+   "cells": {
+    "ogre_chief": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 47.6,
+     "share": {
+      "skill": 0.733,
+      "basic": 0.267
+     },
+     "cancelRate": 0
+    },
+    "thorn_queen": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 82.9,
+     "share": {
+      "skill": 0.803,
+      "basic": 0.197
+     },
+     "cancelRate": 0
+    },
+    "mist_stag": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 48.1,
+     "share": {
+      "skill": 0.717,
+      "basic": 0.283
+     },
+     "cancelRate": 0
+    },
+    "swamp_turtle": {
+     "win": 0,
+     "breaks": 0,
+     "firstMed": null,
+     "zeroWin": 0,
+     "time": 72,
+     "share": {
+      "skill": 0.733,
+      "basic": 0.267
+     },
+     "cancelRate": 0
+    }
+   }
+  }
+ ]
+}

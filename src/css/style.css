@@ -454,3 +454,6 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .gr-tag.new { background: var(--gold); color: #2b1d10; }
 .gr-tag.bt { background: #3a6a4a; }
 .loot.ticket { color: #d8c0ff; }
+.chip.shaken { border-color: #ffb050; box-shadow: 0 0 8px 1px rgba(255,176,80,0.7); }
+.bar.poise { position: relative; }
+.bar.poise::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(20% - 1px), rgba(0,0,0,0.75) calc(20% - 1px), rgba(0,0,0,0.75) 20%); pointer-events: none; }

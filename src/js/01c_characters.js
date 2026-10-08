@@ -203,6 +203,7 @@ const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
       AI_PRESETS[c.id] = JSON.parse(JSON.stringify(AI_PRESETS[CLASS_BASE[c.role]]));
     }
     HEROES[c.id].title = c.title;
+    AI_PRESETS[c.id].ult.cond = 'auto'; // 필살기를 바꿔 끼워도 알맞은 때 쓰도록
     // 필살기 풀: A/B/C + 변주 A2/B2/C2
     for (const k of ['A', 'B', 'C']) {
       const u = c.ults[k];

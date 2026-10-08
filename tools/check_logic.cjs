@@ -3,8 +3,8 @@
 const fs = require('fs'), vm = require('vm');
 const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 const typeCount = {};
 for (let seed = 1; seed <= 1000; seed++) {
@@ -54,17 +54,17 @@ if (sa !== sb) fail++;
   if (!lockOk) fail++;
   // 2) 오우거 차지 범위에서 끌어 빼면 피해를 안 받는다 (안 빼면 받는다)
   const dodgeRun = (dodge) => {
-    const s = new BattleSim({ seed: 11, stage: 3, waves: [['ogre']], strategy: strat, heroes });
+    const s = new BattleSim({ seed: 11, stage: 3, waves: [['ogre']], strategy: strat, heroes, autoMode: false });
     const o = () => s.enemies.find((e) => e.key === 'ogre');
     for (let i = 0; i < 60 * 40 && !(o() && o().charge); i++) s.step(1 / 60);
     const c = o() && o().charge; if (!c) return null;
     const victim = s.heroes.find((h) => h.alive && h.key !== 'tobi' && s.inChargeZone(h, c)) || s.heroes.find((h) => h.alive && s.inChargeZone(h, c));
     if (!victim) return { none: true };
     s.heroes.filter((h) => h !== victim).forEach((h) => { h.cmd = null; });
-    if (dodge) s.command(victim, { type: 'move', x: Math.max(50, c.cx - c.r - 60), y: victim.y });
-    const hp0 = victim.hp; let impact = false;
-    while (!impact && s.time < 200) { s.step(1 / 60); impact = !o().charge; }
-    return { key: victim.key, lost: Math.round(hp0 - victim.hp) };
+    s.command(victim, dodge ? { type: 'move', x: Math.max(50, c.cx - c.r - 60), y: victim.y } : { type: 'move', x: victim.x, y: victim.y }); // 그대로 버티기 vs 끌어서 피하기
+    let impact = false, lost = 0;
+    while (!impact && s.time < 200) { s.step(1 / 60); for (const e of s.events) if (e.type === 'hit' && e.charge && e.target === victim) lost += e.amount; s.events.length = 0; impact = !o().charge; }
+    return { key: victim.key, lost: Math.round(lost) };
   };
   const stay = dodgeRun(false), go = dodgeRun(true);
   const dodgeOk = stay && go && !stay.none && go.lost < stay.lost * 0.5;
@@ -165,6 +165,51 @@ if (sa !== sb) fail++;
     if (ultChoices('kai', 0).length !== 3 || ultChoices('kai', 5).length !== 6) errs.push('variant unlocks');
     if (!(ultDefFor('kai', 'A', 1).power > ultDefFor('kai', 'A', 0).power)) errs.push('bt1 boost'); }
   console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(15 chars × 6 ultimates cast, mechanics, gacha)');
+  if (errs.length) fail++;
+}
+// 그로기 역할 분담 규칙 (흔들림 · 끊기 합산 · 점감 · 반복 그로기 · 보스 기믹)
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = (waves, ids) => { const sim = new BattleSim({ seed: 5, stage: 5, waves, strategy: st0, autoMode: false, partySize: 3, heroes: (ids || ['tobi', 'byeolbi', 'danbi']).map((id) => ({ id, hp: 9999, maxHp: 9999, upgrades: {} })) }); for (let i = 0; i < 90; i++) sim.step(1 / 60); return sim; };
+  const boss = (sim, k) => sim.enemies.find((e) => e.key === k);
+  const startCharge = (sim, b) => { b.x = 700; b.charge = { t: 3, total: 3, cx: 300, cy: 380, r: 80, mult: 1 }; };
+  // 1) 끊기 합산: 원딜 60 단독 실패(절반은 그로기), 60+50은 성공
+  { const sim = mk([['ogre_chief']]); const b = boss(sim, 'ogre_chief'); const [, by, db] = sim.heroes;
+    startCharge(sim, b); const p0 = b.poise; sim._interrupt(by, b, 2);
+    if (!b.charge) errs.push('2 pips alone cancelled'); for (let i = 0; i < 150; i++) sim.step(1 / 60);
+    if (!(b.poise < p0 - 20)) errs.push('failed interrupt gave no poise');
+    startCharge(sim, b); b.intr = null; sim._interrupt(by, b, 2); sim._interrupt(by, b, 2);
+    if (!b.charge) errs.push('same role stacked'); sim._interrupt(db, b, 1);
+    if (b.charge) errs.push('2+1 pips did not cancel'); if (!(b.shaken > 0)) errs.push('cancel did not shake'); }
+  // 2) 흔들림 중 회복 정지, 끝나면 지연 후 회복
+  { const sim = mk([['ogre_chief']]); const b = boss(sim, 'ogre_chief'); for (const h of sim.heroes) h.atkTimer = 1e9; b.poise = 100; sim._shake(b, 8); for (let i = 0; i < 60 * 4; i++) sim.step(1 / 60);
+    if (Math.abs(b.poise - 100) > 25) errs.push('regen during shake ' + b.poise); for (let i = 0; i < 60 * 7; i++) sim.step(1 / 60); if (!(b.poise > 110)) errs.push('no regen after shake'); }
+  // 3) 기절 점감 0.6 → 0.3
+  { const sim = mk([['ogre_chief']]); const b = boss(sim, 'ogre_chief'); const t = sim.heroes[0]; const p = []; b.poise = 220;
+    for (let i = 0; i < 3; i++) { const before = b.poise; sim._applyStatus(t, b, { status: 'stun', dur: 2 }); p.push(Math.round(before - b.poise)); delete b.statuses.stun; b.shaken = 0; }
+    if (!(p[1] < p[0] * 0.7 && p[2] < p[0] * 0.4)) errs.push('stun DR ' + p.join('/')); }
+  // 4) 반복 그로기: 최대치 증가 (상한 1.3배) + 종료 후 3초 잠금
+  { const sim = mk([['ogre_chief']]); const b = boss(sim, 'ogre_chief'); const t = sim.heroes[0];
+    sim._poiseHit(t, b, 999, 'skill'); if (!(b.broken > 0) || Math.abs(b.poiseMax - 220 * 1.15) > 1) errs.push('growth ' + b.poiseMax);
+    for (let i = 0; i < 60 * 6.2; i++) sim.step(1 / 60); const pz = b.poise; sim._poiseHit(t, b, 50, 'skill'); if (b.poise !== pz) errs.push('lock after break');
+    for (let n = 0; n < 4; n++) { b.breakLock = 0; b.broken = 0; sim._poiseHit(t, b, 999, 'skill'); } if (b.poiseMax > 220 * 1.3 + 0.1) errs.push('growth cap'); }
+  // 5) 늪거북: 기절로 차지가 끊기지 않음 / 사슴왕: 정면 그로기 ×0.3, 2페이즈 기절 면역
+  { const sim = mk([['swamp_turtle']]); const b = boss(sim, 'swamp_turtle'); startCharge(sim, b); sim._applyStatus(sim.heroes[0], b, { status: 'stun', dur: 2 }); sim.step(1 / 60);
+    if (!b.charge) errs.push('turtle charge cancelled by stun'); }
+  { const sim = mk([['mist_stag']]); const b = boss(sim, 'mist_stag'); b.face = -1; const h = sim.heroes[1]; h.x = b.x - 100; b.poise = 200; b.shaken = 0;
+    sim._poiseHit(h, b, 50, 'skill'); const front = 200 - b.poise; h.x = b.x + 100; b.poise = 200; sim._poiseHit(h, b, 50, 'skill'); const back = 200 - b.poise;
+    if (!(Math.abs(front - 15) < 1 && Math.abs(back - 50) < 1)) errs.push(`stag front/back ${front}/${back}`);
+    b.hp = b.maxHp * 0.45; sim.step(1 / 60); sim._applyStatus(h, b, { status: 'stun', dur: 2 }); if (b.statuses.stun) errs.push('stag phase2 stunnable'); }
+  // 6) 가시덩굴 여왕: 꽃봉오리 3개가 동시에 호출, 범위 끊기 한 번으로 모두 끊김
+  { const sim = mk([['thorn_queen']], ['tobi', 'soldam', 'bori']); const q = boss(sim, 'thorn_queen');
+    for (let i = 0; i < 60 * 8 && !sim.enemies.some((e) => e.key === 'thorn_bud' && e.call); i++) sim.step(1 / 60);
+    const buds = sim.enemies.filter((e) => e.key === 'thorn_bud' && e.alive);
+    if (buds.length !== 3 || !buds.every((b) => b.call)) errs.push('buds not calling together ' + buds.length);
+    const so = sim.heroes.find((h) => h.key === 'soldam'); so.cds.s2 = 0; so.castLock = 0;
+    const sp = sim.resolveTarget(so, 's2'); sim.cast(so, 's2', sp); for (let i = 0; i < 60; i++) sim.step(1 / 60);
+    if (buds.some((b) => b.call)) errs.push('area interrupt missed a bud'); }
+  console.log('break roles:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(interrupt sum, shake, stun DR, break growth/lock, turtle, stag, queen buds)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);
