@@ -94,7 +94,7 @@ lines = [
     ('', '1) 등급 순서는 요청에 적힌 순서대로 UC를 최하위로 두었다 (일반적으로는 C < UC인 경우도 있음).'),
     ('', '2) L·E도 추가 옵션 4개를 유지 (UR 최대 4개 규칙의 연장). L·E의 차별점은 보석 슬롯 · 특성 스탯 · 스킬 보너스.'),
     ('', '3) 공통 장신구(반지·목걸이·벨트)의 L·E 직업 특성 스탯/스킬 보너스는 착용한 캐릭터의 직업 기준으로 붙는다.'),
-    ('', '4) 소울 메달 = 직업 특성 스탯 주 스탯 + 필살기 충전. 무기·갑옷과 겹치지 않게 고유 효과는 메달 전용 라인 2종.'),
+    ('', '4) 소울 메달 = 직업 특성 스탯 + ①(갑옷)·②(무기) 스킬 위력 강화. 필살기 변형은 캐릭터 중복 돌파로 이동. 메달의 최종 역할은 docs/GAME_DESIGN.md 8장에 보류 안으로 기록.'),
     ('', '5) 장비가 원정 사이에 유지(영구 성장)된다고 가정 → 적 강함을 8단계 난이도로 나눔 (난이도 시트). 데모의 기본 던전 = 견습(T1) 아래 단계.'),
     ('', '6) "각 스테이지 보스" — 현재 데모는 5스테이지 보스 1종뿐. 보석 드랍은 보스 노드 기준으로 정의 (스테이지별 중간 보스 추가 시 동일 테이블 사용).'),
     ('', '7) 승률 수치는 헤드리스 시뮬(3개 파티 조합 × 시드, 4스테이지 일반/정예 + 보스) 기준이며 실제 플레이어 실력에 따라 달라진다.'),
@@ -310,6 +310,47 @@ for sk, tbl in DB['drops'].items():
     r += 1
 ws.column_dimensions['A'].width = 26
 for c in range(2, 18): ws.column_dimensions[CL(c)].width = 9
+
+# ------------------------------------------------------------------ 10-2. 갑옷패시브
+ws = sheet('갑옷패시브')
+title(ws, '갑옷 랜덤 패시브', '이름 고정, 등급 = 배율. 패시브 등급은 장비 등급 이하에서 굴림 (같음/−1/−2/그 아래 = 가중치). 같은 이름은 최고 등급 하나만 적용.')
+put(ws, 3, 1, '등급 굴림 가중치', font=f_bold)
+for i, (lab, w) in enumerate(zip(['같은 등급', '−1', '−2', '−3 이하'], DB['passiveGradeRoll'])):
+    put(ws, 3, 2 + i * 2, lab, font=Font(name=F)); put(ws, 3, 3 + i * 2, w)
+cols = ['키', '이름', '최저 등급', '종류', '효과', 'UC 기준 값', '고정 단점'] + GR
+header(ws, 5, cols, [12, 18, 9, 9, 40, 11, 34] + [8] * 8)
+for j, g in enumerate(GR): put(ws, 4, 8 + j, DB['passiveMult'][g], fmt='0.00')
+put(ws, 4, 7, '등급 배율 →', font=f_note)
+kind_name = {'stat': '수치형', 'hook': '규칙형', 'trade': '트레이드오프'}
+for i, ps in enumerate(DB['passives']):
+    rr = 6 + i
+    put(ws, rr, 1, ps['key'], font=Font(name=F)); put(ws, rr, 2, ps['name'], font=Font(name=F, bold=True)); put(ws, rr, 3, ps['min'], font=Font(name=F)); put(ws, rr, 4, kind_name[ps['kind']], font=Font(name=F))
+    put(ws, rr, 5, ps['text'].replace('{v}', '[값]'), font=Font(name=F)); put(ws, rr, 6, ps['v'], fmt='0.000'); put(ws, rr, 7, ps.get('penText', ''), font=Font(name=F))
+    mi = GR.index(ps['min'])
+    for j, g in enumerate(GR):
+        if j < mi: put(ws, rr, 8 + j, '-', font=Font(name=F))
+        else: put(ws, rr, 8 + j, f'=$F{rr}*{CL(8 + j)}$4', fmt='0.000')
+
+# ------------------------------------------------------------------ 10-3. 강화
+ws = sheet('강화')
+title(ws, '장비 강화', '실패 보정: 실패마다 기본 확률의 10%씩(최대 2배). 장인의 기운 += 현재 확률 × 0.465, 100%면 확정 성공. 장비 파괴·단계 하락 없음.')
+E = DB['enhance']
+put(ws, 3, 1, '단계당 주 스탯', font=f_bold); x = put(ws, 3, 2, E['mainPerLevel'], fmt='0%'); x.fill = fill_key
+put(ws, 3, 3, '보정 단위', font=f_bold); put(ws, 3, 4, E['failBonusStep'], fmt='0%')
+put(ws, 3, 5, '장인 계수', font=f_bold); put(ws, 3, 6, E['artisanFactor'], fmt='0.000')
+header(ws, 5, ['목표 단계', '기본 확률', '최대 확률(보정)', '강화석', '골드', '주 스탯 누적', '기운만으로 확정까지 실패 횟수(근사)', '외형'], [10, 10, 14, 9, 9, 13, 30, 10])
+for i, L in enumerate(E['levels']):
+    rr = 6 + i
+    put(ws, rr, 1, f'+{i + 1}', font=Font(name=F)); put(ws, rr, 2, L['rate'], fmt='0%'); put(ws, rr, 3, f'=MIN(1,B{rr}*2)', fmt='0%')
+    put(ws, rr, 4, L['stones']); put(ws, rr, 5, L['gold']); put(ws, rr, 6, f'=1+$B$3*{i + 1}', fmt='0%')
+    put(ws, rr, 7, f'=IF(B{rr}>=1,0,ROUNDUP(1/(C{rr}*$F$3),0))')
+    put(ws, rr, 8, '외형 ' + str(E['visualTiers'].index(i + 1) + 1) + '단계' if (i + 1) in E['visualTiers'] else '', font=Font(name=F))
+rr = 6 + len(E['levels']) + 1
+put(ws, rr, 1, '등급별 강화 한도', font=f_bold)
+for j, g in enumerate(GR): put(ws, rr + 1, 1 + j, g, font=Font(name=F, bold=True)); put(ws, rr + 2, 1 + j, E['capByGrade'][g])
+put(ws, rr + 4, 1, '분해 시 강화석', font=f_bold)
+for j, g in enumerate(GR): put(ws, rr + 5, 1 + j, g, font=Font(name=F, bold=True)); put(ws, rr + 6, 1 + j, DB['dismantle'][g])
+ws.cell(row=rr + 7, column=1, value='분해 강화석 = 등급 값 + 강화 단계. 전투 보상 강화석: 일반 2 · 정예 4 · 보스 8.').font = f_note
 
 # ------------------------------------------------------------------ 11. 밸런스분석
 ws = sheet('밸런스분석')
