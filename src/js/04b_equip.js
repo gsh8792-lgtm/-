@@ -43,8 +43,8 @@ const EQ = (() => {
   }
   function loadProfile() {
     const p = safeStorageGet('fe_profile', null);
-    if (p && p.v === 1) return p;
-    return newProfile();
+    if (p && p.v === 1) return GACHA.ensure(p);
+    return GACHA.ensure(newProfile());
   }
   function saveProfile(p) { safeStorageSet('fe_profile', p); }
   function findItem(p, uid) { return p.inv.find((i) => i.uid === uid) || null; }

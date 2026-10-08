@@ -10,6 +10,7 @@ const FIELD = {
   well: { x: 700, y: 700 },
   smith: { x: 430, y: 540 },
   storage: { x: 930, y: 610 },
+  altar: { x: 1130, y: 560 },
 };
 
 const FieldScene = {
@@ -37,13 +38,15 @@ const FieldScene = {
     for (let i = 0; i < 90; i++) this.flowers.push({ x: rng() * FIELD.W, y: rng() * FIELD.H, c: ['#ffd34a', '#f4a7a0', '#e8e8ff', '#c89af0'][Math.floor(rng() * 4)], p: rng() * 6 });
     this.obstacles = FIELD.trees.map(([x, y, s]) => ({ x, y, r: 26 * s }))
       .concat(FIELD.houses.map(([x, y]) => ({ x, y: y - 10, r: 70 })))
-      .concat([{ x: FIELD.well.x, y: FIELD.well.y, r: 34 }, { x: FIELD.smith.x + 34, y: FIELD.smith.y, r: 22 }, { x: FIELD.storage.x, y: FIELD.storage.y, r: 24 }]);
+      .concat([{ x: FIELD.well.x, y: FIELD.well.y, r: 34 }, { x: FIELD.smith.x + 34, y: FIELD.smith.y, r: 22 }, { x: FIELD.storage.x, y: FIELD.storage.y, r: 24 }, { x: FIELD.altar.x, y: FIELD.altar.y, r: 26 }]);
     this.buildGround();
     const ui = Game.ui;
     const top = el('div', 'f-top');
     top.appendChild(el('div', 'f-title', '🌲 숲속 마을'));
     const r = el('div', 'f-right');
     r.appendChild(btn('던전 입구로 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
+    r.appendChild(btn('✨ 소환', 'small', () => openGacha(() => this.refreshRes()), { id: 'btn-gacha' }));
+    r.appendChild(btn('🧑 캐릭터', 'small', () => openRoster({ onClose: () => this.refreshRes() }), { id: 'btn-roster' }));
     r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
     r.appendChild(btn('👥 파티 편성', 'small', () => openPartySelect(Game.run, () => this.rebuildParty()), { id: 'btn-party' }));
     r.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(Game.run), { id: 'btn-f-strategy' }));
@@ -66,7 +69,7 @@ const FieldScene = {
   refreshRes() {
     const run = Game.run;
     const p = Game.profile;
-    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>💎 ${p.stones}</span><span>🍞 ${run.food}</span><span>난이도 ${EQ.tierInfo(p.tier).name}</span><span>파티 ${partyIds(run).map((id) => HEROES[id].name).join('·')}</span>`;
+    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>💎 ${p.stones}</span><span>🎟 ${p.tickets}</span><span>🍞 ${run.food}</span><span>난이도 ${EQ.tierInfo(p.tier).name}</span><span>파티 ${partyIds(run).map((id) => HEROES[id].name).join('·')}</span>`;
   },
 
   interactables() {
@@ -76,6 +79,7 @@ const FieldScene = {
       { key: 'chest', x: FIELD.chest.x, y: FIELD.chest.y, label: Game.run.gotSupply ? '빈 상자' : '열기' },
       { key: 'smith', x: FIELD.smith.x, y: FIELD.smith.y, label: '강화' },
       { key: 'storage', x: FIELD.storage.x, y: FIELD.storage.y, label: '장비' },
+      { key: 'altar', x: FIELD.altar.x, y: FIELD.altar.y, label: '소환' },
     ];
   },
 
@@ -101,6 +105,8 @@ const FieldScene = {
       this.refreshRes();
     } else if (it.key === 'smith') {
       openBlacksmith(() => this.refreshRes());
+    } else if (it.key === 'altar') {
+      openGacha(() => this.refreshRes());
     } else if (it.key === 'storage') {
       openInventory({ onClose: () => this.refreshRes() });
     } else if (it.key === 'guide') {
@@ -326,6 +332,7 @@ const FieldScene = {
     objs.push({ y: FIELD.chest.y, draw: () => this.drawChest(ctx, FIELD.chest.x, FIELD.chest.y, run.gotSupply) });
     objs.push({ y: FIELD.smith.y, draw: () => this.drawSmith(ctx, FIELD.smith.x, FIELD.smith.y, t, L) });
     objs.push({ y: FIELD.storage.y, draw: () => this.drawStorage(ctx, FIELD.storage.x, FIELD.storage.y) });
+    objs.push({ y: FIELD.altar.y, draw: () => this.drawAltar(ctx, FIELD.altar.x, FIELD.altar.y, t) });
     objs.push({ y: FIELD.guide.y, draw: () => { this.shadow(ctx, FIELD.guide.x, FIELD.guide.y, 16); drawSprite(ctx, 'guide', FIELD.guide.x, FIELD.guide.y, { scale: 2, t, flip: L.x < FIELD.guide.x, blinking: (t % 4) < 0.12 }); } });
     this.followers.forEach((f) => {
       const h = HEROES[f.id];
@@ -341,7 +348,7 @@ const FieldScene = {
       if (it.key === 'chest' && run.gotSupply) continue;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함' }[it.key];
+      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단' }[it.key];
       const ly = it.key === 'portal' ? it.y - 150 : it.y - 62;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(label, it.x, ly + bob); ctx.fillText(label, it.x, ly + bob);
       if (it.key !== 'portal') { ctx.fillText('▼', it.x, ly + 14 + bob); }
@@ -381,16 +388,14 @@ const FieldScene = {
   shadow(ctx, x, y, r) { ctx.fillStyle = 'rgba(0,30,20,0.35)'; ctx.beginPath(); ctx.ellipse(x, y + 2, r, r * 0.4, 0, 0, Math.PI * 2); ctx.fill(); },
 
   drawWalker(ctx, heroId, w, t, isLeader) {
-    const sprite = HEROES[heroId].sprite, look = heroLook(heroId);
+    const sprite = HEROES[heroId].sprite;
     const bob = w.moving ? Math.abs(Math.sin(t * 12 + w.x * 0.01)) * 3 : 0;
     this.shadow(ctx, w.x, w.y, 16);
     if (isLeader) {
       ctx.strokeStyle = '#7dff8a'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.ellipse(w.x, w.y + 2, 22 + Math.sin(t * 5) * 1.5, 9, 0, 0, Math.PI * 2); ctx.stroke();
     }
-    drawArmorAura(ctx, look, w.x, w.y - bob, 2, t);
     drawSprite(ctx, sprite, w.x, w.y - bob, { scale: 2, t, flip: w.flip, phase: w.x * 0.01, blinking: ((t + w.x * 0.003) % 3.4) < 0.12, squash: w.moving ? 1 + Math.sin(t * 24) * 0.03 : 1 });
-    drawWeaponGlow(ctx, sprite, look, w.x, w.y - bob, 2, w.flip, t);
   },
   // 대장간: 모루 + 화로 + 대장장이 (임시로 길잡이 스프라이트 사용)
   drawSmith(ctx, x, y, t, L) {
@@ -406,6 +411,16 @@ const FieldScene = {
     ctx.fillStyle = '#5c5c6a'; ctx.fillRect(x + 20, y - 24, 30, 3);
     if ((t % 1.4) < 0.08) { ctx.fillStyle = '#fff2a0'; for (let i = 0; i < 5; i++) ctx.fillRect(x + 34 + Math.cos(i) * 10, y - 30 - Math.sin(i * 2) * 8, 2, 2); }
     drawSprite(ctx, 'guide', x, y, { scale: 2, t, flip: L.x < x, blinking: (t % 3.7) < 0.12 });
+  },
+  drawAltar(ctx, x, y, t) {
+    this.shadow(ctx, x, y, 30);
+    ctx.fillStyle = '#6a6478'; ctx.fillRect(x - 26, y - 22, 52, 22); ctx.fillStyle = '#8a8498'; ctx.fillRect(x - 30, y - 28, 60, 8);
+    const by = y - 58 + Math.sin(t * 2) * 4;
+    const g = ctx.createRadialGradient(x, by, 2, x, by, 46);
+    g.addColorStop(0, `rgba(200,160,255,${0.55 + Math.sin(t * 3) * 0.15})`); g.addColorStop(1, 'rgba(200,160,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(x - 50, by - 50, 100, 100);
+    ctx.fillStyle = '#d8c0ff'; ctx.beginPath(); ctx.moveTo(x, by - 18); ctx.lineTo(x + 10, by); ctx.lineTo(x, by + 18); ctx.lineTo(x - 10, by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.moveTo(x, by - 14); ctx.lineTo(x + 4, by - 2); ctx.lineTo(x - 3, by); ctx.closePath(); ctx.fill();
   },
   drawStorage(ctx, x, y) {
     this.shadow(ctx, x, y, 26);

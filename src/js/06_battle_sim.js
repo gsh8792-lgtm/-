@@ -60,7 +60,7 @@ class BattleSim {
       x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
-      upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0,
+      upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0, ultDef: h.ultDef || null, casting: null,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
     };
@@ -250,7 +250,7 @@ class BattleSim {
       const dx = u.tx - u.x, dy = u.ty - u.y;
       const d = Math.hypot(dx, dy);
       const fast = (u.side === 'enemy' && u.x > 960) || this.introT > 0 ? 2.2 : 1;
-      const sp = u.speed * fast * (this.order === 'retreat' && u.side === 'hero' ? 1.25 : 1);
+      const sp = u.speed * fast * (this.order === 'retreat' && u.side === 'hero' ? 1.25 : 1) * (u.statuses.slow ? 1 - u.statuses.slow.value : 1);
       if (d > 3) {
         const k = Math.min(1, (sp * dt) / d);
         u.x += dx * k; u.y += dy * k; u.moving = true;
@@ -297,6 +297,7 @@ class BattleSim {
       u.cds.s2 = Math.max(0, u.cds.s2 - dt);
       u.castLock = Math.max(0, u.castLock - dt);
       u.actLock = Math.max(0, u.actLock - dt);
+      if (u.casting) { u.casting.t -= dt; if (u.casting.t <= 0) u.casting = null; }
       this._gainUlt(u, CONST.ULT_GAIN_TIME * dt);
     }
     const stunned = !!u.statuses.stun;
@@ -315,7 +316,7 @@ class BattleSim {
     if (stunned) return;
     if (this.travelling(u)) return; // 이동 명령 수행 중: 새 공격을 시작하지 않음
     const speed = u.statuses.enrage ? 1 / (u.def.enrageSpeed || 0.6) : 1;
-    u.atkTimer -= dt * speed;
+    u.atkTimer -= dt * speed * (u.statuses.slow ? 1 - u.statuses.slow.value : 1);
     if (u.atkTimer > 0) return;
     let tgt = u.target && u.target.alive ? u.target : null;
     // 후퇴 중이거나 대상이 멀면, 사거리 안의 아무 적이나
@@ -418,6 +419,7 @@ class BattleSim {
     let m = 1;
     if (u.statuses.fruit) m += u.statuses.fruit.value;
     if (u.statuses.warcry) m += u.statuses.warcry.value;
+    if (u.statuses.inspire) m += u.statuses.inspire.value;
     if (u.side === 'hero' && u.def.traits.includes('brave')) m += 0.4 * (1 - u.hp / u.maxHp);
     if (u.side === 'hero' && this.focus && u.target === this.focus) m += 0.1; // 집중 공격 보너스
     return u.atk * m;
@@ -446,6 +448,7 @@ class BattleSim {
     if (tgt.armor && !(tgt.broken > 0)) dmg *= 1 - tgt.armor;                       // 방어 태세
     if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
+    if (src && src.statuses && src.statuses.weaken) dmg *= 1 - src.statuses.weaken.value;
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
@@ -454,8 +457,15 @@ class BattleSim {
       const v = this.passive(tgt, 'stubborn');
       if (v) { tgt.stubbornUsed = true; tgt.statuses.invuln = { t: v }; this.events.push({ type: 'passive', unit: tgt, name: '끈질긴 생명' }); }
     }
+    if (tgt.statuses.shield) { // 보호막이 먼저 받는다
+      const sh = tgt.statuses.shield, ab = Math.min(sh.value, dmg);
+      sh.value -= ab; dmg -= ab;
+      if (sh.value <= 0) delete tgt.statuses.shield;
+      if (dmg <= 0) { this.events.push({ type: 'hit', target: tgt, src, amount: 0, shielded: true }); return 0; }
+    }
     tgt.hp -= dmg;
     tgt.anim.hurt = 0.18;
+    if (src && src.statuses && src.statuses.lifesteal && src.alive) this._heal(src, src, dmg * src.statuses.lifesteal.value, true);
     if (src && src.stats) src.stats.dealt += dmg;
     if (tgt.stats) tgt.stats.taken += dmg;
     if (src && src.side === 'hero') this._gainUlt(src, dmg * CONST.ULT_GAIN_DEAL);
@@ -524,7 +534,7 @@ class BattleSim {
   }
 
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
-  skillDef(h, slot) { return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
+  skillDef(h, slot) { if (slot === 'ult' && h.ultDef) return h.ultDef; return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
   skillUp(h, slot) { return h.upgrades[slot] || { power: 0, cd: 0 }; }
   skillCdMax(h, slot) { const d = this.skillDef(h, slot); const m = h.mods || {}; return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd) * (1 - Math.min((m.cdr || 0) + (m[slot + 'cd'] || 0), CONST.STAT_CAPS.cdr)); }
 
@@ -580,11 +590,19 @@ class BattleSim {
     h.actLock = Math.max(h.actLock, slot === 'ult' ? CONST.ACT_LOCK_ULT : CONST.ACT_LOCK_SKILL);
     h.anim.cast = 0.3;
     const atk = this._atkOf(h);
-    const fxDelay = { meteor: 0.55, arrowrain: 0.5, nova: 0.35, starbolt: 0.22, pierce: 0.16, snipe: 0.3 }[sk.fx] || 0.08;
+    const fxDelay = sk.delay || { meteor: 0.55, arrowrain: 0.5, nova: 0.35, starbolt: 0.22, pierce: 0.16, snipe: 0.3 }[sk.fx] || 0.08;
+    if (sk.delay) { h.casting = { t: sk.delay, total: sk.delay, name: sk.name }; h.actLock = Math.max(h.actLock, sk.delay + 0.2); } // 긴 시전: 끝날 때까지 이동 불가
+    if (sk.selfCost) h.hp = Math.max(1, h.hp - h.maxHp * sk.selfCost);
     if (spec.unit) h.face = spec.unit.x >= h.x ? 1 : -1;
     else if (spec.x !== undefined) h.face = spec.x >= h.x ? 1 : -1;
     this.events.push({ type: 'cast', unit: h, skill: sk, slot, spec, delay: fxDelay });
     const applyEffects = (tgt) => { for (const e of sk.effects) if (!e.to) this._applyStatus(h, tgt, e); };
+    const hit = (e) => this._skillHit(h, sk, e, atk * sk.power * dmul);
+    const healAmt = (a) => (atk * (sk.heal || 0) + a.maxHp * (sk.healPct || 0)) * pmul;
+    const support = (a) => { // 아군 대상 공통: 보호막·해제
+      if (sk.shieldPct) a.statuses.shield = { t: 8, value: a.maxHp * sk.shieldPct * pmul };
+      if (sk.cleanse) this._cleanse(a);
+    };
     switch (sk.target) {
       case 'enemy': {
         const tgt = spec.unit;
@@ -595,35 +613,84 @@ class BattleSim {
           h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.5; h.anim.lungeY = 0;
         }
         const hits = sk.hits || 1;
-        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.11, fn: () => { if (!tgt.alive) return; this._damage(h, tgt, atk * sk.power * dmul, { skill: sk.fx }); if (i === 0 || i === hits - 1) applyEffects(tgt); } });
+        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.11, fn: () => { if (!tgt.alive || !h.alive) return; hit(tgt); if (i === 0 || i === hits - 1) applyEffects(tgt); } });
         break;
       }
-      case 'ally': { const tgt = spec.unit; this.delayed.push({ t: fxDelay, fn: () => this._heal(h, tgt, (atk * sk.heal + tgt.maxHp * sk.healPct) * pmul) }); break; }
+      case 'multi_enemy': { // HP 비율 낮은 적부터 연속 타격
+        const list = this.aliveEnemies().slice().sort((a, b) => this.hpPct(a) - this.hpPct(b)).slice(0, sk.count || 3);
+        list.forEach((tgt, i) => this.delayed.push({ t: fxDelay + i * 0.22, fn: () => { if (!tgt.alive || !h.alive) return; this.events.push({ type: 'dash', unit: h }); hit(tgt); applyEffects(tgt); } }));
+        break;
+      }
+      case 'ally': {
+        const tgt = spec.unit;
+        this.delayed.push({ t: fxDelay, fn: () => { if (!tgt.alive) return; if (sk.heal || sk.healPct) this._heal(h, tgt, healAmt(tgt)); support(tgt); applyEffects(tgt); } });
+        break;
+      }
       case 'area_enemy': case 'self_area': {
         const cx = sk.target === 'self_area' ? h.x : spec.x, cy = sk.target === 'self_area' ? h.y : spec.y;
         if (sk.target === 'self_area') { h.anim.lunge = 0.3; h.anim.lungeX = 0; h.anim.lungeY = 0; }
-        this.delayed.push({ t: fxDelay, fn: () => {
-          for (const e of this.aliveEnemies()) if (this.distXY(e, cx, cy) <= sk.areaR + e.size * 8) { this._damage(h, e, atk * sk.power * dmul, { skill: sk.fx }); applyEffects(e); }
+        const hits = sk.hits || 1;
+        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.13, fn: () => {
+          if (!h.alive && sk.target === 'self_area') return;
+          for (const e of this.aliveEnemies()) if (this.distXY(e, cx, cy) <= sk.areaR + e.size * 8) { hit(e); if (i === 0) applyEffects(e); }
         } });
         spec.x = cx; spec.y = cy;
         break;
       }
       case 'area_ally': {
         const cx = spec.x, cy = spec.y;
-        this.delayed.push({ t: fxDelay, fn: () => { for (const a of this.aliveHeroes()) if (this.distXY(a, cx, cy) <= sk.areaR) this._heal(h, a, (atk * sk.heal + a.maxHp * sk.healPct) * pmul); } });
+        this.delayed.push({ t: fxDelay, fn: () => { for (const a of this.aliveHeroes()) if (this.distXY(a, cx, cy) <= sk.areaR) { this._heal(h, a, healAmt(a)); support(a); } } });
         break;
       }
-      case 'all_enemies':
-        this.delayed.push({ t: fxDelay, fn: () => { for (const e of this.aliveEnemies()) { this._damage(h, e, atk * sk.power * dmul, { skill: sk.fx }); applyEffects(e); } } });
+      case 'all_enemies': {
+        const hits = sk.hits || 1;
+        for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.15, fn: () => { for (const e of this.aliveEnemies()) { hit(e); if (i === 0) applyEffects(e); } } });
         break;
+      }
+      case 'party': {
+        this.delayed.push({ t: fxDelay, fn: () => { for (const a of this.aliveHeroes()) { if (sk.heal || sk.healPct) this._heal(h, a, healAmt(a)); support(a); } } });
+        break;
+      }
       default: break;
     }
+    // 공통 부가 효과
+    if (sk.partyHealPct) this.delayed.push({ t: fxDelay, fn: () => { for (const a of this.aliveHeroes()) this._heal(h, a, a.maxHp * sk.partyHealPct * pmul); } });
+    if (sk.revive) this.delayed.push({ t: fxDelay, fn: () => this._revive(h, sk.revive) });
+    if (sk.cdReduce) for (const a of this.aliveHeroes()) if (a !== h) { a.cds.s1 = Math.max(0, a.cds.s1 - sk.cdReduce); a.cds.s2 = Math.max(0, a.cds.s2 - sk.cdReduce); }
+    if (sk.ultGive) for (const a of this.aliveHeroes()) if (a !== h) this._gainUltRaw(a, sk.ultGive);
     for (const e of sk.effects) {
       if (e.to === 'self') this._applyStatus(h, h, e);
       else if (e.to === 'party') for (const a of this.aliveHeroes()) this._applyStatus(h, a, Object.assign({}, e, { value: e.value * (e.status === 'regen' ? pmul : 1) }));
       else if (e.to === 'all_enemies') for (const en of this.aliveEnemies()) this._applyStatus(h, en, e);
     }
     return true;
+  }
+
+  // 스킬 1타: 그로기 배율 · 처형 · 추가 그로기 · 독 폭발 · 흡혈 · 파티 회복
+  _skillHit(h, sk, e, raw) {
+    if (!e.alive) return 0;
+    let mult = 1;
+    if (sk.brokenMult && e.broken > 0) mult *= sk.brokenMult;
+    if (sk.execute && e.hp / e.maxHp <= sk.execute.below) mult *= sk.execute.mult;
+    const d = raw > 0 ? this._damage(h, e, raw * mult, { skill: sk.fx }) : 0;
+    if (sk.detonate && e.alive && e.statuses[sk.detonate.status]) {
+      const st = e.statuses[sk.detonate.status];
+      const burst = (st.dps || 0) * Math.max(0, st.t) * sk.detonate.mult;
+      delete e.statuses[sk.detonate.status];
+      if (burst > 0) this._damage(h, e, burst, { dot: sk.detonate.status, burst: true });
+    }
+    if (sk.poise && e.alive && e.poiseMax) this._poiseHit(h, e, sk.poise);
+    if (d && sk.lifesteal && h.alive) this._heal(h, h, d * sk.lifesteal, true);
+    if (d && sk.partyHeal) { const al = this.aliveHeroes(); for (const a of al) this._heal(h, a, d * sk.partyHeal / al.length, true); }
+    return d;
+  }
+  _cleanse(u) { for (const k of ['stun', 'bleed', 'burn', 'poison', 'weaken', 'slow', 'vuln']) delete u.statuses[k]; }
+  _revive(h, pct) {
+    const dead = this.heroes.find((u) => !u.alive);
+    if (!dead) return;
+    dead.alive = true; dead.hp = Math.round(dead.maxHp * pct); dead.statuses = {}; dead.ult = 0;
+    dead.x = clamp(h.x - 30, CONST.FIELD_X0, CONST.FIELD_X1); dead.y = h.y; dead.cmd = null;
+    this.events.push({ type: 'revive', unit: dead });
   }
 
   // 탭 시전용 자동 대상 / 자동 전략 대상
@@ -642,7 +709,7 @@ class BattleSim {
     };
     switch (sk.target) {
       case 'enemy': { const u = pickEnemy(); return u ? { unit: u } : null; }
-      case 'ally': { const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly(); return u && u.hp < u.maxHp ? { unit: u } : null; }
+      case 'ally': { const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly(); return u && (u.hp < u.maxHp || sk.shieldPct) ? { unit: u } : null; }
       case 'area_enemy': {
         if (!enemies.length) return null;
         const p = this.bestAreaPoint(sk.areaR, enemies);
@@ -653,7 +720,7 @@ class BattleSim {
         return p ? { x: p.x, y: p.y } : null;
       }
       case 'self_area': return enemies.some((e) => this.dist(h, e) <= sk.areaR + 10) ? {} : null;
-      case 'all_enemies': return enemies.length ? {} : null;
+      case 'all_enemies': case 'multi_enemy': return enemies.length ? {} : null;
       default: return {};
     }
   }

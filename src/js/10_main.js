@@ -67,5 +67,5 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { EQ, openInventory, openBlacksmith, refreshRunLoadout, Game, CONST, BattleSim, generateMap, validStage, canMoveTo, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, MapScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, generateMap, validStage, canMoveTo, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, MapScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

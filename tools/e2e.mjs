@@ -389,6 +389,45 @@ async function playRun(p, seed, opts) {
   await p.close();
 }
 
+// ---------------------------------------------------------------- 캐릭터 소환·돌파·필살기 선택
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.scenes.title.start(55); });
+  await p.waitForTimeout(200);
+  ok('시작: 기본 캐릭터 5명 + 소환권 5장', await p.evaluate(() => { const P = window.GAME.Game.profile; return window.GAME.GACHA.ownedIds(P).length === 5 && P.tickets === 5; }));
+  await p.click('#btn-gacha'); await p.click('#gacha-5');
+  ok('소환 5회 → 결과 5장 + 소환권 소모', (await p.locator('.gr-card').count()) === 5 && (await p.evaluate(() => window.GAME.Game.profile.tickets)) === 0);
+  await p.screenshot({ path: `${OUT}/gacha.png` });
+  ok('소환권 없으면 소환 버튼 비활성', await p.locator('#gacha-1').isDisabled());
+  await p.evaluate(() => { window.GAME.Game.profile.tickets = 40; });
+  await p.click('#gacha-close'); await p.click('#btn-gacha');
+  for (let i = 0; i < 8; i++) await p.click('#gacha-5');
+  const st = await p.evaluate(() => { const P = window.GAME.Game.profile; const ids = window.GAME.GACHA.ownedIds(P); return { owned: ids.length, maxBt: Math.max(...ids.map((id) => P.chars[id].bt)), newcomer: ids.find((id) => !window.GAME.CHARACTERS.find((c) => c.id === id).starter) }; });
+  ok('중복 소환 → 돌파', st.maxBt >= 1, JSON.stringify(st));
+  await p.click('#gacha-close');
+  // 도감: 새 캐릭터 선택 → 두 번째 필살기 장착
+  await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`);
+  ok('도감: 필살기 6종 표시 (변주는 잠금)', (await p.locator('.rd-ult').count()) === 6);
+  await p.click('#ult-B');
+  ok('도감: 필살기 선택 저장', await p.evaluate((id) => window.GAME.Game.profile.chars[id].ult === 'B', st.newcomer));
+  await p.screenshot({ path: `${OUT}/roster.png` });
+  await p.click('#roster-close');
+  // 파티 편성에 새 캐릭터 → 전투에 선택한 필살기 적용
+  await p.click('#btn-party');
+  ok('파티 편성: 소환한 캐릭터 표시', await vis(p, `#ps-${st.newcomer}`));
+  await p.click('#ps-tobi'); await p.click(`#ps-${st.newcomer}`); await p.click('#ps-ok');
+  ok('파티 편성: 새 캐릭터 출전', await p.evaluate((id) => window.GAME.Game.run.party.includes(id), st.newcomer));
+  const ultName = await p.evaluate((id) => { const G = window.GAME.Game; G.go('battle', { node: { stage: 1, row: 0, type: 'battle', waves: [['goblin', 'goblin']] } }); const h = G.scene.sim.heroes.find((u) => u.key === id); return [h.def.name, G.scene.sim.skillDef(h, 'ult').name, window.GAME.GACHA.ultFor(G.profile, id).name]; }, st.newcomer);
+  ok('전투: 새 캐릭터 + 선택한 필살기', ultName[1] === ultName[2], JSON.stringify(ultName));
+  await p.waitForTimeout(1200);
+  await p.screenshot({ path: `${OUT}/battle_newchar.png` });
+  // 보스 격파 보상: 소환권 5장
+  const t0 = await p.evaluate(() => window.GAME.Game.profile.tickets);
+  await p.evaluate(() => { const G = window.GAME.Game; window.GAME.grantBattleLoot(G.run, { stage: 5, row: 1, type: 'boss' }); });
+  ok('보스 격파 → 소환권 5장', (await p.evaluate(() => window.GAME.Game.profile.tickets)) === t0 + 5);
+  await p.close();
+}
+
 for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 667, height: 375, name: 'iphoneSE_land' }, { width: 915, height: 412, name: 'galaxy_land' }, { width: 1920, height: 1080, name: 'fhd' }, { width: 390, height: 844, name: 'portrait' }]) {
   const p = await newPage(Object.assign({ mobile: vp.width < 1000 }, vp));
   await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.scenes.title.start(9); G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } }); });

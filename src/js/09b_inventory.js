@@ -1,8 +1,8 @@
-// ===== 09b_inventory.js : 장비창(보관함), 대장간(강화), 아이템 아이콘, 장비 외형(무기 발광·갑옷 오라) =====
+// ===== 09b_inventory.js : 장비창(보관함), 대장간(강화), 아이템 아이콘, 전투 보상·정산 =====
 
 // ---------------------------------------------------------------- 프로필 접근
 function profile() { return Game.profile; }
-function saveProfile() { Game.lookCache = {}; EQ.saveProfile(Game.profile); }
+function saveProfile() { EQ.saveProfile(Game.profile); }
 
 // 원정 중 영웅 최대 HP를 장비에 맞춰 다시 계산 (HP 비율 유지, 던전 입장 전이면 가득)
 function refreshRunLoadout(run) {
@@ -17,83 +17,7 @@ function refreshRunLoadout(run) {
   }
 }
 
-// ---------------------------------------------------------------- 장비 외형
-const GRADE_GLOW = { // period: 번쩍임 주기(초), color: 빛 색
-  UC: null, C: null,
-  R: { period: 3.2, color: '120,180,255' }, SR: { period: 2.6, color: '110,240,150' }, SSR: { period: 2.1, color: '200,140,255' },
-  UR: { period: 1.6, color: '255,170,70' }, L: { period: 1.1, color: '255,215,90' }, E: { period: 0.7, color: '255,110,90' },
-};
-// 무기 위치 (스프라이트 단위, 발 중심 기준): [x1, y1, x2, y2] 손잡이 → 끝
-const WEAPON_SEG = { knight: [18, -54, 28, -30], sword: [19, -42, 42, -108], archer: [22, -82, 28, -28], mage: [20, -46, 20, -8], priest: [20, -112, 20, -12] };
-
-function heroLook(heroId) {
-  if (!Game.profile) return null;
-  Game.lookCache = Game.lookCache || {};
-  if (Game.lookCache[heroId] !== undefined) return Game.lookCache[heroId];
-  const p = Game.profile, eq = p.equip[heroId] || {};
-  const w = eq.weapon && EQ.findItem(p, eq.weapon), a = eq.armor && EQ.findItem(p, eq.armor);
-  const look = (w || a) ? { wg: w ? w.grade : null, we: w ? w.enh : 0, ae: a ? a.enh : 0, ag: a ? a.grade : null } : null;
-  Game.lookCache[heroId] = look;
-  return look;
-}
-
-// 갑옷 강화 오라 (캐릭터 뒤에 그림)
-function drawArmorAura(ctx, look, x, y, scale, t) {
-  if (!look || !look.ae) return;
-  const vt = EQ.visualTier(look.ae);
-  if (!vt) return;
-  const k = scale / 3;
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  const pulse = 0.6 + Math.sin(t * (1.5 + vt)) * 0.4;
-  const col = vt === 1 ? '255,214,120' : vt === 2 ? '140,220,255' : '255,190,250';
-  const g = ctx.createRadialGradient(x, y - 50 * k, 6 * k, x, y - 50 * k, (46 + vt * 8) * k);
-  g.addColorStop(0, `rgba(${col},${0.0})`); g.addColorStop(0.6, `rgba(${col},${(0.08 + vt * 0.06) * pulse})`); g.addColorStop(1, `rgba(${col},0)`);
-  ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - 50 * k, (46 + vt * 8) * k, (64 + vt * 8) * k, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = `rgba(${col},${0.25 * vt * pulse})`; ctx.lineWidth = 2 * k;
-  ctx.beginPath(); ctx.ellipse(x, y + 2 * k, (26 + vt * 4) * k, (8 + vt) * k, 0, 0, Math.PI * 2); ctx.stroke();
-  if (vt >= 3) for (let i = 0; i < 6; i++) { // 떠다니는 빛 입자
-    const a = t * 0.8 + i * 1.05, ry = ((t * 22 + i * 37) % 90);
-    ctx.fillStyle = `rgba(${col},${0.7 * (1 - ry / 90)})`;
-    ctx.beginPath(); ctx.arc(x + Math.cos(a) * 26 * k, y - ry * k, 2.2 * k, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-// 무기 발광 (캐릭터 위에 그림). 등급 = 번쩍임 주기·색, 강화 = 세기·입자
-function drawWeaponGlow(ctx, sprite, look, x, y, scale, flip, t) {
-  if (!look || !look.wg) return;
-  const gg = GRADE_GLOW[look.wg];
-  const seg = WEAPON_SEG[sprite];
-  if (!gg || !seg) return;
-  const u = scale * UNIT_TO_PX, f = flip ? -1 : 1;
-  const x1 = x + seg[0] * u * f, y1 = y + seg[1] * u, x2 = x + seg[2] * u * f, y2 = y + seg[3] * u;
-  const ph = (t % gg.period) / gg.period;
-  const flash = Math.pow(Math.max(0, Math.sin(ph * Math.PI)), 6);           // 주기적 번쩍임
-  const base = look.wg === 'E' ? 0.35 + Math.sin(t * 9) * 0.1 : 0.12;       // 엘더는 상시 번쩍임
-  const power = 0.45 + Math.min(15, look.we) / 15 * 0.75;
-  const a = Math.min(1, (base + flash * 0.8) * power);
-  ctx.save();
-  ctx.globalCompositeOperation = 'lighter';
-  for (let i = 0; i <= 4; i++) {
-    const px = lerp(x1, x2, i / 4), py = lerp(y1, y2, i / 4), r = (7 + power * 6) * (scale / 3);
-    const g = ctx.createRadialGradient(px, py, 0, px, py, r);
-    g.addColorStop(0, `rgba(${gg.color},${a * 0.55})`); g.addColorStop(1, `rgba(${gg.color},0)`);
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
-  }
-  if (flash > 0.3) { // 끝에서 반짝
-    const s = (5 + power * 6) * flash * (scale / 3);
-    ctx.strokeStyle = `rgba(255,255,255,${flash})`; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(x2 - s, y2); ctx.lineTo(x2 + s, y2); ctx.moveTo(x2, y2 - s); ctx.lineTo(x2, y2 + s); ctx.stroke();
-  }
-  if (look.we >= 10) for (let i = 0; i < (look.we >= 15 ? 7 : 4); i++) { // 강화 입자
-    const q = ((t * 0.9 + i * 0.37) % 1), k = i / 6;
-    const px = lerp(x1, x2, k) + Math.sin(t * 3 + i) * 4, py = lerp(y1, y2, k) - q * 26 * (scale / 3);
-    ctx.fillStyle = `rgba(${gg.color},${(1 - q) * 0.9})`;
-    ctx.beginPath(); ctx.arc(px, py, (look.we >= 15 ? 2.4 : 1.8) * (scale / 3), 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.restore();
-}
+// 장비 외형(무기 발광·갑옷 오라)은 캐릭터 에셋 확정 후 구현 — 구상은 docs/GAME_DESIGN.md 3-3
 
 // ---------------------------------------------------------------- 아이템 아이콘 (코드 드로잉, 임시 에셋)
 const WEAPON_SHAPE = { tank: 'mace', melee: 'sword', ranged: 'bow', mage: 'staff', support: 'holy' };
@@ -212,7 +136,7 @@ function openInventory(opts) {
     const body = el('div', 'inv-body');
     // 영웅 탭
     const tabs = el('div', 'inv-tabs');
-    for (const id of HERO_ORDER) {
+    for (const id of GACHA.ownedIds(profile())) {
       const t = el('button', 'inv-tab' + (id === st.hero ? ' on' : '')); t.type = 'button'; t.id = 'inv-hero-' + id;
       t.appendChild(portraitCanvas(HEROES[id].sprite, 40));
       t.appendChild(el('span', '', HEROES[id].name));
@@ -387,7 +311,7 @@ function grantBattleLoot(run, node) {
   p.stones += stones; run.stonesGot += stones;
   const got = [];
   if (src !== 'battle') { const it = EQ.dropItem(rng, p, src, run.tier, partyIds(run)); p.inv.push(it); got.push({ kind: 'item', uid: it.uid }); }
-  if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); }
+  if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
   run.loot.push(...got);
   run.lastLoot = { stones, got };
   saveProfile();
@@ -395,6 +319,7 @@ function grantBattleLoot(run, node) {
 function lootHtml(entries) {
   const p = profile();
   return entries.map((e) => {
+    if (e.kind === 'ticket') return `<span class="loot ticket">🎟 소환권 ×${e.n}</span>`;
     if (e.kind === 'item') { const it = EQ.findItem(p, e.uid); return it ? `<span class="loot g-${it.grade}">${it.grade} ${EQ.itemName(it)}</span>` : ''; }
     const g = EQ.findGem(p, e.uid); return g ? gemBadge(g) : '';
   }).join(' ');

@@ -22,8 +22,13 @@ const DK = (h, k) => mix(h, k, 'k');
 const INK = '#2b1a14';
 
 // ---------------------------------------------------------------- 재질 그리기 헬퍼
+// 외형 변형: 그리는 동안 색 교체표(_CS)와 얼굴 덮어쓰기(_FO)를 적용 (SPRITE_VARIANTS)
+let _CS = null, _FO = null;
+const SW = (c) => (_CS && typeof c === 'string' && _CS[c.toLowerCase()]) || c;
 function paint(ctx, path, base, bb, kind, opt) {
   opt = opt || {};
+  base = SW(base);
+  if (opt.ink) opt = Object.assign({}, opt, { ink: SW(opt.ink) });
   const [x0, y0, x1, y1] = bb;
   const w = x1 - x0, h = y1 - y0;
   let g;
@@ -76,7 +81,7 @@ function smoothPath(pts) {
 function line(ctx, pts, color, w, cap) {
   ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
   for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
-  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = cap || 'round'; ctx.stroke();
+  ctx.strokeStyle = SW(color); ctx.lineWidth = w; ctx.lineCap = cap || 'round'; ctx.stroke();
 }
 function curve(ctx, x0, y0, cx, cy, x1, y1, color, w) {
   ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1);
@@ -145,6 +150,8 @@ const FACE_SHAPES = {
 // mouth: smile | smirk | flat | open | grin | gentle
 // extras: freckles | stubble | scar | bandage | glasses | mole | wrinkles | blushBig
 function humanFace(ctx, f, blink) {
+  if (_FO) f = Object.assign({}, f, _FO);
+  f = Object.assign({}, f, { skin: SW(f.skin), hair: SW(f.hair), iris: SW(f.iris) });
   const skin = f.skin || SKIN;
   const shape = FACE_SHAPES[f.shape || 'round'];
   const chinY = { round: -59, square: -57.5, long: -55, sharp: -56.5, child: -61 }[f.shape || 'round'];
@@ -633,6 +640,35 @@ function ogreBody(ctx, skin, chief) {
   hand(ctx, 45, -56, skin, 7);
 }
 
+// ---------------------------------------------------------------- 외형 변형 (가챠 캐릭터용 임시 외형: 기본 5종의 색·체형·얼굴만 바꿈)
+const SPRITE_VARIANTS = {
+  knight_b: { base: 'knight', build: { sx: 1.12, sy: 1.12, hs: 0.95 }, face: { shape: 'long', eye: 'gentle', brow: 'thin', mouth: 'gentle', extras: [] },
+    swap: { '#8e2c2c': '#2c4a8e', '#a83434': '#3a5ab0', '#9a2f2f': '#2f4a9a', '#4a1414': '#141e4a', '#e4b48a': '#f0caa4', '#4e2e1c': '#e8d488', '#6a4128': '#e8d488' } },
+  knight_c: { base: 'knight', build: { sx: 1.22, sy: 1.04, hs: 1.0 }, face: { shape: 'square', eye: 'narrow', brow: 'angry', mouth: 'flat', extras: ['scar'] },
+    swap: { '#8e2c2c': '#3a4a2c', '#a83434': '#4a5a32', '#9a2f2f': '#45542e', '#4a1414': '#1e2614', '#8d96a3': '#6a7266', '#97a0ad': '#727a6c', '#a2abb7': '#7e8676', '#7a838f': '#5a6256', '#e4b48a': '#a8b89a', '#4e2e1c': '#3a3a3a', '#6a4128': '#3a3a3a', '#e6c25a': '#9a8a6a', '#d8b048': '#8a7a5a' } },
+  sword_b: { base: 'sword', build: { sx: 0.9, sy: 1.08, hs: 0.95 }, face: { shape: 'sharp', eye: 'narrow', brow: 'thin', mouth: 'flat', extras: [] },
+    swap: { '#9a4a2a': '#22222e', '#c03a36': '#3a3a52', '#a8383a': '#30304a', '#4a1414': '#141420', '#6e4a30': '#2e2a36', '#f3cba6': '#e8c0a0', '#3e7a5a': '#a03a5a' } },
+  sword_c: { base: 'sword', build: { sx: 1.12, sy: 1.0, hs: 0.98 }, face: { shape: 'square', eye: 'big', brow: 'thick', mouth: 'smirk', extras: ['stubble'] },
+    swap: { '#9a4a2a': '#d06a2a', '#c03a36': '#8a6a3a', '#a8383a': '#7a5a30', '#4a1414': '#3a2410', '#f3cba6': '#d8a07a', '#3e7a5a': '#7a5a3a' } },
+  archer_b: { base: 'archer', build: { sx: 0.94, sy: 1.1, hs: 0.95 }, face: { shape: 'long', eye: 'narrow', brow: 'thin', mouth: 'flat', extras: [] },
+    swap: { '#3e5a34': '#d8d4cc', '#4f6b3a': '#e8e4dc', '#6a4a18': '#8a8a9a', '#c8a050': '#e8eef8', '#5a8ab8': '#6a5ab8' } },
+  archer_c: { base: 'archer', build: { sx: 0.96, sy: 0.98, hs: 1.02 }, face: { shape: 'child', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: [] },
+    swap: { '#3e5a34': '#4a2e5a', '#4f6b3a': '#5e3a70', '#6a4a18': '#3a5a3a', '#c8a050': '#7ad070', '#5a8ab8': '#c8a030' } },
+  mage_b: { base: 'mage', build: { sx: 0.95, sy: 1.08, hs: 0.96 }, face: { shape: 'long', eye: 'sleepy', brow: 'thin', mouth: 'flat', extras: [] },
+    swap: { '#4a3a7a': '#3a6a9a', '#2e3a62': '#d8e8f8', '#141a30': '#2a4a6a', '#1e1238': '#1e3a58', '#3a2c62': '#2e5a82', '#5a4a90': '#5a8ab8', '#8a5ab0': '#5ab0d0', '#43306e': '#2a5a86', '#4e3a80': '#3a7aa8' } },
+  mage_c: { base: 'mage', build: { sx: 0.92, sy: 1.12, hs: 0.94 }, face: { shape: 'sharp', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: [] },
+    swap: { '#4a3a7a': '#2a1a2e', '#2e3a62': '#1a1a1a', '#141a30': '#140a18', '#1e1238': '#1a0e1e', '#3a2c62': '#2e1a34', '#5a4a90': '#5a2a4a', '#8a5ab0': '#d03a5a', '#d8b048': '#9a3a5a', '#f8d8bc': '#e8d0d0', '#43306e': '#241426', '#4e3a80': '#30182e' } },
+  priest_b: { base: 'priest', build: { sx: 0.98, sy: 0.98, hs: 1.02 }, face: { shape: 'child', eye: 'big', brow: 'worried', mouth: 'open', extras: ['blushBig'] },
+    swap: { '#f2ece0': '#e8f0d8', '#5aa0e0': '#6ac08a', '#3e6aa8': '#3a8a5a', '#c88a8a': '#d89a40', '#f2bfb8': '#f0d070', '#8a4a4a': '#8a5a20', '#4a9a7a': '#b07a3a' } },
+  priest_c: { base: 'priest', build: { sx: 0.96, sy: 1.08, hs: 0.95 }, face: { shape: 'long', eye: 'sleepy', brow: 'thin', mouth: 'gentle', extras: [] },
+    swap: { '#f2ece0': '#e0e8f8', '#5aa0e0': '#8a9ae8', '#3e6aa8': '#4a5aa8', '#d8b048': '#c8d0e0', '#ecc85a': '#d8e0f0', '#c88a8a': '#9aa8d0', '#f2bfb8': '#c8d4f0', '#8a4a4a': '#4a5a8a', '#4a9a7a': '#5a6ab8' } },
+};
+for (const name in SPRITE_VARIANTS) {
+  const v = SPRITE_VARIANTS[name], b = ART[v.base];
+  const swap = {}; for (const k in v.swap) swap[k.toLowerCase()] = v.swap[k];
+  ART[name] = Object.assign(Object.create(b), { box: b.box.slice(), headBox: b.headBox.slice(), top: b.top, build: Object.assign({}, b.build, v.build), swap, face: v.face });
+}
+
 // 체형(build)에 맞춰 box/top/headBox를 보정 (모듈 로드 시 1회)
 (function normalizeBuilds() {
   for (const name in ART) {
@@ -672,7 +708,8 @@ function renderLayer(name, layer, variant, k) {
     if (layer === 'head') { c.translate(0, neck * bd.sy); c.scale(bd.hs, bd.hs); c.translate(0, -neck); }
     else c.scale(bd.sx, bd.sy);
   }
-  fn.call(d, c, variant === 'blink');
+  _CS = d.swap || null; _FO = d.face || null;
+  try { fn.call(d, c, variant === 'blink'); } finally { _CS = null; _FO = null; }
   // 통일 조명: 위 따뜻한 빛 / 아래 차가운 그림자 (모든 캐릭터 공통)
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.globalCompositeOperation = 'source-atop';

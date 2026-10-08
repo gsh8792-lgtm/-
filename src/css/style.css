@@ -420,3 +420,37 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .reward-loot, .result-loot { text-align: center; font-size: 15px; margin: 6px 0; line-height: 1.6; }
 .rc-icon .ic { margin: 0 auto; }
 .bs-box .inv-body { grid-template-columns: 330px 1fr; }
+
+/* ---------- 캐릭터 도감 / 소환 */
+.roster-body { flex: 1; display: grid; grid-template-columns: 330px 1fr; gap: 12px; min-height: 0; margin-top: 8px; }
+.roster-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; align-content: start; }
+.rg-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 84px; padding: 4px 2px; background: #1a1428; border: 2px solid var(--line); border-radius: 10px; color: var(--text); font: 700 12px var(--font); cursor: pointer; }
+.rg-card.on { border-color: var(--gold); background: #33284a; }
+.rg-card.locked { opacity: .55; }
+.rg-bt { position: absolute; top: 2px; right: 4px; color: var(--gold); font-size: 11px; }
+.roster-detail { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+.rd-top { display: flex; gap: 12px; }
+.rd-top canvas { background: radial-gradient(circle at 50% 40%, #5a4f7a, #2a2240); border-radius: 12px; flex: none; }
+.rd-txt { font-size: 13.5px; line-height: 1.45; }
+.rd-name { font-size: 20px; font-weight: 900; color: var(--gold); }
+.rd-bt { color: var(--gold); letter-spacing: 1px; }
+.rd-stat { color: var(--muted); font-size: 12.5px; }
+.rd-ults { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rd-ult { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 64px; text-align: left; padding: 6px 10px; background: #1a1428; border: 2px solid var(--line); border-radius: 10px; color: var(--text); font: 500 12.5px var(--font); cursor: pointer; }
+.rd-ult b { font-size: 14px; }
+.rd-ult.var { border-style: dashed; }
+.rd-ult.on { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold) inset; }
+.rd-ult.locked { opacity: .5; }
+.boost { color: var(--green); font-size: 11px; }
+.rd-steps { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.gacha-box { width: 860px; display: flex; flex-direction: column; gap: 10px; }
+.gacha-results { min-height: 250px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
+.gacha-empty { max-width: 440px; text-align: center; line-height: 1.6; }
+.gr-card { width: 150px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; background: linear-gradient(#3a3058, #251e38); border: 2px solid var(--line); border-radius: 14px; animation: pop .35s ease-out both; text-align: center; }
+.gr-card.new { border-color: var(--gold); box-shadow: 0 0 18px rgba(255,211,74,.6); }
+.gr-card canvas { background: radial-gradient(circle at 50% 40%, #5a4f7a, #2a2240); border-radius: 10px; }
+.gr-txt { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.gr-tag { display: inline-block; margin-top: 2px; padding: 1px 8px; border-radius: 8px; background: #4a3f68; font-weight: 900; font-size: 13px; }
+.gr-tag.new { background: var(--gold); color: #2b1d10; }
+.gr-tag.bt { background: #3a6a4a; }
+.loot.ticket { color: #d8c0ff; }

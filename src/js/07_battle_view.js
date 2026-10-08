@@ -12,7 +12,7 @@ const BattleScene = {
     const waves = encounterFor(node);
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
-      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods };
+      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, ultDef: GACHA.ultFor(Game.profile, id) };
     });
     const ti = EQ.tierInfo(run.tier);
     this.sim = new BattleSim({
@@ -434,6 +434,7 @@ const BattleScene = {
       case 'hit': {
         const u = e.target;
         const y = this.unitTop(u) + 6;
+        if (e.shielded) { this.popup(u.x, y, '보호막', '#cfe6ff', 16); break; }
         if (e.dot) this.popup(u.x, y + 10, String(e.amount), STATUS[e.dot].color, 15, { dur: 0.7 });
         else if (e.crit) { this.popup(u.x, y - 6, e.amount + '!', '#ffd34a', 30, { crit: true }); Sfx.play('crit'); this.hitstop = Math.max(this.hitstop, CONST.HITSTOP_MS / 1000 * 1.4); this.shake = Math.max(this.shake, 4); }
         else { this.popup(u.x, y, String(e.amount), u.side === 'hero' ? '#ff8a7a' : '#ffffff', e.skill ? 24 : 19); Sfx.play('hit'); if (e.skill) this.hitstop = Math.max(this.hitstop, CONST.HITSTOP_MS / 1000); this.shake = Math.max(this.shake, e.skill ? 3 : 1.5); }
@@ -486,6 +487,7 @@ const BattleScene = {
         Sfx.play('crit'); this.shake = 8; this.hitstop = 0.12;
         this.fx.push({ type: 'flash', t: 0, dur: 0.3, color: 'rgba(255,220,120,' });
         break;
+      case 'revive': this.popup(e.unit.x, this.unitTop(e.unit) - 20, '부활!', '#9cf0a8', 24, { crit: true }); this.sparkle(e.unit.x, e.unit.y - 30, '#9cf0a8', 20); Sfx.play('heal'); break;
       case 'passive': this.popup(e.unit.x, this.unitTop(e.unit) - 22, e.name, '#fff6c0', 16, { label: true }); break;
       case 'breakEnd': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '방어 태세', '#9fd0ff', 16); break;
       case 'enrage': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '광폭화!', '#ff4a3a', 22); break;
@@ -810,13 +812,10 @@ const BattleScene = {
     const squash = u.anim.cast > 0 ? 1 + Math.sin((u.anim.cast / 0.3) * Math.PI) * 0.06 : (u.anim.hurt > 0 ? 0.94 : 1);
     const walk = u.moving ? Math.abs(Math.sin(t * 12 + u.uid)) * 3 : 0;
     const so = { scale: sc, flip: u.face < 0, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, squash };
-    const look = u.side === 'hero' ? heroLook(u.key) : null;
-    if (look) drawArmorAura(ctx, look, x, y - walk, sc, t);
     if (tint === 'white') { // 피격/차지 섬광: 원래 그림 위에 반투명 흰색
       drawSprite(ctx, u.sprite, x, y - walk, so);
       drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'white', alpha: u.charge ? 0.7 : 0.5 }));
     } else drawSprite(ctx, u.sprite, x, y - walk, Object.assign(so, { tint, tintAlpha }));
-    if (look) drawWeaponGlow(ctx, u.sprite, look, x, y - walk, sc, u.face < 0, t);
     if (u.moving && Math.random() < 0.08) this.fx.push({ type: 'dust', x: u.x - u.face * 8, y: u.y, vx: -u.face * 20, vy: -20, t: 0, dur: 0.4 });
     const top = y - s.h * sc;
     if (u.statuses.stun) for (let i = 0; i < 3; i++) { const a = t * 5 + i * 2.1; ctx.fillStyle = '#ffd34a'; ctx.fillRect(x + Math.cos(a) * 16 - 2, top - 4 + Math.sin(a) * 4, 5, 5); }
@@ -827,6 +826,13 @@ const BattleScene = {
       const pf = u.broken > 0 ? u.broken / CONST.BREAK_DUR : u.poise / u.poiseMax;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - bw / 2 - 1, top - 4, bw + 2, 5);
       ctx.fillStyle = u.broken > 0 ? '#ffd34a' : '#5aa8ff'; ctx.fillRect(x - bw / 2, top - 3, bw * pf, 3);
+    }
+    if (u.casting) { // 긴 시전 (이동 불가)
+      const pf = 1 - u.casting.t / u.casting.total;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 30, top - 26, 60, 7);
+      ctx.fillStyle = '#ffd34a'; ctx.fillRect(x - 29, top - 25, 58 * pf, 5);
+      ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.lineWidth = 3; ctx.strokeStyle = '#1a0f08';
+      ctx.strokeText(u.casting.name, x, top - 30); ctx.fillStyle = '#fff6c0'; ctx.fillText(u.casting.name, x, top - 30);
     }
     if (u.broken > 0) {
       for (let i = 0; i < 4; i++) { const a = t * 4 + i * 1.57; ctx.fillStyle = i % 2 ? '#ffd34a' : '#fff6c0'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('★', x + Math.cos(a) * 22, top - 18 + Math.sin(a) * 5); }
