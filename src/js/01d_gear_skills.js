@@ -69,7 +69,7 @@ Object.assign(SKILLS, {
 (function addRogueClass() {
   const DB = EQUIP_DB;
   if (DB.classes.some((c) => c.key === 'rogue')) return;
-  DB.classes.push({ key: 'rogue', hero: 'yeon', name: '도적', heroName: '연', baseAtk: 37, baseHp: 265, trait: 'crit', traitName: '치명타 확률' });
+  DB.classes.push({ key: 'rogue', hero: 'yeon', name: '도적', heroName: '연', baseAtk: 37, baseHp: 250, trait: 'crit', traitName: '치명타 확률' });
   DB.classStat.rogue = Object.assign({}, DB.classStat.ranged);
   DB.skillBonus.rogue = JSON.parse(JSON.stringify(DB.skillBonus.melee));
   const names = { weapon: ['독 바른 단검', '쌍날 비수', '그림자 송곳', '맹독 쌍검'], armor: ['밤그림자 두건', '도둑의 가죽옷', '연막 망토', '독술사의 외투'], medal: ['그림자의 소울 메달', '맹독의 소울 메달'] };

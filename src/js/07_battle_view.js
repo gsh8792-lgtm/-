@@ -9,7 +9,7 @@ const BattleScene = {
     const node = params.node;
     this.node = node;
     this.run = run;
-    const waves = node.waves || encounterFor(node);
+    const waves = oathWaves(run, node, node.waves || encounterFor(node));
     const ex = params.explore || null; // 탐험 중 조우: { fieldW, heroPos, enemySpawnX, worldX(전장 0의 탐험 좌표), theme }
     this.explore = ex;
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
@@ -24,7 +24,7 @@ const BattleScene = {
       relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, fullAuto: !!node.small, smartAuto: !!(Game.debug && Game.debug.smartAuto), partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
-      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1; return { hp: ti.hp * f, atk: ti.atk * f }; })(),
+      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp, atk: ti.atk * f * o.atk }; })(),
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
       eliteAffix: node.affix || null, named: node.named || null, surprise: !!(ex && ex.surprise),
     });
@@ -452,7 +452,11 @@ const BattleScene = {
     if (this.sim.enemies.length !== this.codexN) { // 도감: 처음 보는 적 → 등록 + 대응법
       this.codexN = this.sim.enemies.length;
       const fresh = []; for (const e of this.sim.enemies) if (codexSee(Game.profile, e.key)) fresh.push(e);
-      if (fresh.length) { saveProfile(); Game.toast(fresh.map((e) => `📖 <b>${e.def.name}</b> 도감 등록 (+● ${codexReward(e.key)}) <small>💡 ${ENEMY_CODEX[e.key].answer}</small>`).join('<br>'), 3000 + fresh.length * 1200); }
+      if (fresh.length) { // 한 줄로: 새 적 이름들 + 가장 센 적의 대응법만
+        saveProfile();
+        const key = fresh.slice().sort((a, b) => codexReward(b.key) - codexReward(a.key))[0].key;
+        Game.toast(`📖 새 적 ${fresh.map((e) => e.def.name).join(' · ')} (+● ${fresh.reduce((a, e) => a + codexReward(e.key), 0)})<br><small>💡 ${ENEMIES[key].name}: ${ENEMY_CODEX[key].answer}</small>`, 3400);
+      }
     }
     if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < this.sim.W)) { this.breakHintPending = false; Game.hint('break'); }
     if (!ev.length) return;

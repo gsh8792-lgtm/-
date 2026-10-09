@@ -681,7 +681,7 @@ class BattleSim {
       if (!info.noCrit && src && (ambush || this.rng() < this._critChance(src))) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
     }
     if (ambush) { // 기습: 은신 중 첫 공격
-      dmg *= 1.8 + ((src.mods && src.mods.ambush) || 0);
+      dmg *= 1.6 + ((src.mods && src.mods.ambush) || 0);
       delete src.statuses.stealth;
       this.events.push({ type: 'ambush', unit: src, target: tgt });
     }

@@ -137,15 +137,28 @@ const FieldScene = {
       const box = el('div', 'confirm-box');
       box.appendChild(el('div', 'modal-title', '고블린 굴에 들어갈까요?'));
       box.appendChild(this.tierPicker(() => this.interact(it)));
+      box.appendChild(this.oathPicker(() => this.interact(it)));
       box.appendChild(el('div', 'portal-party', partyIds(run).map((id) => `<span>${HEROES[id].name}<small>${HEROES[id].roleName}</small></span>`).join('')));
       box.appendChild(el('p', '', `파티 ${partyAlive(run).length}/${CONST.PARTY_SIZE}명 · 식량 ${run.food} · 회복약 ${run.potions} · 골드 ${run.gold}` + (run.gotSupply ? '' : '<br><b class="warn">보급 상자를 아직 열지 않았어요!</b>')));
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; run.oaths = (Game.profile.oaths || []).slice(); oathApplyStart(run); refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }
+  },
+
+  // 원정 맹세: 고를수록 어렵고, 가져가는 골드·경험치가 늘어난다
+  oathPicker(onChange) {
+    const p = Game.profile; p.oaths = p.oaths || [];
+    const wrap = el('div', 'oath-pick');
+    wrap.appendChild(el('div', 'oath-title', `⚔ 원정 맹세 <small>보상 +${Math.round(p.oaths.reduce((a, k) => a + ((OATHS[k] && OATHS[k].reward) || 0), 0) * 100)}% (골드·경험치)</small>`));
+    for (const k in OATHS) {
+      const o = OATHS[k], on = p.oaths.includes(k);
+      wrap.appendChild(btn(`${o.icon} ${o.name}<small>${o.desc} · +${Math.round(o.reward * 100)}%</small>`, 'oath-btn' + (on ? ' on' : ''), () => { p.oaths = on ? p.oaths.filter((x) => x !== k) : p.oaths.concat([k]); saveProfile(); onChange(); }, { id: 'oath-' + k }));
+    }
+    return wrap;
   },
 
   // 난이도 선택: 보스를 잡으면 다음 단계 해금

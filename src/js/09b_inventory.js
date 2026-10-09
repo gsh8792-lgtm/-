@@ -342,10 +342,11 @@ function settleRun(run) {
   const p = Game.profile;
   // 결과에 따라 가져가는 몫: 성공 전부 · 후퇴 골드 절반·경험치 75% · 실패 골드 25%·경험치 50%
   const share = RUN_SHARE[run.result] || RUN_SHARE.defeat;
-  const gold = Math.round(run.gold * share.gold);
+  const ob = 1 + oathReward(run); // 원정 맹세 보상
+  const gold = Math.round(run.gold * share.gold * ob);
   p.gold += gold;
   const exp = [];
-  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp); if (r) exp.push(r); }
+  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp * ob); if (r) exp.push(r); }
   let unlocked = null;
   if (run.result === 'victory') {
     p.clears[run.tier] = (p.clears[run.tier] || 0) + 1;

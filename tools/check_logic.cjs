@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -494,6 +494,19 @@ if (sa !== sb) fail++;
       sim._applyStatus(y, e, { status: 'bleed', dur: 4, dps: 0.4 }); if (vuln) e.statuses.vuln = { t: 9 }; const h0 = e.hp; for (let i = 0; i < 60; i++) { sim._tickUnit(e, 1 / 60); } return h0 - e.hp; };
     const a = run(false), b = run(true); if (!(b > a * 1.6)) errs.push(`wound ${a} vs ${b}`); }
   console.log('combos:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(poison×burn blast + spread, slow×stun freeze, bleed×vuln wound)');
+  if (errs.length) fail++;
+}
+// 원정 맹세 (v0.37)
+{
+  const errs = [];
+  const run = { oaths: ['iron', 'fury', 'hunger', 'gloom', 'hunt'], food: 3, potions: 2, torch: CONST.TORCH_MAX };
+  const sc = oathScale(run); if (Math.abs(sc.hp - 1.25) > 1e-9 || Math.abs(sc.atk - 1.2) > 1e-9) errs.push('scale ' + JSON.stringify(sc));
+  if (Math.abs(oathReward(run) - 1.2) > 1e-9) errs.push('reward ' + oathReward(run));
+  oathApplyStart(run); if (run.food !== 1 || run.potions !== 1 || run.torch !== Math.round(CONST.TORCH_MAX / 2)) errs.push('start ' + JSON.stringify(run));
+  const w = oathWaves(run, { type: 'battle' }, [['goblin'], ['orc']]); if (w[0].length !== 2 || w[0][1] !== 'goblin_stalker' || w[1].length !== 1) errs.push('waves');
+  if (oathWaves(run, { type: 'boss' }, [['ogre_chief']])[0].length !== 1) errs.push('boss untouched');
+  if (oathReward({}) !== 0) errs.push('no oaths');
+  console.log('oaths:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(scale, reward, start penalties, hunter waves)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);
