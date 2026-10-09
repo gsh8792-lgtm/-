@@ -9,6 +9,7 @@ function boot() {
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
   Game.register('map', MapScene);
+  Game.register('explore', ExploreScene);
   Game.register('battle', BattleScene);
   Game.register('reward', RewardScene);
   Game.register('event', EventScene);

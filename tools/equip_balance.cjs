@@ -131,7 +131,7 @@ let PROFILE = process.env.PROFILE || 'gimmick';
 
 function simCell(grade, tier, seeds, profile, comps) {
   profile = profile || PROFILE;
-  const gap = gearLevel(grade) - tierLevel(tier);
+  const gap = gearLevel(grade) - tierLevel(tier) + (+process.env.GAP_OFFSET || 0); // GAP_OFFSET: 캐릭터 레벨이 권장보다 낮거나 높은 만큼
   const acc = {};
   for (const [type, st, i, label] of FIGHTS) {
     const a = acc[label] = acc[label] || { win: 0, t: 0, hp: 0, n: 0 };
@@ -221,6 +221,17 @@ if (process.argv.includes('--calib-merge')) {
   process.exit(0);
 }
 // 단계 × 장비 등급(권장 −1 ~ +2) × 탱커 유무: 동레벨 탱커 파티 ~85%, 탱커 없으면 등급을 올려야(레벨 차) 깨지는가
+// 1단계 체감: 막 첫 클리어한 파티(UC 풀세트 +ENH)로 캐릭터 레벨 차를 바꿔가며 1단계 승률 (기믹 AI = 컨트롤 잘함, 딜만 AI = 대충)
+if (process.argv.includes('--t1')) {
+  const MS = +(process.env.SEEDS || 8), t = DB.tiers[0];
+  for (const off of (process.env.OFFS || '-8,-5,-3,0').split(',').map(Number)) {
+    process.env.GAP_OFFSET = off;
+    const a = simCell('UC', t, MS, 'gimmick'), b = simCell('UC', t, MS, 'brute');
+    const sc = (r) => (r.stage4.win + r.elite4.win + r.boss.win * 2) / 4;
+    console.log(`T1 UC+${ENH} 레벨 차 ${off + gearLevel('UC') - tierLevel(t)}: 기믹 ${Math.round(sc(a) * 100)}% (보스 ${Math.round(a.boss.win * 100)}%) · 딜만 ${Math.round(sc(b) * 100)}% (보스 ${Math.round(b.boss.win * 100)}%)`);
+  }
+  process.exit(0);
+}
 if (process.argv.includes('--tier-matrix')) {
   const MS = +(process.env.SEEDS || 6);
   const TANK = [['tobi', 'danbi', 'bori'], ['tobi', 'byeolbi', 'soldam']], NOTANK = [['danbi', 'byeolbi', 'bori'], ['byeolbi', 'soldam', 'bori']];

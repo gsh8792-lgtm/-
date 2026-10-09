@@ -14,6 +14,12 @@ class BattleSim {
     this.waves = opts.waves.map((w) => w.slice());
     this.partyScale = PARTY_ENEMY_SCALE[clamp(opts.partySize || opts.heroes.length, 1, 3)] || 1;
     this.tier = opts.tier || { hp: 1, atk: 1 }; // 난이도 단계 배율 (보스 포함 모든 적)
+    // 전장 폭 (탐험 중 조우 전투는 화면 2배). 좌표는 전장 기준(0 ~ W)
+    this.W = opts.fieldW || 960;
+    this.X0 = CONST.FIELD_X0; this.X1 = this.W - (960 - CONST.FIELD_X1);
+    this.heroSpawnX = opts.heroSpawnX !== undefined ? opts.heroSpawnX : CONST.HERO_SPAWN_X;
+    this.enemySpawnX = opts.enemySpawnX !== undefined ? opts.enemySpawnX : CONST.ENEMY_SPAWN_X;
+    this.heroPos = opts.heroPos || null; // 탐험에서 이어지는 전투: 걷던 자리 그대로 시작
     this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
@@ -59,7 +65,7 @@ class BattleSim {
       atkInterval: def.atkInterval / (1 + Math.min(m.aspd || 0, cap.aspd)),
       defPct: 1 - (1 - def.def) * (1 - Math.min(m.dr || 0, cap.dr)), size: 1, mods: m,
       melee: def.range === 'melee', reach: def.reach || 0, speed: def.moveSpeed * (1 + Math.min(m.mspd || 0, cap.mspd)),
-      x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
+      x: this.heroPos ? this.heroPos[i].x : this.heroSpawnX - 140 - i * 20, y: this.heroPos ? this.heroPos[i].y : y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
       levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
@@ -98,7 +104,7 @@ class BattleSim {
     const ids = this.waves[i];
     ids.forEach((id, k) => {
       const y = lerp(CONST.FIELD_Y0 + 8, CONST.FIELD_Y1 - 8, ids.length === 1 ? 0.5 : k / (ids.length - 1));
-      const x = (initial ? CONST.ENEMY_SPAWN_X + 150 : 1010) + (k % 2) * 40 + ENEMIES[id].size * 20;
+      const x = (initial ? this.enemySpawnX + 150 : this.W + 50) + (k % 2) * 40 + ENEMIES[id].size * 20;
       this.enemies.push(this._makeEnemy(id, x, y + (this.rng() - 0.5) * 10));
     });
     this.events.push({ type: 'wave', index: i, total: this.waves.length });
@@ -107,7 +113,7 @@ class BattleSim {
   _summon(ids, by) {
     for (const id of ids) {
       if (this.aliveEnemies().length >= 7) break;
-      const e = this._makeEnemy(id, clamp(by.x + 40 + this.rng() * 40, CONST.FIELD_X0, 990), clamp(by.y + (this.rng() - 0.5) * 70, CONST.FIELD_Y0, CONST.FIELD_Y1));
+      const e = this._makeEnemy(id, clamp(by.x + 40 + this.rng() * 40, this.X0, this.W + 30), clamp(by.y + (this.rng() - 0.5) * 70, CONST.FIELD_Y0, CONST.FIELD_Y1));
       this.enemies.push(e);
       this.events.push({ type: 'summon', unit: e, by });
     }
@@ -176,7 +182,7 @@ class BattleSim {
         if (br) u.target = br;
         const squishy = u.role !== 'tank' && (u.role !== 'melee' || this.hpPct(u) < 0.5);
         if (squishy) for (const e of enemies) if (e.charge && this.inChargeZone(u, e.charge)) { // 위험 범위 밖으로
-          u.tx = clamp(e.charge.cx - e.charge.r - 30, F.FIELD_X0, F.FIELD_X1); u.ty = u.y; return;
+          u.tx = clamp(e.charge.cx - e.charge.r - 30, this.X0, this.X1); u.ty = u.y; return;
         }
       }
       // 개별 명령 (캐릭터 끌기): 지점 이동 / 대상 공격
@@ -191,19 +197,19 @@ class BattleSim {
       const anchor = tank && tank !== u ? tank : this.frontHero();
       if (intro || !u.target) { // 입장/대기: 기본 대형
         const order = HERO_ORDER.indexOf(u.key);
-        u.tx = F.HERO_SPAWN_X + 120 - order * 30; u.ty = u.y;
+        u.tx = this.heroPos ? u.x : this.heroSpawnX + 120 - order * 30; u.ty = u.y;
         return;
       }
       const t = u.target;
       if (this.order === 'retreat' && !u.cmd) {
-        u.tx = F.FIELD_X0 + 40 + (u.melee ? 70 : 0); u.ty = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
+        u.tx = this.X0 + 40 + (u.melee ? 70 : 0); u.ty = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
         return;
       }
       if (u.melee) { // 대상에게 붙는다 (대상 앞쪽, 살짝 위아래로 어긋나게)
         const r = this.attackRange(u, t) * 0.8;
         let side = u.x <= t.x ? -1 : 1;
         if (CONST.BREAK_V2 && t.poiseMax && u.role === 'melee' && t.face) side = -t.face; // 큰 적은 등 뒤에서 (후방 끊기)
-        u.tx = clamp(t.x + side * r, CONST.FIELD_X0, CONST.FIELD_X1); u.ty = t.y + ((u.uid % 3) - 1) * 10;
+        u.tx = clamp(t.x + side * r, this.X0, this.X1); u.ty = t.y + ((u.uid % 3) - 1) * 10;
       } else {
         const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
         let tx = t.x - keep;
@@ -216,7 +222,7 @@ class BattleSim {
         } else u.ty = t.y + ((u.uid % 3) - 1) * 18;
         // 너무 가까이 붙은 적이 있으면 뒤로 빠진다
         const near = this.nearest(u, enemies);
-        if (near && this.dist(u, near) < 70 && u.x > F.FIELD_X0 + 30) tx = Math.min(tx, u.x - 60);
+        if (near && this.dist(u, near) < 70 && u.x > this.X0 + 30) tx = Math.min(tx, u.x - 60);
         u.tx = tx;
       }
     } else {
@@ -230,7 +236,7 @@ class BattleSim {
         const tankAggro = u.def.abilities.includes('boss') && heroes.find((h) => h.role === 'tank' && this.dist(u, h) < 320); // 보스는 가까운 탱커를 먼저 노린다 (위협)
         u.target = back.length ? this.nearest(u, back) : tankAggro ? tankAggro : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
       }
-      if (intro) { u.tx = F.ENEMY_SPAWN_X - (u.uid % 3) * 30; u.ty = u.y; return; }
+      if (intro) { u.tx = Math.min(u.x, this.enemySpawnX - (u.uid % 3) * 30); u.ty = u.y; return; }
       const t = u.target;
       const r = this.attackRange(u, t) * 0.8;
       // 같은 대상을 노리는 적들은 둘러싸듯 흩어진다
@@ -242,7 +248,7 @@ class BattleSim {
   // 개별 명령: { type: 'move', x, y } | { type: 'attack', unit } | null (작전으로 복귀)
   command(h, cmd) {
     if (!h.alive || this.outcome) return false;
-    if (cmd && cmd.type === 'move') cmd = { type: 'move', x: clamp(cmd.x, CONST.FIELD_X0, CONST.FIELD_X1), y: clamp(cmd.y, CONST.FIELD_Y0, CONST.FIELD_Y1) };
+    if (cmd && cmd.type === 'move') cmd = { type: 'move', x: clamp(cmd.x, this.X0, this.X1), y: clamp(cmd.y, CONST.FIELD_Y0, CONST.FIELD_Y1) };
     if (cmd && cmd.type === 'attack' && !(cmd.unit && cmd.unit.alive && cmd.unit.side === 'enemy')) return false;
     h.cmd = cmd || null;
     if (cmd && cmd.type === 'attack') { h.target = cmd.unit; h.retarget = CONST.RETARGET_SEC; }
@@ -259,7 +265,7 @@ class BattleSim {
       if (u.statuses.stun || u.charge || u.call || u.broken > 0 || u.actLock > 0) { u.moving = false; continue; }
       const dx = u.tx - u.x, dy = u.ty - u.y;
       const d = Math.hypot(dx, dy);
-      const fast = (u.side === 'enemy' && u.x > 960) || this.introT > 0 ? 2.2 : 1;
+      const fast = (u.side === 'enemy' && u.x > this.W) || this.introT > 0 ? 2.2 : 1;
       const sp = u.speed * fast * (this.order === 'retreat' && u.side === 'hero' ? 1.25 : 1) * (u.statuses.slow ? 1 - u.statuses.slow.value : 1);
       if (d > 3) {
         const k = Math.min(1, (sp * dt) / d);
@@ -279,8 +285,8 @@ class BattleSim {
       }
     }
     for (const u of all) {
-      if (u.side === 'enemy' && u.x > 960) continue; // 입장 중
-      u.x = clamp(u.x, F.FIELD_X0, F.FIELD_X1); u.y = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
+      if (u.side === 'enemy' && u.x > this.W) continue; // 입장 중
+      u.x = clamp(u.x, this.X0, this.X1); u.y = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
     }
   }
 
@@ -338,13 +344,13 @@ class BattleSim {
     if (u.atkTimer > 0) return;
     let tgt = u.target && u.target.alive ? u.target : null;
     // 보스 추격: 대상이 사거리 밖에 오래 있으면 덮쳐 든다 (멀리서 끌기만으로는 버틸 수 없게)
-    if (u.side === 'enemy' && u.def.abilities.includes('boss') && tgt && u.x < 960) {
+    if (u.side === 'enemy' && u.def.abilities.includes('boss') && tgt && u.x < this.W) {
       if (this.dist(u, tgt) > this.attackRange(u, tgt) + 20) u.chase = (u.chase || 0) + u.atkInterval * 0.5 + 0.15;
       else u.chase = 0;
       if (u.chase >= CONST.BOSS_LEAP_AFTER) {
         u.chase = 0;
         const side = u.x >= tgt.x ? 1 : -1;
-        u.x = clamp(tgt.x + side * this.attackRange(u, tgt) * 0.7, CONST.FIELD_X0, CONST.FIELD_X1); u.y = tgt.y;
+        u.x = clamp(tgt.x + side * this.attackRange(u, tgt) * 0.7, this.X0, this.X1); u.y = tgt.y;
         this.events.push({ type: 'dash', unit: u }); this.events.push({ type: 'bossLeap', unit: u, target: tgt });
       }
     }
@@ -388,8 +394,8 @@ class BattleSim {
       else if (!stunned) { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._callComplete(u); } }
       return;
     }
-    if (d.abilities.includes('buds') && u.x <= 960) this._buds(u, dt);
-    if (stunned || u.x > 960) return;
+    if (d.abilities.includes('buds') && u.x <= this.W) this._buds(u, dt);
+    if (stunned || u.x > this.W) return;
     if (d.abilities.includes('charge')) {
       u.chargeCd -= dt;
       const tgt = u.target && u.target.alive ? u.target : this.nearest(u, this.aliveHeroes());
@@ -419,7 +425,7 @@ class BattleSim {
       if (b.unit && b.unit.alive) return;
       if (b.unit && !b.unit.alive && !b.regrow) b.regrow = d.budRegrow;
       if (b.regrow > 0) { b.regrow -= dt; if (b.regrow > 0) return; }
-      const e = this._makeEnemy('thorn_bud', clamp(Math.min(u.x, 800) - 40 + i * 30, CONST.FIELD_X0, 830), (CONST.FIELD_Y0 + CONST.FIELD_Y1) / 2 + (i - 1) * 26);
+      const e = this._makeEnemy('thorn_bud', clamp(Math.min(u.x, this.W - 160) - 40 + i * 30, this.X0, this.W - 130), (CONST.FIELD_Y0 + CONST.FIELD_Y1) / 2 + (i - 1) * 26);
       e.callHost = u; b.unit = e; b.regrow = 0;
       this.enemies.push(e); this.events.push({ type: 'summon', unit: e, by: u });
     });
@@ -709,7 +715,7 @@ class BattleSim {
   skillHint(h, slot) {
     const sk = this.skillDef(h, slot);
     if (!h.alive) return '';
-    if (sk.interrupt && this.aliveEnemies().some((e) => (e.charge || e.call) && e.x < 960)) return 'now';
+    if (sk.interrupt && this.aliveEnemies().some((e) => (e.charge || e.call) && e.x < this.W)) return 'now';
     if (!sk.hint) return '';
     switch (sk.hint) {
       case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call) ? 'now' : '';
@@ -857,7 +863,7 @@ class BattleSim {
     const dead = this.heroes.find((u) => !u.alive);
     if (!dead) return;
     dead.alive = true; dead.hp = Math.round(dead.maxHp * pct); dead.statuses = {}; dead.ult = 0;
-    dead.x = clamp(h.x - 30, CONST.FIELD_X0, CONST.FIELD_X1); dead.y = h.y; dead.cmd = null;
+    dead.x = clamp(h.x - 30, this.X0, this.X1); dead.y = h.y; dead.cmd = null;
     this.events.push({ type: 'revive', unit: dead });
   }
 
@@ -941,7 +947,7 @@ class BattleSim {
       }
       case 'auto': { // 필살기 종류에 맞춰 자동: 부활 / 회복 / 그로기 만들기 / 무방비 수확
         const sk = this.skillDef(h, slot);
-        const big = this.aliveEnemies().filter((e) => e.poiseMax && e.x < 960);
+        const big = this.aliveEnemies().filter((e) => e.poiseMax && e.x < this.W);
         if (sk.revive) return this.heroes.some((u) => !u.alive);
         const healer = (sk.heal || sk.healPct || sk.shieldPct) && !sk.power;
         if (healer) return this.aliveHeroes().some((a) => this.hpPct(a) <= 0.6);
@@ -955,7 +961,7 @@ class BattleSim {
         return !big.some((e) => e.poise / e.poiseMax <= 0.4 || (e.shaken > 0 && e.poise / e.poiseMax <= 0.7));
       }
       case 'smartInterrupt': { // 끊기 스킬: 지금 시전 중인 적이 있거나, 다음 차지·호출 전에 쿨이 돌아오면 사용
-        const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && e.x < 960);
+        const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && e.x < this.W);
         if (!threats.length || threats.some((e) => e.charge || e.call)) return true;
         if (!threats.some((e) => this.canPartyCancel(e))) return true; // 아껴도 못 끊는 상대면 그냥 사용
         const next = Math.min(...threats.map((e) => Math.min(e.def.abilities.includes('charge') ? e.chargeCd : 99, e.def.abilities.includes('caller') ? e.callCd : 99)));

@@ -227,7 +227,7 @@ GEM_SKILL_EXTRAS = [dict(key='s1_power', name='① 기본 스킬 위력', base=0
 # ------------------------------------------------------------------ 난이도 단계 (장비가 영구 성장이므로 적도 단계별로 강해져야 함)
 # hp/atk: 적 배율 (보스 포함). recGrade: 권장 장비 등급 (전 부위 평균)
 TIERS = [  # 적 배율(HP·공격력 동일) = 권장 등급 풀세트 +5강(레벨 차 0)으로 탱커 파티 기믹 공략 시 '승률 85% 지점 적 배율' ÷ 장비 없음 기준 (equip_balance.cjs --calibrate / --calib-merge, 짓누름·레벨 보정 반영)
-    dict(tier=1, name='견습', hp=1.26, atk=1.26, recGrade='UC'),
+    dict(tier=1, name='견습', hp=1.12, atk=1.12, recGrade='UC'),  # 첫 단계는 보정값(1.26)보다 낮춤: 막 첫 클리어한 파티가 컨트롤로 넘길 수 있게
     dict(tier=2, name='숙련', hp=1.42, atk=1.42, recGrade='C'),
     dict(tier=3, name='정예', hp=1.67, atk=1.67, recGrade='R'),
     dict(tier=4, name='영웅', hp=2.28, atk=2.28, recGrade='SR'),

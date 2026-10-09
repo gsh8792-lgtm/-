@@ -9,7 +9,9 @@ const BattleScene = {
     const node = params.node;
     this.node = node;
     this.run = run;
-    const waves = encounterFor(node);
+    const waves = node.waves || encounterFor(node);
+    const ex = params.explore || null; // 탐험 중 조우: { fieldW, heroPos, enemySpawnX, worldX(전장 0의 탐험 좌표), theme }
+    this.explore = ex;
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
       const lo = EQ.heroLoadout(Game.profile, id);
@@ -23,7 +25,9 @@ const BattleScene = {
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
+      fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
     });
+    this.camX = this.camTarget(); // 카메라 (전장 좌표, 화면 폭 960)
     this.acc = 0;
     this.t = 0;
     this.speed = Game.settings.speed || 1;
@@ -49,6 +53,17 @@ const BattleScene = {
   },
 
   exit() { this.drag = null; this.cmdDrag = null; this.cmdPress = null; },
+
+  // ------------------------------------------------------------ 카메라 (전장이 화면보다 넓을 때)
+  camTarget() {
+    const sim = this.sim;
+    if (sim.W <= 960) return 0;
+    const hs = sim.aliveHeroes(), es = sim.aliveEnemies().filter((e) => e.x < sim.W);
+    const avg = (l) => l.reduce((a, u) => a + u.x, 0) / l.length;
+    const hc = hs.length ? avg(hs) : sim.W / 2, ec = es.length ? avg(es) : hc;
+    return clamp((hs.length ? hc * 0.6 + ec * 0.4 : ec) - 480, 0, sim.W - 960);
+  },
+  toWorld(p) { return p ? { x: p.x + this.camX, y: p.y } : p; },
 
   // ------------------------------------------------------------ HUD 구성 (DOM)
   buildHud() {
@@ -184,13 +199,13 @@ const BattleScene = {
       const pr = this.cmdPress;
       if (!pr || pr.el !== face) return;
       if (!this.cmdDrag && Math.hypot(ev.clientX - pr.x0, ev.clientY - pr.y0) > 12) this.startCmd(pr);
-      if (this.cmdDrag) this.updateCmd(Input.toLogical(ev));
+      if (this.cmdDrag) this.updateCmd(this.toWorld(Input.toLogical(ev)));
     });
     const up = (ev) => {
       const pr = this.cmdPress;
       if (!pr || pr.el !== face) return;
       this.cmdPress = null;
-      if (this.cmdDrag) this.endCmd(ev.type === 'pointerup' ? Input.toLogical(ev) : null);
+      if (this.cmdDrag) this.endCmd(ev.type === 'pointerup' ? this.toWorld(Input.toLogical(ev)) : null);
     };
     face.addEventListener('pointerup', up);
     face.addEventListener('pointercancel', up);
@@ -206,7 +221,7 @@ const BattleScene = {
     if (!d) return;
     d.x = p.x; d.y = p.y;
     d.over = p.y < 430 && p.y > 64;
-    d.fx = clamp(p.x, CONST.FIELD_X0, CONST.FIELD_X1); d.fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1);
+    d.fx = clamp(p.x, this.sim.X0, this.sim.X1); d.fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1);
     d.unit = null;
     let bd = 70;
     for (const u of this.sim.aliveEnemies()) { const dd = Math.hypot(u.x - p.x, (u.y - 40) - p.y); if (dd < bd) { bd = dd; d.unit = u; } }
@@ -253,7 +268,8 @@ const BattleScene = {
   updateDrag(p) {
     const d = this.drag;
     if (!d) return;
-    d.x = p.x; d.y = p.y;
+    d.x = p.x; d.y = p.y; // 화면 좌표 (끌기 선)
+    p = this.toWorld(p);
     d.over = p.y < 430 && p.y > 64; // 전장 위에 있는가
     const fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1); // 손가락 아래 바닥 지점 (손가락에 가리지 않게 살짝 위를 가리킴)
     d.fx = p.x; d.fy = fy;
@@ -331,18 +347,21 @@ const BattleScene = {
   },
 
   pointerDown(p) {
+    p = this.toWorld(p);
     if (this.potionPick) { const u = this.unitAt(p); if (u && u.side === 'hero') this.usePotionOn(u); else { Sfx.play('back'); this.endPotion(); } return; }
     const u = this.unitAt(p);
     if (u && u.side === 'enemy') this.onChip(u); // 적을 탭하면 집중 공격
     else if (u && u.side === 'hero' && !this.sim.outcome) this.cmdPress = { h: u, x0: p.x, y0: p.y, el: null };
   },
   pointerMove(p) {
+    p = this.toWorld(p);
     const pr = this.cmdPress;
     if (!pr || pr.el) return;
     if (!this.cmdDrag && Math.hypot(p.x - pr.x0, p.y - pr.y0) > 10) this.startCmd(pr);
     if (this.cmdDrag) this.updateCmd(p);
   },
   pointerUp(p) {
+    p = this.toWorld(p);
     const pr = this.cmdPress;
     if (!pr || pr.el) return;
     this.cmdPress = null;
@@ -402,6 +421,7 @@ const BattleScene = {
       steps++;
       this.consumeEvents();
     }
+    this.camX += (this.camTarget() - this.camX) * Math.min(1, dtReal * 3);
     this.shake = Math.max(0, this.shake - dtReal * 30);
     this.updateFx(dtReal * (scale > 0 ? Math.min(scale, 2) : 0.15));
     if (this.banner) { this.banner.t += dtReal; if (this.banner.t > this.banner.dur) this.banner = null; }
@@ -412,7 +432,7 @@ const BattleScene = {
 
   consumeEvents() {
     const ev = this.sim.events;
-    if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < 960)) { this.breakHintPending = false; Game.hint('break'); }
+    if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < this.sim.W)) { this.breakHintPending = false; Game.hint('break'); }
     if (!ev.length) return;
     for (const e of ev) this.onEvent(e);
     ev.length = 0;
@@ -584,6 +604,10 @@ const BattleScene = {
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
+      if (this.explore && run.room && this.node.exploreId) { // 탐험으로 복귀: 쓰러뜨린 무리를 지나간 자리에서 이어서
+        const it = roomTrack(run.room).find((x) => x.id === this.node.exploreId);
+        if (it) { it.done = true; run.room.x = Math.max(run.room.x, it.x - 40); }
+      }
       if (this.node.type === 'boss') { run.result = 'victory'; Game.go('result'); }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
       else Game.go('reward', { node: this.node });
@@ -695,7 +719,10 @@ const BattleScene = {
     const t = this.t;
     ctx.save();
     if (this.shake > 0) ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
-    this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
+    if (this.explore) drawCorridor(ctx, this.explore.worldX + this.camX, t, this.explore.theme);
+    else this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
+    const cam = Math.round(this.camX);
+    ctx.translate(-cam, 0);
     // 차지 위험 범위 (원형)
     for (const e of sim.enemies) {
       if (!e.alive || !e.charge) continue;
@@ -732,6 +759,7 @@ const BattleScene = {
     this.drawFx(ctx);
     this.drawPopups(ctx);
     ctx.restore();
+    if (sim.W > 960) this.drawOffscreen(ctx, cam, t);
     for (const f of this.fx) if (f.type === 'flash') { ctx.fillStyle = f.color + (0.5 * (1 - f.t / f.dur)).toFixed(3) + ')'; ctx.fillRect(0, 0, 960, 540); }
     if (this.danger) {
       const a = 0.2 + Math.sin(t * 12) * 0.1;
@@ -745,20 +773,38 @@ const BattleScene = {
       const bp = Input.toLogical({ clientX: br.left + br.width / 2, clientY: br.top });
       ctx.strokeStyle = d.over ? 'rgba(156,240,168,0.95)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
       ctx.beginPath(); ctx.moveTo(bp.x, bp.y); ctx.quadraticCurveTo((bp.x + d.x) / 2, Math.min(bp.y, d.y) - 60, d.x, d.y); ctx.stroke(); ctx.setLineDash([]);
-      if (d.unit) this.drawTargetArc(ctx, d.h, d.unit, t);
+      if (d.unit) { ctx.save(); ctx.translate(-cam, 0); this.drawTargetArc(ctx, d.h, d.unit, t); ctx.restore(); }
     }
     const cd = this.cmdDrag;
     if (cd) {
       ctx.fillStyle = 'rgba(30,60,90,0.22)'; ctx.fillRect(0, 0, 960, 540);
       ctx.strokeStyle = !cd.over ? 'rgba(255,255,255,0.5)' : cd.h.actLock > 0 ? 'rgba(255,180,90,0.95)' : 'rgba(200,240,255,0.95)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
+      ctx.save(); ctx.translate(-cam, 0);
       ctx.beginPath(); ctx.moveTo(cd.h.x, cd.h.y - 20); ctx.lineTo(cd.unit ? cd.unit.x : cd.fx, cd.unit ? cd.unit.y - 20 : cd.fy); ctx.stroke(); ctx.setLineDash([]);
       if (cd.over && cd.unit) this.drawTargetArc(ctx, cd.h, cd.unit, t);
       else if (cd.over) this.drawMoveMark(ctx, cd.fx, cd.fy, t, 1);
+      ctx.restore();
     }
+    ctx.save(); ctx.translate(-cam, 0);
     for (const h of sim.heroes) if (h.alive && h.cmd && h.cmd.type === 'move' && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) > 6) this.drawMoveMark(ctx, h.cmd.x, h.cmd.y, t, 0.6);
+    ctx.restore();
     if (this.potionPick) { ctx.fillStyle = 'rgba(20,40,30,0.25)'; ctx.fillRect(0, 0, 960, 540); }
     this.drawBanner(ctx);
     this.drawCutin(ctx);
+  },
+
+  // 화면 밖 유닛 표시 (넓은 전장): 가장자리 화살표, 차지 중이면 붉게 깜빡
+  drawOffscreen(ctx, cam, t) {
+    for (const u of this.sim.heroes.concat(this.sim.enemies)) {
+      if (!u.alive || u.x > this.sim.W) continue;
+      const sx = u.x - cam;
+      if (sx > 10 && sx < 950) continue;
+      const left = sx <= 10, x = left ? 14 : 946, y = u.y - 40;
+      const hot = u.charge || u.call;
+      ctx.fillStyle = u.side === 'hero' ? 'rgba(140,220,255,0.9)' : hot && Math.floor(t * 8) % 2 ? 'rgba(255,80,60,1)' : 'rgba(255,170,140,0.85)';
+      ctx.beginPath(); ctx.moveTo(x + (left ? -8 : 8), y); ctx.lineTo(x + (left ? 6 : -6), y - 9); ctx.lineTo(x + (left ? 6 : -6), y + 9); ctx.closePath(); ctx.fill();
+      if (u.size > 1) { ctx.font = '700 11px sans-serif'; ctx.textAlign = left ? 'left' : 'right'; ctx.fillText(u.name, x + (left ? 10 : -10), y + 22); }
+    }
   },
 
   floorEllipse(ctx, x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0, rx), Math.max(0, ry), 0, 0, Math.PI * 2); ctx.fill(); },

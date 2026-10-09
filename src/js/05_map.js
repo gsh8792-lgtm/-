@@ -161,10 +161,12 @@ const MapScene = {
     for (const st of run.map.stages) for (const node of st) {
       const p = mapNodePos(node);
       const nt = NODE_TYPES[node.type];
-      const b = el('button', 'map-node t-' + node.type, nt.short);
+      const visited0 = run.path.some((q) => q.stage === node.stage && q.row === node.row);
+      const known = node.type === 'boss' || visited0; // 방 종류는 들어가 봐야 안다
+      const b = el('button', 'map-node t-' + (known ? node.type : 'unknown'), known ? nt.short : '?');
       b.type = 'button';
       b.style.left = p.x + 'px'; b.style.top = p.y + 'px';
-      b.style.setProperty('--nc', nt.color);
+      b.style.setProperty('--nc', known ? nt.color : '#6a6080');
       b.dataset.stage = node.stage; b.dataset.row = node.row;
       const visited = run.path.some((q) => q.stage === node.stage && q.row === node.row);
       const current = run.pos.stage === node.stage && run.pos.row === node.row;
@@ -189,7 +191,7 @@ const MapScene = {
       ui.appendChild(lab);
     }
 
-    const legend = el('div', 'map-legend', Object.keys(NODE_TYPES).map((k) => `<span><b style="background:${NODE_TYPES[k].color}">${NODE_TYPES[k].short}</b>${NODE_TYPES[k].name.replace('일반 ', '')}</span>`).join(''));
+    const legend = el('div', 'map-legend', '<span><b style="background:#6a6080">?</b>들어가 봐야 아는 방</span><span><b style="background:' + NODE_TYPES.boss.color + '">' + NODE_TYPES.boss.short + '</b>굴의 주인</span>');
     ui.appendChild(legend);
 
     const side = el('div', 'map-actions');
@@ -206,26 +208,22 @@ const MapScene = {
 
   select(node, reachable) {
     this.selected = node;
-    const nt = NODE_TYPES[node.type];
     const info = this.info;
     info.innerHTML = '';
     info.classList.remove('hidden');
     info.classList.toggle('left', mapNodePos(node).x >= 480); // 탭한 노드를 가리지 않도록 반대편에
-    info.appendChild(el('div', 'mi-title', `<b style="background:${nt.color}">${nt.short}</b> ${nt.name} <small>스테이지 ${node.stage}</small>`));
-    let desc = nt.desc;
-    if (node.type === 'event') desc = `${EVENTS[node.event].title} — ${nt.desc}`;
-    if (nt.combat) {
-      const waves = encounterFor(node);
-      const names = {};
-      waves.flat().forEach((id) => { names[ENEMIES[id].name] = (names[ENEMIES[id].name] || 0) + 1; });
-      desc += `<br><small>${waves.length}웨이브 · ` + Object.entries(names).map(([n, c]) => `${n}×${c}`).join(', ') + '</small>';
+    if (node.type === 'boss') {
+      info.appendChild(el('div', 'mi-title', `<b style="background:${NODE_TYPES.boss.color}">${NODE_TYPES.boss.short}</b> 가장 깊은 곳 <small>${node.stage}번째 방</small>`));
+      info.appendChild(el('div', 'mi-desc', `굴의 주인 「${ENEMIES[encounterFor(node)[0][0]].name}」이 기다린다. 가는 길에 모닥불이나 상인을 만날 수도 있다.`));
+    } else {
+      info.appendChild(el('div', 'mi-title', `<b style="background:#6a6080">?</b> 알 수 없는 방 <small>${node.stage}번째 방</small>`));
+      info.appendChild(el('div', 'mi-desc', '무엇이 있는지는 들어가 봐야 안다. 방 안에서는 걸어가며 적 무리, 갈림길, 상인, 수상한 것을 만난다.'));
     }
-    info.appendChild(el('div', 'mi-desc', desc));
     const row = el('div', 'mi-btns');
     row.appendChild(btn('취소', 'ghost', () => { this.selected = null; info.classList.add('hidden'); }, { sfx: 'back', id: 'btn-node-cancel' }));
     if (reachable) {
       const go = btn('이동하기 →', 'primary', () => this.moveTo(node), { id: 'btn-node-go' });
-      if (Game.run.torch <= 0 && node.type === 'battle') info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다! 어둠 속 전투는 정예로 바뀔 수 있다.'));
+      if (Game.run.torch <= 0) info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다. 어둠 속에서는 정예가 습격할 수 있다.'));
       row.appendChild(go);
     } else {
       row.appendChild(el('div', 'mi-locked', '갈 수 없는 방'));
@@ -238,23 +236,11 @@ const MapScene = {
     run.pos = { stage: node.stage, row: node.row };
     run.path.push({ stage: node.stage, row: node.row });
     run.stats.nodes++;
-    const wasDark = run.torch <= 0;
     run.torch = Math.max(0, run.torch - CONST.TORCH_PER_MOVE);
     run.lastNode = node;
     Sfx.play('door');
-    let type = node.type;
-    if (type === 'battle' && wasDark) {
-      const r = makeRng(hashSeed(run.seed, 'dark', node.stage, node.row));
-      if (r() < CONST.TORCH_DARK_ELITE_CHANCE && ENCOUNTERS.elite[node.stage]) {
-        type = 'elite';
-        Game.toast('어둠 속에서 정예가 습격했다!', 2200);
-      }
-    }
-    if (NODE_TYPES[type].combat) {
-      const n = Object.assign({}, node, { type });
-      openPreBattle(n);
-    } else if (type === 'event') Game.go('event', { node });
-    else Game.go(type, { node });
+    run.room = genRoom(run, node, node.type); // 방 안으로: 걸어가며 만나는 것들 (어둠 속 습격은 전투 직전에 판정)
+    Game.go('explore');
   },
 
   update(dt) { this.t += dt; },

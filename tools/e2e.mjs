@@ -28,7 +28,7 @@ async function dismissHints(p) { for (let i = 0; i < 3; i++) if (!(await clickIf
 // ---------------------------------------------------------------- 1. 한 판 자동 진행 (정책: 전투 우선, HP 낮으면 휴식)
 async function playRun(p, seed, opts) {
   opts = opts || {};
-  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
+  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 10; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
   await p.waitForTimeout(200);
   if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
   // 보급 상자 → 포털
@@ -40,7 +40,7 @@ async function playRun(p, seed, opts) {
   await p.click('#portal-yes');
   const log = [];
   const t0 = Date.now();
-  for (let step = 0; step < 200 && Date.now() - t0 < 240000; step++) {
+  for (let step = 0; step < 600 && Date.now() - t0 < 420000; step++) {
     await dismissHints(p);
     const sc = await scene(p);
     if (sc === 'result') break;
@@ -58,7 +58,12 @@ async function playRun(p, seed, opts) {
       await p.click(`.map-node[data-stage="${choice.stage}"][data-row="${choice.row}"]`);
       await p.click('#btn-node-go');
       await p.waitForTimeout(150);
-      if (await vis(p, '#pb-start')) { await p.click('#pb-auto'); await p.click('#pb-start'); }
+      continue;
+    }
+    if (sc === 'explore') { // 방 안: 갈림길은 첫 번째 길, 상인·이벤트·모닥불·고목은 들어가 본다
+      if (await clickIf(p, '#fork-0')) { log.push('갈림길'); continue; }
+      if (await clickIf(p, '#ex-go')) continue;
+      await p.waitForTimeout(150);
       continue;
     }
     if (sc === 'battle') {
@@ -95,7 +100,7 @@ async function playRun(p, seed, opts) {
     if (r.result === 'victory') wins++;
     if (seed === 101) await p.screenshot({ path: `${OUT}/run_result.png` });
   }
-  ok('5스테이지 완주 (보스 격파) 최소 1회', wins >= 1, `${wins}/5 시드 승리 (자동 전투 정책, 시뮬 6배속)`);
+  ok('5스테이지 완주 (보스 격파) 최소 1회', wins >= 1, `${wins}/5 시드 승리 (자동 전투 정책, 시뮬 10배속)`);
   // 결과 화면 버튼
   await p.evaluate(() => { window.GAME.Game.run.result = 'victory'; window.GAME.Game.go('result'); });
   await p.click('#res-same'); ok('결과: 같은 시드로 다시 → 필드', (await scene(p)) === 'field');
@@ -112,8 +117,7 @@ async function playRun(p, seed, opts) {
   await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; for (const k in r.strategy) for (const sl of ['s1', 's2', 'ult']) r.strategy[k][sl].auto = false; G.go('map'); });
   await p.click('.map-node.reachable >> nth=0');
   await p.click('#btn-node-go');
-  if (await vis(p, '#pb-start')) await p.click('#pb-start');
-  else await p.evaluate(() => { const G = window.GAME.Game; G.go('battle', { node: { stage: 1, row: 0, type: 'battle', enc: 0 } }); });
+  await p.waitForTimeout(200);
   if ((await scene(p)) !== 'battle') await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 1, row: 0, type: 'battle', enc: 0 } }));
   await p.waitForFunction(() => window.GAME.Game.sceneName === 'result', null, { timeout: 60000 });
   const dead = await p.evaluate(() => ({ res: window.GAME.Game.run.result, dead: Object.values(window.GAME.Game.run.heroes).filter((h) => h.dead).length, title: document.querySelector('.result-title').textContent }));

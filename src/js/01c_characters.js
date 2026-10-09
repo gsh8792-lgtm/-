@@ -223,7 +223,7 @@ const CHAR_LV = {
   max: 70,
   ultUnlock: { A: 1, B: 10, C: 20, A2: 30, B2: 40, C2: 50 },
   mastery: [{ lv: 60, boost: 0.05 }, { lv: 70, boost: 0.05 }],
-  recByTier: [1, 8, 16, 24, 32, 40, 50, 60, 70], // 난이도 단계별 권장 캐릭터 레벨
+  recByTier: [1, 3, 12, 22, 32, 40, 50, 60, 70], // 난이도 단계별 권장 캐릭터 레벨
   expNext(lv) { return Math.round(20 + 10 * Math.pow(Math.max(0, lv - 1), 1.3)); },
   reward: { battle: 12, elite: 30, boss: 80 }, tierMult: 0.6, deadMult: 0.5,
 };

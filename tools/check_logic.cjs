@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={genRoom,roomTrack,ROOM_PLANS,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { genRoom, roomTrack, ROOM_PLANS, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 const typeCount = {};
 for (let seed = 1; seed <= 1000; seed++) {
@@ -293,6 +293,37 @@ if (sa !== sb) fail++;
     if (ultChoices('danbi', 0, 70).length !== 3 || ultChoices('danbi', 5, 70).length !== 6) errs.push('variants need bt');
     if (EQ.heroLevel(p, 'danbi') !== 70) errs.push('combat level'); }
   console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(30 skills cast, roles kept, rank, AI, reflect, char level/ults)');
+  if (errs.length) fail++;
+}
+// 방 안 탐험: 방 생성 (결정성·갈림길·전투 수) + 넓은 전장 전투
+{
+  const errs = [];
+  const run = { seed: 4242 };
+  let fights = 0, rooms = 0;
+  for (const type of Object.keys(ROOM_PLANS)) for (let r = 0; r < 20; r++) {
+    const node = { stage: type === 'boss' ? 5 : 1 + (r % 4), row: r % 3, enc: 0 };
+    const a = genRoom(run, node, type), b = genRoom(run, node, type);
+    if (JSON.stringify(a) !== JSON.stringify(b)) errs.push('room not deterministic ' + type);
+    if (a.branches.length !== 2 || !a.branches.every((x) => x.items.length && x.hint)) errs.push('fork ' + type);
+    for (const ch of [0, 1]) {
+      a.chosen = ch; const tr = roomTrack(a);
+      const xs = tr.map((i) => i.x); if (xs.some((x, i) => i && x <= xs[i - 1])) errs.push('track order ' + type);
+      if (tr.some((i) => i.x > a.exitX)) errs.push('item after exit ' + type);
+      if (type === 'boss' && tr[tr.length - 1].kind !== 'boss') errs.push('boss not last');
+      if (type !== 'boss') { fights += tr.filter((i) => i.kind === 'fight' || i.kind === 'elite').length; rooms++; }
+    }
+  }
+  const avg = fights / rooms; if (!(avg >= 0.8 && avg <= 2)) errs.push('fights per room ' + avg.toFixed(2));
+  // 넓은 전장: 화면 2배 폭에서 걷던 자리 그대로 시작, 적은 오른쪽, 전장 밖으로 나가지 않음
+  { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const heroPos = [{ x: 740, y: 342 }, { x: 694, y: 372 }, { x: 648, y: 402 }];
+    const sim = new BattleSim({ seed: 3, stage: 2, waves: encounterFor({ type: 'battle', stage: 2, enc: 1 }), strategy: st, partySize: 3, fieldW: 1920, heroPos, enemySpawnX: 1100, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
+    if (Math.round(sim.heroes[0].x) !== 740) errs.push('heroPos');
+    if (!sim.enemies.every((e) => e.x > 1100)) errs.push('enemy spawn');
+    let minX = 1e9, maxX = -1e9;
+    while (!sim.outcome && sim.time < 120) { sim.step(1 / 60); for (const u of sim.heroes.concat(sim.enemies)) if (u.alive && !(u.side === 'enemy' && u.x > sim.W)) { minX = Math.min(minX, u.x); maxX = Math.max(maxX, u.x); } }
+    if (minX < sim.X0 - 1 || maxX > sim.X1 + 1) errs.push(`out of field ${minX}..${maxX}`);
+    if (sim.outcome !== 'win') errs.push('wide battle outcome ' + sim.outcome); }
+  console.log('explore:', errs.length ? 'FAIL ' + [...new Set(errs)].join(' | ') : 'OK', `(rooms deterministic, forks, ${avg.toFixed(2)} fights/room, wide battle)`);
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

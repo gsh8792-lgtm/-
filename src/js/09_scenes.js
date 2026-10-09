@@ -124,7 +124,7 @@ const RewardScene = {
     }
     if (params.goldOnly) {
       box.appendChild(el('p', 'muted', '고블린의 보따리에서 골드를 챙겼다.'));
-      box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
+      box.appendChild(btn('계속 ▶', 'primary big', () => backToRun(), { id: 'btn-continue' }));
       ui.appendChild(box);
       return;
     }
@@ -137,7 +137,7 @@ const RewardScene = {
       chosen.apply();
       Sfx.play('coin');
       Game.toast(chosen.title + ' 획득!');
-      Game.go('map');
+      backToRun();
     }, { id: 'btn-reward-confirm' });
     confirm.disabled = true;
     options.forEach((o, i) => {
@@ -157,7 +157,7 @@ const RewardScene = {
     });
     box.appendChild(cards);
     const row = el('div', 'btn-row');
-    row.appendChild(btn('건너뛰기', 'ghost', () => Game.go('map'), { sfx: 'back', id: 'btn-reward-skip' }));
+    row.appendChild(btn('건너뛰기', 'ghost', () => backToRun(), { sfx: 'back', id: 'btn-reward-skip' }));
     row.appendChild(confirm);
     box.appendChild(row);
     ui.appendChild(box);
@@ -300,7 +300,7 @@ const EventScene = {
       box.appendChild(btn('⚔ 전투!', 'primary big', () => {
         Game.go('battle', { node: { stage: this.node.stage, row: this.node.row, type: 'battle', waves: res.battle, fromEvent: true } });
       }, { id: 'btn-continue' }));
-    } else box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
+    } else box.appendChild(btn('계속 ▶', 'primary big', () => backToRun(), { id: 'btn-continue' }));
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
     ui.appendChild(partyPanel(run, { compact: true }));
@@ -378,7 +378,7 @@ const ShopScene = {
     box.appendChild(list);
     const row = el('div', 'btn-row');
     row.appendChild(btn('🧪 회복약 사용', '', () => usePotionFlow(run, () => this.build()), { id: 'shop-usepotion' }));
-    row.appendChild(btn('떠나기 ▶', 'primary', () => Game.go('map'), { id: 'btn-continue' }));
+    row.appendChild(btn('떠나기 ▶', 'primary', () => backToRun(), { id: 'btn-continue' }));
     box.appendChild(row);
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -430,7 +430,7 @@ const RestScene = {
     row.appendChild(btn('⚙ 전략 편집', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
     row.appendChild(btn('🎒 장비', '', () => openInventory({ onClose: () => this.build() }), { id: 'rest-inv' }));
     row.appendChild(btn('🧪 회복약', '', () => usePotionFlow(run, () => this.build()), { id: 'rest-potion' }));
-    row.appendChild(btn(this.rested ? '출발 ▶' : '쉬지 않고 출발', this.rested ? 'primary' : 'ghost', () => Game.go('map'), { id: 'btn-continue' }));
+    row.appendChild(btn(this.rested ? '출발 ▶' : '쉬지 않고 출발', this.rested ? 'primary' : 'ghost', () => backToRun(), { id: 'btn-continue' }));
     box.appendChild(row);
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -487,7 +487,7 @@ const TreeScene = {
     box.appendChild(el('div', 'scene-title', '피를 원하는 고목 <small>"피를… 나누면… 열매를…"</small>'));
     if (this.done) {
       box.appendChild(el('div', 'event-result good', this.msg));
-      box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
+      box.appendChild(btn('계속 ▶', 'primary big', () => backToRun(), { id: 'btn-continue' }));
     } else {
       const deals = el('div', 'tree-deals');
       TREE_DEALS.forEach((d) => {
@@ -506,7 +506,7 @@ const TreeScene = {
         box.appendChild(pp);
       }
       const row = el('div', 'btn-row');
-      row.appendChild(btn('떠난다', 'ghost', () => Game.go('map'), { sfx: 'back', id: 'tree-leave' }));
+      row.appendChild(btn('떠난다', 'ghost', () => backToRun(), { sfx: 'back', id: 'tree-leave' }));
       const ok = btn('피의 거래', 'danger', () => this.confirm(), { id: 'tree-confirm' });
       if (!this.deal || !this.hero) ok.disabled = true;
       row.appendChild(ok);
