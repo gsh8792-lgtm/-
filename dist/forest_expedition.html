@@ -5549,7 +5549,7 @@ function genRoom(run, node, type) {
     let bx = forkX + 650;
     const its = list.map((k) => { const it = mk(k, bx); bx += 650; return it; });
     const real = rng() < 0.75;
-    return { items: its, end: bx, hint: EXPLORE_HINTS[real ? its[0].kind : 'none'], side: bi === 0 ? '위쪽 길' : '아래쪽 길' };
+    return { items: its, end: bx, hint: EXPLORE_HINTS[real ? its[0].kind : 'none'], side: bi === 0 ? '왼쪽 길' : '오른쪽 길' };
   });
   const after = Math.max(...branches.map((b) => b.end));
   const tail = []; let tx = after;
@@ -5557,6 +5557,9 @@ function genRoom(run, node, type) {
   return { stage: node.stage, row: node.row, type, items, forkX, branches, chosen: -1, tail, exitX: tx + (plan.last.length ? 0 : 100), x: EXPLORE.START_X, theme: node.stage };
 }
 // 지금 길 위에 있는 것들 (갈림길에서 고른 갈래 포함)
+// 갈림길 문 위치 (벽에 난 문 두 개). 문 앞으로 걸어가면 그 길로 들어간다
+const DOOR_GAP = 300;
+function doorX(room, i) { return room.forkX + i * DOOR_GAP; }
 function roomTrack(room) {
   const out = room.items.slice();
   if (room.chosen >= 0) out.push(...room.branches[room.chosen].items, ...room.tail);
@@ -5573,6 +5576,7 @@ const ExploreScene = {
     this.prompt = null;
     this.fx = [];
     this.camX = Math.max(0, room.x - EXPLORE.CAM_LEAD);
+    this.walkTarget = null; this.doorPick = null; this.forkSeen = false; this.fade = 0;
     this.buildHud();
     if (!room.seen) { room.seen = true; Game.toast(room.stage === CONST.STAGES ? '가장 깊은 곳에 들어섰다. 굴의 주인이 가까이 있다.' : `${room.stage}번째 방에 들어섰다. 무엇이 있을지 모른다.`, 1800); Game.hint('explore'); }
   },
@@ -5611,10 +5615,23 @@ const ExploreScene = {
     const run = Game.run, room = run.room;
     if (!room || Game.modalOpen) return;
     for (let i = this.fx.length - 1; i >= 0; i--) { const f = this.fx[i]; f.t += dt; f.y -= 30 * dt; if (f.t > f.dur) this.fx.splice(i, 1); }
-    // 갈림길
-    if (room.chosen < 0 && room.x >= room.forkX - EXPLORE.STOP_DIST && !this.prompt) { this.openFork(); return; }
+    // 갈림길: 문 두 개 앞에서 멈추고, 탭한 문(또는 지점)으로 걸어가 문 앞에 닿으면 들어간다
+    const atFork = room.chosen < 0 && room.x >= room.forkX - 180;
+    if (atFork) {
+      if (!this.forkSeen) { this.forkSeen = true; this.moving = false; this.refreshWalk(); this.showForkGuide(); }
+      const sp = EXPLORE.SPEED * dt * ((Game.debug && Game.debug.simMult) || 1);
+      if (this.walkTarget !== null && this.walkTarget !== undefined) {
+        const d = this.walkTarget - room.x;
+        room.x += Math.sign(d) * Math.min(Math.abs(d), sp);
+        this.faceLeft = d < 0;
+        if (Math.abs(d) < 1) this.walkTarget = null;
+      }
+      for (const i of [0, 1]) if (Math.abs(room.x - doorX(room, i)) < 8 && this.doorPick === i) { this.enterDoor(i); break; }
+      this.camX += (doorX(room, 0) + DOOR_GAP / 2 - 480 - this.camX) * Math.min(1, dt * 4);
+      return;
+    }
     const next = roomTrack(room).filter((it) => !it.done).sort((a, b) => a.x - b.x)[0];
-    let limit = room.chosen < 0 ? room.forkX - EXPLORE.STOP_DIST : room.exitX;
+    let limit = room.chosen < 0 ? room.forkX - 180 : room.exitX;
     if (next) {
       if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
         if (room.x >= next.x - EXPLORE.SPOT_DIST) { this.startFight(next); return; }
@@ -5667,19 +5684,33 @@ const ExploreScene = {
     this.buildHud();
   },
 
-  openFork() {
+  showForkGuide() {
+    this.act.innerHTML = '';
+    this.act.appendChild(el('div', 'ex-act-title', '갈림길'));
+    this.act.appendChild(el('div', 'muted', '문이 두 개 있다. 들어갈 문을 탭하면 그 앞으로 걸어가 들어간다.'));
+    this.act.classList.remove('hidden');
+  },
+  // 탭: 갈림길에서는 그 지점(문을 탭하면 그 문)으로 걸어간다
+  pointerDown(p) {
     const room = Game.run.room;
-    this.prompt = 'fork';
-    this.moving = false; this.refreshWalk();
-    const box = el('div', 'fork-box');
-    box.appendChild(el('div', 'modal-title', '갈림길'));
-    box.appendChild(el('div', 'muted', '어느 쪽으로 갈까?'));
-    const col = el('div', 'btn-col');
-    room.branches.forEach((b, i) => col.appendChild(btn(`${b.side}<small>${b.hint}</small>`, 'choice', () => {
-      room.chosen = i; Game.closeModal(); this.prompt = null; this.moving = true; this.refreshWalk(); Sfx.play('click');
-    }, { id: 'fork-' + i })));
-    box.appendChild(col);
-    Game.modal(box, { dim: true });
+    if (!room || room.chosen >= 0 || room.x < room.forkX - 180 || Game.modalOpen) return;
+    const wx = p.x + this.camX;
+    const pick = [0, 1].find((i) => Math.abs(wx - doorX(room, i)) < 70 && p.y < 420);
+    if (pick !== undefined) this.walkToDoor(pick);
+    else { this.doorPick = null; this.walkTarget = clamp(wx, room.forkX - 180, doorX(room, 1) + 40); }
+  },
+  walkToDoor(i) { const room = Game.run.room; this.doorPick = i; this.walkTarget = doorX(room, i); Sfx.play('click'); },
+  enterDoor(i) {
+    const room = Game.run.room;
+    room.chosen = i;
+    room.x = doorX(room, 1) + 80; // 문을 지나 그 길로
+    this.camX = Math.max(0, room.x - EXPLORE.CAM_LEAD);
+    this.walkTarget = null; this.doorPick = null; this.forkSeen = false;
+    this.act.classList.add('hidden'); this.prompt = null;
+    this.moving = true; this.refreshWalk();
+    this.fade = 0.6;
+    Sfx.play('door');
+    Game.toast(`${room.branches[i].side}로 들어섰다.`, 1200);
   },
 
   startFight(it) {
@@ -5710,15 +5741,15 @@ const ExploreScene = {
     drawCorridor(ctx, cam, t, room.theme);
     ctx.save(); ctx.translate(-cam, 0);
     // 갈림길 표지판
-    if (room.chosen < 0) drawSignpost(ctx, room.forkX, t);
+    if (room.chosen < 0) for (const i of [0, 1]) drawForkDoor(ctx, doorX(room, i), t, room.branches[i], this.doorPick === i);
     // 출구
     drawExitDoor(ctx, room.exitX + 60, t);
     const objs = [];
     for (const it of roomTrack(room)) if (!it.done) objs.push({ y: 380, draw: () => drawPoi(ctx, it, t) });
     for (const p of this.party()) objs.push({ y: p.y, draw: () => {
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
-      const walking = this.moving && !Game.modalOpen;
-      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
+      const walking = (this.moving || (this.walkTarget !== null && this.walkTarget !== undefined)) && !Game.modalOpen;
+      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft && this.walkTarget != null, phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
     } });
     objs.sort((a, b) => a.y - b.y).forEach((o) => o.draw());
     ctx.textAlign = 'center';
@@ -5730,6 +5761,7 @@ const ExploreScene = {
     const g = ctx.createRadialGradient(EXPLORE.CAM_LEAD + 120, 330, 120, EXPLORE.CAM_LEAD + 120, 330, 620);
     g.addColorStop(0, 'rgba(8,6,14,0)'); g.addColorStop(1, `rgba(8,6,14,${dark + 0.35})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, 960, 540);
+    if (this.fade > 0) { this.fade -= 1 / 60; ctx.fillStyle = `rgba(0,0,0,${Math.min(1, this.fade * 1.6)})`; ctx.fillRect(0, 0, 960, 540); }
   },
 };
 
@@ -5819,6 +5851,17 @@ function drawPoi(ctx, it, t) {
     const g = ctx.createRadialGradient(x, y - 40, 2, x, y - 40, 60 * s); g.addColorStop(0, 'rgba(180,140,255,0.55)'); g.addColorStop(1, 'rgba(180,140,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 70, y - 110, 140, 140);
     ctx.fillStyle = '#5a4a6a'; ctx.fillRect(x - 16, y - 30, 32, 30); ctx.fillStyle = '#c8b0ff'; ctx.font = '900 26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('?', x, y - 38 - Math.sin(t * 4) * 4);
   }
+}
+function drawForkDoor(ctx, x, t, br, picked) {
+  const y = 330;
+  ctx.fillStyle = '#140f1c'; ctx.beginPath(); ctx.moveTo(x - 42, y + 10); ctx.lineTo(x - 42, y - 110); ctx.arc(x, y - 110, 42, Math.PI, 0); ctx.lineTo(x + 42, y + 10); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = picked ? '#ffd34a' : '#5a4e78'; ctx.lineWidth = 7; ctx.stroke();
+  const g = ctx.createLinearGradient(x, y - 150, x, y + 10); g.addColorStop(0, 'rgba(255,230,170,0)'); g.addColorStop(1, `rgba(255,230,170,${0.12 + Math.sin(t * 2 + x) * 0.05})`);
+  ctx.fillStyle = g; ctx.fill();
+  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 70, y - 200, 140, 40);
+  ctx.textAlign = 'center'; ctx.fillStyle = '#ffe9a0'; ctx.font = '800 14px sans-serif'; ctx.fillText(br.side.replace(' 길', ' 문'), x, y - 184);
+  ctx.fillStyle = '#f0e0c0'; ctx.font = '600 11px sans-serif'; ctx.fillText(br.hint, x, y - 168);
+  if (picked) { ctx.fillStyle = '#ffd34a'; ctx.beginPath(); const by = y - 214 + Math.sin(t * 6) * 4; ctx.moveTo(x - 8, by - 10); ctx.lineTo(x + 8, by - 10); ctx.lineTo(x, by); ctx.fill(); }
 }
 function drawSignpost(ctx, x, t) {
   const y = 380;

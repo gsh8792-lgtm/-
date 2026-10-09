@@ -61,7 +61,8 @@ async function playRun(p, seed, opts) {
       continue;
     }
     if (sc === 'explore') { // 방 안: 갈림길은 첫 번째 길, 상인·이벤트·모닥불·고목은 들어가 본다
-      if (await clickIf(p, '#fork-0')) { log.push('갈림길'); continue; }
+      const atFork = await p.evaluate(() => { const S = window.GAME.Game.scene, r = window.GAME.Game.run.room; if (r && r.chosen < 0 && r.x >= r.forkX - 180 && S.doorPick == null) { S.walkToDoor(0); return true; } return false; });
+      if (atFork) { log.push('갈림길'); continue; }
       if (await clickIf(p, '#ex-go')) continue;
       await p.waitForTimeout(150);
       continue;
