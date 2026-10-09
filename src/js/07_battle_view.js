@@ -21,7 +21,7 @@ const BattleScene = {
     this.sim = new BattleSim({
       seed: hashSeed(run.seed, 'battle', node.stage, node.row, node.type),
       stage: node.stage, waves, heroes,
-      relics: run.relics, strategy: run.strategy, autoLevel: run.autoLevel !== undefined ? run.autoLevel : (run.autoMode ? 1 : 0), partySize: run.party.length,
+      relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
@@ -81,15 +81,14 @@ const BattleScene = {
     this.speedBtn = btn(`${this.speed}x`, 'b-speed small', () => { this.speed = this.speed >= 3 ? 1 : this.speed + 1; Game.settings.speed = this.speed; Game.saveSettings(); this.speedBtn.innerHTML = `${this.speed}x`; this.speedBtn.classList.toggle('on', this.speed > 1); }, { id: 'btn-speed' });
     this.speedBtn.classList.toggle('on', this.speed > 1);
     right.appendChild(this.speedBtn);
-    const seg = el('div', 'seg seg3');
-    this.manualBtn = btn('수동', 'seg-btn', () => this.setAuto(0), { id: 'btn-manual' });
-    this.semiBtn = btn('반자동', 'seg-btn', () => this.setAuto(1), { id: 'btn-semi' });
-    this.autoBtn = btn('자동', 'seg-btn', () => this.setAuto(2), { id: 'btn-auto' });
-    seg.appendChild(this.manualBtn); seg.appendChild(this.semiBtn); seg.appendChild(this.autoBtn);
+    const seg = el('div', 'seg');
+    this.autoBtn = btn('자동', 'seg-btn', () => this.setAuto(true), { id: 'btn-auto' });
+    this.manualBtn = btn('수동', 'seg-btn', () => this.setAuto(false), { id: 'btn-manual' });
+    seg.appendChild(this.autoBtn); seg.appendChild(this.manualBtn);
     right.appendChild(seg);
     top.appendChild(right);
     ui.appendChild(top);
-    this.setAuto(this.sim.autoLevel, true);
+    this.setAuto(run.autoMode, true);
 
     this.chipsWrap = el('div', 'b-chips');
     this.chipsWrap.appendChild(el('div', 'chips-label', '적'));
@@ -145,15 +144,13 @@ const BattleScene = {
     ui.appendChild(hud);
   },
 
-  // 0 수동 / 1 반자동(② 무기 스킬은 직접) / 2 자동(①②③ 모두)
-  setAuto(level, silent) {
-    if (level === true) level = 2; if (level === false) level = 0;
-    this.run.autoLevel = level; this.run.autoMode = level > 0;
-    this.sim.autoLevel = level; this.sim.autoMode = level > 0;
-    this.manualBtn.classList.toggle('on', level === 0);
-    this.semiBtn.classList.toggle('on', level === 1);
-    this.autoBtn.classList.toggle('on', level === 2);
-    if (!silent) Game.toast(['수동: 스킬을 직접 써요', '반자동: ② 무기 스킬만 직접 써요', '자동: 모든 스킬을 알아서 써요'][level], 1100);
+  // 자동: 전략에서 '자동'으로 켠 스킬을 조건대로 사용 / 수동: 모두 직접
+  setAuto(on, silent) {
+    this.run.autoMode = on;
+    this.sim.autoMode = on;
+    this.autoBtn.classList.toggle('on', on);
+    this.manualBtn.classList.toggle('on', !on);
+    if (!silent) Game.toast(on ? '자동: 전략대로 스킬을 써요' : '수동: 스킬을 직접 써요', 1000);
   },
 
   setOrder(k, silent) {

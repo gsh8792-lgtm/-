@@ -56,7 +56,6 @@ function newRun(seed) {
     gotSupply: false,
     stats: { kills: 0, battles: 0, nodes: 0, startTime: performance.now(), dealt: {}, healed: {}, deathsAt: {} },
     autoMode: true,
-    autoLevel: 1,           // 0 수동 / 1 반자동(② 직접) / 2 자동
     lastNode: null,
     result: null,
     tier: prof.tier || 0,   // 난이도 단계 (0 = 기본)

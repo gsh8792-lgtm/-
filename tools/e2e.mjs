@@ -28,7 +28,7 @@ async function dismissHints(p) { for (let i = 0; i < 3; i++) if (!(await clickIf
 // ---------------------------------------------------------------- 1. 한 판 자동 진행 (정책: 전투 우선, HP 낮으면 휴식)
 async function playRun(p, seed, opts) {
   opts = opts || {};
-  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 10; G.scenes.title.start(s); G.run.autoLevel = 2; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
+  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 10; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
   await p.waitForTimeout(200);
   if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
   // 보급 상자 → 포털
@@ -193,8 +193,7 @@ async function playRun(p, seed, opts) {
   await dismissHints(p);
   await p.click('#btn-speed'); ok('전투: 배속 2x', (await p.textContent('#btn-speed')).includes('2x'));
   await p.click('#btn-speed'); ok('전투: 배속 3x', (await p.textContent('#btn-speed')).includes('3x')); await p.click('#btn-speed');
-  await p.click('#btn-semi'); ok('전투: 반자동 (② 직접)', await p.evaluate(() => { const S = window.GAME.Game.scene.sim; return S.autoLevel === 1 && S.slotAuto('s1', {}) && !S.slotAuto('s2', {}); }));
-  await p.click('#btn-manual'); ok('전투: 수동', await p.evaluate(() => !window.GAME.Game.run.autoMode && window.GAME.Game.scene.sim.autoLevel === 0));
+  await p.click('#btn-manual'); ok('전투: 수동', await p.evaluate(() => !window.GAME.Game.run.autoMode && !window.GAME.Game.scene.sim.autoMode));
   // 회복약: 정지 후 아군 얼굴 탭
   await p.click('#btn-bpotion'); ok('전투: 회복약 → 정지 + 대상 선택', await p.evaluate(() => !!window.GAME.Game.scene.potionPick));
   await p.mouse.click(bb.x + 480 * k, bb.y + 120 * k); ok('전투: 회복약 빈 곳 탭 → 취소', await p.evaluate(() => !window.GAME.Game.scene.potionPick));
