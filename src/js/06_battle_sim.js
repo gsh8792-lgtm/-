@@ -699,9 +699,11 @@ class BattleSim {
     }
     const rf = tgt.statuses.reflect;
     if (rf && src && src.side === 'enemy' && src.alive && !info.reflect && !info.dot && !info.trueDmg && (rf.all || (info.basic && src.melee))) { const back = dmg * rf.value; this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) { this._damage(tgt, src, back, { noCrit: true, reflect: true }); this.events.push({ type: 'reflect', unit: tgt, target: src, v: Math.round(back) }); } } }); } // 반사 (all: 원거리·차지까지)
-    if (tgt.side === 'hero' && tgt.def.traits.includes('counter') && src && src.side === 'enemy' && src.alive && info.basic && !info.reflect) { // 특성 반격: 근접 평타 30% 되돌림 + 막기 중엔 25% 확률로 즉시 반격 베기
-      if (src.melee) this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) this._damage(tgt, src, dmg * 0.3, { noCrit: true, reflect: true }); } });
-      if (tgt.statuses.guard && this.rng() < 0.25 && tgt.alive) this.delayed.push({ t: 0.15, fn: () => { if (src.alive && tgt.alive) { this._damage(tgt, src, this._atkOf(tgt) * 1.4, { noCrit: true, reflect: true, poise: 8 }); this.events.push({ type: 'counter', unit: tgt, target: src }); tgt.anim.lunge = 0.22; tgt.anim.lungeX = (src.x - tgt.x) * 0.3; } } });
+    const tmods = (tgt.side === 'hero' && tgt.mods) || {}, isCounter = tgt.side === 'hero' && tgt.def.traits.includes('counter');
+    const thorns = (isCounter ? 0.3 : 0) + (tmods.thorns || 0), cChance = (isCounter && tgt.statuses.guard ? 0.25 : 0) + (tmods.counter || 0);
+    if ((thorns || cChance) && src && src.side === 'enemy' && src.alive && !info.reflect && !info.dot && !info.trueDmg && (info.basic || tmods.thornsAll)) { // 반격: 특성(엘린) · 특성 트리 「반격자」
+      if (thorns && (src.melee || tmods.thornsAll)) this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) this._damage(tgt, src, dmg * thorns, { noCrit: true, reflect: true }); } });
+      if (cChance && this.rng() < cChance && tgt.alive) this.delayed.push({ t: 0.15, fn: () => { if (src.alive && tgt.alive) { this._damage(tgt, src, this._atkOf(tgt) * 1.4, { noCrit: true, reflect: true, poise: 8 }); this.events.push({ type: 'counter', unit: tgt, target: src }); tgt.anim.lunge = 0.22; tgt.anim.lungeX = (src.x - tgt.x) * 0.3; } } });
     }
     if (tgt.side === 'hero') tgt.recentTaken = (tgt.recentTaken || 0) + dmg; // 응징 계열: 최근에 받은 피해
     tgt.hp -= dmg;

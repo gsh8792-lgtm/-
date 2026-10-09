@@ -495,3 +495,19 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .ex-walk.hidden { display: none; }
 .ex-walk-btn { min-width: 76px; min-height: 76px; font-size: 30px; border-radius: 50%; touch-action: none; }
 .ex-actions .on { background: linear-gradient(#ffd96a, #e8a83a); color: #2b1d10; }
+
+/* ---------- 특성 트리 */
+.talent-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
+.talent-col { background: rgba(0,0,0,.22); border-radius: 12px; padding: 8px; }
+.tc-head { font-size: 16px; margin-bottom: 6px; color: var(--gold); }
+.tc-head small { color: #c8c0d8; font-size: 12px; }
+.tc-row { display: flex; gap: 6px; align-items: stretch; margin-bottom: 6px; }
+.tc-row.locked { opacity: .45; }
+.tc-need { width: 30px; font-size: 11px; color: #b8b0c8; display: flex; align-items: center; }
+.tc-node { flex: 1; text-align: left; background: #2e2646; border: 2px solid #4a3e6a; border-radius: 10px; color: #eee; padding: 5px 8px; display: flex; flex-direction: column; font-size: 13px; position: relative; min-height: 54px; }
+.tc-node small { font-size: 11px; color: #c8c0d8; }
+.tc-node .tc-rank { position: absolute; right: 8px; top: 5px; font-size: 12px; color: #ffd34a; font-weight: 800; }
+.tc-node.on { border-color: #8ad08a; background: #2c3e34; }
+.tc-node.can { box-shadow: 0 0 0 2px rgba(255,211,74,.5) inset; }
+.tc-node.cap { border-color: #c8a03a; }
+.tc-node.cap.on { background: #4a3a1a; }

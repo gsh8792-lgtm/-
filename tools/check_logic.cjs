@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -435,6 +435,23 @@ if (sa !== sb) fail++;
     a.cast(a.heroes[0], 'ult', {}); b.cast(b.heroes[0], 'ult', {}); for (let i = 0; i < 30; i++) { a.step(1 / 60); b.step(1 / 60); }
     if (!(ha - ea.hp > (hb - eb.hp) + 200)) errs.push(`vengeance ${ha - ea.hp} vs ${hb - eb.hp}`); }
   console.log('counter knight:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(trait counter, reflect-all ult, vengeance)');
+  if (errs.length) fail++;
+}
+// 특성 트리: 직업마다 두 갈래, 점수 = 레벨-1, 단 잠금, 효과가 장비처럼 loadout에 들어간다
+{
+  const errs = [];
+  for (const role in TALENTS) { if (TALENTS[role].length !== 2) errs.push('branches ' + role); for (const br of TALENTS[role]) if (br.nodes.filter((n) => n.cap).length !== 1) errs.push('cap ' + br.key); }
+  const p = GACHA.ensure(EQ.newProfile()); p.chars.tobi.lv = 21;
+  if (talentPoints(p, 'tobi') !== 20) errs.push('points');
+  if (talentAdd(p, 'tobi', 'guardian', 't_s1')) errs.push('tier lock not enforced');
+  for (let i = 0; i < 5; i++) talentAdd(p, 'tobi', 'guardian', 't_hp');
+  if (!talentAdd(p, 'tobi', 'guardian', 't_cc')) errs.push('tier 2 should open at 5');
+  const hp0 = EQ.heroLoadout(GACHA.ensure(EQ.newProfile()), 'tobi').maxHp, hp1 = EQ.heroLoadout(p, 'tobi').maxHp;
+  if (!(hp1 > hp0 * 1.14)) errs.push(`hp talent ${hp0}->${hp1}`);
+  for (let i = 0; i < 30; i++) talentAdd(p, 'tobi', 'avenger', 't_thorn');
+  if (talentSpent(p, 'tobi') > talentPoints(p, 'tobi')) errs.push('overspent');
+  talentReset(p, 'tobi'); if (talentSpent(p, 'tobi') !== 0) errs.push('reset');
+  console.log('talents:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(2 branches × 5 classes, points, tier locks, loadout)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

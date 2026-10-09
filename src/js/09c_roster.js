@@ -46,6 +46,7 @@ function openRoster(opts) {
     const stars = '★'.repeat(cs.bt) + '☆'.repeat(BREAKTHROUGH.max - cs.bt);
     top.appendChild(el('div', 'rd-txt', `<div class="rd-name">${c.name} <small>${d.roleName} · ${c.title}</small></div><div class="rd-bt">${own ? `Lv ${cs.lv}${cs.lv < CHAR_LV.max ? ` <span class="rd-exp"><i style="width:${Math.round(cs.exp / CHAR_LV.expNext(cs.lv) * 100)}%"></i></span> <small>${cs.exp}/${CHAR_LV.expNext(cs.lv)}</small>` : ' (최대)'} · 전투 Lv ${EQ.heroLevel(p, id)} · 돌파 ${stars}` : '<span class="muted">미보유 — 소환에서 얻을 수 있어요</span>'}</div><div class="rd-desc">${c.desc}</div><div class="rd-stat">HP ${d.hp} · 공격 ${d.atk} · 공격 간격 ${d.atkInterval}초 · 특성 「${TRAITS[c.trait].name}」 ${TRAITS[c.trait].desc}</div>`));
     wrap.appendChild(top);
+    if (own) { const tp = talentPoints(p, id), ts = talentSpent(p, id); const tb = btn(`🌿 특성 <small>${ts}/${tp}</small>`, 'small' + (ts < tp ? ' primary' : ''), () => openTalents(id, () => openRoster(Object.assign({}, opts, { id }))), { id: 'btn-talent' }); wrap.appendChild(tb); }
     const list = el('div', 'rd-ults');
     const choices = ultChoices(id, cs.bt, cs.lv);
     for (const k of ['A', 'A2', 'B', 'B2', 'C', 'C2']) {
@@ -110,4 +111,41 @@ function openGacha(onClose) {
     render();
   };
   render();
+}
+
+// ---------------------------------------------------------------- 특성 트리 창
+function openTalents(id, onClose) {
+  const p = Game.profile, tree = talentTree(id), st = talentState(p, id);
+  const pts = talentPoints(p, id), spent = talentSpent(p, id);
+  const box = el('div', 'inv-box talent-box');
+  const head = el('div', 'inv-head');
+  head.appendChild(el('div', 'modal-title', `${CHAR[id].name}의 특성 <small>${HEROES[id].roleName}</small>`));
+  head.appendChild(el('div', 'inv-res', `<span>남은 점수 <b>${pts - spent}</b> / ${pts}</span><span class="muted">캐릭터 레벨 1당 1점</span>`));
+  head.appendChild(btn('초기화', 'ghost small', () => { talentReset(p, id); saveProfile(); refreshRunLoadout(Game.run); openTalents(id, onClose); }, { id: 'talent-reset', sfx: 'back' }));
+  head.appendChild(btn('닫기', 'small', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'talent-close', sfx: 'back' }));
+  box.appendChild(head);
+  const cols = el('div', 'talent-cols');
+  for (const br of tree) {
+    const col = el('div', 'talent-col');
+    const bs = talentBranchSpent(p, id, br);
+    col.appendChild(el('div', 'tc-head', `<b>${br.name}</b> <small>${br.desc} · ${bs}점</small>`));
+    for (let tier = 0; tier < 4; tier++) {
+      const row = el('div', 'tc-row' + (bs >= TALENT_TIER_NEED[tier] ? '' : ' locked'));
+      row.appendChild(el('div', 'tc-need', tier ? `${TALENT_TIER_NEED[tier]}점` : ''));
+      for (const n of br.nodes.filter((x) => x.tier === tier)) {
+        const r = st[n.id] || 0, can = talentCanAdd(p, id, br, n);
+        const b = el('button', 'tc-node' + (n.cap ? ' cap' : '') + (r ? ' on' : '') + (can ? ' can' : '')); b.type = 'button'; b.id = 'tn-' + n.id;
+        const eff = n.cap ? n.desc : `${TALENT_STAT_NAME[n.stat] || n.stat} +${Math.round(n.v * 1000) / 10}%${n.stat === 'counter' || n.stat === 'thorns' ? '' : ''} / 랭크`;
+        b.innerHTML = `<b>${n.name}</b><span class="tc-rank">${r}/${n.max}</span><small>${eff}</small>`;
+        b.addEventListener('click', () => { if (talentAdd(p, id, br.key, n.id)) { Sfx.play('click'); saveProfile(); refreshRunLoadout(Game.run); openTalents(id, onClose); } else { Sfx.play('back'); Game.toast(talentSpent(p, id) >= pts ? '특성 점수가 없어요 (레벨을 올리면 생긴다)' : r >= n.max ? '이미 최대예요' : `이 단은 ${br.name}에 ${TALENT_TIER_NEED[n.tier]}점을 쓴 뒤 열려요`, 1100); } });
+        row.appendChild(b);
+      }
+      col.appendChild(row);
+    }
+    cols.appendChild(col);
+  }
+  box.appendChild(cols);
+  box.appendChild(el('div', 'muted', '두 갈래를 섞어 찍을 수 있다. 핵심 특성(4단)은 한 갈래에 18점을 쓰면 열린다. 효과는 장비처럼 바로 적용된다.'));
+  const cur = Game.modalOpen && document.querySelector('.talent-box');
+  if (cur) cur.replaceWith(box); else { Game.closeModal(); Game.modal(box, { dim: true, cls: 'inv-modal' }); }
 }

@@ -155,8 +155,11 @@ const EQ = (() => {
       if (d.kind === 'stat' || d.kind === 'trade') add(d.stat, v);
       if (d.kind === 'trade') add(d.pen.stat, d.pen.v);
     }
+    const tm = typeof talentMods === 'function' ? talentMods(p, heroId) : { passives: {} }; // 특성 트리
+    for (const k in tm) if (k !== 'passives') add(k, tm[k]);
     const hooks = {};
     for (const k in passives) if (PASSIVE[k].kind === 'hook') hooks[k] = passiveValue(passives[k]);
+    for (const k in tm.passives) hooks[k] = Math.max(hooks[k] || 0, tm.passives[k]);
     mods.passives = hooks;
     const maxHp = Math.round((def.hp + (mods.hp || 0)) * (1 + (mods.hp_pct || 0)));
     delete mods.hp; delete mods.hp_pct;
