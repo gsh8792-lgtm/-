@@ -241,9 +241,11 @@ const ENEMIES = {
   thorn_queen:   { name: '가시덩굴 여왕', armor: 0.7, poise: 220, moveSpeed: 36, hp: 2300, atk: 30, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'thornQueen', color: '#6a9a4a', gold: 0, abilities: ['charge', 'boss', 'buds'], chargeEvery: 12, chargeTime: 3, chargeMult: 3.4, chargeR: 90, softEnrage: 150, budEvery: 13, budFirst: 6, budRegrow: 18, budCount: 3, calledArmor: 0.8, calledArmorDur: 10, calledHeal: 0.02 },
   wipe_bud:      { name: '독꽃 봉오리', moveSpeed: 0, hp: 120, atk: 1, atkInterval: 99, def: 0, size: 1.0, sprite: 'thornBud', color: '#e06ab0', gold: 0, abilities: [], immobile: true, fixedScale: true },
   thorn_bud:     { name: '가시 꽃봉오리', moveSpeed: 0, hp: 420, atk: 1, atkInterval: 99, def: 0.2, size: 1.2, sprite: 'thornBud', color: '#c86ab0', gold: 0, abilities: [], immobile: true, callEvery: 13, callCast: 2.6, callCount: 1, callUnit: 'goblin', interruptResist: 1 },
-  mist_stag:     { name: '안개 사슴왕', armor: 0.8, poise: 220, moveSpeed: 52, hp: 3200, atk: 34, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'mistStag', color: '#a8b8c8', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 10, chargeTime: 2.8, chargeMult: 4.0, chargeR: 90, backOnly: 0.3, softEnrage: 120, huntsBackline: true, frontRangedDmg: 0.6,
-                   phases: [{ at: 0.5, name: '2페이즈: 안개 장막', stunImmune: true, summon: ['goblin', 'goblin'] }] },
+  mist_stag:     { name: '안개 사슴왕', armor: 0.7, poise: 220, moveSpeed: 52, hp: 3000, atk: 32, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'mistStag', color: '#a8b8c8', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 10, chargeTime: 2.8, chargeMult: 4.0, chargeR: 90, backOnly: 0.3, softEnrage: 160, huntsBackline: 'phase2', frontRangedDmg: 0.75,
+                   phases: [{ at: 0.5, name: '2페이즈: 안개 장막 — 후열을 사냥한다', stunImmune: true, summon: ['goblin', 'goblin'] }] },
   swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
+  shadow_king:   { name: '고블린 그림자 왕', armor: 0.6, poise: 200, moveSpeed: 66, hp: 3500, atk: 35, fixedScale: true, atkInterval: 1.7, def: 0.15, size: 1.8, sprite: 'shadowKing', color: '#5a4a7a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 11, chargeTime: 2.6, chargeMult: 3.6, chargeR: 85, softEnrage: 130,
+                   phases: [{ at: 0.5, name: '2페이즈: 그림자 군단', summon: ['goblin_stalker', 'goblin_stalker'] }] }, // 그림자 습격: 사라졌다가 가장 먼 영웅 곁에 나타난다
 };
 
 // 보스 패턴: 일반 스킬 1개 + 전멸기 1개 (HP 60%·25%에서 한 번씩, 이후 WIPE_EVERY초마다)
@@ -257,6 +259,8 @@ const BOSS_KITS = {
                   wipe: { key: 'mist', name: '안개 폭풍', type: 'safe', cast: 6, mult: 0.9, safeR: 95, hint: '빛나는 원 안으로!' } },
   swamp_turtle: { skill: { key: 'spit', name: '독침', every: 10, first: 6, r: 90, dur: 7, dps: 0.45, target: 'random' },
                   wipe: { key: 'tide', name: '늪의 해일', type: 'shield', cast: 8, mult: 0.9, shield: 0.085, hint: '껍질을 깨라!' } },
+  shadow_king:  { skill: { key: 'shadowstep', name: '그림자 습격', every: 11, first: 7, tele: 1.2, r: 80, mult: 3.2, target: 'far' },
+                  wipe: { key: 'eclipse', name: '월식', type: 'shield', cast: 8, mult: 0.85, shield: 0.075, hint: '그림자 망토를 찢어라!' } },
 };
 const WIPE_AT = [0.6, 0.25], WIPE_EVERY = 70;
 // 자동 모드의 늦은 반응 (초): 장판이 생기고 이만큼 지나야 피한다. 수동으로 직접 끌어 피하면 바로 — 컨트롤의 몫
@@ -294,7 +298,7 @@ const ENCOUNTERS = {
     4: [['orc', 'orc_berserker', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin_trapper'], ['cave_troll', 'goblin_stalker'], ['goblin_bomber', 'goblin_bomber', 'orc_hunter']],
   },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
-  boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
+  boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']], [['shadow_king', 'goblin_archer', 'goblin']] ] },
 };
 
 // ---------------------------------------------------------------- 지도 노드

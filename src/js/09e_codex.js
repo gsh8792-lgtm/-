@@ -20,7 +20,8 @@ const ENEMY_CODEX = {
   thorn_queen:    { tags: ['보스', '꽃봉오리', '전멸기'], answer: '꽃봉오리부터 끊고, 독꽃 전멸기는 원거리 화력으로 빠르게 부순다.' },
   thorn_bud:      { tags: ['호출', '끊기 저항'], answer: '고블린을 부른다. 끊기 저항 — 두 직업 이상이 함께 끊어야 한다.' },
   wipe_bud:       { tags: ['전멸기'], answer: '시간 안에 모두 부숴야 한다. 근접은 직접 집중 공격을 지시.' },
-  mist_stag:      { tags: ['보스', '후열 사냥', '안개'], answer: '정면 원거리 피해가 줄어든다. 등 뒤에서 치고, 후열을 지킨다.' },
+  mist_stag:      { tags: ['보스', '후열 사냥', '안개'], answer: '정면 원거리 피해가 줄어든다. 등 뒤에서 치고, HP 50% 아래(2페이즈)부터는 후열을 사냥하니 탱커가 도발로 붙잡는다.' },
+  shadow_king:    { tags: ['보스', '순간이동', '분신'], answer: '사라졌다가 가장 먼 영웅 곁에 나타나 벤다 — 예고 범위에서 빼낸다. 월식은 망토(보호막)를 몰아서 찢는다.' },
   swamp_turtle:   { tags: ['보스', '그로기 재생'], answer: '그로기 게이지가 다시 찬다. 끊기·기절을 몰아서 한 번에 깨고 그로기에 화력 집중.' },
 };
 const codexKind = (key) => { const d = ENEMIES[key]; return d.abilities.includes('boss') ? '보스' : (d.poise || 0) >= 120 || d.hp >= 500 ? '정예' : '일반'; };

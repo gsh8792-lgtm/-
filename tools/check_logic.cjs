@@ -509,4 +509,19 @@ if (sa !== sb) fail++;
   console.log('oaths:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(scale, reward, start penalties, hunter waves)');
   if (errs.length) fail++;
 }
+// 그림자 왕 (v0.38): 그림자 습격 = 사라짐(무적) → 먼 영웅 자리 예고 → 나타남
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const sim = new BattleSim({ seed: 4, stage: 5, waves: [['shadow_king']], strategy: st0, autoMode: false, partySize: 3, heroes: ['tobi', 'yeon', 'bori'].map((id) => ({ id, hp: 5000, maxHp: 5000, upgrades: {}, ultDef: null })) });
+  for (let i = 0; i < 60 * 2; i++) sim.step(1 / 60);
+  const b = sim.enemies[0]; b.skillCd = 0; sim.step(1 / 60);
+  if (!b.vanished) errs.push('not vanished'); const z = sim.zones.find((q) => q.kind === 'impact' && q.src === b); if (!z) errs.push('no impact zone');
+  const h0 = b.hp; sim._damage(sim.heroes[0], b, 500, { noCrit: true }); if (b.hp !== h0) errs.push('hit while vanished');
+  for (let i = 0; i < 60 * 1.5; i++) sim.step(1 / 60);
+  if (b.vanished) errs.push('still vanished'); if (z && Math.abs(b.x - z.x) > 90) errs.push('did not reappear near target');
+  if (!ENCOUNTERS.boss[5].some((w) => w[0][0] === 'shadow_king')) errs.push('not in boss pool');
+  console.log('shadow king:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(vanish, untargetable, telegraph, reappear, boss pool)');
+  if (errs.length) fail++;
+}
 process.exit(fail ? 1 : 0);

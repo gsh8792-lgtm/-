@@ -152,6 +152,12 @@ class BattleSim {
     const hs = this.aliveHeroes(); if (!hs.length) return;
     const pick = s.target === 'far' ? hs.slice().sort((a, b) => this.dist(u, b) - this.dist(u, a))[0] : hs[Math.floor(this.rng() * hs.length)];
     if (s.key === 'rock' || s.key === 'gore') this.zones.push({ kind: 'impact', x: pick.x, y: pick.y, r: s.r, t: s.tele, total: s.tele, dmg: this._atkOf(u) * s.mult, src: u, name: s.name });
+    else if (s.key === 'shadowstep') { // 그림자 습격: 사라졌다가(무적) 대상 곁에 나타나며 베기 — 예고 범위 밖으로 빼낸다
+      u.vanished = true; u.atkTimer = Math.max(u.atkTimer, s.tele + 0.4);
+      const z = { kind: 'impact', x: pick.x, y: pick.y, r: s.r, t: s.tele, total: s.tele, dmg: this._atkOf(u) * s.mult, src: u, name: s.name };
+      this.zones.push(z);
+      this.delayed.push({ t: s.tele, fn: () => { if (!u.alive) return; u.vanished = false; u.x = clamp(z.x + 60, this.X0 + 30, this.X1 - 30); u.y = z.y; u.face = -1; this.events.push({ type: 'dash', unit: u }); } });
+    }
     else if (s.key === 'spit') this.zones.push({ kind: 'pool', x: pick.x, y: pick.y, r: s.r, t: s.dur, total: s.dur, dps: this._atkOf(u) * s.dps, src: u, acc: 0, name: s.name });
     else if (s.key === 'root') { const t = hs.filter((h) => h.role !== 'tank'); const v = t.length ? t[Math.floor(this.rng() * t.length)] : pick; v.statuses.stun = { t: s.dur, src: u }; this.events.push({ type: 'root', unit: v, by: u }); }
     this.events.push({ type: 'bossSkill', unit: u, name: s.name, target: pick });
@@ -366,7 +372,7 @@ class BattleSim {
       if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) { u.target = tt; u.retarget = CONST.TAUNT_LINGER; } } // 도발이 끝나도 잠시 탱커를 계속 노린다
       else if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC * 2;
-        const back = u.def.huntsBackline ? heroes.filter((h) => !h.melee) : [];
+        const back = u.def.huntsBackline && (u.def.huntsBackline !== 'phase2' || u.phase >= 1) ? heroes.filter((h) => !h.melee) : []; // 사슴왕: 2페이즈부터 후열 사냥
         if (u.def.hunter) { // 사냥꾼: 탱커를 무시하고 노리는 대상이 정해져 있다
           const pool = heroes.filter((h) => h.role !== 'tank');
           const pick = u.def.hunter === 'support' ? (pool.find((h) => h.role === 'support') || pool.find((h) => !h.melee)) : pool.reduce((a, h) => (!a || h.hp < a.hp ? h : a), null);
