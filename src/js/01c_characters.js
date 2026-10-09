@@ -103,6 +103,16 @@ const CHARACTERS = [
       C: { name: '거인 사냥', target: 'enemy', fx: 'slash', power: 2.0, brokenMult: 3.0, desc: '강력한 일격. 그로기 적에게 3배.',
         v: { name: '거신 처형', brokenMult: 3.5, effects: [{ status: 'inspire', dur: 4, value: 0.2, to: 'party' }], desc: '그로기 적에게 3.5배 + 4초간 파티 공격력 +20%.' } },
     } },
+  { id: 'hwa', name: '화연', role: 'melee', title: '쌍검 무희', sprite: 'sword_d', trait: 'keen', stat: { hp: 0.9, atk: 0.95, aspd: 1.15, ms: 1.1 },
+    desc: '쉬지 않고 베는 쌍검 무희. 출혈과 취약을 함께 걸어 「상처 벌리기」를 만든다.',
+    ults: {
+      A: { name: '칼날 춤', target: 'self_area', areaR: 100, fx: 'spin', power: 0.6, hits: 5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }, { status: 'vuln', dur: 5 }], desc: '주변 적 5연타 + 출혈 + 5초 취약 (연계: 상처 벌리기).',
+        v: { name: '피의 무도', hits: 7, desc: '주변 적 7연타 + 출혈 + 5초 취약.' } },
+      B: { name: '흩날리는 꽃잎', target: 'multi_enemy', fx: 'flurry', count: 4, power: 1.2, effects: [{ status: 'bleed', dur: 5, dps: 0.3 }], desc: 'HP 비율 낮은 적부터 4명 베기 + 출혈.',
+        v: { name: '꽃보라', count: 6, desc: 'HP 비율 낮은 적부터 6명 베기 + 출혈.' } },
+      C: { name: '일섬', target: 'enemy', behind: true, fx: 'slash', power: 3.4, brokenMult: 1.8, desc: '등 뒤로 돌아 한 번에 베기. 그로기 적에게 1.8배.',
+        v: { name: '무명 일섬', power: 3.9, brokenMult: 2.2, desc: '등 뒤로 돌아 한 번에 베기. 그로기 적에게 2.2배.' } },
+    } },
   // ---------------- 도적 (v0.35): 은신 · 기습 · 중독. 적 후열(원거리·사냥꾼)부터 파고든다
   { id: 'yeon', name: '연', role: 'rogue', title: '독칼 도적', sprite: 'rogue', trait: 'shadow', gift: true,
     desc: '독을 겹겹이 쌓고 한 번에 터뜨린다. 연막으로 몸을 숨겨 후열을 노린다.',
@@ -163,6 +173,16 @@ const CHARACTERS = [
       C: { name: '맹독 폭발', target: 'all_enemies', fx: 'nova', power: 0.8, detonate: { status: 'poison', mult: 1.0 }, desc: '적 전체 피해 + 남은 중독 피해를 한 번에 터뜨림.',
         v: { name: '연쇄 폭발', detonate: { status: 'poison', mult: 1.5 }, effects: [{ status: 'poison', dur: 6, dps: 0.3 }], desc: '남은 중독 피해를 1.5배로 터뜨린 뒤 다시 6초 중독.' } },
     } },
+  { id: 'dal', name: '달래', role: 'ranged', title: '화약 사수', sprite: 'archer_d', trait: 'brave', stat: { hp: 0.95, atk: 1.1, aspd: 0.9 },
+    desc: '폭발 화살로 무리를 태운다. 도적의 독과 만나면 「독연 폭발」.',
+    ults: {
+      A: { name: '폭발 화살', target: 'area_enemy', areaR: 95, fx: 'meteor', power: 1.9, effects: [{ status: 'burn', dur: 6, dps: 0.35 }], desc: '지점 폭발 + 6초 화상 (연계: 독연 폭발).',
+        v: { name: '화약고', power: 2.3, areaR: 115, desc: '더 큰 폭발 + 6초 화상.' } },
+      B: { name: '연막 사격', target: 'area_enemy', areaR: 110, fx: 'arrowrain', power: 0.8, hits: 2, interrupt: 2, effects: [{ status: 'slow', dur: 5, value: 0.4 }, { status: 'vuln', dur: 5 }], desc: '범위 2연사 + 5초 둔화·취약. 범위 안 끊기 ●●.',
+        v: { name: '눈먼 사격', hits: 3, desc: '범위 3연사 + 5초 둔화·취약. 범위 안 끊기 ●●.' } },
+      C: { name: '저격 일발', target: 'enemy', ranged: true, fx: 'snipe', power: 4.6, execute: { below: 0.3, mult: 2 }, desc: '한 발 저격. HP 30% 이하 적에게 2배.',
+        v: { name: '심장 저격', power: 5.4, desc: '더 강한 한 발. HP 30% 이하 적에게 2배.' } },
+    } },
   // ---------------- 매지션
   { id: 'soldam', name: '솔담', role: 'mage', title: '화염 마법사', sprite: 'mage', trait: 'cautious', starter: true,
     desc: '광역 화염 마법사. 졸개가 많은 전투에 강하다.',
@@ -193,6 +213,16 @@ const CHARACTERS = [
       C: { name: '파멸의 낙인', target: 'enemy', fx: 'snipe', delay: 3.0, power: 7.0, brokenMult: 1.5, desc: '3초 시전 후 낙인 폭발. 그로기 적에게 1.5배.',
         v: { name: '종말의 낙인', power: 8.5, execute: { below: 0.4, mult: 1.5 }, desc: '3초 시전 후 더 큰 폭발. 그로기 적, HP 40% 이하 적에게 각각 1.5배.' } },
     } },
+  { id: 'eun', name: '은하', role: 'mage', title: '번개술사', sprite: 'mage_d', trait: 'keen', stat: { hp: 0.95, atk: 1.05, aspd: 1.05 },
+    desc: '연쇄 번개로 여러 적을 잠깐씩 멈춘다. 둔화된 적이면 「동결」로 더 오래.',
+    ults: {
+      A: { name: '연쇄 번개', target: 'multi_enemy', fx: 'nova', count: 4, power: 1.4, interrupt: 1, effects: [{ status: 'stun', dur: 0.8 }], desc: '적 4명에게 번개 + 0.8초 기절 (연계: 동결). 끊기 ●.',
+        v: { name: '천둥 사슬', count: 6, effects: [{ status: 'stun', dur: 1 }], desc: '적 6명에게 번개 + 1초 기절. 끊기 ●.' } },
+      B: { name: '폭풍의 눈', target: 'all_enemies', fx: 'nova', power: 0.5, hits: 3, effects: [{ status: 'slow', dur: 5, value: 0.35 }], desc: '모든 적 3연타 + 5초 둔화.',
+        v: { name: '대폭풍', hits: 4, effects: [{ status: 'slow', dur: 6, value: 0.45 }], desc: '모든 적 4연타 + 6초 강한 둔화.' } },
+      C: { name: '뇌신 강림', target: 'enemy', fx: 'starbolt', power: 3.8, poise: 70, effects: [{ status: 'stun', dur: 1.5 }], desc: '거대한 벼락 + 1.5초 기절 + 그로기 게이지 감소.',
+        v: { name: '뇌신의 심판', power: 4.4, poise: 100, effects: [{ status: 'stun', dur: 2 }], desc: '더 큰 벼락 + 2초 기절 + 그로기 게이지 대량 감소.' } },
+    } },
   // ---------------- 서포터
   { id: 'bori', name: '보리', role: 'support', title: '생명의 사제', sprite: 'priest', trait: 'gentle', starter: true,
     desc: '광역 회복 특화. 장기전을 버티게 하는 파티의 중심.',
@@ -222,6 +252,16 @@ const CHARACTERS = [
         v: { name: '빛의 장막', target: 'party', fx: 'wall', shieldPct: 0.22, desc: '파티 전원에게 8초간 최대 HP 22% 보호막 + 해로운 효과 해제.' } },
       C: { name: '희생', target: 'ally', fx: 'heal', healPct: 0.7, cleanse: true, selfCost: 0.2, desc: '세라 HP 20%를 바쳐 아군 1명 HP 70% 회복 + 해로운 효과 해제.',
         v: { name: '성녀의 희생', healPct: 1.0, partyHealPct: 0.15, selfCost: 0.15, desc: '세라 HP 15%를 바쳐 아군 1명 완전 회복 + 해제, 파티 HP 15% 회복.' } },
+    } },
+  { id: 'narae', name: '나래', role: 'support', title: '전쟁 북잡이', sprite: 'priest_d', trait: 'brave', stat: { hp: 1.05, atk: 1.1 },
+    desc: '북소리로 파티의 손을 빠르게 한다. 회복은 적지만 쿨타임과 공격력을 끌어올린다.',
+    ults: {
+      A: { name: '전쟁의 북', target: 'party', fx: 'venom', cdReduce: 3, effects: [{ status: 'inspire', dur: 6, value: 0.25, to: 'party' }], desc: '파티 쿨타임 3초 감소 + 6초간 공격력 +25%.',
+        v: { name: '진군의 북', cdReduce: 5, effects: [{ status: 'inspire', dur: 7, value: 0.3, to: 'party' }], desc: '파티 쿨타임 5초 감소 + 7초간 공격력 +30%.' } },
+      B: { name: '수호의 노래', target: 'party', fx: 'wall', shieldPct: 0.14, desc: '파티 전원 최대 HP 14% 보호막.',
+        v: { name: '불굴의 합창', shieldPct: 0.2, effects: [{ status: 'guard', dur: 5, value: 0.2, to: 'party' }], desc: '파티 전원 20% 보호막 + 5초 받는 피해 -20%.' } },
+      C: { name: '영웅의 찬가', target: 'party', fx: 'aoeheal', ultGive: 25, healPct: 0.08, desc: '다른 동료 필살기 게이지 +25 + 파티 HP 8% 회복.',
+        v: { name: '전설의 찬가', ultGive: 40, healPct: 0.12, desc: '다른 동료 필살기 게이지 +40 + 파티 HP 12% 회복.' } },
     } },
 ];
 const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });

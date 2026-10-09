@@ -10,7 +10,7 @@ const N = +(process.argv[2] || 12);
 const PARTIES = process.env.PARTIES ? process.env.PARTIES.split(';').map((x) => x.split('+')) : [['tobi', 'danbi', 'bori'], ['tobi', 'yeon', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const ONLY = process.env.BOSS || '';
 const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].lv = 5;
-for (const id of ['tobi', 'danbi', 'yeon', 'soldam', 'byeolbi', 'bori']) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(1), p, { base: base.id, grade: 'UC' }); p.inv.push(it); p.equip[id][slot] = it.uid; }
+for (const id of [...new Set(PARTIES.flat())]) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(1), p, { base: base.id, grade: 'UC' }); p.inv.push(it); p.equip[id][slot] = it.uid; }
 const st = JSON.parse(JSON.stringify(AI_PRESETS)); for (const k in st) { st[k].s2.auto = true; st[k].ult.auto = true; st[k].ult.cond = 'auto'; }
 const f = 1 + DUNGEON.FLOOR_SCALE * 5;
 for (const waves of ENCOUNTERS.boss[5]) {

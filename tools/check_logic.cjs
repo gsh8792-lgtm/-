@@ -174,7 +174,7 @@ if (sa !== sb) fail++;
     if (GACHA.pull(p, r, 1) !== null) errs.push('pull without tickets');
     if (ultChoices('kai', 0).length !== 3 || ultChoices('kai', 5).length !== 6) errs.push('variant unlocks');
     if (!(ultDefFor('kai', 'A', 1).power > ultDefFor('kai', 'A', 0).power)) errs.push('bt1 boost'); }
-  console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(19 chars × 6 ultimates cast, mechanics, gacha)');
+  console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(23 chars × 6 ultimates cast, mechanics, gacha)');
   if (errs.length) fail++;
 }
 // 그로기 역할 분담 규칙 (흔들림 · 끊기 합산 · 점감 · 반복 그로기 · 보스 기믹)
