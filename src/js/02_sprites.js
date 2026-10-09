@@ -697,6 +697,7 @@ const SPRITE_VARIANTS = {
 Object.assign(SPRITE_VARIANTS, {
   thornQueen: { base: 'ogreChief', filter: 'hue-rotate(75deg) saturate(1.3)', swap: {} },
   mistStag: { base: 'ogreChief', filter: 'grayscale(0.7) brightness(1.2) hue-rotate(180deg)', swap: {} },
+  stoneGolem: { base: 'ogreChief', filter: 'grayscale(0.92) brightness(0.8) contrast(1.25) sepia(0.15)', swap: {} },
   shadowKing: { base: 'orcCaptain', filter: 'hue-rotate(230deg) saturate(0.7) brightness(0.62) contrast(1.15)', swap: {} },
   swampTurtle: { base: 'ogreChief', filter: 'hue-rotate(40deg) saturate(0.7) brightness(0.9)', swap: {} },
   thornBud: { base: 'goblinHorn', filter: 'hue-rotate(250deg) saturate(1.4)', swap: {} },

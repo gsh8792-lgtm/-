@@ -21,7 +21,7 @@ const ENCOUNTERS_MINE = {
     3: [['orc_berserker', 'goblin_stalker', 'goblin'], ['cave_troll', 'goblin_shaman'], ['orc_shield', 'orc_hunter', 'goblin_trapper']],
     4: [['cave_troll', 'orc_berserker', 'goblin_stalker'], ['ogre', 'goblin_archer', 'goblin_archer'], ['orc_hunter', 'orc_hunter', 'orc_shield']],
   },
-  boss: { 5: [ [['shadow_king', 'goblin_stalker', 'goblin_archer']], [['swamp_turtle', 'cave_troll']], [['ogre_chief', 'orc_berserker']], [['mist_stag', 'goblin_stalker']], [['thorn_queen', 'orc_hunter']] ] },
+  boss: { 5: [ [['stone_golem', 'goblin_trapper', 'goblin_archer']], [['stone_golem', 'orc_shield']], [['shadow_king', 'goblin_stalker', 'goblin_archer']], [['swamp_turtle', 'cave_troll']], [['ogre_chief', 'orc_berserker']], [['mist_stag', 'goblin_stalker']], [['thorn_queen', 'orc_hunter']] ] },
 };
 const DUNGEON_SITES = {
   cave: { name: '고블린 굴', desc: '굴의 주인을 찾아 6층까지', enc: ENCOUNTERS, scale: { hp: 1, atk: 1 }, reward: 0, tint: null },

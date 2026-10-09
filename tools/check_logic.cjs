@@ -535,7 +535,7 @@ if (sa !== sb) fail++;
   if (got !== 'boss_shadow_king,first_clear,flawless,oath3') errs.push('got ' + got);
   if (p.tickets !== t0 + 2 + 2 + 2 || p.gold !== g0 + 150) errs.push(`reward t${p.tickets - t0} g${p.gold - g0}`);
   if (achCheck(p, true).length) errs.push('granted twice');
-  for (const k of ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle']) achAdd(p, 'boss_' + k);
+  for (const k of ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle', 'stone_golem']) achAdd(p, 'boss_' + k);
   if (!achCheck(p, true).some((a) => a.id === 'boss_all')) errs.push('boss_all');
   if (ACHIEVEMENTS.some((a) => !a.prog(p) || a.prog(p).length !== 2)) errs.push('prog');
   console.log('achievements:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(${ACHIEVEMENTS.length} achievements, boss/oath/flawless, rewards once)`);
@@ -545,7 +545,8 @@ if (sa !== sb) fail++;
 {
   const errs = [];
   for (const type of ['battle', 'elite', 'small']) for (const st of [1, 2, 3, 4]) { const t = ENCOUNTERS_MINE[type][st]; if (!t || !t.length) errs.push(`${type}${st} empty`); for (const w of t) for (const k of (type === 'small' ? w : w.flat())) if (!ENEMIES[k]) errs.push('unknown ' + k); }
-  if (ENCOUNTERS_MINE.boss[5].length !== 5) errs.push('boss pool');
+  if (ENCOUNTERS_MINE.boss[5].length !== 7 || !ENCOUNTERS_MINE.boss[5].some((w) => w[0][0] === 'stone_golem')) errs.push('boss pool');
+  { const sim = new BattleSim({ seed: 3, stage: 5, waves: [['stone_golem']], strategy: JSON.parse(JSON.stringify(AI_PRESETS)), autoMode: false, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: 5000, maxHp: 5000, upgrades: {}, ultDef: null })) }); for (let i = 0; i < 120; i++) sim.step(1 / 60); const b = sim.enemies[0]; b.skillCd = 0; sim.step(1 / 60); if (sim.zones.filter((z) => z.kind === 'impact' && z.src === b).length !== 3) errs.push('rockfall zones ' + sim.zones.length); }
   for (const w of ENCOUNTERS_MINE.boss[5]) if (!ENEMIES[w[0][0]].abilities.includes('boss')) errs.push('boss first ' + w[0][0]);
   const p = GACHA.ensure(EQ.newProfile()); if (DUNGEON_SITES.mine.unlock(p)) errs.push('mine open on fresh profile'); p.clears = { 0: 1 }; if (!DUNGEON_SITES.mine.unlock(p)) errs.push('mine not unlocked after clear');
   console.log('second dungeon:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(mine encounters valid, boss pool, unlock)');

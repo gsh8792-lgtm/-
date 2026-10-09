@@ -2,11 +2,11 @@
 // 저장: profile.ach = { done: { id: true }, c: { 카운터: n } }. 달성 검사는 마을·결과 화면·전투 끝·사냥터 정예 처치 때.
 const achCnt = (p, k) => ((p.ach && p.ach.c && p.ach.c[k]) || 0);
 function achAdd(p, k, n) { p.ach = p.ach || { done: {}, c: {} }; p.ach.c = p.ach.c || {}; p.ach.c[k] = (p.ach.c[k] || 0) + (n || 1); }
-const BOSS_KEYS = ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle', 'shadow_king'];
+const BOSS_KEYS = ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle', 'shadow_king', 'stone_golem'];
 const ACHIEVEMENTS = [
   { id: 'first_clear', name: '첫 원정 성공', desc: '보스를 처음 쓰러뜨린다', prog: (p) => [achCnt(p, 'boss'), 1], reward: { tickets: 2 } },
   ...BOSS_KEYS.map((k) => ({ id: 'boss_' + k, name: `${ENEMIES[k].name} 토벌`, desc: `${ENEMIES[k].name}을(를) 쓰러뜨린다`, prog: (p) => [achCnt(p, 'boss_' + k), 1], reward: { gold: 150 } })),
-  { id: 'boss_all', name: '굴의 주인들', desc: '보스 5종을 모두 쓰러뜨린다', prog: (p) => [BOSS_KEYS.filter((k) => achCnt(p, 'boss_' + k)).length, 5], reward: { tickets: 5 } },
+  { id: 'boss_all', name: '굴의 주인들', desc: `보스 ${BOSS_KEYS.length}종을 모두 쓰러뜨린다`, prog: (p) => [BOSS_KEYS.filter((k) => achCnt(p, 'boss_' + k)).length, BOSS_KEYS.length], reward: { tickets: 5 } },
   { id: 'mine_clear', name: '광산의 빛', desc: '버려진 광산의 보스를 쓰러뜨린다', prog: (p) => [achCnt(p, 'mine'), 1], reward: { tickets: 3 } },
   { id: 'flawless', name: '무사 귀환', desc: '아무도 쓰러지지 않고 보스를 쓰러뜨린다', prog: (p) => [achCnt(p, 'flawless'), 1], reward: { tickets: 2 } },
   { id: 'tier2', name: '숙련 원정대', desc: '난이도 T2를 연다', prog: (p) => [Math.min(p.unlockedTier || 0, 2), 2], reward: { stones: 10 } },

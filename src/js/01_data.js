@@ -246,6 +246,8 @@ const ENEMIES = {
   swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
   shadow_king:   { name: '고블린 그림자 왕', armor: 0.6, poise: 200, moveSpeed: 66, hp: 3500, atk: 35, fixedScale: true, atkInterval: 1.7, def: 0.15, size: 1.8, sprite: 'shadowKing', color: '#5a4a7a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 11, chargeTime: 2.6, chargeMult: 3.6, chargeR: 85, softEnrage: 130,
                    phases: [{ at: 0.5, name: '2페이즈: 그림자 군단', summon: ['goblin_stalker', 'goblin_stalker'] }] }, // 그림자 습격: 사라졌다가 가장 먼 영웅 곁에 나타난다
+  stone_golem:   { name: '광산 골렘', armor: 0.75, poise: 240, moveSpeed: 34, hp: 3300, atk: 38, fixedScale: true, atkInterval: 2.6, def: 0.2, size: 2.0, sprite: 'stoneGolem', color: '#8a8a8a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 13, chargeTime: 3, chargeMult: 3.6, chargeR: 95, softEnrage: 160,
+                   phases: [{ at: 0.5, name: '2페이즈: 갱도가 흔들린다', summon: ['goblin_stalker', 'goblin'] }] }, // 버려진 광산 전용: 낙석(여러 곳 동시 예고) · 갱도 붕괴(피난처)
 };
 
 // 보스 패턴: 일반 스킬 1개 + 전멸기 1개 (HP 60%·25%에서 한 번씩, 이후 WIPE_EVERY초마다)
@@ -259,6 +261,8 @@ const BOSS_KITS = {
                   wipe: { key: 'mist', name: '안개 폭풍', type: 'safe', cast: 6, mult: 0.9, safeR: 95, hint: '빛나는 원 안으로!' } },
   swamp_turtle: { skill: { key: 'spit', name: '독침', every: 10, first: 6, r: 90, dur: 7, dps: 0.45, target: 'random' },
                   wipe: { key: 'tide', name: '늪의 해일', type: 'shield', cast: 8, mult: 0.9, shield: 0.085, hint: '껍질을 깨라!' } },
+  stone_golem:  { skill: { key: 'rockfall', name: '낙석', every: 12, first: 6, tele: 1.9, r: 62, mult: 2.0, n: 2 },
+                  wipe: { key: 'collapse', name: '갱도 붕괴', type: 'safe', cast: 6, mult: 0.85, safeR: 90, hint: '무너지지 않는 자리로!' } },
   shadow_king:  { skill: { key: 'shadowstep', name: '그림자 습격', every: 11, first: 7, tele: 1.2, r: 80, mult: 3.2, target: 'far' },
                   wipe: { key: 'eclipse', name: '월식', type: 'shield', cast: 8, mult: 0.85, shield: 0.075, hint: '그림자 망토를 찢어라!' } },
 };

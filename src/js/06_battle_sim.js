@@ -152,6 +152,11 @@ class BattleSim {
     const hs = this.aliveHeroes(); if (!hs.length) return;
     const pick = s.target === 'far' ? hs.slice().sort((a, b) => this.dist(u, b) - this.dist(u, a))[0] : hs[Math.floor(this.rng() * hs.length)];
     if (s.key === 'rock' || s.key === 'gore') this.zones.push({ kind: 'impact', x: pick.x, y: pick.y, r: s.r, t: s.tele, total: s.tele, dmg: this._atkOf(u) * s.mult, src: u, name: s.name });
+    else if (s.key === 'rockfall') { // 낙석: 영웅 n명 발밑 + 무작위 한 곳에 동시에 예고 — 흩어져야 한다
+      const tg = hs.slice().sort(() => this.rng() - 0.5).slice(0, s.n || hs.length); // 무작위 n명 발밑
+      const spots = tg.map((h) => ({ x: h.x + (this.rng() - 0.5) * 30, y: h.y })).concat([{ x: pick.x + (this.rng() < 0.5 ? -1 : 1) * 110, y: clamp(pick.y + (this.rng() - 0.5) * 60, CONST.FIELD_Y0, CONST.FIELD_Y1) }]);
+      for (const sp of spots) this.zones.push({ kind: 'impact', x: sp.x, y: sp.y, r: s.r, t: s.tele, total: s.tele, dmg: this._atkOf(u) * s.mult, src: u, name: s.name });
+    }
     else if (s.key === 'shadowstep') { // 그림자 습격: 사라졌다가(무적) 대상 곁에 나타나며 베기 — 예고 범위 밖으로 빼낸다
       u.vanished = true; u.atkTimer = Math.max(u.atkTimer, s.tele + 0.4);
       const z = { kind: 'impact', x: pick.x, y: pick.y, r: s.r, t: s.tele, total: s.tele, dmg: this._atkOf(u) * s.mult, src: u, name: s.name };

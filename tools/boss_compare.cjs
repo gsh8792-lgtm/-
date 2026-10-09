@@ -13,14 +13,16 @@ const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].l
 for (const id of [...new Set(PARTIES.flat())]) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(1), p, { base: base.id, grade: 'UC' }); p.inv.push(it); p.equip[id][slot] = it.uid; }
 const st = JSON.parse(JSON.stringify(AI_PRESETS)); for (const k in st) { st[k].s2.auto = true; st[k].ult.auto = true; st[k].ult.cond = 'auto'; }
 const f = 1 + DUNGEON.FLOOR_SCALE * 5;
-for (const waves of ENCOUNTERS.boss[5]) {
+const POOL = ENCOUNTERS.boss[5].concat(ONLY && !ENCOUNTERS.boss[5].some((w) => w[0][0] === ONLY) ? [[[ONLY]]] : []); // 광산 전용 보스는 BOSS=로
+const MS = process.env.MINE ? { hp: 1.25, atk: 1.15 } : { hp: 1, atk: 1 }; // MINE=1: 광산 배율
+for (const waves of POOL) {
   if (ONLY && waves[0][0] !== ONLY) continue;
   for (const smart of [true, false]) {
     let win = 0, t = 0, dead = 0;
     for (let s = 0; s < N; s++) {
       const party = PARTIES[s % PARTIES.length];
       const heroes = party.map((id) => { const lo = EQ.heroLoadout(p, id); return { id, hp: Math.round(lo.maxHp * 0.85), maxHp: lo.maxHp, mods: lo.mods, skills: lo.skills, skillRank: lo.skillRank, upgrades: {}, ultDef: null }; });
-      const sim = new BattleSim({ seed: 500 + s, stage: 5, waves, heroes, strategy: st, autoMode: true, smartAuto: smart, partySize: 3, tier: { hp: f, atk: f } });
+      const sim = new BattleSim({ seed: 500 + s, stage: 5, waves, heroes, strategy: st, autoMode: true, smartAuto: smart, partySize: 3, tier: { hp: f * MS.hp, atk: f * MS.atk } });
       let guard = 0; while (!sim.outcome && guard++ < 60 * 400) sim.step(1 / 60);
       if (sim.outcome === 'win') win++; t += sim.time; dead += sim.heroes.filter((h) => !h.alive).length;
       if (process.env.VERBOSE) console.log('   ', party.join('+'), sim.outcome, Math.round(sim.time) + 's', 'boss', Math.round(sim.enemies[0].hp / sim.enemies[0].maxHp * 100) + '%', sim.heroes.map((h) => h.key + ':' + Math.round(h.hp)).join(' '));
