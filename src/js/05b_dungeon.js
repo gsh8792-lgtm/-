@@ -9,8 +9,9 @@ const DUNGEON = {
   ROOMS: [3, 5],           // 1~5층 방 수 (입구·계단 포함)
   BOSS_ROOMS: 5,           // 가장 깊은 곳 방 수
   NAMED: [0.08, 0.02],     // 복도 네임드 정예 확률: 8% + 층×2% (2층부터)
+  CORR_FIGHT: 0.5,         // 복도 사건이 적 무리일 확률 (나머지는 함정·보급)
   FLOOR_SCALE: 0.05,       // 층마다 적 HP·공격 +5% (원정 중 오르는 레벨을 상쇄 — 깊은 층은 컨트롤이 필요)
-  STAIRS_HEAL: 0.2,        // 계단을 내려가며 숨 돌리기: 최대 HP 20% 회복
+  STAIRS_HEAL: 0,          // 계단 회복 없음 (원정은 아프게)
   CORR_LEN: 2200,          // 복도 길이 (px) — 짧게
   ROOM_W: 1200,            // 방 화면 폭
   FIELD_W: 1440,           // 전투 영역 (고정, 화면 1.5배)
@@ -86,8 +87,8 @@ function genFloor(seed, floor) {
       const v = rng();
       r.type = v < 0.2 && floor >= 2 ? 'elite' : v < 0.32 ? 'camp' : v < 0.46 ? 'treasure' : 'combat';
     }
-    // 2층부터는 야영지가 최소 하나 (긴 원정에서 숨 돌릴 곳)
-    if (floor >= 2 && !rooms.some((r) => r.type === 'camp')) { const c = rooms.filter((r) => r.type === 'combat' || r.type === 'treasure'); const c2 = c.length ? c : rooms.filter((r) => r.type === 'elite'); if (c2.length) rng.pick(c2).type = 'camp'; }
+    // 3층에만 야영지 보장 (그 밖은 운) — 쉴 곳이 귀하다
+    if (floor === 3 && !rooms.some((r) => r.type === 'camp')) { const c = rooms.filter((r) => r.type === 'combat' || r.type === 'treasure'); const c2 = c.length ? c : rooms.filter((r) => r.type === 'elite'); if (c2.length) rng.pick(c2).type = 'camp'; }
   }
   // 방 안의 적
   const st = floorStage(floor);
@@ -97,20 +98,16 @@ function genFloor(seed, floor) {
     if (r.type === 'boss') r.fight = { type: 'boss', enc: rng.int(0, 99) };
     if (!r.fight) r.cleared = r.type === 'start';
   }
-  // 복도: 작은 적 무리 2번 (가끔 하나가 네임드 정예) + 함정·보급 최대 2개
+  // 복도: 사건 하나 (적 무리 50% · 네임드 정예 · 함정 · 보급)
   edges.forEach(([a, b], i) => {
     const L = DUNGEON.CORR_LEN, items = [];
     let uid = 0;
-    const fx = [Math.round(L * 0.3 + rng.int(-80, 80)), Math.round(L * 0.68 + rng.int(-80, 80))];
-    fx.forEach((x, k) => {
-      const named = k === 1 && floor >= 2 && rng() < DUNGEON.NAMED[0] + floor * DUNGEON.NAMED[1];
-      items.push(named
-        ? { id: ++uid, kind: 'elite', x, enc: rng.int(0, 99), affix: rng.pick(Object.keys(ELITE_AFFIXES)), named: rng.pick(NAMED_ELITES), done: false }
-        : { id: ++uid, kind: 'fight', x, small: true, enc: rng.int(0, 99), done: false });
-    });
-    const extras = rng.int(0, 2);
-    const spots = rng.shuffle([Math.round(L * 0.14), Math.round(L * 0.5), Math.round(L * 0.86)]).slice(0, extras);
-    for (const x of spots) items.push({ id: ++uid, kind: rng() < 0.45 ? 'trap' : 'supply', x, done: false });
+    // 복도 사건은 하나: 적 무리 · 네임드 정예 · 함정 · 보급 (적게, 굵게)
+    const x = Math.round(L * 0.5 + rng.int(-200, 200)), v = rng();
+    const pNamed = floor >= 2 ? DUNGEON.NAMED[0] + floor * DUNGEON.NAMED[1] : 0;
+    if (v < pNamed) items.push({ id: ++uid, kind: 'elite', x, enc: rng.int(0, 99), affix: rng.pick(Object.keys(ELITE_AFFIXES)), named: rng.pick(NAMED_ELITES), done: false });
+    else if (v < pNamed + DUNGEON.CORR_FIGHT) items.push({ id: ++uid, kind: 'fight', x, small: true, enc: rng.int(0, 99), done: false });
+    else items.push({ id: ++uid, kind: rng() < 0.55 ? 'trap' : 'supply', x, done: false });
     items.sort((p, q2) => p.x - q2.x);
     fl.corridors.push({ id: i, a, b, len: L, items, walked: false });
   });

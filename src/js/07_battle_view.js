@@ -21,7 +21,7 @@ const BattleScene = {
     this.sim = new BattleSim({
       seed: hashSeed(run.seed, 'battle', node.stage, node.row, node.type),
       stage: node.stage, waves, heroes,
-      relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, smartAuto: !!(Game.debug && Game.debug.smartAuto), partySize: run.party.length,
+      relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, fullAuto: !!node.small, smartAuto: !!(Game.debug && Game.debug.smartAuto), partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
       tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1; return { hp: ti.hp * f, atk: ti.atk * f }; })(),
@@ -54,7 +54,7 @@ const BattleScene = {
     this.breakHintPending = !Game.settings.seenHints.break;
   },
 
-  exit() { this.drag = null; this.cmdDrag = null; this.cmdPress = null; },
+  exit() { this.drag = null; this.cmdDrag = null; this.cmdPress = null; this.tacPause = false; if (this.onKey) window.removeEventListener('keydown', this.onKey); },
 
   // ------------------------------------------------------------ 카메라 (전장이 화면보다 넓을 때)
   camTarget() {
@@ -76,6 +76,11 @@ const BattleScene = {
     top.appendChild(this.stageLabel);
     this.pauseBtn = btn('<span class="pz">❚❚</span> 일시정지', 'b-pause', () => this.openPause(), { id: 'btn-pause', sfx: 'pause' });
     top.appendChild(this.pauseBtn);
+    // 전술 정지: 시간을 멈춘 채 스킬·이동·대상 명령을 내린다 (던전 세틀러즈·발더스 게이트처럼)
+    this.tacBtn = btn('⏸ 전술 정지', 'b-pause b-tac', () => this.toggleTac(), { id: 'btn-tac', sfx: 'pause' });
+    top.appendChild(this.tacBtn);
+    this.onKey = (ev) => { if (ev.code === 'Space' && Game.sceneName === 'battle' && !Game.modalOpen) { ev.preventDefault(); this.toggleTac(); } };
+    window.addEventListener('keydown', this.onKey);
     const right = el('div', 'b-right');
     this.potionBtn = btn(`🧪 ${run.potions}`, 'b-potion small', () => this.startPotion(), { id: 'btn-bpotion' });
     right.appendChild(this.potionBtn);
@@ -156,6 +161,11 @@ const BattleScene = {
     if (!silent) Game.toast(on ? '자동: 전략대로 스킬을 써요' : '수동: 스킬을 직접 써요', 1000);
   },
 
+  toggleTac(on) {
+    this.tacPause = on === undefined ? !this.tacPause : on;
+    this.tacBtn.innerHTML = this.tacPause ? '▶ 재개' : '⏸ 전술 정지';
+    this.tacBtn.classList.toggle('on', this.tacPause);
+  },
   setOrder(k, silent) {
     this.sim.order = k;
     this.sim.clearCommands();
@@ -408,7 +418,7 @@ const BattleScene = {
     this.t += dtReal;
     if (this.hitstop > 0) { this.hitstop -= dtReal; this.updateFx(dtReal * 0.2); this.updateHud(); return; }
     let scale = this.speed;
-    if (this.paused || Game.modalOpen || this.potionPick) scale = 0;
+    if (this.paused || Game.modalOpen || this.potionPick || this.tacPause) scale = 0;
     if (this.drag || this.cmdDrag) scale *= CONST.DRAG_SLOWMO;
     // 위험 순간: 아군이 차지 범위 안에 있으면 슬로모션
     this.danger = null;
@@ -835,6 +845,13 @@ const BattleScene = {
     ctx.restore();
     if (this.potionPick) { ctx.fillStyle = 'rgba(20,40,30,0.25)'; ctx.fillRect(0, 0, 960, 540); }
     this.drawBanner(ctx);
+    if (this.tacPause) { // 전술 정지 표시
+      ctx.fillStyle = 'rgba(20,40,70,0.22)'; ctx.fillRect(0, 0, 960, 540);
+      ctx.strokeStyle = 'rgba(140,200,255,0.8)'; ctx.lineWidth = 4; ctx.strokeRect(2, 2, 956, 536);
+      ctx.textAlign = 'center'; ctx.font = '900 18px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,0.7)';
+      const tx = '전술 정지 — 스킬·이동·집중 공격을 명령하고 ▶ 재개';
+      ctx.strokeText(tx, 400, 172); ctx.fillStyle = '#cfe8ff'; ctx.fillText(tx, 400, 172);
+    }
     this.drawCutin(ctx);
   },
 

@@ -24,7 +24,9 @@ const CONST = {
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
   // 짓누름: 보스 평타가 같은 대상에 쌓이는 압박 (탱커가 아니면 오래 못 버팀)
-  TAUNT_LINGER: 3,                    // 도발이 끝난 뒤에도 탱커를 노리는 시간
+  TAUNT_LINGER: 1.5,                  // 도발이 끝난 뒤에도 탱커를 노리는 시간
+  TAUNT_SCALE: 0.67,                  // 도발 지속 배율 (3초 → 2초) — 탱커가 영원히 붙잡지 못한다
+  TELEGRAPH_PCT: { big: 0.5, small: 0.3 }, // 예고 공격(붉은 원)의 최소 피해 = 맞은 영웅 최대 HP의 이만큼 (큰 적·보스 / 작은 적)
   BOSS_LEAP_AFTER: 4,                 // 보스가 대상을 이 시간(초) 넘게 못 따라잡으면 덮친다
   CRUSH_STEP: 0.4, CRUSH_MAX: 5, CRUSH_DUR: 8,
   CRUSH_RES: { tank: 0.85, sturdy: 0.6 },     // 스택 효과 감소 (직업 탱커 / 든든함 특성)
@@ -215,6 +217,8 @@ const ENEMIES = {
   // ---- 역할을 요구하는 일반 몬스터
   // 궁수: 멀리서 후열을 쏜다 (근딜이 파고들거나 탱커가 도발) / 주술사: 동료 치유 영창 (끊으면 막힘)
   // 방패 오크: 정면 피해 -65% (등 뒤를 노리거나 범위 마법) / 폭탄 고블린: 다가와 짧게 영창 후 자폭 (피하거나 끊기)
+  goblin_stalker: { name: '고블린 암살자', moveSpeed: 120, hp: 115, atk: 18, atkInterval: 1.0, def: 0, size: 1, sprite: 'goblinStalker', color: '#6a4a8a', gold: 8, abilities: [], ignoreTaunt: true, hunter: 'weakest' },
+  orc_hunter:    { name: '오크 사냥꾼', moveSpeed: 62, hp: 180, atk: 24, atkInterval: 2.0, def: 0.05, size: 1.1, reach: 230, sprite: 'orcHunter', color: '#8a6a3a', gold: 12, abilities: [], ignoreTaunt: true, hunter: 'support' },
   goblin_archer: { name: '고블린 궁수', moveSpeed: 74, hp: 80, atk: 15, atkInterval: 1.7, def: 0, size: 1, reach: 200, sprite: 'goblinArcher', color: '#9ab050', gold: 5, abilities: [] },
   goblin_shaman: { name: '고블린 주술사', moveSpeed: 64, hp: 120, atk: 10, atkInterval: 1.6, def: 0, size: 1, reach: 170, sprite: 'goblinShaman', color: '#9a6ad0', gold: 8, abilities: ['caller'], callEvery: 8, callCast: 2.0, callHeal: 0.3 },
   orc_shield:    { name: '방패 오크', armor: 0.2, poise: 80, moveSpeed: 58, hp: 300, atk: 22, atkInterval: 1.9, def: 0.15, size: 1.25, sprite: 'orcShield', color: '#7a8a9a', gold: 12, abilities: [], frontGuard: 0.65 },
@@ -254,24 +258,26 @@ const ELITE_AFFIXES = {
 };
 // 조우 테이블: 스테이지 → 웨이브 배열 목록 (하나를 시드로 선택)
 const ENCOUNTERS = {
+  // 방 전투: 전열(막는 놈) + 후열(쏘는 놈) + 지원(치유·호출) 구성. 2층부터 도발을 무시하는 사냥꾼(암살자·오크 사냥꾼)이 섞인다.
+  // 3층부터 웨이브 3개. "먼저 잡을 놈"이 분명하게.
   battle: {
-    1: [ [['goblin', 'goblin', 'goblin'], ['goblin', 'orc', 'goblin']], [['goblin', 'goblin_caller', 'goblin'], ['orc', 'goblin', 'goblin']], [['goblin', 'goblin_archer', 'goblin'], ['goblin', 'goblin', 'goblin_archer']], [['goblin_bomber', 'goblin', 'goblin'], ['goblin', 'goblin_shaman', 'goblin']] ],
-    2: [ [['orc', 'goblin', 'goblin_caller'], ['orc', 'orc', 'goblin']], [['orc_shield', 'goblin_archer', 'goblin_archer'], ['orc', 'goblin', 'goblin']], [['goblin', 'goblin_shaman', 'orc'], ['goblin_bomber', 'goblin_bomber', 'goblin']], [['goblin', 'goblin', 'goblin', 'goblin'], ['ogre', 'goblin']] ],
-    3: [ [['ogre', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']], [['orc_shield', 'orc', 'goblin_shaman'], ['goblin_bomber', 'goblin_bomber', 'goblin_archer']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['ogre', 'goblin_shaman']], [['goblin', 'goblin', 'goblin_caller', 'goblin'], ['ogre', 'orc']] ],
-    4: [ [['ogre', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin_caller']], [['orc_shield', 'goblin_shaman', 'goblin_archer', 'goblin_archer'], ['ogre', 'orc_shield']], [['goblin_bomber', 'goblin_bomber', 'goblin_bomber'], ['ogre', 'goblin_shaman', 'goblin_archer']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']] ],
+    1: [ [['goblin', 'goblin', 'goblin_archer'], ['orc', 'goblin_shaman', 'goblin']], [['goblin', 'goblin_bomber', 'goblin'], ['orc_shield', 'goblin_archer', 'goblin_archer']], [['goblin', 'goblin', 'goblin_caller'], ['goblin_stalker', 'orc', 'goblin']], [['goblin', 'goblin', 'goblin'], ['orc', 'goblin_archer', 'goblin_shaman']] ],
+    2: [ [['orc_shield', 'goblin_archer', 'goblin_shaman'], ['goblin_stalker', 'goblin_stalker', 'goblin']], [['orc', 'goblin', 'goblin_caller'], ['orc_hunter', 'orc_shield', 'goblin_shaman']], [['goblin_bomber', 'goblin_bomber', 'goblin'], ['ogre', 'goblin_archer', 'goblin_stalker']], [['goblin', 'goblin', 'goblin_stalker'], ['orc', 'orc_hunter', 'goblin_shaman']] ],
+    3: [ [['goblin', 'goblin', 'goblin_archer'], ['orc_shield', 'goblin_shaman', 'goblin_stalker'], ['ogre', 'orc_hunter']], [['goblin_bomber', 'goblin_bomber', 'goblin'], ['orc', 'orc_hunter', 'goblin_caller'], ['orc_shield', 'goblin_stalker', 'goblin_stalker']], [['orc', 'goblin', 'goblin_archer'], ['goblin_stalker', 'goblin_stalker', 'goblin_shaman'], ['ogre', 'orc_shield']], [['orc_shield', 'goblin_archer', 'goblin_archer'], ['orc', 'goblin_bomber', 'goblin_bomber'], ['orc_hunter', 'orc_hunter', 'goblin_shaman']] ],
+    4: [ [['orc', 'orc', 'goblin_archer'], ['orc_shield', 'orc_hunter', 'goblin_shaman'], ['ogre', 'goblin_stalker', 'goblin_stalker']], [['goblin_bomber', 'goblin_bomber', 'goblin_bomber'], ['ogre', 'goblin_shaman', 'orc_hunter'], ['orc_shield', 'orc_shield', 'goblin_stalker']], [['orc_shield', 'goblin_archer', 'goblin_archer', 'goblin_caller'], ['goblin_stalker', 'goblin_stalker', 'orc'], ['ogre', 'orc_hunter', 'goblin_shaman']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc_hunter', 'goblin_caller'], ['orc_shield', 'goblin_stalker', 'goblin_shaman']] ],
   },
   elite: {
     1: [ [['goblin', 'goblin'], ['orc', 'goblin_shaman', 'goblin']] ],
-    2: [ [['goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['goblin_archer', 'goblin_archer'], ['orc_captain', 'goblin_shaman']] ],
-    3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['orc_shield', 'goblin_bomber', 'goblin_bomber'], ['orc_captain', 'goblin_shaman', 'goblin_archer']] ],
-    4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['orc_captain', 'ogre', 'goblin_shaman']] ],
+    2: [ [['goblin', 'goblin_stalker'], ['orc_captain', 'goblin', 'goblin']], [['goblin_archer', 'goblin_archer'], ['orc_captain', 'goblin_shaman', 'orc_hunter']] ],
+    3: [ [['goblin', 'goblin_caller', 'goblin_stalker'], ['orc_captain', 'goblin', 'goblin_shaman']], [['orc_shield', 'goblin_bomber', 'goblin_bomber'], ['orc_captain', 'orc_hunter', 'goblin_archer']] ],
+    4: [ [['orc', 'goblin_stalker', 'goblin_stalker'], ['orc_captain', 'goblin_shaman', 'goblin_caller']], [['orc_shield', 'orc_hunter', 'goblin_archer'], ['orc_captain', 'ogre', 'goblin_shaman']] ],
   },
-  // 복도의 작은 적 무리 (웨이브 1개, 금방 끝나는 전투)
+  // 복도의 작은 적 무리 (웨이브 1개)
   small: {
-    1: [['goblin', 'goblin'], ['goblin', 'goblin_archer'], ['goblin_bomber', 'goblin'], ['goblin', 'goblin', 'goblin']],
-    2: [['goblin', 'goblin', 'goblin_archer'], ['orc', 'goblin'], ['goblin_shaman', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber']],
-    3: [['orc', 'goblin_archer', 'goblin'], ['orc_shield', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin'], ['orc', 'goblin_shaman']],
-    4: [['orc', 'orc', 'goblin'], ['orc_shield', 'goblin_archer', 'goblin_archer'], ['ogre', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin_shaman']],
+    1: [['goblin', 'goblin', 'goblin'], ['goblin', 'goblin_archer', 'goblin'], ['goblin_bomber', 'goblin', 'goblin'], ['goblin_stalker', 'goblin']],
+    2: [['goblin', 'goblin', 'goblin_archer', 'goblin_shaman'], ['orc', 'goblin', 'goblin_stalker'], ['orc_hunter', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin']],
+    3: [['orc', 'goblin_archer', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin_stalker'], ['orc', 'goblin_shaman', 'goblin_archer']],
+    4: [['orc', 'orc', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin_archer'], ['ogre', 'goblin_stalker'], ['goblin_bomber', 'goblin_bomber', 'orc_hunter']],
   },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
   boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
@@ -364,7 +370,7 @@ const HINTS = {
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방으로 갈 수 있어요. 방에 무엇이 있는지는 들어가 봐야 알아요.',
   dungeon: '던전은 방과 복도로 이어져 있어요. 오른쪽 위 지도에서 이웃한 방을 탭하면 그쪽 복도로 걸어가요. 층마다 계단을 찾아 내려가고, 가장 깊은 곳에서 보스 방을 열어 쓰러뜨리면 원정 성공이에요. 자동 모드면 알아서 걷고, 수동이면 ▶을 누르고 있어야 걸어요.',
   explore: '파티가 앞으로 걸어가요. 적 무리를 만나면 그 자리에서 전투가 시작되고, 갈림길에서는 길을 골라요. 멈춤 버튼으로 언제든 멈출 수 있어요.',
-  battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌어다 놓으면 그 자리로 이동하거나, 놓은 곳의 적을 공격해요.',
+  battle: '⏸ 전술 정지로 시간을 멈춘 채 명령할 수 있어요. 큰 전투에서 자동은 평타·① 스킬만 쓰니 ②·필살기·회피는 직접! 스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌어다 놓으면 그 자리로 이동하거나, 놓은 곳의 적을 공격해요.',
   break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 힘을 모아야 해요. 같은 직업은 한 번만 인정돼요.`,
   crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 끌어가거나, 장비로 레벨을 올려 버텨 보세요.',
   charge: '붉은 원 안에 강한 공격이 떨어져요. 탱커의 기절로 끊거나 원 밖으로 피하세요.',

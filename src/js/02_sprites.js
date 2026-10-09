@@ -673,6 +673,8 @@ Object.assign(SPRITE_VARIANTS, {
   goblinShaman: { base: 'goblinHorn', filter: 'hue-rotate(200deg) saturate(1.2)', swap: {} },
   orcShield: { base: 'orc', filter: 'grayscale(0.6) brightness(1.1) hue-rotate(160deg)', swap: {} },
   goblinBomber: { base: 'goblin', filter: 'hue-rotate(-70deg) saturate(1.5)', swap: {} },
+  goblinStalker: { base: 'goblin', filter: 'hue-rotate(220deg) saturate(1.6) brightness(0.8)', swap: {} }, // 도발 무시 · 가장 약한 아군을 노린다
+  orcHunter: { base: 'orc', filter: 'hue-rotate(-50deg) saturate(1.3) brightness(1.05)', swap: {} },          // 도발 무시 · 서포터를 노린다 (원거리)
   merchant: { base: 'guide', filter: 'hue-rotate(150deg) saturate(1.4)', swap: {} }, // 마을 잡화점 상인 (임시: 길잡이 색 바꿈)
 });
 for (const name in SPRITE_VARIANTS) {

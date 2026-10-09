@@ -34,6 +34,7 @@ class BattleSim {
     this.torchDark = !!opts.torchDark;
     this.strategy = opts.strategy || {};
     this.autoMode = opts.autoMode !== undefined ? opts.autoMode : true;
+    this.fullAuto = opts.fullAuto !== undefined ? !!opts.fullAuto : true; // 잡몹 전투: ②·필살기·회피도 자동
     this.smartAuto = !!opts.smartAuto; // 측정용: 잘 컨트롤하는 플레이어 흉내 (즉시 회피 + 모두 꽃봉오리 집중)
     this.order = 'hold';          // 작전: charge | hold | retreat
     this.focus = null;            // 집중 공격 대상 (적 유닛)
@@ -203,7 +204,7 @@ class BattleSim {
       const z = this.zones[i];
       z.t -= dt;
       if (z.kind === 'impact' && z.t <= 0) {
-        for (const h of this.aliveHeroes()) if (this.distXY(h, z.x, z.y) <= z.r) this._damage(z.src, h, z.dmg, { noCrit: true, charge: true });
+        for (const h of this.aliveHeroes()) if (this.distXY(h, z.x, z.y) <= z.r) this._damage(z.src, h, Math.max(z.dmg, h.maxHp * CONST.TELEGRAPH_PCT.big * 0.9), { noCrit: true, charge: true });
         this.events.push({ type: 'zoneImpact', x: z.x, y: z.y, r: z.r });
         this.zones.splice(i, 1); continue;
       }
@@ -298,6 +299,7 @@ class BattleSim {
       if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC;
         if (this.focus && this.focus.alive) u.target = this.focus;
+        else if (this.smartAuto && enemies.some((e) => e.def.hunter)) u.target = this.nearest(u, enemies.filter((e) => e.def.hunter)); // 잘하는 플레이: 후열 사냥꾼부터
         else if (!enemies.length) u.target = null;
         else if (u.role === 'ranged') { let b = enemies[0]; for (const e of enemies) if (this.hpPct(e) < this.hpPct(b)) b = e; u.target = b; }
         else u.target = this.nearest(u, enemies);
@@ -319,7 +321,7 @@ class BattleSim {
         if (u.target && !u.target.alive) u.target = null;
         return;
       }
-      if (this.autoMode && !intro && (this.zones.length || this.smartAuto) && this._zoneMove(u)) return;
+      if (this.autoMode && !intro && (this.fullAuto || this.smartAuto) && (this.zones.length || this.smartAuto) && this._zoneMove(u)) return; // 큰 전투에서 자동은 피하지 않는다 (회피는 손으로)
       const tank = this.tankHero();
       const anchor = tank && tank !== u ? tank : this.frontHero();
       if (intro || !u.target) { // 입장/대기: 기본 대형
@@ -360,8 +362,13 @@ class BattleSim {
       else if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC * 2;
         const back = u.def.huntsBackline ? heroes.filter((h) => !h.melee) : [];
+        if (u.def.hunter) { // 사냥꾼: 탱커를 무시하고 노리는 대상이 정해져 있다
+          const pool = heroes.filter((h) => h.role !== 'tank');
+          const pick = u.def.hunter === 'support' ? (pool.find((h) => h.role === 'support') || pool.find((h) => !h.melee)) : pool.reduce((a, h) => (!a || h.hp < a.hp ? h : a), null);
+          if (pick) { u.target = pick; u.retarget = 4; }
+        }
         const tankAggro = u.def.abilities.includes('boss') && heroes.find((h) => h.role === 'tank' && this.dist(u, h) < 320); // 보스는 가까운 탱커를 먼저 노린다 (위협)
-        u.target = back.length ? this.nearest(u, back) : tankAggro ? tankAggro : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
+        if (!u.def.hunter || !u.target || !u.target.alive) u.target = back.length ? this.nearest(u, back) : tankAggro ? tankAggro : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
       }
       if (intro) { u.tx = Math.min(u.x, this.enemySpawnX - (u.uid % 3) * 30); u.ty = u.y; return; }
       const t = u.target;
@@ -582,11 +589,12 @@ class BattleSim {
     this.events.push({ type: 'chargeImpact', unit: u, cx: c.cx, cy: c.cy, r: c.r, blocked: !!tank, hit: inZone.length });
     u.anim.lunge = 0.35; u.anim.lungeX = (c.cx - u.x) * 0.5; u.anim.lungeY = (c.cy - u.y) * 0.5;
     for (const h of inZone) {
-      let mult = c.mult;
-      if (tank && h !== tank) mult *= 0.4;
-      if (h === tank) mult *= 0.6;
-      if (h.def.traits.includes('cautious')) mult *= 0.5;
-      this._damage(u, h, this._atkOf(u) * mult, { charge: true, noCrit: true });
+      let k = 1;
+      if (tank && h !== tank) k *= 0.4;
+      if (h === tank) k *= 0.6;
+      if (h.def.traits.includes('cautious')) k *= 0.5;
+      const floor = h.maxHp * (u.size > 1 || u.def.abilities.includes('boss') ? CONST.TELEGRAPH_PCT.big : CONST.TELEGRAPH_PCT.small); // 예고 공격은 맞으면 크게 아프다
+      this._damage(u, h, Math.max(this._atkOf(u) * c.mult, floor) * k, { charge: true, noCrit: true });
     }
     if (u.def.selfDestruct && u.alive) { this.events.push({ type: 'explode', unit: u }); this._damage(null, u, 1e7, { noCrit: true }); } // 자폭
   }
@@ -812,6 +820,7 @@ class BattleSim {
     let dur = eff.dur;
     const sm = (src && src.mods) || {};
     if ((eff.status === 'stun' || eff.status === 'taunt') && sm.ccdur) dur *= 1 + sm.ccdur;
+    if (eff.status === 'taunt') { if (tgt.def && tgt.def.ignoreTaunt) return; dur *= CONST.TAUNT_SCALE; }
     if (eff.status === 'burn') { if (this.relics.has('ember')) dur += 2; if (src && src.def.traits && src.def.traits.includes('cautious')) dur += 1; }
     const s = { t: dur, src };
     if (eff.dps) s.dps = this._atkOf(src) * eff.dps * (1 + (sm.dotdmg || 0));
@@ -1126,7 +1135,8 @@ class BattleSim {
     }
   }
 
-  slotAuto(slot, c) { return !!(c && c.auto); } // 전략에서 스킬별로 켠 것만
+  // 전략에서 스킬별로 켠 것만. 큰 전투(방·정예·보스)에서 자동은 ① 스킬만 — ②·필살기는 손으로 (복도 잡몹 전투는 완전 자동)
+  slotAuto(slot, c) { return !!(c && c.auto) && (slot === 's1' || this.fullAuto || this.smartAuto); }
   // 전략 ON: 스킬별 설정(자동 여부 · 조건 · 대상)대로 시전
   _heroAI() {
     for (const h of this.heroes) {

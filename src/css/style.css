@@ -140,6 +140,8 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .b-stage { font-size: 16px; font-weight: 800; min-width: 220px; }
 .b-pause { min-height: 64px; font-size: 16px; background: transparent; border-color: transparent; box-shadow: none; }
 .b-pause .pz { letter-spacing: -2px; margin-right: 4px; }
+.b-tac { background: rgba(40,70,110,.55); border-color: rgba(140,200,255,.5); border-radius: 12px; }
+.b-tac.on { background: linear-gradient(#8ac8ff, #4a8ad8); color: #10203a; }
 .b-right { display: flex; gap: 6px; align-items: center; min-width: 220px; justify-content: flex-end; }
 .b-right .btn.small { min-height: 64px; min-width: 64px; padding: 2px 10px; }
 .b-speed.on { border-color: var(--gold); color: var(--gold); }

@@ -106,7 +106,7 @@ const DungeonScene = {
     if (r.type === 'combat' || r.type === 'elite') text = '조용해졌다. 지도에서 다음 방을 고르자.';
     if (r.type === 'camp') { text = r.used ? '꺼져 가는 모닥불.' : '안전한 야영지. 쉬어 갈 수 있다.'; if (!r.used) acts.push(['야영하기', () => { r.used = true; this.hideAct(); Game.go('rest', { node: { stage: floorStage(fl.floor), row: r.id, type: 'rest' } }); }]); }
     if (r.type === 'treasure') { text = r.used ? '빈 상자.' : '보물 상자가 놓여 있다.'; if (!r.used) acts.push(['상자 열기', () => this.openTreasure(r)]); }
-    if (r.type === 'stairs') { text = '아래로 이어지는 계단.'; acts.push([fl.floor + 1 === DUNGEON.BOSS_FLOOR ? '가장 깊은 곳으로' : `${fl.floor + 1}층으로 내려가기`, () => this.descend()]); }
+    if (r.type === 'stairs') { text = '아래로 이어지는 계단. 위로 돌아가는 길도 보인다.'; acts.push([fl.floor + 1 === DUNGEON.BOSS_FLOOR ? '가장 깊은 곳으로' : `${fl.floor + 1}층으로 내려가기`, () => this.descend()]); acts.push(['마을로 후퇴', () => this.retreat()]); }
     if (r.type === 'lever') { text = r.used ? '내려간 레버.' : '녹슨 레버가 있다.'; if (!r.used) acts.push(['레버 내리기', () => { r.used = true; fl.have++; Sfx.play('door'); Game.toast(`레버를 내렸다 (${fl.have}/${BOSS_GIMMICKS.lever.need})${bossOpen(fl) ? ' — 어딘가에서 문이 열리는 소리가 난다' : ''}`, 2200); this.buildHud(); this.showRoomActions(r); }]); }
     if (r.type === 'seal') { text = r.used ? '부서진 봉인석.' : '보랏빛 봉인석이 빛나고 있다.'; if (!r.used) acts.push(['봉인석 부수기', () => { r.used = true; fl.have++; Sfx.play('boom'); Game.toast(`봉인석을 부쉈다 (${fl.have}/${BOSS_GIMMICKS.seal.need})${bossOpen(fl) ? ' — 봉인이 풀렸다' : ''}`, 2200); this.buildHud(); this.showRoomActions(r); }]); }
     if (r.type === 'key') text = '열쇠를 챙겼다.';
@@ -138,6 +138,17 @@ const DungeonScene = {
     Game.toast(got.join(' · '), 2600);
     this.buildHud(); this.showRoomActions(r);
   },
+  // 후퇴: 지금까지 얻은 것의 일부를 들고 마을로 (골드 절반 · 경험치 75%, 장비는 그대로)
+  retreat() {
+    const box = el('div', 'confirm-box');
+    box.appendChild(el('div', 'modal-title', '마을로 후퇴할까요?'));
+    box.appendChild(el('p', '', `원정을 여기서 끝낸다. 골드 ${Game.run.gold} 중 절반, 경험치 75%를 가져간다.<br>장비·강화석은 그대로 남는다.`));
+    const row = el('div', 'btn-row');
+    row.appendChild(btn('계속 탐험', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'retreat-no' }));
+    row.appendChild(btn('후퇴', 'primary', () => { Game.closeModal(); Game.run.result = 'retreat'; Sfx.play('door'); Game.go('result'); }, { id: 'retreat-yes' }));
+    box.appendChild(row);
+    Game.modal(box, { dim: true, closeOnBg: true });
+  },
   descend() {
     const run = Game.run, fl = run.dungeon;
     const next = fl.floor + 1;
@@ -148,7 +159,7 @@ const DungeonScene = {
     Sfx.play('door');
     Game.go('dungeon');
     if (next === DUNGEON.BOSS_FLOOR) setTimeout(() => Game.toast(BOSS_GIMMICKS[run.dungeon.gimmick].text, 3600), 300);
-    else Game.toast(`${next}층 — 계단에서 숨을 돌렸다 (HP +${DUNGEON.STAIRS_HEAL * 100}%)`, 1600);
+    else Game.toast(DUNGEON.STAIRS_HEAL ? `${next}층 — 계단에서 숨을 돌렸다 (HP +${DUNGEON.STAIRS_HEAL * 100}%)` : `${next}층`, 1400);
   },
   startRoomFight(r) {
     const run = Game.run, fl = run.dungeon;

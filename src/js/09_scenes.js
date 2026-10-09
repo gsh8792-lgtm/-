@@ -130,7 +130,7 @@ const RewardScene = {
       const L = run.lastLoot;
       box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
       if (L.exp && L.exp.length) { // 경험치는 한 줄, 새로 배운 필살기는 따로 한 줄
-        box.appendChild(el('div', 'reward-exp', `경험치 +${L.exp[0].exp} · ` + L.exp.map((r) => `${HEROES[r.id].name}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}`).join(' · ')));
+        box.appendChild(el('div', 'reward-exp', `경험치 +${L.exp[0].exp} <small>(원정이 끝나면 정산)</small>`));
         const learned = L.exp.filter((r) => r.learned.length);
         if (learned.length) box.appendChild(el('div', 'reward-exp', learned.map((r) => `<b class="learn">${HEROES[r.id].name} 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>`).join(' · ')));
       }
@@ -569,8 +569,8 @@ const ResultScene = {
     const sec = Math.round((performance.now() - run.stats.startTime) / 1000);
     const ui = Game.ui;
     const box = el('div', 'result-box ' + (win ? 'win' : 'lose'));
-    box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
-    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `${Math.max(1, run.pos.stage)}번째 방에서 원정이 끝났다.`));
+    box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'retreat' ? '무사 귀환' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
+    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : run.result === 'retreat' ? `${Math.max(1, run.pos.stage)}층에서 계단을 거슬러 마을로 돌아왔다. (골드 절반 · 경험치 75%)` : `${Math.max(1, run.pos.stage)}층에서 원정이 끝났다. (골드 25% · 경험치 50%)`));
     const settle = settleRun(run);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `
@@ -592,6 +592,7 @@ const ResultScene = {
     box.appendChild(heroes);
     const lootLine = run.loot.length ? `획득 장비 ${lootHtml(run.loot)}` : '획득 장비 없음';
     box.appendChild(el('div', 'result-loot', `${lootLine}<br>💎 강화석 +${run.stonesGot} · 마을로 가져간 골드 ● ${settle ? settle.gold : run.gold}${settle && settle.unlocked ? `<br><b class="ok">새 난이도 해금: ${settle.unlocked.name} (T${settle.unlocked.tier})</b>` : ''}`));
+    if (settle && settle.exp.length) box.appendChild(el('div', 'reward-exp', '경험치 정산 · ' + settle.exp.map((r) => `${HEROES[r.id].name} +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}`).join(' · ') + settle.exp.filter((r) => r.learned.length).map((r) => ` · <b class="learn">${HEROES[r.id].name} 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>`).join('')));
     box.appendChild(el('div', 'muted', `시드 ${run.seed} · 난이도 ${EQ.tierInfo(run.tier).name}`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('타이틀', 'ghost', () => Game.go('title'), { id: 'res-title' }));
@@ -620,6 +621,7 @@ function openStrategyEditor(run, onClose) {
   const render = () => {
     box.innerHTML = '';
     box.appendChild(el('div', 'modal-title', '자동 전략'));
+    box.appendChild(el('div', 'muted', '방·정예·보스 전투에서 자동은 평타와 ① 스킬만 쓴다. ②·필살기·회피는 직접 (전술 정지를 쓰면 편하다). 복도 잡몹 전투는 아래 설정대로 전부 자동.'));
     const tabs = el('div', 'strat-tabs');
     for (const id of partyIds(run)) {
       const t = el('button', 'stab' + (id === cur ? ' on' : '') + (run.heroes[id].dead ? ' dead' : ''));

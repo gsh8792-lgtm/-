@@ -4,6 +4,7 @@
 import { chromium } from 'playwright';
 import path from 'path';
 const RUNS = +(process.argv[2] || 6), MULT = +(process.argv[3] || 16), SMART = process.argv[4] === 'smart'; // smart: 잘 컨트롤하는 플레이어 흉내
+const LV = +(process.env.LV || 5), GEAR = process.env.GEAR || 'uc'; // 준비된 파티: 캐릭터 레벨 LV + 상인 UC 무기·갑옷 (GEAR=none이면 맨몸)
 const PARTIES = [['tobi', 'danbi', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -27,9 +28,14 @@ await p.evaluate(() => {
 const out = [];
 for (let i = 0; i < RUNS; i++) {
   const party = PARTIES[i % PARTIES.length], seed = 1000 + i * 37;
-  await p.evaluate(([s, M, SM]) => { const G = window.GAME.Game; window.__log = { battles: [], corr: {}, rooms: {} }; const P = G.profile; if (P && P.chars) for (const id in P.chars) { P.chars[id].lv = 1; P.chars[id].exp = 0; } G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1, explore: 1, dungeon: 1 }; G.debug.simMult = M; G.debug.smartAuto = SM; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, [seed, MULT, SMART]);
+  await p.evaluate(([s, M, SM]) => { const G = window.GAME.Game; window.__log = { battles: [], corr: {}, rooms: {} }; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1, explore: 1, dungeon: 1 }; G.debug.simMult = M; G.debug.smartAuto = SM; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, [seed, MULT, SMART]);
   await p.waitForTimeout(200);
   await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, party);
+  await p.evaluate(([pt, lv, gear]) => { const { Game, EQ, makeRng } = window.GAME, P = Game.profile;
+    for (const id in P.chars) { P.chars[id].lv = lv; P.chars[id].exp = 0; }
+    for (const id of pt) for (const s of EQ.SLOTS) P.equip[id][s] = null;
+    if (gear === 'uc') for (const id of pt) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(7 + id.length), P, { base: base.id, grade: 'UC' }); P.inv.push(it); P.equip[id][slot] = it.uid; }
+  }, [party, LV, GEAR]);
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'chest')); });
   await p.click('#btn-automove'); await p.waitForSelector('#portal-yes', { timeout: 20000 }); await p.click('#portal-yes');
   const t0 = Date.now();

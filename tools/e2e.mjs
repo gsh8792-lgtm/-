@@ -31,6 +31,10 @@ async function playRun(p, seed, opts) {
   await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 16; G.debug.smartAuto = true; G.scenes.title.start(s); G.settings.seenHints.dungeon = 1; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
   await p.waitForTimeout(200);
   if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
+  // 흐름 검증용: 사냥터·상인으로 준비를 마친 파티 (캐릭터 Lv 8 + UC 무기·갑옷)
+  await p.evaluate(() => { const { Game, EQ, makeRng } = window.GAME, P = Game.profile, pt = Game.run.party;
+    for (const id in P.chars) P.chars[id].lv = 8;
+    for (const id of pt) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(9), P, { base: base.id, grade: 'UC' }); P.inv.push(it); P.equip[id][slot] = it.uid; } });
   // 보급 상자 → 포털
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((i) => i.key === 'chest')); });
   // 궁극기 자동 사용 (게임 내 전략 설정 기능)

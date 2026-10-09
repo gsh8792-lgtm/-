@@ -13,7 +13,7 @@ let fail = 0;
     const f = genFloor(seed, floor);
     if (JSON.stringify(genFloor(seed, floor)) !== JSON.stringify(f)) errs.push('nondeterministic ' + seed);
     const n = f.rooms.length; if (n < 3 || n > 6) errs.push('room count ' + n);
-    if (floor >= 2 && floor < DUNGEON.BOSS_FLOOR && !f.rooms.some((r) => r.type === 'camp')) errs.push('no camp');
+    if (floor === 3 && !f.rooms.some((r) => r.type === 'camp')) errs.push('no camp on floor 3');
     const cells = new Set(f.rooms.map((r) => r.gx + ',' + r.gy)); if (cells.size !== n) errs.push('overlap');
     const seen = new Set([0]); const q = [0]; while (q.length) { const c = q.shift(); for (const nb of floorNeighbors(f, c)) if (!seen.has(nb.room.id)) { seen.add(nb.room.id); q.push(nb.room.id); } }
     if (seen.size !== n) errs.push('disconnected ' + seed + '/' + floor);
@@ -24,7 +24,7 @@ let fail = 0;
     if (floor === DUNGEON.BOSS_FLOOR) { const G = BOSS_GIMMICKS[f.gimmick]; if (cnt('boss') !== 1 || cnt(G.kind) !== G.need) errs.push(`boss floor ${f.gimmick} ${cnt(G.kind)}`); if (bossOpen(f)) errs.push('boss open at start'); }
     for (const c of f.corridors) {
       const fights = c.items.filter((x) => x.kind === 'fight' || x.kind === 'elite').length, extras = c.items.filter((x) => x.kind === 'trap' || x.kind === 'supply').length;
-      if (fights < 2 || extras > 2) errs.push(`corridor ${fights}/${extras}`);
+      if (c.items.length !== 1 || fights + extras !== 1) errs.push(`corridor ${fights}/${extras}`);
       for (const it of c.items) if ((it.kind === 'fight' && !corridorWaves(f, it)[0].length) || it.x <= 0 || it.x >= c.len) errs.push('corridor item');
       const tr = corridorTrack(c, c.b); if (tr.some((p, i) => i && p.x < tr[i - 1].x)) errs.push('track order');
     }
@@ -254,8 +254,8 @@ if (sa !== sb) fail++;
     const lo = EQ.heroLoadout(p, 'tobi'); if (lo.skills.s1 !== GEAR_SKILLS[EQ.findItem(p, p.equip.tobi.armor).base] || lo.skillRank.s2 !== 1) errs.push('gear skills ' + JSON.stringify(lo.skills)); }
   // 6) 서포터도 평타 사거리 안에서 싸운다
   { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const sim = new BattleSim({ seed: 3, stage: 5, waves: [['ogre_chief']], strategy: st, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
-    let shots = 0; while (!sim.outcome && sim.time < 40) { sim.step(1 / 60); shots += sim.events.filter((e) => e.type === 'projectile' && e.from.key === 'bori').length; sim.events.length = 0; }
-    if (shots < 16) errs.push('support rarely attacks ' + shots); }
+    let shots = 0; while (!sim.outcome && sim.time < 24) { sim.step(1 / 60); shots += sim.events.filter((e) => e.type === 'projectile' && e.from.key === 'bori').length; sim.events.length = 0; }
+    if (shots < 10) errs.push('support rarely attacks ' + shots); }
   console.log('boss pressure:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(crush, tank aggro/peel, leap, level gap, gear level, support attacks)');
   if (errs.length) fail++;
 }

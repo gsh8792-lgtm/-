@@ -20,7 +20,7 @@ function partyPanel(run, opts) {
     const info = el('div', 'pinfo');
     info.appendChild(el('div', 'pname', `${def.name}<span class="prole">${def.roleName}</span>`));
     info.appendChild(bar(h.hp / h.maxHp, h.hp / h.maxHp < 0.3 ? 'hp low' : 'hp'));
-    info.appendChild(el('div', 'php', h.dead ? '사망' : `${Math.ceil(h.hp)}/${h.maxHp}`));
+    info.appendChild(el('div', 'php', h.dead ? '사망' : `${Math.ceil(h.hp)}/${h.maxHp}${h.injured ? ' <b class="warn">부상</b>' : ''}`));
     card.appendChild(info);
     const ups = Object.values(h.upgrades).reduce((a, u) => a + u.power + u.cd, 0);
     if (ups) card.appendChild(el('div', 'pup', '★' + ups));
@@ -70,7 +70,7 @@ function usePotionFlow(run, onDone, kind) {
     const h = run.heroes[id];
     if (kind === 'feather') {
       if (!h.dead) { Game.toast('쓰러진 동료에게만 쓸 수 있어요'); return; }
-      run.feathers--; h.dead = false; h.hp = Math.round(h.maxHp * 0.4);
+      run.feathers--; h.dead = false; h.injured = (h.injured || 0) + 1; h.maxHp = Math.round(h.maxHp * 0.75); h.hp = Math.round(h.maxHp * 0.4); // 부상: 이번 원정 동안 최대 HP -25%
     } else {
       if (h.dead) { Game.toast('쓰러진 동료는 부활의 깃털로만 일으킬 수 있어요'); return; }
       if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요'); return; }

@@ -12,8 +12,8 @@ function refreshRunLoadout(run) {
     const h = run.heroes[id];
     const lo = EQ.heroLoadout(Game.profile, id);
     const ratio = h.maxHp ? h.hp / h.maxHp : 1;
-    h.maxHp = lo.maxHp;
-    h.hp = h.dead ? 0 : fresh ? lo.maxHp : Math.max(1, Math.round(lo.maxHp * ratio));
+    h.maxHp = Math.round(lo.maxHp * Math.pow(0.75, h.injured || 0)); // 부상은 원정이 끝날 때까지
+    h.hp = h.dead ? 0 : fresh ? h.maxHp : Math.max(1, Math.round(h.maxHp * ratio));
   }
 }
 
@@ -317,8 +317,10 @@ function grantBattleLoot(run, node) {
   if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
   // 경험치: 출전한 캐릭터 모두 (쓰러진 캐릭터는 절반), 난이도가 높을수록 많이
   const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0)) * (node.small ? 0.5 : 1); // 복도의 작은 무리는 절반
+  // 경험치는 원정이 끝날 때 정산한다 (원정 중에는 레벨이 오르지 않는다 — 다키스트 던전처럼 같은 체급으로 끝까지)
   const exp = [];
-  for (const id of partyIds(run)) { const r = GACHA.addExp(p, id, expBase * (run.heroes[id].dead ? CHAR_LV.deadMult : 1)); if (r) exp.push(r); }
+  run.pendExp = run.pendExp || {};
+  for (const id of partyIds(run)) { const v = expBase * (run.heroes[id].dead ? CHAR_LV.deadMult : 1); run.pendExp[id] = (run.pendExp[id] || 0) + v; const lv = EQ.charLevel(p, id); exp.push({ id, exp: Math.round(v), from: lv, to: lv, learned: [], pending: true }); }
   run.expGot = (run.expGot || 0) + Math.round(expBase);
   run.loot.push(...got);
   run.lastLoot = { stones, got, exp };
@@ -333,16 +335,22 @@ function lootHtml(entries) {
   }).join(' ');
 }
 // 원정 종료 정산: 골드를 마을로 가져가고, 보스를 잡으면 다음 난이도 해금
+const RUN_SHARE = { victory: { gold: 1, exp: 1 }, retreat: { gold: 0.5, exp: 0.75 }, defeat: { gold: 0.25, exp: 0.5 }, giveup: { gold: 0.25, exp: 0.5 } };
 function settleRun(run) {
   if (run.settled) return null;
   run.settled = true;
   const p = Game.profile;
-  p.gold += run.gold;
+  // 결과에 따라 가져가는 몫: 성공 전부 · 후퇴 골드 절반·경험치 75% · 실패 골드 25%·경험치 50%
+  const share = RUN_SHARE[run.result] || RUN_SHARE.defeat;
+  const gold = Math.round(run.gold * share.gold);
+  p.gold += gold;
+  const exp = [];
+  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp); if (r) exp.push(r); }
   let unlocked = null;
   if (run.result === 'victory') {
     p.clears[run.tier] = (p.clears[run.tier] || 0) + 1;
     if (run.tier >= p.unlockedTier && run.tier < EQ.DB.tiers.length) { p.unlockedTier = run.tier + 1; unlocked = EQ.tierInfo(p.unlockedTier); }
   }
   saveProfile();
-  return { gold: run.gold, unlocked };
+  return { gold, unlocked, exp, share };
 }
