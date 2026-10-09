@@ -2836,10 +2836,12 @@ function showRulesHelp() {
     <div class="modal-title">규칙 안내</div>
     <div class="help-cols">
       <div><h4>원정</h4><ul>
-        <li>지도에서 <b>같은 줄이나 바로 위·아래 줄</b>의 다음 방으로 가요. 무엇이 있는지는 들어가 봐야 알아요 (보스 방만 보여요).</li>
-        <li>방 안에서는 파티가 앞으로 걸어가며 적 무리, 갈림길, 상인, 수상한 것, 모닥불, 고목, 상자를 만나요. 갈림길에서는 단서를 보고 길을 골라요.</li>
-        <li><b>횃불</b>: 방을 옮길 때 -${CONST.TORCH_PER_MOVE}, 방 안에서 한 칸 걸을 때마다 -${CONST.TORCH_PER_TILE}. 꺼지면 치명타가 줄고, 적 무리가 정예로 바뀌어 습격할 수 있어요.</li>
-        <li><b>모닥불</b>: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}.</li>
+        <li>던전은 <b>방과 복도</b>로 이어져 있어요. 오른쪽 위 지도에서 이웃한 방을 탭하면 그쪽 복도로 걸어가요. 가 본 방과 그 이웃만 보여요.</li>
+        <li>층마다 <b>계단</b>을 찾아 내려가요. 6층(가장 깊은 곳)의 보스 방은 잠겨 있어서 <b>열쇠·레버·봉인석</b> 중 하나를 풀어야 열려요.</li>
+        <li>복도에서는 작은 적 무리를 두 번 만나고, 가끔 이름 붙은 <b>네임드 정예</b>가 나와요. 함정과 보급도 있어요.</li>
+        <li><b>자동</b>이면 알아서 걷고 다음 방도 골라요. <b>수동</b>이면 ▶을 누르고 있거나 바닥을 탭해서 걸어요.</li>
+        <li><b>횃불</b>: 복도를 걸으면 조금씩 닳아요. 꺼지면 치명타가 줄고 적 무리가 정예로 바뀌어 습격할 수 있어요.</li>
+        <li><b>야영지</b>: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}.</li>
         <li><b>영구 사망</b>: 쓰러진 동료는 이번 원정에서 돌아오지 않아요.</li>
       </ul></div>
       <div><h4>전투</h4><ul>
@@ -2864,7 +2866,7 @@ function showRulesHelp() {
 const DUNGEON = {
   FLOORS: 5, BOSS_FLOOR: 6,
   GRID_W: 5, GRID_H: 3,
-  ROOMS: [5, 7],
+  ROOMS: [4, 6],
   CORR_LEN: 2200,          // 복도 길이 (px) — 짧게
   ROOM_W: 1200,            // 방 화면 폭
   FIELD_W: 1440,           // 전투 영역 (고정, 화면 1.5배)
@@ -2940,6 +2942,8 @@ function genFloor(seed, floor) {
       const v = rng();
       r.type = v < 0.2 && floor >= 2 ? 'elite' : v < 0.32 ? 'camp' : v < 0.46 ? 'treasure' : 'combat';
     }
+    // 2층부터는 야영지가 최소 하나 (긴 원정에서 숨 돌릴 곳)
+    if (floor >= 2 && !rooms.some((r) => r.type === 'camp')) { const c = rooms.filter((r) => r.type === 'combat' || r.type === 'treasure'); const c2 = c.length ? c : rooms.filter((r) => r.type === 'elite'); if (c2.length) rng.pick(c2).type = 'camp'; }
   }
   // 방 안의 적
   const st = floorStage(floor);
@@ -5855,9 +5859,24 @@ const DungeonScene = {
     if (this.autoT < 1.4) return;
     this.autoT = 0;
     if ((here.type === 'treasure' || here.type === 'lever' || here.type === 'seal') && !here.used) { const b = document.getElementById('ex-act-0'); if (b) { b.click(); return; } }
+    if (here.type === 'camp' && !here.used) { // 자동 야영: 파티 HP가 75% 아래면 식량을 써서 쉰다
+      const ids = partyIds(Game.run).filter((id) => !Game.run.heroes[id].dead);
+      const avg = ids.reduce((a, id) => a + Game.run.heroes[id].hp / Game.run.heroes[id].maxHp, 0) / Math.max(1, ids.length);
+      if (avg < 0.75 && Game.run.food > 0) { this.autoCamp(here); return; }
+    }
     if (here.type === 'stairs') { this.descend(); return; }
     const step = dungeonNextStep(fl);
     if (step !== null) this.goTo(fl.rooms[step]);
+  },
+
+  autoCamp(r) {
+    const run = Game.run;
+    r.used = true; run.food--;
+    for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * CONST.REST_HEAL_PCT)); }
+    run.torch = Math.min(CONST.TORCH_MAX, run.torch + CONST.TORCH_REST_GAIN);
+    Sfx.play('heal');
+    Game.toast(`야영: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}`, 1800);
+    this.buildHud(); this.showRoomActions(r);
   },
 
   // ------------------------------------------------------------ 입력

@@ -257,9 +257,24 @@ const DungeonScene = {
     if (this.autoT < 1.4) return;
     this.autoT = 0;
     if ((here.type === 'treasure' || here.type === 'lever' || here.type === 'seal') && !here.used) { const b = document.getElementById('ex-act-0'); if (b) { b.click(); return; } }
+    if (here.type === 'camp' && !here.used) { // 자동 야영: 파티 HP가 75% 아래면 식량을 써서 쉰다
+      const ids = partyIds(Game.run).filter((id) => !Game.run.heroes[id].dead);
+      const avg = ids.reduce((a, id) => a + Game.run.heroes[id].hp / Game.run.heroes[id].maxHp, 0) / Math.max(1, ids.length);
+      if (avg < 0.75 && Game.run.food > 0) { this.autoCamp(here); return; }
+    }
     if (here.type === 'stairs') { this.descend(); return; }
     const step = dungeonNextStep(fl);
     if (step !== null) this.goTo(fl.rooms[step]);
+  },
+
+  autoCamp(r) {
+    const run = Game.run;
+    r.used = true; run.food--;
+    for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * CONST.REST_HEAL_PCT)); }
+    run.torch = Math.min(CONST.TORCH_MAX, run.torch + CONST.TORCH_REST_GAIN);
+    Sfx.play('heal');
+    Game.toast(`야영: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}`, 1800);
+    this.buildHud(); this.showRoomActions(r);
   },
 
   // ------------------------------------------------------------ 입력

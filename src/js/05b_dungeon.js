@@ -6,7 +6,7 @@
 const DUNGEON = {
   FLOORS: 5, BOSS_FLOOR: 6,
   GRID_W: 5, GRID_H: 3,
-  ROOMS: [5, 7],
+  ROOMS: [4, 6],
   CORR_LEN: 2200,          // 복도 길이 (px) — 짧게
   ROOM_W: 1200,            // 방 화면 폭
   FIELD_W: 1440,           // 전투 영역 (고정, 화면 1.5배)
@@ -82,6 +82,8 @@ function genFloor(seed, floor) {
       const v = rng();
       r.type = v < 0.2 && floor >= 2 ? 'elite' : v < 0.32 ? 'camp' : v < 0.46 ? 'treasure' : 'combat';
     }
+    // 2층부터는 야영지가 최소 하나 (긴 원정에서 숨 돌릴 곳)
+    if (floor >= 2 && !rooms.some((r) => r.type === 'camp')) { const c = rooms.filter((r) => r.type === 'combat' || r.type === 'treasure'); const c2 = c.length ? c : rooms.filter((r) => r.type === 'elite'); if (c2.length) rng.pick(c2).type = 'camp'; }
   }
   // 방 안의 적
   const st = floorStage(floor);

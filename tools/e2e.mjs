@@ -279,7 +279,7 @@ async function playRun(p, seed, opts) {
   if ((await scene(p)) === 'battle') { await p.evaluate(() => { window.GAME.Game.debug.simMult = 8; }); await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 120000 }); await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; }); await clickIf(p, '#btn-continue'); }
   await p.screenshot({ path: `${OUT}/event.png` });
   // 상점
-  await p.evaluate(() => { const G = window.GAME.Game; G.run.gold = 300; G.go('shop', { node: { stage: 2, row: 2, type: 'shop' } }); });
+  await p.evaluate(() => { const G = window.GAME.Game; G.run.gold = 300; G.run.autoMode = false; G.go('shop', { node: { stage: 2, row: 2, type: 'shop' } }); });
   const g0 = await p.evaluate(() => window.GAME.Game.run.gold);
   for (const i of [0, 1, 2, 3]) await clickIf(p, `#shop-buy-${i}:not([disabled])`);
   ok('상점: 구매 (회복약/식량/횃불/유물)', (await p.evaluate(() => window.GAME.Game.run.gold)) < g0, `${g0} → ${await p.evaluate(() => window.GAME.Game.run.gold)}`);
