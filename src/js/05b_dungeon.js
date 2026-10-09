@@ -1,12 +1,15 @@
 // ===== 05b_dungeon.js : 던전 층 생성 (다키스트 던전처럼 방 + 복도) =====
-// 한 원정 = 1~5층 + 보스 층(6층). 층마다 방 5~7개가 격자 위에 놓이고 복도로 이어진다.
+// 한 원정 = 1~5층 + 보스 층(6층). 층마다 방 3~5개(보스 층 5개)가 격자 위에 놓이고 복도로 이어진다.
 // 입구 방에서 시작해 계단 방(입구에서 가장 먼 방)을 찾아 내려간다.
 // 보스 층: 보스 방은 잠겨 있고, 열쇠 / 레버 / 봉인석 중 하나의 기믹을 풀어야 열린다.
 
 const DUNGEON = {
   FLOORS: 5, BOSS_FLOOR: 6,
   GRID_W: 5, GRID_H: 3,
-  ROOMS: [4, 6],
+  ROOMS: [3, 5],           // 1~5층 방 수 (입구·계단 포함)
+  BOSS_ROOMS: 5,           // 가장 깊은 곳 방 수
+  NAMED: [0.08, 0.02],     // 복도 네임드 정예 확률: 8% + 층×2% (2층부터)
+  STAIRS_HEAL: 0.2,        // 계단을 내려가며 숨 돌리기: 최대 HP 20% 회복
   CORR_LEN: 2200,          // 복도 길이 (px) — 짧게
   ROOM_W: 1200,            // 방 화면 폭
   FIELD_W: 1440,           // 전투 영역 (고정, 화면 1.5배)
@@ -40,7 +43,7 @@ function floorStage(floor) { return Math.max(1, Math.min(4, floor)); }
 function genFloor(seed, floor) {
   const rng = makeRng(hashSeed(seed, 'floor', floor));
   const boss = floor === DUNGEON.BOSS_FLOOR;
-  const n = boss ? 7 : rng.int(DUNGEON.ROOMS[0], DUNGEON.ROOMS[1]);
+  const n = boss ? DUNGEON.BOSS_ROOMS : rng.int(DUNGEON.ROOMS[0], DUNGEON.ROOMS[1]);
   const W = DUNGEON.GRID_W, H = DUNGEON.GRID_H;
   const cells = {}, rooms = [], edges = [];
   const key = (x, y) => x + ',' + y;
@@ -99,7 +102,7 @@ function genFloor(seed, floor) {
     let uid = 0;
     const fx = [Math.round(L * 0.3 + rng.int(-80, 80)), Math.round(L * 0.68 + rng.int(-80, 80))];
     fx.forEach((x, k) => {
-      const named = k === 1 && rng() < 0.15 + floor * 0.02;
+      const named = k === 1 && floor >= 2 && rng() < DUNGEON.NAMED[0] + floor * DUNGEON.NAMED[1];
       items.push(named
         ? { id: ++uid, kind: 'elite', x, enc: rng.int(0, 99), affix: rng.pick(Object.keys(ELITE_AFFIXES)), named: rng.pick(NAMED_ELITES), done: false }
         : { id: ++uid, kind: 'fight', x, small: true, enc: rng.int(0, 99), done: false });

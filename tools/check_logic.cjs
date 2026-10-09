@@ -12,7 +12,7 @@ let fail = 0;
   for (let seed = 1; seed <= 1000; seed++) for (let floor = 1; floor <= DUNGEON.BOSS_FLOOR; floor++) {
     const f = genFloor(seed, floor);
     if (JSON.stringify(genFloor(seed, floor)) !== JSON.stringify(f)) errs.push('nondeterministic ' + seed);
-    const n = f.rooms.length; if (n < 4 || n > 7) errs.push('room count ' + n);
+    const n = f.rooms.length; if (n < 3 || n > 6) errs.push('room count ' + n);
     if (floor >= 2 && floor < DUNGEON.BOSS_FLOOR && !f.rooms.some((r) => r.type === 'camp')) errs.push('no camp');
     const cells = new Set(f.rooms.map((r) => r.gx + ',' + r.gy)); if (cells.size !== n) errs.push('overlap');
     const seen = new Set([0]); const q = [0]; while (q.length) { const c = q.shift(); for (const nb of floorNeighbors(f, c)) if (!seen.has(nb.room.id)) { seen.add(nb.room.id); q.push(nb.room.id); } }

@@ -144,10 +144,11 @@ const DungeonScene = {
     run.dungeon = genFloor(run.seed, next);
     run.pos = { stage: next, row: 0 };
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + 10);
+    for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * DUNGEON.STAIRS_HEAL)); }
     Sfx.play('door');
     Game.go('dungeon');
     if (next === DUNGEON.BOSS_FLOOR) setTimeout(() => Game.toast(BOSS_GIMMICKS[run.dungeon.gimmick].text, 3600), 300);
-    else Game.toast(`${next}층`, 1200);
+    else Game.toast(`${next}층 — 계단에서 숨을 돌렸다 (HP +${DUNGEON.STAIRS_HEAL * 100}%)`, 1600);
   },
   startRoomFight(r) {
     const run = Game.run, fl = run.dungeon;
