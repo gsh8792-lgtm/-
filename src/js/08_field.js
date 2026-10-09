@@ -96,12 +96,12 @@ const FieldScene = {
     this.pendingInteract = null;
     const run = Game.run;
     if (it.key === 'chest') {
-      if (run.gotSupply) { Game.toast('상자는 비어 있다.'); return; }
+      if (run.gotSupply) { Game.toast('상자가 비어 있어요'); return; }
       run.gotSupply = true;
       run.food += CONST.SUPPLY_BOX_FOOD;
       run.potions += 1;
       Sfx.play('coin');
-      Game.toast(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD}, 회복약 +1`, 2200);
+      Game.toast(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD} · 회복약 +1`, 2200);
       this.refreshRes();
     } else if (it.key === 'smith') {
       openBlacksmith(() => this.refreshRes());
@@ -120,7 +120,7 @@ const FieldScene = {
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장!', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }
@@ -138,16 +138,16 @@ const FieldScene = {
     const ti = EQ.tierInfo(p.tier);
     const ids = partyIds(Game.run), lv = Math.round(ids.reduce((a, id) => a + EQ.heroLevel(p, id), 0) / Math.max(1, ids.length)), dl = EQ.tierLevel(p.tier);
     const gap = lv - dl, gm = levelGapMult(gap);
-    const gapTxt = gap === 0 ? '레벨 같음' : `레벨 차 ${gap > 0 ? '+' : ''}${gap}: 주는 피해 ${Math.round((gm.dealt - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.dealt - 1) * 100)}% · 받는 피해 ${Math.round((gm.taken - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.taken - 1) * 100)}%`;
-    wrap.appendChild(el('div', 'tier-desc', `던전 Lv ${dl} · 파티 Lv ${lv} (${gapTxt})<br>` + (p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade}` : '기본 난이도') + (gap < 20 && !ids.some((id) => HEROES[id].role === 'tank') ? '<br><b class="warn">탱커 없이는 보스를 버티기 어려워요</b>' : '')));
+    const gapTxt = gap === 0 ? '레벨 차 없음' : `레벨 차 ${gap > 0 ? '+' : ''}${gap}: 주는 피해 ${Math.round((gm.dealt - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.dealt - 1) * 100)}% · 받는 피해 ${Math.round((gm.taken - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.taken - 1) * 100)}%`;
+    wrap.appendChild(el('div', 'tier-desc', `던전 Lv ${dl} · 파티 전투 Lv ${lv} (${gapTxt})<br>` + (p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade}` : '기본 난이도') + (gap < 20 && !ids.some((id) => HEROES[id].role === 'tank') ? '<br><b class="warn">탱커 없이는 보스를 버티기 어려워요</b>' : '')));
     return wrap;
   },
 
   openGuide(page) {
     const pages = [
-      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 다섯 개의 방을 지나면 굴의 주인이 기다리지. 원정마다 다른 놈이 나오니 상대를 보고 동료를 고르게.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 캠프에서 제대로 쉴 수 없어.' },
-      { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방 종류는 미리 보이니 길을 잘 고르게.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
-      { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. <b>기절</b>로 흔들어 놓고 비틀거릴 때 몰아치게.<br><br>오우거가 힘을 모으면 <b>토비의 방패 강타</b>로 끊거나 붉은 원 밖으로 피하게. 쓰러진 동료는... 이번 원정에선 돌아오지 못하네.' },
+      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 가장 깊은 방에서 굴의 주인이 기다리지. 원정마다 다른 놈이 나오니 상대를 보고 동료를 고르게.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 모닥불 앞에서도 제대로 쉴 수 없어.' },
+      { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방에 뭐가 있는지는 들어가 봐야 알아. 방 안 갈림길에서는 귀를 기울이면 단서가 들릴 걸세.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
+      { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. 놈이 힘을 모을 때 머리 위 <b>끊기 칸</b>을 여러 직업이 함께 채우면 끊기고 <b>흔들리지</b>. 그때 몰아쳐 <b>그로기</b>로 만들게.<br><br>보스의 주먹은 맞을수록 묵직해지니(<b>짓누름</b>) 탱커를 앞세우게. 쓰러진 동료는… 이번 원정에선 돌아오지 못하네.' },
     ];
     const p = pages[page];
     const box = el('div', 'dialog-box');

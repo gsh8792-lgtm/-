@@ -1,6 +1,6 @@
 // ===== 07_battle_view.js : 실시간 파티 전투 장면 (렌더/연출/HUD/입력) =====
 // BattleSim(로직)을 고정 타임스텝으로 돌리고, sim.events를 소비해 연출만 담당한다.
-// HUD: 캐릭터별 묶음 [얼굴 + ① 기본 ② 상황 ③ 필살기]. 버튼 탭 = 자동 대상 즉시 시전,
+// HUD: 캐릭터별 묶음 [얼굴 + ① 갑옷 ② 무기 ③ 필살기]. 버튼 탭 = 자동 대상 즉시 시전,
 //      버튼을 끌면 슬로모션 → 놓는 곳에 대상/범위 지정. 적 칩/적 탭 = 집중 공격. 오른쪽 = 작전 명령.
 
 const BattleScene = {
@@ -132,7 +132,7 @@ const BattleScene = {
         const b = el('button', 'sk sk-' + slot);
         b.type = 'button';
         b.id = `sk-${h.key}-${slot}`;
-        b.innerHTML = `<span class="sk-tag"></span><span class="sk-icon">${skillGlyph(sk)}</span><span class="sk-cd"></span><span class="sk-name">${sk.name}</span><span class="sk-kind">${slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기'}</span>`;
+        b.innerHTML = `<span class="sk-tag"></span><span class="sk-icon">${skillGlyph(sk)}</span><span class="sk-cd"></span><span class="sk-name">${sk.name}</span><span class="sk-kind">${slot === 's1' ? '① 갑옷' : slot === 's2' ? '② 무기' : '③ 필살기'}</span>`;
         this.bindSkillButton(b, h, slot);
         g.appendChild(b);
         btns[slot] = b;
@@ -236,12 +236,12 @@ const BattleScene = {
     if (!ok) return;
     Sfx.play('click');
     if (d.unit) this.popup(d.unit.x, this.unitTop(d.unit) - 18, `${d.h.name} 공격`, '#ffb0a0', 16, { label: true });
-    else this.popup(d.fx, d.fy - 50, d.h.actLock > 0 ? `${d.h.name} 동작 후 이동` : `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
+    else this.popup(d.fx, d.fy - 50, d.h.actLock > 0 ? `${d.h.name} 동작 끝나고 이동` : `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
   },
 
   explainCant(h, slot) {
     Sfx.play('back');
-    if (h.statuses.stun) Game.toast(`${h.name} 기절 중!`, 900);
+    if (h.statuses.stun) Game.toast(`${h.name} 기절 중`, 900);
     else if (slot === 'ult') Game.toast(`필살기 게이지 ${Math.floor(h.ult)}%`, 900);
     else Game.toast(`쿨타임 ${h.cds[slot].toFixed(1)}초`, 900);
   },
@@ -303,7 +303,7 @@ const BattleScene = {
   // ------------------------------------------------------------ 회복약 (초상화/아군 탭)
   startPotion() {
     if (this.sim.outcome) return;
-    if (this.run.potions <= 0) { Game.toast('회복약이 없어요.', 900); return; }
+    if (this.run.potions <= 0) { Game.toast('회복약이 없어요', 900); return; }
     this.potionPick = true;
     this.tmsg.innerHTML = '회복약을 누구에게 쓸까요?';
     this.tmsg.classList.remove('hidden');
@@ -377,8 +377,8 @@ const BattleScene = {
     st.innerHTML = this.sim.heroes.map((h) => `<div><b>${h.name}</b> 피해 ${Math.round(h.stats.dealt)} · 회복 ${Math.round(h.stats.healed)}</div>`).join('');
     box.appendChild(st);
     const row = el('div', 'btn-col');
-    row.appendChild(btn('▶ 계속하기', 'primary', () => { Game.closeModal(); this.paused = false; }, { id: 'pause-resume' }));
-    row.appendChild(btn('⚙ 자동 전략 편집', '', () => openStrategyEditor(this.run, () => { this.sim.strategy = this.run.strategy; this.openPause(); }), { id: 'pause-strategy' }));
+    row.appendChild(btn('계속 ▶', 'primary', () => { Game.closeModal(); this.paused = false; }, { id: 'pause-resume' }));
+    row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(this.run, () => { this.sim.strategy = this.run.strategy; this.openPause(); }), { id: 'pause-strategy' }));
     row.appendChild(btn(`효과음: ${Game.settings.sound ? '켬' : '끔'}`, '', (e) => { Game.settings.sound = !Game.settings.sound; Sfx.enabled = Game.settings.sound; Game.saveSettings(); e.target.innerHTML = `효과음: ${Game.settings.sound ? '켬' : '끔'}`; }, { id: 'pause-sound' }));
     row.appendChild(btn('원정 포기', 'danger', () => this.confirmGiveUp(), { id: 'pause-giveup' }));
     box.appendChild(row);
@@ -388,7 +388,7 @@ const BattleScene = {
   confirmGiveUp() {
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', '정말 포기할까요?'));
-    box.appendChild(el('p', '', '이번 원정은 패배로 기록됩니다.'));
+    box.appendChild(el('p', '', '이번 원정은 여기서 끝나요.'));
     const row = el('div', 'btn-row');
     row.appendChild(btn('돌아가기', 'ghost', () => this.openPause(), { sfx: 'back', id: 'giveup-no' }));
     row.appendChild(btn('포기', 'danger', () => { Game.closeModal(); this.finish('lose', true); }, { id: 'giveup-yes' }));
@@ -470,7 +470,7 @@ const BattleScene = {
         const u = e.unit;
         this.smoke(u.x, u.y - 20, u.size || 1);
         Sfx.play('death');
-        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}스테이지`; this.shake = 6; }
+        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}번째 방`; this.shake = 6; }
         break;
       }
       case 'projectile':
@@ -495,17 +495,17 @@ const BattleScene = {
         this.shake = 12; this.hitstop = 0.12;
         for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, r = Math.random() * e.r; this.fx.push({ type: 'dust', x: e.cx + Math.cos(a) * r, y: e.cy + Math.sin(a) * r * 0.45, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 90, t: 0, dur: 0.7 + Math.random() * 0.4 }); }
         this.fx.push({ type: 'flash', t: 0, dur: 0.25, color: 'rgba(255,90,60,' });
-        if (e.blocked) this.popup(e.cx, e.cy - 120, '토비가 막았다!', '#7ab8f0', 20);
+        if (e.blocked) this.popup(e.cx, e.cy - 120, '막아냈다!', '#7ab8f0', 20);
         else if (!e.hit) this.popup(e.cx, e.cy - 60, '회피!', '#9fd0ff', 24, { crit: true });
         break;
-      case 'chargeCancel': Sfx.play('cancel'); this.popup(e.unit.x, this.unitTop(e.unit) - 14, '캔슬!', '#ffd34a', 30, { crit: true }); this.hitstop = 0.1; break;
+      case 'chargeCancel': Sfx.play('cancel'); this.popup(e.unit.x, this.unitTop(e.unit) - 14, '끊었다!', '#ffd34a', 30, { crit: true }); this.hitstop = 0.1; break;
       case 'callStart': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18); Sfx.play('summon'); break;
-      case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20); Sfx.play('cancel'); break;
+      case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 끊기!', '#ffd34a', 20); Sfx.play('cancel'); break;
       case 'summon': this.smoke(e.unit.x, e.unit.y - 20, 0.8); break;
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
-      case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓눌림!', '#ff9a6a', 17, { label: true }); break;
+      case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓누름!', '#ff9a6a', 17, { label: true }); break;
       case 'bossLeap': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '덮치기!', '#ff9a6a', 18, { label: true }); this.shake = Math.max(this.shake, 6); break;
       case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
       case 'immune': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '면역', '#cfcfcf', 15); break;
@@ -621,7 +621,7 @@ const BattleScene = {
   // ------------------------------------------------------------ HUD 갱신
   updateHud() {
     const sim = this.sim;
-    this.stageLabel.textContent = `던전 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
+    this.stageLabel.textContent = `방 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
     // 위험 경고
@@ -707,7 +707,7 @@ const BattleScene = {
         b.classList.toggle('glow', ready && slot === 'ult');
         b.classList.toggle('auto', !!auto);
         const kind = b.children[4];
-        const kt = auto ? (slot === 's1' ? '① 자동' : slot === 's2' ? '② 자동' : '③ 자동') : (slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기');
+        const kt = auto ? (slot === 's1' ? '① 자동' : slot === 's2' ? '② 자동' : '③ 자동') : (slot === 's1' ? '① 갑옷' : slot === 's2' ? '② 무기' : '③ 필살기');
         if (kind.textContent !== kt) kind.textContent = kt;
       }
     }

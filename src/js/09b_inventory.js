@@ -179,7 +179,7 @@ function openInventory(opts) {
     const wrap = el('div', 'inv-list');
     let items = p.inv.filter((it) => EQ.usableBy(it, st.hero) && (!st.slot || EQ.BASE[it.base].slot === st.slot));
     items = items.map((it) => ({ it, sc: EQ.itemScore(p, it, st.hero) })).sort((a, b) => b.sc - a.sc);
-    wrap.appendChild(el('div', 'il-head', `${st.slot ? EQ.SLOT_NAME[st.slot] : '전체'} ${items.length}개 <small class="muted">${HEROES[st.hero].name}이(가) 쓸 수 있는 장비</small>`));
+    wrap.appendChild(el('div', 'il-head', `${st.slot ? EQ.SLOT_NAME[st.slot] : '전체'} ${items.length}개 <small class="muted">${HEROES[st.hero].name} 착용 가능</small>`));
     if (!items.length) wrap.appendChild(el('div', 'muted il-empty', '아직 장비가 없어요. 던전에서 얻을 수 있어요.'));
     for (const { it, sc } of items) {
       const r = el('button', 'inv-item'); r.type = 'button'; r.dataset.uid = it.uid;
@@ -231,7 +231,7 @@ function openInventory(opts) {
   const confirmDismantle = (item) => {
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', `${EQ.itemName(item)} 분해`));
-    box.appendChild(el('p', '', `강화석 ${EQ.DB.dismantle[item.grade] + item.enh}개를 얻습니다. 끼워진 보석은 돌려받습니다.`));
+    box.appendChild(el('p', '', `강화석 ${EQ.DB.dismantle[item.grade] + item.enh}개를 얻어요. 끼워 둔 보석은 돌려받아요.`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('취소', 'ghost', () => render(), { sfx: 'back', id: 'dis-no' }));
     row.appendChild(btn('분해', 'danger', () => { const n = EQ.dismantle(profile(), item); saveProfile(); Game.toast(`강화석 +${n}`); st.sel = null; render(); }, { id: 'dis-yes' }));
@@ -281,7 +281,7 @@ function openBlacksmith(onClose) {
         right.appendChild(el('div', 'bs-info', `
           <div class="bs-target">+${item.enh} → <b>+${info.target}</b> <small>주 스탯 +${Math.round(EQ.DB.enhance.mainPerLevel * 100)}%${vis ? ` · +${vis}에서 외형 강화` : ''}</small></div>
           <div class="bs-rate">성공 확률 <b>${Math.round(info.rate * 1000) / 10}%</b>${info.rate > info.base && !info.guaranteed ? ` <small>(기본 ${Math.round(info.base * 1000) / 10}% + 실패 보정)</small>` : ''}</div>
-          <div class="bs-art">장인의 기운 <div class="bar art"><div class="fill" style="width:${info.artisan * 100}%"></div></div> ${Math.round(info.artisan * 1000) / 10}%${info.guaranteed ? ' <b class="ok">다음 강화 확정 성공</b>' : ''}</div>
+          <div class="bs-art">장인의 기운 <div class="bar art"><div class="fill" style="width:${info.artisan * 100}%"></div></div> ${Math.round(info.artisan * 1000) / 10}%${info.guaranteed ? ' <b class="ok">다음 강화는 반드시 성공</b>' : ''}</div>
           <div class="bs-cost">비용 💎 ${info.stones} · ● ${info.gold}</div>`));
         const can = p.stones >= info.stones && p.gold >= info.gold;
         const b = btn('강화', 'primary big', () => {
@@ -296,7 +296,7 @@ function openBlacksmith(onClose) {
         right.appendChild(b);
         if (!can) right.appendChild(el('div', 'muted', p.stones < info.stones ? '강화석이 부족해요. 전투 보상이나 분해로 얻을 수 있어요.' : '골드가 부족해요.'));
       }
-      if (st.last) right.appendChild(el('div', 'bs-result ' + st.last, st.last === 'ok' ? `성공! +${item.enh}` : '실패… 장인의 기운이 쌓였다'));
+      if (st.last) right.appendChild(el('div', 'bs-result ' + st.last, st.last === 'ok' ? `성공! +${item.enh}` : '실패… 장인의 기운이 쌓였어요'));
     }
     body.appendChild(right);
     box.appendChild(body);

@@ -24,10 +24,10 @@ const EXPLORE_HINTS = {
   none: '조용하다',
 };
 const EXPLORE_LABEL = {
-  shop: { name: '떠돌이 상인', act: '상인과 거래한다' },
-  event: { name: '수상한 것', act: '살펴본다' },
-  rest: { name: '모닥불 자리', act: '쉬어 간다' },
-  tree: { name: '고목', act: '다가간다' },
+  shop: { name: '떠돌이 상인', act: '거래하기' },
+  event: { name: '수상한 것', act: '살펴보기' },
+  rest: { name: '모닥불 자리', act: '쉬어 가기' },
+  tree: { name: '고목', act: '다가가기' },
 };
 
 // 방 구성 (숨겨진 방 종류 → 길 위의 것들). 갈림길 두 갈래 중 하나만 지나간다
@@ -84,7 +84,7 @@ const ExploreScene = {
     this.fx = [];
     this.camX = Math.max(0, room.x - EXPLORE.CAM_LEAD);
     this.buildHud();
-    if (!room.seen) { room.seen = true; Game.toast(`${room.stage === CONST.STAGES ? '깊은 곳' : `${room.stage}번째 방`}에 들어섰다. 무엇이 있을지 모른다.`, 1800); Game.hint('explore'); }
+    if (!room.seen) { room.seen = true; Game.toast(room.stage === CONST.STAGES ? '가장 깊은 곳에 들어섰다. 굴의 주인이 가까이 있다.' : `${room.stage}번째 방에 들어섰다. 무엇이 있을지 모른다.`, 1800); Game.hint('explore'); }
   },
   exit() {},
 
@@ -147,7 +147,7 @@ const ExploreScene = {
     this.act.innerHTML = '';
     this.act.appendChild(el('div', 'ex-act-title', L.name));
     const row = el('div', 'btn-row');
-    row.appendChild(btn('지나간다', 'ghost', () => { it.done = true; this.hideAct(); }, { id: 'ex-skip', sfx: 'back' }));
+    row.appendChild(btn('지나가기', 'ghost', () => { it.done = true; this.hideAct(); }, { id: 'ex-skip', sfx: 'back' }));
     row.appendChild(btn(L.act, 'primary', () => this.enterPoi(it), { id: 'ex-go' }));
     this.act.appendChild(row);
     this.act.classList.remove('hidden');

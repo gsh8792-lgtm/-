@@ -123,12 +123,12 @@ function resourceBar(run) {
 
 // 회복약 사용 (지도/휴식에서)
 function usePotionFlow(run, onDone) {
-  if (run.potions <= 0) { Game.toast('회복약이 없어요.'); return; }
+  if (run.potions <= 0) { Game.toast('회복약이 없어요'); return; }
   const box = el('div', 'pick-box');
-  box.appendChild(el('div', 'modal-title', '회복약 사용 — 누구에게?'));
+  box.appendChild(el('div', 'modal-title', '회복약을 누구에게 쓸까요?'));
   box.appendChild(partyPanel(run, { onSelect: (id) => {
     const h = run.heroes[id];
-    if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요.'); return; }
+    if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요'); return; }
     run.potions--;
     h.hp = Math.min(h.maxHp, h.hp + h.maxHp * REWARD.potionHealPct);
     Sfx.play('heal');
@@ -214,15 +214,15 @@ const MapScene = {
     info.classList.toggle('left', mapNodePos(node).x >= 480); // 탭한 노드를 가리지 않도록 반대편에
     if (node.type === 'boss') {
       info.appendChild(el('div', 'mi-title', `<b style="background:${NODE_TYPES.boss.color}">${NODE_TYPES.boss.short}</b> 가장 깊은 곳 <small>${node.stage}번째 방</small>`));
-      info.appendChild(el('div', 'mi-desc', `굴의 주인 「${ENEMIES[encounterFor(node)[0][0]].name}」이 기다린다. 가는 길에 모닥불이나 상인을 만날 수도 있다.`));
+      info.appendChild(el('div', 'mi-desc', `굴의 주인이 기다린다: 「${ENEMIES[encounterFor(node)[0][0]].name}」. 가는 길에 모닥불이나 상인을 만날 수도 있다.`));
     } else {
       info.appendChild(el('div', 'mi-title', `<b style="background:#6a6080">?</b> 알 수 없는 방 <small>${node.stage}번째 방</small>`));
-      info.appendChild(el('div', 'mi-desc', '무엇이 있는지는 들어가 봐야 안다. 방 안에서는 걸어가며 적 무리, 갈림길, 상인, 수상한 것을 만난다.'));
+      info.appendChild(el('div', 'mi-desc', '무엇이 있는지는 들어가 봐야 안다. 걸어가다 보면 적 무리, 갈림길, 상인, 수상한 것을 만난다.'));
     }
     const row = el('div', 'mi-btns');
     row.appendChild(btn('취소', 'ghost', () => { this.selected = null; info.classList.add('hidden'); }, { sfx: 'back', id: 'btn-node-cancel' }));
     if (reachable) {
-      const go = btn('이동하기 →', 'primary', () => this.moveTo(node), { id: 'btn-node-go' });
+      const go = btn('이동 ▶', 'primary', () => this.moveTo(node), { id: 'btn-node-go' });
       if (Game.run.torch <= 0) info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다. 어둠 속에서는 정예가 습격할 수 있다.'));
       row.appendChild(go);
     } else {
@@ -304,19 +304,20 @@ function showRulesHelp() {
   box.innerHTML = `
     <div class="modal-title">규칙 안내</div>
     <div class="help-cols">
-      <div><h4>지도</h4><ul>
-        <li>다음 스테이지의 <b>같은 줄 또는 위·아래 줄</b>로만 이동.</li>
-        <li>방 종류는 미리 보인다. 이동마다 횃불 -${CONST.TORCH_PER_MOVE}.</li>
-        <li>횃불이 꺼지면 치명타 감소, 일반 전투가 정예로 변할 수 있다.</li>
-        <li>휴식: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복.</li>
-        <li><b>영구 사망</b>: 쓰러진 동료는 이번 원정에서 돌아오지 않는다.</li>
+      <div><h4>원정</h4><ul>
+        <li>지도에서 <b>같은 줄이나 바로 위·아래 줄</b>의 다음 방으로 가요. 무엇이 있는지는 들어가 봐야 알아요 (보스 방만 보여요).</li>
+        <li>방 안에서는 파티가 앞으로 걸어가며 적 무리, 갈림길, 상인, 수상한 것, 모닥불, 고목, 상자를 만나요. 갈림길에서는 단서를 보고 길을 골라요.</li>
+        <li><b>횃불</b>: 방을 옮길 때마다 -${CONST.TORCH_PER_MOVE}. 꺼지면 치명타가 줄고, 적 무리가 정예로 바뀌어 습격할 수 있어요.</li>
+        <li><b>모닥불</b>: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}.</li>
+        <li><b>영구 사망</b>: 쓰러진 동료는 이번 원정에서 돌아오지 않아요.</li>
       </ul></div>
       <div><h4>전투</h4><ul>
-        <li>평타는 자동. 스킬 2개 + 궁극기(게이지).</li>
-        <li><b>수동</b>: 스킬을 누르면 시간 정지 → 적 칩/초상화 탭 → 확정.</li>
-        <li>범위 스킬은 바닥의 범위를 드래그해서 옮긴다.</li>
-        <li><b>자동</b>: 캐릭터별 규칙 3개를 위에서부터 검사.</li>
-        <li>오우거의 <b>차지 공격</b>은 기절(방패 강타)로 캔슬!</li>
+        <li>평타는 자동. 캐릭터마다 ① 갑옷 스킬 · ② 무기 스킬 · ③ 필살기(게이지).</li>
+        <li>스킬 버튼을 <b>탭</b>하면 알아서 대상을 잡고, <b>끌면</b> 원하는 곳에 써요. 캐릭터를 끌면 이동하거나, 적 위에 놓아 공격시켜요. 적을 탭하면 집중 공격.</li>
+        <li>작전: 돌격 · 대형 · 후퇴. <b>자동</b>이면 스킬도 전략대로 써요.</li>
+        <li><b>끊기·그로기</b>: 큰 적의 차지·호출 위 끊기 칸(●●●)을 2초 안에 채우면 끊기고 <b>흔들림</b>! 이때 그로기 게이지를 깎으면 무방비가 돼요. 같은 직업은 한 칸만 채워요 (탱커의 기절은 전부).</li>
+        <li><b>짓누름</b>: 보스 평타에 맞을수록 쌓여 점점 아파요. 탱커는 거의 영향이 없어요.</li>
+        <li><b>레벨 차</b>: 전투 Lv(캐릭터 Lv + 장비 Lv)이 던전 Lv보다 낮으면 크게 불리해요.</li>
       </ul></div>
     </div>`;
   box.appendChild(btn('닫기', 'primary', () => Game.closeModal(), { id: 'help-close' }));

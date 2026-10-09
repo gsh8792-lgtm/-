@@ -62,7 +62,7 @@ function openRoster(opts) {
     // ①② = 장비가 정함 (직업 공통 스킬 풀)
     const pool = gearSkillPool(d.role), cur = own ? EQ.heroLoadout(p, id).skills : {};
     wrap.appendChild(el('div', 'rd-gear', ['s1', 's2'].map((slot) => `<div><b>${slot === 's1' ? '① 갑옷 스킬' : '② 무기 스킬'}</b> ${pool[slot].map((sid) => `<span class="${cur[slot] === sid ? 'ok' : 'muted'}" title="${SKILLS[sid].desc}">${SKILLS[sid].name}</span>`).join(' · ')}</div>`).join('')));
-    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">필살기 배우기: B Lv10 · C Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파: ${s.text}</span>`).join('')));
+    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">필살기 습득: 두 번째 Lv10 · 세 번째 Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파: ${s.text}</span>`).join('')));
     return wrap;
   };
   render();
@@ -81,7 +81,7 @@ function openGacha(onClose) {
     head.appendChild(btn('닫기', 'ghost small', () => { Game.closeModal(); if (onClose) onClose(); }, { sfx: 'back', id: 'gacha-close' }));
     box.appendChild(head);
     const res = el('div', 'gacha-results');
-    if (!last) res.appendChild(el('div', 'muted gacha-empty', '보스를 쓰러뜨리면 소환권을 얻어요. 중복 캐릭터는 돌파되어 필살기가 강해지고 변주가 열립니다.'));
+    if (!last) res.appendChild(el('div', 'muted gacha-empty', '보스를 쓰러뜨리면 소환권을 얻어요. 이미 있는 캐릭터가 나오면 돌파해 필살기가 강해지고 변주가 열려요.'));
     else last.forEach((r, i) => {
       const c = CHAR[r.id];
       const card = el('div', 'gr-card' + (r.isNew ? ' new' : ''));

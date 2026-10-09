@@ -28,7 +28,7 @@ const TitleScene = {
   seedDialog() {
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', '시드 입력'));
-    box.appendChild(el('p', '', '같은 시드는 같은 지도·전투 결과를 만듭니다.'));
+    box.appendChild(el('p', '', '같은 시드면 같은 지도와 전투가 나와요.'));
     const inp = el('input', 'seed-input');
     inp.type = 'number'; inp.value = this.seed; inp.id = 'seed-input';
     box.appendChild(inp);
@@ -36,7 +36,7 @@ const TitleScene = {
     row.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'seed-cancel' }));
     row.appendChild(btn('적용', 'primary', () => {
       const v = parseInt(inp.value, 10);
-      if (!isFinite(v) || v < 0) { Game.toast('0 이상의 숫자를 입력하세요.'); return; }
+      if (!isFinite(v) || v < 0) { Game.toast('0 이상의 숫자를 입력해 주세요'); return; }
       this.seed = v >>> 0; this.seedLabel.textContent = `시드 ${this.seed}`; Game.closeModal();
     }, { id: 'seed-ok' }));
     box.appendChild(row);
@@ -82,7 +82,7 @@ function openPreBattle(node) {
   });
   box.appendChild(wl);
   const tips = [];
-  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격: 기절로 끊을 수 있다');
+  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격: 끊기 칸을 채우면 끊긴다');
   if (waves.flat().includes('goblin_caller')) tips.push('나팔수: 동료를 부른다');
   if (run.fruit) tips.push(`고목의 열매: 공격력 +${Math.round(run.fruit.bonus * 100)}% (남은 전투 ${run.fruit.battles})`);
   if (run.torch <= 0) tips.push('횃불이 꺼졌다: 치명타 확률 감소');
@@ -96,7 +96,7 @@ function openPreBattle(node) {
   mode.appendChild(seg);
   box.appendChild(mode);
   const row = el('div', 'btn-row');
-  row.appendChild(btn('⚙ 전략 편집', '', () => openStrategyEditor(run, () => openPreBattle(node)), { id: 'pb-strategy' }));
+  row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(run, () => openPreBattle(node)), { id: 'pb-strategy' }));
   row.appendChild(btn('⚔ 전투 시작', 'primary', () => { Game.closeModal(); Game.go('battle', { node }); }, { id: 'pb-start', sfx: 'skill' }));
   box.appendChild(row);
   Game.modal(box, { dim: true });
@@ -119,7 +119,7 @@ const RewardScene = {
     if (run.lastLoot) {
       const L = run.lastLoot;
       box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
-      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 배움</b>` : ''}`).join(' · ')));
+      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>` : ''}`).join(' · ')));
       run.lastLoot = null;
     }
     if (params.goldOnly) {
@@ -132,11 +132,11 @@ const RewardScene = {
     const options = this.makeOptions(run, rng, node.type === 'elite');
     const cards = el('div', 'reward-cards');
     let chosen = null;
-    const confirm = btn('선택 확정', 'primary big', () => {
+    const confirm = btn('확정', 'primary big', () => {
       if (!chosen) return;
       chosen.apply();
       Sfx.play('coin');
-      Game.toast(chosen.title + ' 획득!');
+      Game.toast(chosen.title + (chosen.kind === 'skill' ? ' 강화!' : ' 획득!'));
       backToRun();
     }, { id: 'btn-reward-confirm' });
     confirm.disabled = true;
@@ -175,8 +175,8 @@ const RewardScene = {
       const sk = heroSkill(hid, slot);
       opts.push({
         kind: 'skill', kindName: '스킬 강화', icon: '★',
-        title: `${def.name}: ${sk.name}`,
-        desc: kind === 'power' ? `위력/회복 +${REWARD.skillUpgradePower * 100}%` : `쿨타임 -${Math.round((1 - REWARD.skillUpgradeCd) * 100)}%`,
+        title: `${def.name} 「${sk.name}」`,
+        desc: kind === 'power' ? `위력·회복 +${Math.round(REWARD.skillUpgradePower * 100)}%` : `쿨타임 -${Math.round((1 - REWARD.skillUpgradeCd) * 100)}%`,
         apply: () => { const u = run.heroes[hid].upgrades[slot] || (run.heroes[hid].upgrades[slot] = { power: 0, cd: 0 }); u[kind]++; },
       });
     }
@@ -197,7 +197,7 @@ const RewardScene = {
       return opts;
     }
     const n = elite ? 2 : 1;
-    opts.push({ kind: 'potion', kindName: '회복약', icon: '🧪', title: `회복약 ×${n}`, desc: `아군 1명 HP ${REWARD.potionHealPct * 100}% 회복. 전투 중에도 사용 가능.`, apply: () => { run.potions += n; } });
+    opts.push({ kind: 'potion', kindName: '회복약', icon: '🧪', title: `회복약 ×${n}`, desc: `아군 1명 HP ${REWARD.potionHealPct * 100}% 회복. 전투 중에도 쓸 수 있다.`, apply: () => { run.potions += n; } });
     return opts;
   },
   update(dt) { this.t += dt; },
@@ -258,7 +258,7 @@ const EVENT_EFFECTS = {
     const u = run.heroes[hid].upgrades[slot] || (run.heroes[hid].upgrades[slot] = { power: 0, cd: 0 });
     u.power++;
     const sk = heroSkill(hid, slot);
-    return { text: `보리의 치유 (HP -${cost}). 정찰병이 비법을 알려줬다: ${HEROES[hid].name}「${sk.name}」 위력 +30%`, good: true };
+    return { text: `보리가 정찰병을 치료했다 (보리 HP -${cost}). 정찰병이 보답으로 비법을 알려줬다: ${HEROES[hid].name} 「${sk.name}」 위력 +30%`, good: true };
   },
 };
 function frontAliveHero(run) { return partyAlive(run)[0] || null; }
@@ -276,7 +276,7 @@ const EventScene = {
     const col = el('div', 'btn-col event-choices');
     this.ev.choices.forEach((c, i) => {
       let why = '';
-      if (c.require && (!run.party.includes(c.require) || run.heroes[c.require].dead)) why = `${HEROES[c.require].name}이(가) 파티에 없다`;
+      if (c.require && (!run.party.includes(c.require) || run.heroes[c.require].dead)) why = `${HEROES[c.require].name} 없음`;
       if (c.cost && c.cost.gold && run.gold < c.cost.gold) why = '골드 부족';
       if (c.cost && c.cost.food && run.food < c.cost.food) why = '식량 부족';
       const b = btn(`${c.label}${c.hint ? `<small>${c.hint}</small>` : ''}${why ? `<small class="warn">${why}</small>` : ''}`, 'choice', () => this.choose(c), { id: 'event-choice-' + i });
@@ -364,7 +364,7 @@ const ShopScene = {
     const ui = Game.ui;
     ui.innerHTML = '';
     const box = el('div', 'shop-box');
-    box.appendChild(el('div', 'scene-title', '던전 상인 <small>"골드만 있으면 뭐든지!"</small>'));
+    box.appendChild(el('div', 'scene-title', '떠돌이 상인 <small>"골드만 있으면 뭐든지!"</small>'));
     const list = el('div', 'shop-list');
     this.stock.forEach((it, i) => {
       const row = el('div', 'shop-item' + (it.qty <= 0 ? ' soldout' : ''));
@@ -377,7 +377,7 @@ const ShopScene = {
     });
     box.appendChild(list);
     const row = el('div', 'btn-row');
-    row.appendChild(btn('🧪 회복약 사용', '', () => usePotionFlow(run, () => this.build()), { id: 'shop-usepotion' }));
+    row.appendChild(btn('🧪 회복약', '', () => usePotionFlow(run, () => this.build()), { id: 'shop-usepotion' }));
     row.appendChild(btn('떠나기 ▶', 'primary', () => backToRun(), { id: 'btn-continue' }));
     box.appendChild(row);
     ui.appendChild(box);
@@ -417,17 +417,17 @@ const RestScene = {
     const ui = Game.ui;
     ui.innerHTML = '';
     const box = el('div', 'rest-box');
-    box.appendChild(el('div', 'scene-title', '캠프 <small>모닥불 앞에서 잠시 쉬어간다</small>'));
+    box.appendChild(el('div', 'scene-title', '모닥불 자리 <small>불가에 앉아 잠시 쉬어 간다</small>'));
     if (!this.rested) {
       const col = el('div', 'btn-col');
-      const eat = btn(`🍞 식량 1개로 휴식 <small>살아있는 동료 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(true), { id: 'rest-food' });
+      const eat = btn(`🍞 식량 1개로 휴식 <small>살아 있는 동료 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(true), { id: 'rest-food' });
       if (run.food <= 0) eat.disabled = true;
       col.appendChild(eat);
       col.appendChild(btn(`굶고 쉬기 <small>HP ${CONST.REST_HUNGRY_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(false), { id: 'rest-hungry' }));
       box.appendChild(col);
     } else box.appendChild(el('div', 'event-result good', this.msg));
     const row = el('div', 'btn-row');
-    row.appendChild(btn('⚙ 전략 편집', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
+    row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
     row.appendChild(btn('🎒 장비', '', () => openInventory({ onClose: () => this.build() }), { id: 'rest-inv' }));
     row.appendChild(btn('🧪 회복약', '', () => usePotionFlow(run, () => this.build()), { id: 'rest-potion' }));
     row.appendChild(btn(this.rested ? '출발 ▶' : '쉬지 않고 출발', this.rested ? 'primary' : 'ghost', () => backToRun(), { id: 'btn-continue' }));
@@ -443,7 +443,7 @@ const RestScene = {
     for (const h of partyAlive(run)) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * pct);
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + CONST.TORCH_REST_GAIN);
     this.rested = true;
-    this.msg = withFood ? `따뜻한 식사와 휴식. HP ${pct * 100}% 회복!` : `배가 고프지만 눈을 붙였다. HP ${pct * 100}% 회복`;
+    this.msg = withFood ? `따뜻한 식사로 기운을 차렸다. HP ${pct * 100}% 회복!` : `배는 고프지만 잠시 눈을 붙였다. HP ${pct * 100}% 회복`;
     Sfx.play('heal');
     this.build();
   },
@@ -499,19 +499,19 @@ const TreeScene = {
         box.appendChild(el('div', 'reward-sub', '누구의 피를 바칠까?'));
         const pp = partyPanel(run, { compact: true, onSelect: (id) => {
           const h = run.heroes[id];
-          if (h.hp <= h.maxHp * this.deal.hpCost + 1) { Game.toast('HP가 부족해 거래할 수 없다.'); return; }
+          if (h.hp <= h.maxHp * this.deal.hpCost + 1) { Game.toast('HP가 부족해 거래할 수 없어요'); return; }
           this.hero = id; this.build();
         } });
         if (this.hero) pp.querySelector(`[data-hero="${this.hero}"]`).classList.add('sel');
         box.appendChild(pp);
       }
       const row = el('div', 'btn-row');
-      row.appendChild(btn('떠난다', 'ghost', () => backToRun(), { sfx: 'back', id: 'tree-leave' }));
+      row.appendChild(btn('떠나기', 'ghost', () => backToRun(), { sfx: 'back', id: 'tree-leave' }));
       const ok = btn('피의 거래', 'danger', () => this.confirm(), { id: 'tree-confirm' });
       if (!this.deal || !this.hero) ok.disabled = true;
       row.appendChild(ok);
       box.appendChild(row);
-      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다(+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 더 강한 효과만 남는다.`));
+      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다 (+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 겹치지 않고 더 큰 값만 남는다.`));
     }
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -556,7 +556,7 @@ const ResultScene = {
     const ui = Game.ui;
     const box = el('div', 'result-box ' + (win ? 'win' : 'lose'));
     box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
-    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
+    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `${Math.max(1, run.pos.stage)}번째 방에서 원정이 끝났다.`));
     const settle = settleRun(run);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `
@@ -645,7 +645,7 @@ function openStrategyEditor(run, onClose) {
     box.appendChild(rules);
     const row = el('div', 'btn-row');
     row.appendChild(btn('기본값으로', 'ghost', () => { run.strategy[cur] = JSON.parse(JSON.stringify(AI_PRESETS[cur])); render(); }, { id: 'strat-reset' }));
-    row.appendChild(btn('저장하고 닫기', 'primary', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'strat-close' }));
+    row.appendChild(btn('닫기', 'primary', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'strat-close' }));
     box.appendChild(row);
   };
   render();
@@ -687,7 +687,7 @@ function openPartySelect(run, onDone) {
         Sfx.play('click');
         if (on) pick = pick.filter((x) => x !== id);
         else if (pick.length < CONST.PARTY_SIZE) pick.push(id);
-        else { Game.toast(`최대 ${CONST.PARTY_SIZE}명까지 출전할 수 있어요.`, 1200); return; }
+        else { Game.toast(`최대 ${CONST.PARTY_SIZE}명까지 출전할 수 있어요`, 1200); return; }
         render();
       });
       grid.appendChild(c);
@@ -695,7 +695,7 @@ function openPartySelect(run, onDone) {
     box.appendChild(grid);
     const roles = pick.map((id) => HEROES[id].role);
     const tips = [];
-    if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 오우거의 차지 공격을 막기 어려워요.');
+    if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 보스를 버티기 어려워요.');
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
     if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
