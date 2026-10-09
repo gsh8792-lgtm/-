@@ -476,6 +476,14 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .chip.shaken { border-color: #ffb050; box-shadow: 0 0 8px 1px rgba(255,176,80,0.7); }
 .bar.poise { position: relative; }
 .bar.poise::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(20% - 1px), rgba(0,0,0,0.75) calc(20% - 1px), rgba(0,0,0,0.75) 20%); pointer-events: none; }
+/* 탐험 (방 안) */
+.ex-actions { top: auto; bottom: 14px; right: 14px; }
+.ex-act { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); background: rgba(24,18,36,.92); border: 2px solid rgba(255,230,170,.35); border-radius: 14px; padding: 10px 16px; text-align: center; min-width: 260px; }
+.ex-act-title { font-weight: 900; color: #ffe9a0; margin-bottom: 6px; }
+.fork-box { min-width: 320px; text-align: center; }
+.fork-box .btn-col { margin-top: 10px; }
+.fork-box .choice small { display: block; color: var(--muted); font-weight: 400; }
+.map-node.t-unknown { font-size: 26px; }
 
 </style>
 </head>
@@ -570,7 +578,7 @@ const CONST = {
   TORCH_DARK_CRIT_PENALTY: 0.10,
   BASE_CRIT: 0.10,
   CRIT_MULT: 1.6,
-  ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 궁극기 게이지(%)
+  ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 필살기 게이지(%)
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
   // 짓누름: 보스 평타가 같은 대상에 쌓이는 압박 (탱커가 아니면 오래 못 버팀)
@@ -640,18 +648,18 @@ const STAGE_SCALE = [1.0, 1.15, 1.3, 1.5, 1.5];
 
 // ---------------------------------------------------------------- 상태이상
 const STATUS = {
-  crush:  { name: '짓누름', short: '짓', color: '#b0603a', desc: '보스 평타에 맞을 때마다 쌓인다. 쌓일수록 보스 평타 피해 증가. 탱커는 거의 영향이 없다.' },
-  stun:   { name: '기절', short: '기', color: '#ffd34a', desc: '행동 불가. 차지 공격을 캔슬한다.' },
-  bleed:  { name: '출혈', short: '출', color: '#e0524a', desc: '초당 지속 피해.' },
+  crush:  { name: '짓누름', short: '짓', color: '#b0603a', desc: '보스 평타에 맞을 때마다 쌓임. 쌓일수록 보스 평타 피해 증가. 탱커는 거의 영향 없음.' },
+  stun:   { name: '기절', short: '기', color: '#ffd34a', desc: '행동 불가. 차지·호출의 끊기 칸을 한 번에 채움.' },
+  bleed:  { name: '출혈', short: '출', color: '#e0524a', desc: '매초 피해.' },
   burn:   { name: '화상', short: '화', color: '#ff8a2a', desc: '지속 피해 + 받는 회복량 -50%.' },
-  taunt:  { name: '도발', short: '도', color: '#c86af0', desc: '도발한 자를 강제로 공격한다.' },
+  taunt:  { name: '도발', short: '도', color: '#c86af0', desc: '도발한 대상만 공격.' },
   vuln:   { name: '취약', short: '취', color: '#f07ab0', desc: '받는 피해 +25%.' },
   guard:  { name: '철벽', short: '철', color: '#7ab8f0', desc: '받는 피해 감소.' },
-  regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '초당 회복.' },
+  regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '매초 HP 회복.' },
   enrage: { name: '광폭', short: '광', color: '#ff4a3a', desc: '공격 속도 증가.' },
-  fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매: 공격력 증가.' },
+  fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매. 공격력 증가.' },
   resonance: { name: '공명', short: '공', color: '#ffe680', desc: '주는 그로기 피해 증가.' },
-  invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '피해를 받지 않는다.' },
+  invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '받는 피해 없음.' },
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
 };
 
@@ -672,7 +680,7 @@ const PARTY_ENEMY_SCALE = { 1: 0.45, 2: 0.72, 3: 1.0 };
 const TRAITS = {
   brave:    { name: '용감함', desc: 'HP가 낮을수록 공격력 증가 (최대 +40%).' },
   cautious: { name: '신중함', desc: '차지 공격 피해 -50%. 화상 지속 +1초.' },
-  sturdy:   { name: '든든함', desc: '차지 공격 피해 -40%. 범위 안에 있으면 동료가 받는 차지 피해 -60%.' },
+  sturdy:   { name: '든든함', desc: '차지 공격 피해 -40%. 같은 차지 범위 안 동료의 피해 -60%.' },
   keen:     { name: '예리함', desc: '치명타 확률 +10%.' },
   gentle:   { name: '다정함', desc: '주는 회복량 +15%.' },
 };
@@ -682,45 +690,45 @@ const TRAITS = {
 // target: enemy(단일) | ally(단일 아군) | area_enemy | area_ally(지점 원형) | self_area(시전자 주변) | self | party | all_enemies
 // power: 공격력 배율. areaR: 원형 범위 반지름(논리 px). hint: ② 추천 조건(SKILL_HINTS). fx: 연출 키
 const SKILLS = {
-  tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적이 토비를 공격. 이때 차지를 받아내면 동료 피해 -60%.' },
-  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
+  tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적 도발 + 받는 피해 -20%. 차지를 받아내면 동료 피해 -60%.' },
+  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '강타 + 2초 기절 (끊기 칸 전부).' },
   tobi_ult: { name: '철벽',       target: 'party',     cd: 0,  power: 0,   effects: [{ status: 'guard', dur: 7, value: 0.45, to: 'party' }], fx: 'wall', desc: '7초간 파티 받는 피해 -45%.' },
 
-  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈. 끊기 ●● (정면에서는 ●).' },
-  danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '근거리 범위 베기.' },
-  danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 강한 출혈.' },
+  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 5초 출혈. 끊기 ●● (정면 ●).' },
+  danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '주변 적 모두 베기.' },
+  danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 6초 강한 출혈.' },
 
-  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '취약 부여. 끊기 ●●, 흔들림 +3초.' },
-  byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정 범위 화살비.' },
-  byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '단일 대상 초강력 사격.' },
+  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '5초 취약. 끊기 ●●, 흔들림 +3초.' },
+  byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정한 범위에 화살비.' },
+  byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '적 1명에게 초강력 사격 + 6초 취약.' },
 
-  soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '화상 부여.' },
-  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우. 범위 안 모든 적 끊기 ●.' },
-  soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해.' },
+  soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '마법탄 + 5초 화상.' },
+  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우 + 3초 화상. 범위 안 모든 적 끊기 ●.' },
+  soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해 + 5초 화상.' },
 
   bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 5초간 그로기 피해 +30%.' },
-  bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 내 아군 회복.' },
-  bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (초당 최대HP 4.5%).' },
+  bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 안 아군 회복.' },
+  bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (매초 최대 HP 4.5%).' },
 };
 
 // ---------------------------------------------------------------- ② 상황 스킬 추천 조건
 const SKILL_HINTS = {
-  enemyCharging: { name: '적이 차지/호출 중', urgent: true },   // "지금!" (위험 대응)
+  enemyCharging: { name: '적이 차지·호출 중', urgent: true },   // "지금!" (위험 대응)
   nearEnemies:   { name: '주변에 적 2마리 이상' },
-  cluster:       { name: '적 3마리가 뭉쳐 있음' },
+  cluster:       { name: '적 3마리 이상 뭉침' },
   alliesHurt:    { name: '아군 2명 이상 HP 70% 이하' },
 };
 
 // ---------------------------------------------------------------- 작전 명령 (파티 전체)
 const ORDERS = {
   charge:  { name: '돌격', desc: '모두 앞으로. 원거리도 가까이 붙어 화력 집중.' },
-  hold:    { name: '대형', desc: '탱커가 앞, 원거리·서포터는 뒤에서 거리 유지.' },
-  retreat: { name: '후퇴', desc: '왼쪽으로 물러남. 차지 범위 회피용. 사거리 안 적만 공격.' },
+  hold:    { name: '대형', desc: '탱커는 앞, 원거리·서포터는 뒤에서 거리 유지.' },
+  retreat: { name: '후퇴', desc: '뒤로 물러남. 차지 피하기용. 사거리 안 적만 공격.' },
 };
 
 // ---------------------------------------------------------------- 자동 전략 (스킬별: 자동 여부 · 조건 · 대상)
 const AI_CONDITIONS = {
-  always:       { name: '쿨 될 때마다',   param: null },
+  always:       { name: '쿨타임마다',     param: null },
   hint:         { name: '추천 상황일 때', param: null },
   allyHpBelow:  { name: '아군 HP ≤ X%',   param: [30, 50, 60, 70, 80] },
   enemyHpBelow: { name: '적 HP ≤ X%',     param: [20, 30, 50, 70] },
@@ -731,7 +739,7 @@ const AI_CONDITIONS = {
   smartInterrupt:{ name: '끊기 타이밍 고려', param: null },
   auto:         { name: '필살기에 맞게 자동', param: null }, // 부활·회복·그로기 만들기·무방비 수확을 필살기 종류로 판단 // 다음 차지·호출 전에 쿨이 돌아오면 사용, 아니면 끊기용으로 아낌 // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
 };
-const AI_SKILL_SLOTS = { s1: '① 기본', s2: '② 상황', ult: '③ 필살기' };
+const AI_SKILL_SLOTS = { s1: '① 갑옷 스킬', s2: '② 무기 스킬', ult: '③ 필살기' };
 const AI_TARGET_RULES = {
   focus:      { name: '집중 대상 우선' },
   nearest:    { name: '가장 가까운 적' },
@@ -789,23 +797,23 @@ const ENCOUNTERS = {
 
 // ---------------------------------------------------------------- 지도 노드
 const NODE_TYPES = {
-  battle: { name: '일반 전투', short: '전', color: '#5a4f8a', weight: 40, combat: true,  desc: '적 무리와 전투. 보상 3택1.' },
-  elite:  { name: '정예',      short: '정', color: '#b2453f', weight: 16, combat: true,  desc: '오크 대장과 호위. 큰 보상.' },
+  battle: { name: '일반 전투', short: '전', color: '#5a4f8a', weight: 40, combat: true,  desc: '적 무리와 전투. 보상 3개 중 1개 선택.' },
+  elite:  { name: '정예',      short: '정', color: '#b2453f', weight: 16, combat: true,  desc: '오크 대장과 호위대. 큰 보상.' },
   event:  { name: '이벤트',    short: '?',  color: '#2f8a8a', weight: 18, combat: false, desc: '무슨 일이 일어날지 모른다.' },
   shop:   { name: '상점',      short: '상', color: '#c8a03a', weight: 10, combat: false, maxPerStage: 1, desc: '던전 상인. 골드로 보급품 구매.' },
-  rest:   { name: '휴식',      short: '휴', color: '#3f9a5a', weight: 10, combat: false, maxPerStage: 1, desc: '캠프. 식량을 써서 회복.' },
+  rest:   { name: '휴식',      short: '휴', color: '#3f9a5a', weight: 10, combat: false, maxPerStage: 1, desc: '모닥불. 식량을 먹고 회복.' },
   tree:   { name: '고목',      short: '수', color: '#7a4a2a', weight: 7,  combat: false, desc: '피의 거래. HP를 바쳐 열매를 얻는다.' },
-  boss:   { name: '보스',      short: '보', color: '#9a2a2a', weight: 0,  combat: true,  desc: '오우거 대족장.' },
+  boss:   { name: '보스',      short: '보', color: '#9a2a2a', weight: 0,  combat: true,  desc: '굴의 주인. 원정의 마지막 방.' },
 };
 
 // ---------------------------------------------------------------- 유물 (패시브)
 const RELICS = {
-  acorn:    { name: '따뜻한 빵', icon: '🥖', price: 70, desc: '전투 시작 시 아군 HP 10% 회복.' },
+  acorn:    { name: '따뜻한 빵', icon: '🥖', price: 70, desc: '전투 시작 시 파티 HP 10% 회복.' },
   whetstone:{ name: '날카로운 숫돌', icon: '🗡', price: 75, desc: '출혈 피해 +50%.' },
   ember:    { name: '불씨 깃털',     icon: '🔥', price: 75, desc: '화상 피해 +30%, 지속 +2초.' },
   bark:     { name: '단단한 나무껍질', icon: '🛡', price: 80, desc: '탱커가 받는 피해 -15%.' },
   clover:   { name: '행운의 클로버', icon: '🍀', price: 80, desc: '치명타 확률 +10%.' },
-  stardust: { name: '별가루 주머니', icon: '✨', price: 85, desc: '필살기 게이지 충전 +30%.' },
+  stardust: { name: '별가루 주머니', icon: '✨', price: 85, desc: '필살기 충전 +30%.' },
 };
 
 // ---------------------------------------------------------------- 보상/상점
@@ -817,7 +825,7 @@ const REWARD = {
 };
 const SHOP_ITEMS = {
   potion: { name: '회복약', price: 30, desc: '아군 1명 HP 50% 회복.' },
-  food:   { name: '식량',   price: 25, desc: '휴식 때 소모. HP 40% 회복.' },
+  food:   { name: '식량',   price: 25, desc: '휴식 때 먹으면 HP 40% 회복.' },
   torch:  { name: '횃불',   price: 20, desc: '횃불 게이지 +40.' },
 };
 
@@ -826,19 +834,19 @@ const SHOP_ITEMS = {
 const EVENTS = {
   cart: {
     title: '부러진 수레', art: 'cart',
-    text: '바퀴가 부러진 보급 수레가 길을 막고 있다. 짐칸 안쪽에서 무언가 반짝인다… 바닥의 흙이 묘하게 새로 덮여 있다.',
+    text: '바퀴가 부러진 보급 수레가 길을 막고 있다. 짐칸 안쪽에서 무언가 반짝인다. 그런데 주변 흙이 묘하게 새로 덮여 있다.',
     choices: [
-      { label: '짐칸을 뒤진다', hint: '보급품? 혹은 함정', outcome: 'cart_search' },
-      { label: '토비가 먼저 밟아본다', hint: '탱커가 함정을 대신 맞음', outcome: 'cart_tank', require: 'tobi' },
-      { label: '지나간다', hint: '', outcome: 'leave' },
+      { label: '짐칸을 뒤진다', hint: '보급품일까, 함정일까', outcome: 'cart_search' },
+      { label: '토비가 먼저 밟아 본다', hint: '함정은 탱커가 대신 맞는다', outcome: 'cart_tank', require: 'tobi' },
+      { label: '그냥 지나간다', hint: '', outcome: 'leave' },
     ],
   },
   well: {
     title: '속삭이는 우물', art: 'well',
-    text: '이끼 낀 우물 바닥에서 누군가 이름을 부르는 것 같다. "동전 하나면… 소원 하나…"',
+    text: '이끼 낀 우물 바닥에서 누군가 이름을 부르는 듯하다. "동전 하나면… 소원 하나…"',
     choices: [
       { label: '동전을 던진다 (20골드)', hint: '소원을 빈다', outcome: 'well_coin', cost: { gold: 20 } },
-      { label: '물을 길어 마신다', hint: '시원할까, 차가울까', outcome: 'well_drink' },
+      { label: '물을 길어 마신다', hint: '시원할까, 서늘할까', outcome: 'well_drink' },
       { label: '귀를 막고 지나간다', hint: '', outcome: 'leave' },
     ],
   },
@@ -847,16 +855,16 @@ const EVENTS = {
     text: '보따리를 멘 고블린이 히죽 웃는다. "반짝이, 반짝이 있어! 금화 주면 줌. 싸움은 싫어, 아니 좋아?"',
     choices: [
       { label: '거래한다 (45골드)', hint: '무작위 유물', outcome: 'gm_trade', cost: { gold: 45 } },
-      { label: '보따리를 뺏는다', hint: '전투 발생, 이기면 골드', outcome: 'gm_fight' },
+      { label: '보따리를 뺏는다', hint: '전투! 이기면 골드', outcome: 'gm_fight' },
       { label: '무시한다', hint: '', outcome: 'leave' },
     ],
   },
   wounded: {
     title: '길 잃은 부상병', art: 'wounded',
-    text: '다친 다람쥐 정찰병이 벽에 기대 앉아 있다. "배가… 너무 고파요. 아니면 상처라도…"',
+    text: '다친 다람쥐 정찰병이 벽에 기대앉아 있다. "배가… 너무 고파요. 상처도 욱신거리고요…"',
     choices: [
       { label: '식량을 나눠준다 (식량 1)', hint: '보답이 있을지도', outcome: 'wd_food', cost: { food: 1 } },
-      { label: '보리가 치료해준다', hint: '보리 HP 20% 소모', outcome: 'wd_heal', require: 'bori' },
+      { label: '보리가 치료해 준다', hint: '보리 HP 20% 소모', outcome: 'wd_heal', require: 'bori' },
       { label: '지나친다', hint: '', outcome: 'leave' },
     ],
   },
@@ -871,16 +879,17 @@ const TREE_DEALS = [
 // ---------------------------------------------------------------- 튜토리얼 힌트 (첫 플레이)
 const HINTS = {
   field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
-  map:    '같은 줄이나 바로 위·아래 줄의 다음 방만 갈 수 있어요. 방 종류는 미리 보여요.',
-  battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
-  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 맞춰야 해요. 같은 직업은 한 번만 쳐요.`,
-  crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 데려가거나, 장비로 레벨을 올려 버티세요.',
-  charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
+  map:    '같은 줄이나 바로 위·아래 줄의 다음 방으로 갈 수 있어요. 방에 무엇이 있는지는 들어가 봐야 알아요.',
+  explore: '파티가 앞으로 걸어가요. 적 무리를 만나면 그 자리에서 전투가 시작되고, 갈림길에서는 길을 골라요. 멈춤 버튼으로 언제든 멈출 수 있어요.',
+  battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌어다 놓으면 그 자리로 이동하거나, 놓은 곳의 적을 공격해요.',
+  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 힘을 모아야 해요. 같은 직업은 한 번만 인정돼요.`,
+  crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 끌어가거나, 장비로 레벨을 올려 버텨 보세요.',
+  charge: '붉은 원 안에 강한 공격이 떨어져요. 탱커의 기절로 끊거나 원 밖으로 피하세요.',
 };
 
 // ---------- 01b_equip_db.js
 // ===== 01b_equip_db.js : 장비 DB (tools/gen_equipment_db.py가 생성 — 직접 수정하지 말 것) =====
-const EQUIP_DB = {"version":1,"grades":[{"code":"UC","name":"UC","color":"#9a9a9a","main":1.0,"opt":0,"optMult":0.0,"innate":1.0,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"C","name":"C","color":"#e8e8e8","main":1.45,"opt":0,"optMult":0.0,"innate":1.35,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"R","name":"R","color":"#4aa3ff","main":1.7,"opt":1,"optMult":1.0,"innate":1.5,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"SR","name":"SR","color":"#3fd27a","main":2.1,"opt":2,"optMult":1.15,"innate":1.75,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"SSR","name":"SSR","color":"#b86aff","main":2.55,"opt":3,"optMult":1.3,"innate":2.0,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"UR","name":"UR","color":"#ff9a2a","main":3.05,"opt":4,"optMult":1.5,"innate":2.3,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"L","name":"Legend","color":"#ffd34a","main":3.2,"opt":4,"optMult":1.55,"innate":2.65,"gem":[1,1],"cls":[0,1],"skill":[0,1],"clsOrSkill":true},{"code":"E","name":"Elder","color":"#ff4d6d","main":3.3,"opt":4,"optMult":1.58,"innate":3.0,"gem":[1,3],"cls":[1,1],"skill":[0,2]}],"lExtraWeights":{"none":30,"cls":35,"skill":35},"eGemWeights":{"1":55,"2":33,"3":12},"eSkillWeights":{"0":40,"1":45,"2":15},"stats":[{"key":"atk","name":"공격력","unit":"","pct":false,"pw":null,"note":"직업 기본 공격력 대비로 환산"},{"key":"hp","name":"체력","unit":"","pct":false,"pw":null,"note":"직업 기본 체력 대비로 환산"},{"key":"atk_pct","name":"공격력%","unit":"%","pct":true,"pw":0.5},{"key":"hp_pct","name":"체력%","unit":"%","pct":true,"pw":0.5},{"key":"dr","name":"받는 피해 감소","unit":"%","pct":true,"pw":0.6,"cap":0.5},{"key":"aspd","name":"공격 속도","unit":"%","pct":true,"pw":0.3,"cap":0.5},{"key":"crit","name":"치명타 확률","unit":"%","pct":true,"pw":0.3,"cap":0.6},{"key":"critdmg","name":"치명타 피해","unit":"%","pct":true,"pw":0.1},{"key":"skilldmg","name":"스킬 피해","unit":"%","pct":true,"pw":0.2},{"key":"cdr","name":"쿨타임 감소","unit":"%","pct":true,"pw":0.35,"cap":0.4},{"key":"heal","name":"회복량","unit":"%","pct":true,"pw":0.2},{"key":"ultgain","name":"필살기 충전","unit":"%","pct":true,"pw":0.12,"cap":0.8},{"key":"mspd","name":"이동 속도","unit":"%","pct":true,"pw":0.08,"cap":0.5},{"key":"dotdmg","name":"지속 피해","unit":"%","pct":true,"pw":0.06},{"key":"ccdur","name":"기절·도발 지속","unit":"%","pct":true,"pw":0.1,"gimmick":true},{"key":"breakdmg","name":"그로기 피해","unit":"%","pct":true,"pw":0.1,"gimmick":true,"note":"그로기 게이지를 더 크게 깎는다 (공략 스탯)"},{"key":"s1pow","name":"① 스킬 위력","unit":"%","pct":true,"pw":0.12,"note":"소울 메달 주 스탯 (갑옷 스킬)"},{"key":"s2pow","name":"② 스킬 위력","unit":"%","pct":true,"pw":0.12,"note":"소울 메달 주 스탯 (무기 스킬)"},{"key":"vsbroken","name":"그로기 적 피해","unit":"%","pct":true,"pw":0.1,"gimmick":true,"note":"그로기 상태 적에게 주는 피해 (공략 스탯)"}],"classes":[{"key":"tank","hero":"tobi","name":"탱커","heroName":"토비","baseAtk":22,"baseHp":520,"trait":"dr","traitName":"받는 피해 감소"},{"key":"melee","hero":"danbi","name":"근딜","heroName":"단비","baseAtk":40,"baseHp":300,"trait":"critdmg","traitName":"치명타 피해"},{"key":"ranged","hero":"byeolbi","name":"원딜","heroName":"별비","baseAtk":36,"baseHp":260,"trait":"crit","traitName":"치명타 확률"},{"key":"mage","hero":"soldam","name":"매지션","heroName":"솔담","baseAtk":44,"baseHp":240,"trait":"skilldmg","traitName":"스킬 피해"},{"key":"support","hero":"bori","name":"서포터","heroName":"보리","baseAtk":16,"baseHp":280,"trait":"heal","traitName":"회복량"}],"slots":[{"key":"weapon","name":"무기","classBound":true},{"key":"armor","name":"갑옷","classBound":true},{"key":"medal","name":"소울 메달","classBound":true},{"key":"ring","name":"반지","classBound":false},{"key":"necklace","name":"목걸이","classBound":false},{"key":"belt","name":"벨트","classBound":false}],"items":[{"id":"tank_weapon_1","name":"수호자의 메이스","slot":"weapon","cls":"tank","line":1,"main":[{"stat":"atk","base":2.2},{"stat":"dr","base":0.006}],"innate":{"key":"s2_break","text":"② 방패 강타 그로기 피해 +{v}%","base":15.0,"unit":"%","pw":1.6,"skill":"s2"}},{"id":"tank_weapon_2","name":"맹세의 장검","slot":"weapon","cls":"tank","line":2,"main":[{"stat":"atk","base":2.2},{"stat":"dr","base":0.006}],"innate":{"key":"s1_guard","text":"① 도발 중 받는 피해 감소 +{v}%p","base":3.0,"unit":"%p","pw":1.4,"skill":"s1"}},{"id":"tank_weapon_3","name":"성채의 철퇴","slot":"weapon","cls":"tank","line":3,"main":[{"stat":"atk","base":2.2},{"stat":"dr","base":0.006}],"innate":{"key":"basic_stun_chance","text":"평타 적중 시 {v}% 확률로 0.6초 기절","base":3.0,"unit":"%","pw":1.5,"skill":null}},{"id":"tank_armor_1","name":"성벽 판금갑","slot":"armor","cls":"tank","line":1,"main":[{"stat":"hp","base":52.0},{"stat":"dr","base":0.006}],"innate":{"key":"charge_dr","text":"차지 공격 피해 -{v}%","base":6.0,"unit":"%","pw":1.6,"skill":null}},{"id":"tank_armor_2","name":"맹세의 사슬갑","slot":"armor","cls":"tank","line":2,"main":[{"stat":"hp","base":52.0},{"stat":"dr","base":0.006}],"innate":{"key":"s1_taunt_dur","text":"① 도발 지속 +{v}초","base":0.3,"unit":"초","pw":1.4,"skill":"s1"}},{"id":"tank_armor_3","name":"가시 갑옷","slot":"armor","cls":"tank","line":3,"main":[{"stat":"hp","base":52.0},{"stat":"dr","base":0.006}],"innate":{"key":"thorns","text":"받은 근접 피해의 {v}% 반사","base":5.0,"unit":"%","pw":1.3,"skill":null}},{"id":"tank_medal_1","name":"불굴의 소울 메달","slot":"medal","cls":"tank","line":1,"main":[{"stat":"dr","base":0.012},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"tank_medal_2","name":"수호성의 소울 메달","slot":"medal","cls":"tank","line":2,"main":[{"stat":"dr","base":0.012},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"melee_weapon_1","name":"바람의 쌍검","slot":"weapon","cls":"melee","line":1,"main":[{"stat":"atk","base":4.0},{"stat":"critdmg","base":0.03}],"innate":{"key":"s1_bleed","text":"① 급소 베기 출혈 피해 +{v}%","base":10.0,"unit":"%","pw":1.4,"skill":"s1"}},{"id":"melee_weapon_2","name":"파쇄자의 대검","slot":"weapon","cls":"melee","line":2,"main":[{"stat":"atk","base":4.0},{"stat":"critdmg","base":0.03}],"innate":{"key":"vs_broken","text":"그로기 적에게 피해 +{v}%","base":8.0,"unit":"%","pw":1.6,"skill":null}},{"id":"melee_weapon_3","name":"그림자 단검","slot":"weapon","cls":"melee","line":3,"main":[{"stat":"atk","base":4.0},{"stat":"critdmg","base":0.03}],"innate":{"key":"s2_area","text":"② 회전 베기 범위 +{v}%","base":5.0,"unit":"%","pw":1.4,"skill":"s2"}},{"id":"melee_armor_1","name":"사냥꾼의 가죽갑","slot":"armor","cls":"melee","line":1,"main":[{"stat":"hp","base":30.0},{"stat":"aspd","base":0.02}],"innate":{"key":"kill_aspd","text":"적 처치 시 2초간 공격 속도 +{v}%","base":10.0,"unit":"%","pw":1.3,"skill":null}},{"id":"melee_armor_2","name":"검무사의 경갑","slot":"armor","cls":"melee","line":2,"main":[{"stat":"hp","base":30.0},{"stat":"aspd","base":0.02}],"innate":{"key":"s2_cd","text":"② 회전 베기 쿨타임 -{v}%","base":4.0,"unit":"%","pw":1.5,"skill":"s2"}},{"id":"melee_armor_3","name":"핏빛 망토","slot":"armor","cls":"melee","line":3,"main":[{"stat":"hp","base":30.0},{"stat":"aspd","base":0.02}],"innate":{"key":"vs_bleed","text":"출혈 걸린 적에게 피해 +{v}%","base":5.0,"unit":"%","pw":1.5,"skill":null}},{"id":"melee_medal_1","name":"검귀의 소울 메달","slot":"medal","cls":"melee","line":1,"main":[{"stat":"critdmg","base":0.06},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"melee_medal_2","name":"투지의 소울 메달","slot":"medal","cls":"melee","line":2,"main":[{"stat":"critdmg","base":0.06},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"ranged_weapon_1","name":"매의 장궁","slot":"weapon","cls":"ranged","line":1,"main":[{"stat":"atk","base":3.6},{"stat":"crit","base":0.008}],"innate":{"key":"s1_vuln_dur","text":"① 관통 사격 취약 지속 +{v}초","base":0.5,"unit":"초","pw":1.4,"skill":"s1"}},{"id":"ranged_weapon_2","name":"폭풍의 연궁","slot":"weapon","cls":"ranged","line":2,"main":[{"stat":"atk","base":3.6},{"stat":"crit","base":0.008}],"innate":{"key":"double_shot","text":"평타 {v}% 확률로 2연사","base":6.0,"unit":"%","pw":1.6,"skill":null}},{"id":"ranged_weapon_3","name":"은빛 석궁","slot":"weapon","cls":"ranged","line":3,"main":[{"stat":"atk","base":3.6},{"stat":"crit","base":0.008}],"innate":{"key":"ult_power","text":"③ 집중 사격 위력 +{v}%","base":8.0,"unit":"%","pw":1.5,"skill":"ult"}},{"id":"ranged_armor_1","name":"숲지기 가죽갑","slot":"armor","cls":"ranged","line":1,"main":[{"stat":"hp","base":26.0},{"stat":"mspd","base":0.025}],"innate":{"key":"s2_area","text":"② 화살비 범위 +{v}%","base":5.0,"unit":"%","pw":1.4,"skill":"s2"}},{"id":"ranged_armor_2","name":"그림자 망토","slot":"armor","cls":"ranged","line":2,"main":[{"stat":"hp","base":26.0},{"stat":"mspd","base":0.025}],"innate":{"key":"near_dr","text":"적이 70px 안에 있으면 받는 피해 -{v}%","base":6.0,"unit":"%","pw":1.4,"skill":null}},{"id":"ranged_armor_3","name":"추적자의 조끼","slot":"armor","cls":"ranged","line":3,"main":[{"stat":"hp","base":26.0},{"stat":"mspd","base":0.025}],"innate":{"key":"counter_ult","text":"차지·호출을 끊으면 필살기 게이지 +{v}","base":6.0,"unit":"","pw":1.6,"skill":null}},{"id":"ranged_medal_1","name":"명사수의 소울 메달","slot":"medal","cls":"ranged","line":1,"main":[{"stat":"crit","base":0.016},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"ranged_medal_2","name":"바람의 소울 메달","slot":"medal","cls":"ranged","line":2,"main":[{"stat":"crit","base":0.016},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"mage_weapon_1","name":"별빛 지팡이","slot":"weapon","cls":"mage","line":1,"main":[{"stat":"atk","base":4.4},{"stat":"skilldmg","base":0.02}],"innate":{"key":"s1_burn","text":"① 별빛 탄 화상 피해 +{v}%","base":10.0,"unit":"%","pw":1.4,"skill":"s1"}},{"id":"mage_weapon_2","name":"유성의 홀","slot":"weapon","cls":"mage","line":2,"main":[{"stat":"atk","base":4.4},{"stat":"skilldmg","base":0.02}],"innate":{"key":"s2_area","text":"② 유성우 범위 +{v}%","base":6.0,"unit":"%","pw":1.5,"skill":"s2"}},{"id":"mage_weapon_3","name":"금단의 마도서","slot":"weapon","cls":"mage","line":3,"main":[{"stat":"atk","base":4.4},{"stat":"skilldmg","base":0.02}],"innate":{"key":"ult_vs_broken","text":"③ 대마법이 그로기 적에게 위력 +{v}%","base":12.0,"unit":"%","pw":1.6,"skill":"ult"}},{"id":"mage_armor_1","name":"현자의 로브","slot":"armor","cls":"mage","line":1,"main":[{"stat":"hp","base":24.0},{"stat":"cdr","base":0.01}],"innate":{"key":"cdr_extra","text":"쿨타임 감소 +{v}%","base":1.5,"unit":"%","pw":1.5,"skill":null}},{"id":"mage_armor_2","name":"불꽃 망토","slot":"armor","cls":"mage","line":2,"main":[{"stat":"hp","base":24.0},{"stat":"cdr","base":0.01}],"innate":{"key":"burn_dur","text":"화상 지속 +{v}초","base":0.4,"unit":"초","pw":1.3,"skill":null}},{"id":"mage_armor_3","name":"마력 장막 로브","slot":"armor","cls":"mage","line":3,"main":[{"stat":"hp","base":24.0},{"stat":"cdr","base":0.01}],"innate":{"key":"start_shield","text":"전투 시작 시 최대 HP {v}% 보호막","base":6.0,"unit":"%","pw":1.5,"skill":null}},{"id":"mage_medal_1","name":"대마도사의 소울 메달","slot":"medal","cls":"mage","line":1,"main":[{"stat":"skilldmg","base":0.04},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"mage_medal_2","name":"별의 소울 메달","slot":"medal","cls":"mage","line":2,"main":[{"stat":"skilldmg","base":0.04},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"support_weapon_1","name":"생명의 지팡이","slot":"weapon","cls":"support","line":1,"main":[{"stat":"atk","base":1.6},{"stat":"heal","base":0.025}],"innate":{"key":"s1_heal","text":"① 치유 회복량 +{v}%","base":8.0,"unit":"%","pw":1.5,"skill":"s1"}},{"id":"support_weapon_2","name":"빛의 홀","slot":"weapon","cls":"support","line":2,"main":[{"stat":"atk","base":1.6},{"stat":"heal","base":0.025}],"innate":{"key":"s2_area","text":"② 광역 치유 범위 +{v}%","base":6.0,"unit":"%","pw":1.4,"skill":"s2"}},{"id":"support_weapon_3","name":"정화의 성구","slot":"weapon","cls":"support","line":3,"main":[{"stat":"atk","base":1.6},{"stat":"heal","base":0.025}],"innate":{"key":"heal_dr","text":"치유받은 아군 3초간 받는 피해 -{v}%","base":5.0,"unit":"%","pw":1.6,"skill":null}},{"id":"support_armor_1","name":"순백의 사제복","slot":"armor","cls":"support","line":1,"main":[{"stat":"hp","base":28.0},{"stat":"ultgain","base":0.025}],"innate":{"key":"party_healrecv","text":"파티 회복 받는 양 +{v}%","base":3.0,"unit":"%","pw":1.5,"skill":null}},{"id":"support_armor_2","name":"수호의 성의","slot":"armor","cls":"support","line":2,"main":[{"stat":"hp","base":28.0},{"stat":"ultgain","base":0.025}],"innate":{"key":"ult_dur","text":"③ 생명의 나무 지속 +{v}초","base":0.5,"unit":"초","pw":1.5,"skill":"ult"}},{"id":"support_armor_3","name":"기도의 숄","slot":"armor","cls":"support","line":3,"main":[{"stat":"hp","base":28.0},{"stat":"ultgain","base":0.025}],"innate":{"key":"start_heal","text":"전투 시작 시 파티 HP {v}% 회복","base":3.0,"unit":"%","pw":1.4,"skill":null}},{"id":"support_medal_1","name":"성녀의 소울 메달","slot":"medal","cls":"support","line":1,"main":[{"stat":"heal","base":0.05},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"support_medal_2","name":"다정함의 소울 메달","slot":"medal","cls":"support","line":2,"main":[{"stat":"heal","base":0.05},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"common_ring_1","name":"힘의 반지","slot":"ring","cls":"common","line":1,"main":[{"stat":"atk_pct","base":0.022}],"innate":null},{"id":"common_ring_2","name":"예리한 반지","slot":"ring","cls":"common","line":2,"main":[{"stat":"crit","base":0.015}],"innate":null},{"id":"common_ring_3","name":"파쇄의 반지","slot":"ring","cls":"common","line":3,"main":[{"stat":"breakdmg","base":0.05}],"innate":null},{"id":"common_necklace_1","name":"현자의 목걸이","slot":"necklace","cls":"common","line":1,"main":[{"stat":"skilldmg","base":0.04}],"innate":null},{"id":"common_necklace_2","name":"시간의 목걸이","slot":"necklace","cls":"common","line":2,"main":[{"stat":"cdr","base":0.015}],"innate":null},{"id":"common_necklace_3","name":"영혼의 목걸이","slot":"necklace","cls":"common","line":3,"main":[{"stat":"ultgain","base":0.05}],"innate":null},{"id":"common_belt_1","name":"거인의 벨트","slot":"belt","cls":"common","line":1,"main":[{"stat":"hp_pct","base":0.035}],"innate":null},{"id":"common_belt_2","name":"수호의 벨트","slot":"belt","cls":"common","line":2,"main":[{"stat":"dr","base":0.015}],"innate":null},{"id":"common_belt_3","name":"질주의 벨트","slot":"belt","cls":"common","line":3,"main":[{"stat":"mspd","base":0.03},{"stat":"hp_pct","base":0.015}],"innate":null}],"options":[{"key":"atk_pct","min":0.018,"max":0.026,"weight":10,"slots":"*"},{"key":"hp_pct","min":0.025,"max":0.035,"weight":12,"slots":"*"},{"key":"dr","min":0.02,"max":0.03,"weight":7,"slots":"armor,belt,medal"},{"key":"aspd","min":0.03,"max":0.045,"weight":7,"slots":"weapon,ring,necklace"},{"key":"crit","min":0.03,"max":0.045,"weight":7,"slots":"weapon,ring,necklace,medal"},{"key":"critdmg","min":0.09,"max":0.13,"weight":7,"slots":"weapon,ring,necklace,medal"},{"key":"skilldmg","min":0.045,"max":0.065,"weight":9,"slots":"*"},{"key":"cdr","min":0.035,"max":0.05,"weight":6,"slots":"armor,necklace,medal"},{"key":"heal","min":0.06,"max":0.09,"weight":6,"slots":"weapon,armor,necklace,medal"},{"key":"ultgain","min":0.07,"max":0.1,"weight":6,"slots":"*"},{"key":"mspd","min":0.1,"max":0.15,"weight":4,"slots":"armor,belt"},{"key":"dotdmg","min":0.15,"max":0.22,"weight":5,"slots":"weapon,ring,medal"},{"key":"ccdur","min":0.12,"max":0.18,"weight":7,"slots":"weapon,armor,medal,belt"},{"key":"breakdmg","min":0.12,"max":0.18,"weight":9,"slots":"*"},{"key":"vsbroken","min":0.12,"max":0.18,"weight":8,"slots":"weapon,ring,necklace,medal"}],"classStat":{"tank":{"stat":"dr","L":0.02,"E":0.02},"melee":{"stat":"critdmg","L":0.09,"E":0.09},"ranged":{"stat":"crit","L":0.025,"E":0.025},"mage":{"stat":"skilldmg","L":0.045,"E":0.045},"support":{"stat":"heal","L":0.06,"E":0.06}},"skillBonus":{"tank":[{"key":"s1_power","text":"① 도발 중 받는 피해 감소 +{v}%p","L":4,"E":5,"unit":"%p","pw":1.5},{"key":"s1_cd","text":"① 도발 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"s2_power","text":"② 방패 강타 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.2},{"key":"s2_cd","text":"② 방패 강타 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.8},{"key":"ult_power","text":"③ 철벽 피해 감소 +{v}%p","L":5,"E":6,"unit":"%p","pw":1.7},{"key":"ult_dur","text":"③ 철벽 지속 +{v}초","L":1.0,"E":1.1,"unit":"초","pw":1.6}],"melee":[{"key":"s1_power","text":"① 급소 베기 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 급소 베기 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 회전 베기 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 회전 베기 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 난도질 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_hits","text":"③ 난도질 타수 +{v}","L":1,"E":2,"unit":"회","pw":1.8}],"ranged":[{"key":"s1_power","text":"① 관통 사격 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 관통 사격 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 화살비 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 화살비 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 집중 사격 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_gain","text":"③ 필살기 충전 +{v}%","L":12,"E":14,"unit":"%","pw":1.5}],"mage":[{"key":"s1_power","text":"① 별빛 탄 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 별빛 탄 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 유성우 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 유성우 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 대마법 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_gain","text":"③ 필살기 충전 +{v}%","L":12,"E":14,"unit":"%","pw":1.5}],"support":[{"key":"s1_power","text":"① 치유 회복량 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 치유 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 광역 치유 회복량 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 광역 치유 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 생명의 나무 회복량 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_dur","text":"③ 생명의 나무 지속 +{v}초","L":1.0,"E":1.1,"unit":"초","pw":1.6}],"common":[{"key":"s1_power","text":"① 기본 스킬 위력·회복 +{v}%","L":10,"E":12,"unit":"%","pw":1.1},{"key":"s2_power","text":"② 상황 스킬 위력·회복 +{v}%","L":10,"E":12,"unit":"%","pw":1.0},{"key":"ult_power","text":"③ 필살기 위력·회복 +{v}%","L":10,"E":12,"unit":"%","pw":1.1},{"key":"s1_cd","text":"① 기본 스킬 쿨타임 -{v}%","L":7,"E":8,"unit":"%","pw":1.2},{"key":"s2_cd","text":"② 상황 스킬 쿨타임 -{v}%","L":7,"E":8,"unit":"%","pw":1.1},{"key":"ult_gain","text":"③ 필살기 충전 +{v}%","L":8,"E":9,"unit":"%","pw":1.0}]},"skillBonusERatio":1.15,"gems":[{"key":"ruby","name":"루비","stat":"atk_pct","base":0.008,"color":"#e0405a"},{"key":"sapphire","name":"사파이어","stat":"hp_pct","base":0.01,"color":"#4a7ae0"},{"key":"emerald","name":"에메랄드","stat":"cdr","base":0.004,"color":"#3fbf7a"},{"key":"topaz","name":"토파즈","stat":"crit","base":0.0045,"color":"#f0b030"},{"key":"amethyst","name":"자수정","stat":"skilldmg","base":0.008,"color":"#a060e0"},{"key":"diamond","name":"다이아","stat":"dr","base":0.0035,"color":"#d8f0ff"},{"key":"opal","name":"오팔","stat":"ultgain","base":0.01,"color":"#f0a0d0"},{"key":"pearl","name":"진주","stat":"heal","base":0.01,"color":"#f0ece0"},{"key":"obsidian","name":"흑요석","stat":"breakdmg","base":0.018,"color":"#3a3048"}],"gemEffectCount":{"UC":1,"C":1,"R":1,"SR":2,"SSR":2,"UR":2,"L":3,"E":3},"gemMult":{"UC":1.0,"C":1.25,"R":1.5,"SR":1.8,"SSR":2.1,"UR":2.4,"L":2.65,"E":2.9},"gemExtraRatio":0.6,"gemSkillExtras":[{"key":"s1_power","name":"① 기본 스킬 위력","base":0.03},{"key":"s2_power","name":"② 상황 스킬 위력","base":0.03},{"key":"ult_power","name":"③ 필살기 위력","base":0.03}],"tiers":[{"tier":1,"name":"견습","hp":1.26,"atk":1.26,"recGrade":"UC"},{"tier":2,"name":"숙련","hp":1.42,"atk":1.42,"recGrade":"C"},{"tier":3,"name":"정예","hp":1.67,"atk":1.67,"recGrade":"R"},{"tier":4,"name":"영웅","hp":2.28,"atk":2.28,"recGrade":"SR"},{"tier":5,"name":"전설","hp":2.55,"atk":2.55,"recGrade":"SSR"},{"tier":6,"name":"신화","hp":3.28,"atk":3.28,"recGrade":"UR"},{"tier":7,"name":"고대","hp":4.27,"atk":4.27,"recGrade":"L"},{"tier":8,"name":"태초","hp":5.83,"atk":5.83,"recGrade":"E"}],"dropSources":[{"key":"battle","name":"일반 전투 보상(3택1 중 장비 카드)"},{"key":"elite","name":"정예 처치"},{"key":"boss","name":"보스 처치(장비 1 + 보석 1)"},{"key":"shop","name":"던전 상인 판매"}],"drops":{"battle":{"1":[75.81,13.96,0.55,0.0,0.0,0.0,0.0,0.0],"2":[88.42,75.81,13.96,0.55,0.0,0.0,0.0,0.0],"3":[22.15,88.42,75.81,13.96,0.55,0.0,0.0,0.0],"4":[1.19,22.15,88.42,75.81,13.96,0.55,0.0,0.0],"5":[0.01,1.19,22.15,88.42,75.81,13.96,0.08,0.0],"6":[0.0,0.01,1.19,22.15,88.42,75.81,2.09,0.0],"7":[0.0,0.0,0.01,1.19,22.15,88.42,11.37,0.0],"8":[0.0,0.0,0.0,0.01,1.19,22.15,13.26,0.0]},"elite":{"1":[88.42,75.81,13.96,0.55,0.0,0.0,0.0,0.0],"2":[22.15,88.42,75.81,13.96,0.55,0.0,0.0,0.0],"3":[1.19,22.15,88.42,75.81,13.96,0.55,0.0,0.0],"4":[0.01,1.19,22.15,88.42,75.81,13.96,0.22,0.0],"5":[0.0,0.01,1.19,22.15,88.42,75.81,5.58,0.0],"6":[0.0,0.0,0.01,1.19,22.15,88.42,30.33,1.12],"7":[0.0,0.0,0.0,0.01,1.19,22.15,35.37,6.07],"8":[0.0,0.0,0.0,0.0,0.01,1.19,8.86,7.07]},"boss":{"1":[46.34,100.0,46.34,4.61,0.1,0.0,0.0,0.0],"2":[4.61,46.34,100.0,46.34,4.61,0.1,0.0,0.0],"3":[0.1,4.61,46.34,100.0,46.34,4.61,0.0,0.0],"4":[0.0,0.1,4.61,46.34,100.0,46.34,3.69,0.0],"5":[0.0,0.0,0.1,4.61,46.34,100.0,37.07,0.0],"6":[0.0,0.0,0.0,0.1,4.61,46.34,80.0,16.22],"7":[0.0,0.0,0.0,0.0,0.1,4.61,37.07,35.0],"8":[0.0,0.0,0.0,0.0,0.0,0.1,3.69,16.22]},"shop":{"1":[46.34,4.61,0.1,0.0,0,0,0,0],"2":[100.0,46.34,4.61,0.1,0,0,0,0],"3":[46.34,100.0,46.34,4.61,0,0,0,0],"4":[4.61,46.34,100.0,46.34,0,0,0,0],"5":[0.1,4.61,46.34,100.0,0,0,0,0],"6":[0.0,0.1,4.61,46.34,0,0,0,0],"7":[0.0,0.0,0.1,4.61,0,0,0,0],"8":[0.0,0.0,0.0,0.1,0,0,0,0]}},"caps":{"dr":0.5,"aspd":0.5,"crit":0.6,"cdr":0.4,"ultgain":0.8,"mspd":0.5},"enhance":{"mainPerLevel":0.06,"failBonusStep":0.1,"failBonusMax":1.0,"artisanFactor":0.465,"capByGrade":{"UC":5,"C":7,"R":9,"SR":11,"SSR":13,"UR":15,"L":15,"E":15},"visualTiers":[5,10,15],"levels":[{"rate":1.0,"stones":1,"gold":20},{"rate":1.0,"stones":1,"gold":30},{"rate":0.95,"stones":2,"gold":40},{"rate":0.9,"stones":2,"gold":55},{"rate":0.85,"stones":3,"gold":70},{"rate":0.75,"stones":3,"gold":90},{"rate":0.65,"stones":4,"gold":110},{"rate":0.55,"stones":4,"gold":135},{"rate":0.45,"stones":5,"gold":160},{"rate":0.35,"stones":6,"gold":190},{"rate":0.25,"stones":7,"gold":230},{"rate":0.18,"stones":8,"gold":270},{"rate":0.12,"stones":10,"gold":320},{"rate":0.08,"stones":12,"gold":380},{"rate":0.05,"stones":15,"gold":450}]},"dismantle":{"UC":1,"C":2,"R":3,"SR":5,"SSR":8,"UR":12,"L":18,"E":25},"stoneReward":{"battle":2,"elite":4,"boss":8},"passives":[{"key":"iron_heart","name":"무쇠 심장","min":"UC","kind":"stat","stat":"hp_pct","v":0.03,"text":"최대 HP +{v}"},{"key":"trained_arm","name":"단련된 팔","min":"UC","kind":"stat","stat":"atk_pct","v":0.02,"text":"공격력 +{v}"},{"key":"light_feet","name":"가벼운 발","min":"UC","kind":"stat","stat":"mspd","v":0.06,"text":"이동 속도 +{v}"},{"key":"clear_mind","name":"맑은 정신","min":"C","kind":"stat","stat":"cdr","v":0.025,"text":"쿨타임 -{v}"},{"key":"oath_guard","name":"수호의 맹세","min":"C","kind":"stat","stat":"dr","v":0.02,"text":"받는 피해 -{v}"},{"key":"breaker","name":"부수는 손","min":"R","kind":"stat","stat":"breakdmg","v":0.06,"text":"그로기 피해 +{v}"},{"key":"hawk_eye","name":"매의 눈","min":"R","kind":"stat","stat":"crit","v":0.025,"text":"치명타 확률 +{v}"},{"key":"finisher","name":"결정타","min":"R","kind":"stat","stat":"vsbroken","v":0.06,"text":"그로기 적에게 피해 +{v}"},{"key":"firefly","name":"반딧불 신호","min":"SR","kind":"hook","v":8,"unit":"","text":"차지·호출을 끊으면 필살기 게이지 +{v}"},{"key":"first_breath","name":"첫 숨결","min":"SR","kind":"hook","v":10,"unit":"","text":"전투 시작 시 필살기 게이지 +{v}"},{"key":"stubborn","name":"끈질긴 생명","min":"SSR","kind":"hook","v":1.0,"unit":"초","text":"HP 25% 이하가 되면 {v} 무적 (전투당 1회)"},{"key":"hunter_rain","name":"여우비","min":"SSR","kind":"hook","v":0.2,"text":"적이 그로기에 빠지면 ② 쿨타임 {v} 감소"},{"key":"old_root","name":"늙은 참나무의 뿌리","min":"UR","kind":"trade","stat":"breakdmg","v":0.08,"pen":{"stat":"mspd","v":-0.2},"text":"그로기 피해 +{v}","penText":"이동 속도 -20%"},{"key":"berserk","name":"광전사의 피","min":"UR","kind":"trade","stat":"atk_pct","v":0.06,"pen":{"stat":"dr","v":-0.12},"text":"공격력 +{v}","penText":"받는 피해 +12%"},{"key":"moon_oath","name":"달빛 맹세","min":"L","kind":"trade","stat":"vsbroken","v":0.16,"pen":{"stat":"nonbroken","v":-0.2},"text":"그로기 적에게 피해 +{v}","penText":"그로기 게이지가 있는 적이 그로기가 아닐 때 피해 -20%"},{"key":"first_light","name":"숲의 첫 숨","min":"E","kind":"trade","stat":"ultpow","v":0.13,"pen":{"stat":"ultonlybreak","v":1},"text":"필살기 위력 +{v}","penText":"필살기 게이지는 그로기 적이 있을 때만 참"}],"passiveMult":{"UC":1.0,"C":1.15,"R":1.3,"SR":1.5,"SSR":1.75,"UR":2.0,"L":2.3,"E":2.6},"passiveGradeRoll":[25,35,25,15]};
+const EQUIP_DB = {"version":1,"grades":[{"code":"UC","name":"UC","color":"#9a9a9a","main":1.0,"opt":0,"optMult":0.0,"innate":1.0,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"C","name":"C","color":"#e8e8e8","main":1.45,"opt":0,"optMult":0.0,"innate":1.35,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"R","name":"R","color":"#4aa3ff","main":1.7,"opt":1,"optMult":1.0,"innate":1.5,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"SR","name":"SR","color":"#3fd27a","main":2.1,"opt":2,"optMult":1.15,"innate":1.75,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"SSR","name":"SSR","color":"#b86aff","main":2.55,"opt":3,"optMult":1.3,"innate":2.0,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"UR","name":"UR","color":"#ff9a2a","main":3.05,"opt":4,"optMult":1.5,"innate":2.3,"gem":[0,0],"cls":[0,0],"skill":[0,0]},{"code":"L","name":"Legend","color":"#ffd34a","main":3.2,"opt":4,"optMult":1.55,"innate":2.65,"gem":[1,1],"cls":[0,1],"skill":[0,1],"clsOrSkill":true},{"code":"E","name":"Elder","color":"#ff4d6d","main":3.3,"opt":4,"optMult":1.58,"innate":3.0,"gem":[1,3],"cls":[1,1],"skill":[0,2]}],"lExtraWeights":{"none":30,"cls":35,"skill":35},"eGemWeights":{"1":55,"2":33,"3":12},"eSkillWeights":{"0":40,"1":45,"2":15},"stats":[{"key":"atk","name":"공격력","unit":"","pct":false,"pw":null,"note":"직업 기본 공격력 대비로 환산"},{"key":"hp","name":"체력","unit":"","pct":false,"pw":null,"note":"직업 기본 체력 대비로 환산"},{"key":"atk_pct","name":"공격력%","unit":"%","pct":true,"pw":0.5},{"key":"hp_pct","name":"체력%","unit":"%","pct":true,"pw":0.5},{"key":"dr","name":"받는 피해 감소","unit":"%","pct":true,"pw":0.6,"cap":0.5},{"key":"aspd","name":"공격 속도","unit":"%","pct":true,"pw":0.3,"cap":0.5},{"key":"crit","name":"치명타 확률","unit":"%","pct":true,"pw":0.3,"cap":0.6},{"key":"critdmg","name":"치명타 피해","unit":"%","pct":true,"pw":0.1},{"key":"skilldmg","name":"스킬 피해","unit":"%","pct":true,"pw":0.2},{"key":"cdr","name":"쿨타임 감소","unit":"%","pct":true,"pw":0.35,"cap":0.4},{"key":"heal","name":"회복량","unit":"%","pct":true,"pw":0.2},{"key":"ultgain","name":"필살기 충전","unit":"%","pct":true,"pw":0.12,"cap":0.8},{"key":"mspd","name":"이동 속도","unit":"%","pct":true,"pw":0.08,"cap":0.5},{"key":"dotdmg","name":"지속 피해","unit":"%","pct":true,"pw":0.06},{"key":"ccdur","name":"기절·도발 지속","unit":"%","pct":true,"pw":0.1,"gimmick":true},{"key":"breakdmg","name":"그로기 피해","unit":"%","pct":true,"pw":0.1,"gimmick":true,"note":"그로기 게이지를 더 크게 깎는다 (공략 스탯)"},{"key":"s1pow","name":"① 갑옷 스킬 위력","unit":"%","pct":true,"pw":0.12,"note":"소울 메달 주 스탯 (갑옷 스킬)"},{"key":"s2pow","name":"② 무기 스킬 위력","unit":"%","pct":true,"pw":0.12,"note":"소울 메달 주 스탯 (무기 스킬)"},{"key":"vsbroken","name":"그로기 적 피해","unit":"%","pct":true,"pw":0.1,"gimmick":true,"note":"그로기 상태 적에게 주는 피해 (공략 스탯)"}],"classes":[{"key":"tank","hero":"tobi","name":"탱커","heroName":"토비","baseAtk":22,"baseHp":520,"trait":"dr","traitName":"받는 피해 감소"},{"key":"melee","hero":"danbi","name":"근딜","heroName":"단비","baseAtk":40,"baseHp":300,"trait":"critdmg","traitName":"치명타 피해"},{"key":"ranged","hero":"byeolbi","name":"원딜","heroName":"별비","baseAtk":36,"baseHp":260,"trait":"crit","traitName":"치명타 확률"},{"key":"mage","hero":"soldam","name":"매지션","heroName":"솔담","baseAtk":44,"baseHp":240,"trait":"skilldmg","traitName":"스킬 피해"},{"key":"support","hero":"bori","name":"서포터","heroName":"보리","baseAtk":16,"baseHp":280,"trait":"heal","traitName":"회복량"}],"slots":[{"key":"weapon","name":"무기","classBound":true},{"key":"armor","name":"갑옷","classBound":true},{"key":"medal","name":"소울 메달","classBound":true},{"key":"ring","name":"반지","classBound":false},{"key":"necklace","name":"목걸이","classBound":false},{"key":"belt","name":"벨트","classBound":false}],"items":[{"id":"tank_weapon_1","name":"수호자의 메이스","slot":"weapon","cls":"tank","line":1,"main":[{"stat":"atk","base":2.2},{"stat":"dr","base":0.006}],"innate":{"key":"s2_break","text":"② 방패 강타 그로기 피해 +{v}%","base":15.0,"unit":"%","pw":1.6,"skill":"s2"}},{"id":"tank_weapon_2","name":"맹세의 장검","slot":"weapon","cls":"tank","line":2,"main":[{"stat":"atk","base":2.2},{"stat":"dr","base":0.006}],"innate":{"key":"s1_guard","text":"② 돌진 베기 적중 후 3초간 받는 피해 감소 +{v}%p","base":3.0,"unit":"%p","pw":1.4,"skill":"s2"}},{"id":"tank_weapon_3","name":"성채의 철퇴","slot":"weapon","cls":"tank","line":3,"main":[{"stat":"atk","base":2.2},{"stat":"dr","base":0.006}],"innate":{"key":"basic_stun_chance","text":"평타 적중 시 {v}% 확률로 0.6초 기절","base":3.0,"unit":"%","pw":1.5,"skill":null}},{"id":"tank_armor_1","name":"성벽 판금갑","slot":"armor","cls":"tank","line":1,"main":[{"stat":"hp","base":52.0},{"stat":"dr","base":0.006}],"innate":{"key":"charge_dr","text":"차지 공격 피해 -{v}%","base":6.0,"unit":"%","pw":1.6,"skill":null}},{"id":"tank_armor_2","name":"맹세의 사슬갑","slot":"armor","cls":"tank","line":2,"main":[{"stat":"hp","base":52.0},{"stat":"dr","base":0.006}],"innate":{"key":"s1_taunt_dur","text":"① 맹세의 외침 도발 지속 +{v}초","base":0.3,"unit":"초","pw":1.4,"skill":"s1"}},{"id":"tank_armor_3","name":"가시 갑옷","slot":"armor","cls":"tank","line":3,"main":[{"stat":"hp","base":52.0},{"stat":"dr","base":0.006}],"innate":{"key":"thorns","text":"받은 근접 피해의 {v}% 되돌림","base":5.0,"unit":"%","pw":1.3,"skill":null}},{"id":"tank_medal_1","name":"불굴의 소울 메달","slot":"medal","cls":"tank","line":1,"main":[{"stat":"dr","base":0.012},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"tank_medal_2","name":"수호성의 소울 메달","slot":"medal","cls":"tank","line":2,"main":[{"stat":"dr","base":0.012},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"melee_weapon_1","name":"바람의 쌍검","slot":"weapon","cls":"melee","line":1,"main":[{"stat":"atk","base":4.0},{"stat":"critdmg","base":0.03}],"innate":{"key":"s1_bleed","text":"출혈 피해 +{v}%","base":10.0,"unit":"%","pw":1.4,"skill":null}},{"id":"melee_weapon_2","name":"파쇄자의 대검","slot":"weapon","cls":"melee","line":2,"main":[{"stat":"atk","base":4.0},{"stat":"critdmg","base":0.03}],"innate":{"key":"vs_broken","text":"그로기 적에게 피해 +{v}%","base":8.0,"unit":"%","pw":1.6,"skill":null}},{"id":"melee_weapon_3","name":"그림자 단검","slot":"weapon","cls":"melee","line":3,"main":[{"stat":"atk","base":4.0},{"stat":"critdmg","base":0.03}],"innate":{"key":"s2_area","text":"② 그림자 연격 위력 +{v}%","base":5.0,"unit":"%","pw":1.4,"skill":"s2"}},{"id":"melee_armor_1","name":"사냥꾼의 가죽갑","slot":"armor","cls":"melee","line":1,"main":[{"stat":"hp","base":30.0},{"stat":"aspd","base":0.02}],"innate":{"key":"kill_aspd","text":"적 처치 시 2초간 공격 속도 +{v}%","base":10.0,"unit":"%","pw":1.3,"skill":null}},{"id":"melee_armor_2","name":"검무사의 경갑","slot":"armor","cls":"melee","line":2,"main":[{"stat":"hp","base":30.0},{"stat":"aspd","base":0.02}],"innate":{"key":"s2_cd","text":"① 발목 베기 쿨타임 -{v}%","base":4.0,"unit":"%","pw":1.5,"skill":"s1"}},{"id":"melee_armor_3","name":"핏빛 망토","slot":"armor","cls":"melee","line":3,"main":[{"stat":"hp","base":30.0},{"stat":"aspd","base":0.02}],"innate":{"key":"vs_bleed","text":"출혈 중인 적에게 피해 +{v}%","base":5.0,"unit":"%","pw":1.5,"skill":null}},{"id":"melee_medal_1","name":"검귀의 소울 메달","slot":"medal","cls":"melee","line":1,"main":[{"stat":"critdmg","base":0.06},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"melee_medal_2","name":"투지의 소울 메달","slot":"medal","cls":"melee","line":2,"main":[{"stat":"critdmg","base":0.06},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"ranged_weapon_1","name":"매의 장궁","slot":"weapon","cls":"ranged","line":1,"main":[{"stat":"atk","base":3.6},{"stat":"crit","base":0.008}],"innate":{"key":"s1_vuln_dur","text":"취약 지속 +{v}초","base":0.5,"unit":"초","pw":1.4,"skill":null}},{"id":"ranged_weapon_2","name":"폭풍의 연궁","slot":"weapon","cls":"ranged","line":2,"main":[{"stat":"atk","base":3.6},{"stat":"crit","base":0.008}],"innate":{"key":"double_shot","text":"평타가 {v}% 확률로 2연사","base":6.0,"unit":"%","pw":1.6,"skill":null}},{"id":"ranged_weapon_3","name":"은빛 석궁","slot":"weapon","cls":"ranged","line":3,"main":[{"stat":"atk","base":3.6},{"stat":"crit","base":0.008}],"innate":{"key":"ult_power","text":"② 저격 위력 +{v}%","base":8.0,"unit":"%","pw":1.5,"skill":"s2"}},{"id":"ranged_armor_1","name":"숲지기 가죽갑","slot":"armor","cls":"ranged","line":1,"main":[{"stat":"hp","base":26.0},{"stat":"mspd","base":0.025}],"innate":{"key":"s2_area","text":"① 관통 사격 위력 +{v}%","base":5.0,"unit":"%","pw":1.4,"skill":"s1"}},{"id":"ranged_armor_2","name":"그림자 망토","slot":"armor","cls":"ranged","line":2,"main":[{"stat":"hp","base":26.0},{"stat":"mspd","base":0.025}],"innate":{"key":"near_dr","text":"가까이 붙은 적이 있으면 받는 피해 -{v}%","base":6.0,"unit":"%","pw":1.4,"skill":null}},{"id":"ranged_armor_3","name":"추적자의 조끼","slot":"armor","cls":"ranged","line":3,"main":[{"stat":"hp","base":26.0},{"stat":"mspd","base":0.025}],"innate":{"key":"counter_ult","text":"차지·호출을 끊으면 필살기 게이지 +{v}","base":6.0,"unit":"","pw":1.6,"skill":null}},{"id":"ranged_medal_1","name":"명사수의 소울 메달","slot":"medal","cls":"ranged","line":1,"main":[{"stat":"crit","base":0.016},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"ranged_medal_2","name":"바람의 소울 메달","slot":"medal","cls":"ranged","line":2,"main":[{"stat":"crit","base":0.016},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"mage_weapon_1","name":"별빛 지팡이","slot":"weapon","cls":"mage","line":1,"main":[{"stat":"atk","base":4.4},{"stat":"skilldmg","base":0.02}],"innate":{"key":"s1_burn","text":"화상 피해 +{v}%","base":10.0,"unit":"%","pw":1.4,"skill":null}},{"id":"mage_weapon_2","name":"유성의 홀","slot":"weapon","cls":"mage","line":2,"main":[{"stat":"atk","base":4.4},{"stat":"skilldmg","base":0.02}],"innate":{"key":"s2_area","text":"② 번개 사슬 위력 +{v}%","base":6.0,"unit":"%","pw":1.5,"skill":"s2"}},{"id":"mage_weapon_3","name":"금단의 마도서","slot":"weapon","cls":"mage","line":3,"main":[{"stat":"atk","base":4.4},{"stat":"skilldmg","base":0.02}],"innate":{"key":"ult_vs_broken","text":"③ 필살기가 그로기 적에게 주는 피해 +{v}%","base":12.0,"unit":"%","pw":1.6,"skill":"ult"}},{"id":"mage_armor_1","name":"현자의 로브","slot":"armor","cls":"mage","line":1,"main":[{"stat":"hp","base":24.0},{"stat":"cdr","base":0.01}],"innate":{"key":"cdr_extra","text":"쿨타임 감소 +{v}%","base":1.5,"unit":"%","pw":1.5,"skill":null}},{"id":"mage_armor_2","name":"불꽃 망토","slot":"armor","cls":"mage","line":2,"main":[{"stat":"hp","base":24.0},{"stat":"cdr","base":0.01}],"innate":{"key":"burn_dur","text":"화상 지속 +{v}초","base":0.4,"unit":"초","pw":1.3,"skill":null}},{"id":"mage_armor_3","name":"마력 장막 로브","slot":"armor","cls":"mage","line":3,"main":[{"stat":"hp","base":24.0},{"stat":"cdr","base":0.01}],"innate":{"key":"start_shield","text":"전투 시작 시 최대 HP {v}% 보호막","base":6.0,"unit":"%","pw":1.5,"skill":null}},{"id":"mage_medal_1","name":"대마도사의 소울 메달","slot":"medal","cls":"mage","line":1,"main":[{"stat":"skilldmg","base":0.04},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"mage_medal_2","name":"별의 소울 메달","slot":"medal","cls":"mage","line":2,"main":[{"stat":"skilldmg","base":0.04},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"support_weapon_1","name":"생명의 지팡이","slot":"weapon","cls":"support","line":1,"main":[{"stat":"atk","base":1.6},{"stat":"heal","base":0.025}],"innate":{"key":"s1_heal","text":"② 광역 치유 회복량 +{v}%","base":8.0,"unit":"%","pw":1.5,"skill":"s2"}},{"id":"support_weapon_2","name":"빛의 홀","slot":"weapon","cls":"support","line":2,"main":[{"stat":"atk","base":1.6},{"stat":"heal","base":0.025}],"innate":{"key":"s2_area","text":"② 빛의 심판 위력 +{v}%","base":6.0,"unit":"%","pw":1.4,"skill":"s2"}},{"id":"support_weapon_3","name":"정화의 성구","slot":"weapon","cls":"support","line":3,"main":[{"stat":"atk","base":1.6},{"stat":"heal","base":0.025}],"innate":{"key":"heal_dr","text":"회복받은 아군은 3초간 받는 피해 -{v}%","base":5.0,"unit":"%","pw":1.6,"skill":null}},{"id":"support_armor_1","name":"순백의 사제복","slot":"armor","cls":"support","line":1,"main":[{"stat":"hp","base":28.0},{"stat":"ultgain","base":0.025}],"innate":{"key":"party_healrecv","text":"파티가 받는 회복량 +{v}%","base":3.0,"unit":"%","pw":1.5,"skill":null}},{"id":"support_armor_2","name":"수호의 성의","slot":"armor","cls":"support","line":2,"main":[{"stat":"hp","base":28.0},{"stat":"ultgain","base":0.025}],"innate":{"key":"ult_dur","text":"① 수호의 기도 공명 지속 +{v}초","base":0.5,"unit":"초","pw":1.5,"skill":"s1"}},{"id":"support_armor_3","name":"기도의 숄","slot":"armor","cls":"support","line":3,"main":[{"stat":"hp","base":28.0},{"stat":"ultgain","base":0.025}],"innate":{"key":"start_heal","text":"전투 시작 시 파티 HP {v}% 회복","base":3.0,"unit":"%","pw":1.4,"skill":null}},{"id":"support_medal_1","name":"성녀의 소울 메달","slot":"medal","cls":"support","line":1,"main":[{"stat":"heal","base":0.05},{"stat":"s1pow","base":0.1}],"innate":null},{"id":"support_medal_2","name":"다정함의 소울 메달","slot":"medal","cls":"support","line":2,"main":[{"stat":"heal","base":0.05},{"stat":"s2pow","base":0.1}],"innate":null},{"id":"common_ring_1","name":"힘의 반지","slot":"ring","cls":"common","line":1,"main":[{"stat":"atk_pct","base":0.022}],"innate":null},{"id":"common_ring_2","name":"예리한 반지","slot":"ring","cls":"common","line":2,"main":[{"stat":"crit","base":0.015}],"innate":null},{"id":"common_ring_3","name":"파쇄의 반지","slot":"ring","cls":"common","line":3,"main":[{"stat":"breakdmg","base":0.05}],"innate":null},{"id":"common_necklace_1","name":"현자의 목걸이","slot":"necklace","cls":"common","line":1,"main":[{"stat":"skilldmg","base":0.04}],"innate":null},{"id":"common_necklace_2","name":"시간의 목걸이","slot":"necklace","cls":"common","line":2,"main":[{"stat":"cdr","base":0.015}],"innate":null},{"id":"common_necklace_3","name":"영혼의 목걸이","slot":"necklace","cls":"common","line":3,"main":[{"stat":"ultgain","base":0.05}],"innate":null},{"id":"common_belt_1","name":"거인의 벨트","slot":"belt","cls":"common","line":1,"main":[{"stat":"hp_pct","base":0.035}],"innate":null},{"id":"common_belt_2","name":"수호의 벨트","slot":"belt","cls":"common","line":2,"main":[{"stat":"dr","base":0.015}],"innate":null},{"id":"common_belt_3","name":"질주의 벨트","slot":"belt","cls":"common","line":3,"main":[{"stat":"mspd","base":0.03},{"stat":"hp_pct","base":0.015}],"innate":null}],"options":[{"key":"atk_pct","min":0.018,"max":0.026,"weight":10,"slots":"*"},{"key":"hp_pct","min":0.025,"max":0.035,"weight":12,"slots":"*"},{"key":"dr","min":0.02,"max":0.03,"weight":7,"slots":"armor,belt,medal"},{"key":"aspd","min":0.03,"max":0.045,"weight":7,"slots":"weapon,ring,necklace"},{"key":"crit","min":0.03,"max":0.045,"weight":7,"slots":"weapon,ring,necklace,medal"},{"key":"critdmg","min":0.09,"max":0.13,"weight":7,"slots":"weapon,ring,necklace,medal"},{"key":"skilldmg","min":0.045,"max":0.065,"weight":9,"slots":"*"},{"key":"cdr","min":0.035,"max":0.05,"weight":6,"slots":"armor,necklace,medal"},{"key":"heal","min":0.06,"max":0.09,"weight":6,"slots":"weapon,armor,necklace,medal"},{"key":"ultgain","min":0.07,"max":0.1,"weight":6,"slots":"*"},{"key":"mspd","min":0.1,"max":0.15,"weight":4,"slots":"armor,belt"},{"key":"dotdmg","min":0.15,"max":0.22,"weight":5,"slots":"weapon,ring,medal"},{"key":"ccdur","min":0.12,"max":0.18,"weight":7,"slots":"weapon,armor,medal,belt"},{"key":"breakdmg","min":0.12,"max":0.18,"weight":9,"slots":"*"},{"key":"vsbroken","min":0.12,"max":0.18,"weight":8,"slots":"weapon,ring,necklace,medal"}],"classStat":{"tank":{"stat":"dr","L":0.02,"E":0.02},"melee":{"stat":"critdmg","L":0.09,"E":0.09},"ranged":{"stat":"crit","L":0.025,"E":0.025},"mage":{"stat":"skilldmg","L":0.045,"E":0.045},"support":{"stat":"heal","L":0.06,"E":0.06}},"skillBonus":{"tank":[{"key":"s1_power","text":"① 도발 중 받는 피해 감소 +{v}%p","L":4,"E":5,"unit":"%p","pw":1.5},{"key":"s1_cd","text":"① 갑옷 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"s2_power","text":"② 무기 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.2},{"key":"s2_cd","text":"② 무기 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.8},{"key":"ult_power","text":"③ 필살기 효과 +{v}%p","L":5,"E":6,"unit":"%p","pw":1.7},{"key":"ult_dur","text":"③ 필살기 지속 +{v}초","L":1.0,"E":1.1,"unit":"초","pw":1.6}],"melee":[{"key":"s1_power","text":"① 갑옷 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 갑옷 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 무기 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 무기 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 필살기 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_hits","text":"③ 필살기 타수 +{v}","L":1,"E":2,"unit":"회","pw":1.8}],"ranged":[{"key":"s1_power","text":"① 갑옷 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 갑옷 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 무기 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 무기 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 필살기 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_gain","text":"③ 필살기 충전 +{v}%","L":12,"E":14,"unit":"%","pw":1.5}],"mage":[{"key":"s1_power","text":"① 갑옷 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 갑옷 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 무기 스킬 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 무기 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 필살기 위력 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_gain","text":"③ 필살기 충전 +{v}%","L":12,"E":14,"unit":"%","pw":1.5}],"support":[{"key":"s1_power","text":"① 갑옷 스킬 위력·회복 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"s1_cd","text":"① 갑옷 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.7},{"key":"s2_power","text":"② 무기 스킬 위력·회복 +{v}%","L":15,"E":17,"unit":"%","pw":1.5},{"key":"s2_cd","text":"② 무기 스킬 쿨타임 -{v}%","L":10,"E":12,"unit":"%","pw":1.6},{"key":"ult_power","text":"③ 필살기 위력·회복 +{v}%","L":15,"E":17,"unit":"%","pw":1.6},{"key":"ult_dur","text":"③ 필살기 지속 +{v}초","L":1.0,"E":1.1,"unit":"초","pw":1.6}],"common":[{"key":"s1_power","text":"① 갑옷 스킬 위력·회복 +{v}%","L":10,"E":12,"unit":"%","pw":1.1},{"key":"s2_power","text":"② 무기 스킬 위력·회복 +{v}%","L":10,"E":12,"unit":"%","pw":1.0},{"key":"ult_power","text":"③ 필살기 위력·회복 +{v}%","L":10,"E":12,"unit":"%","pw":1.1},{"key":"s1_cd","text":"① 갑옷 스킬 쿨타임 -{v}%","L":7,"E":8,"unit":"%","pw":1.2},{"key":"s2_cd","text":"② 무기 스킬 쿨타임 -{v}%","L":7,"E":8,"unit":"%","pw":1.1},{"key":"ult_gain","text":"③ 필살기 충전 +{v}%","L":8,"E":9,"unit":"%","pw":1.0}]},"skillBonusERatio":1.15,"gems":[{"key":"ruby","name":"루비","stat":"atk_pct","base":0.008,"color":"#e0405a"},{"key":"sapphire","name":"사파이어","stat":"hp_pct","base":0.01,"color":"#4a7ae0"},{"key":"emerald","name":"에메랄드","stat":"cdr","base":0.004,"color":"#3fbf7a"},{"key":"topaz","name":"토파즈","stat":"crit","base":0.0045,"color":"#f0b030"},{"key":"amethyst","name":"자수정","stat":"skilldmg","base":0.008,"color":"#a060e0"},{"key":"diamond","name":"다이아","stat":"dr","base":0.0035,"color":"#d8f0ff"},{"key":"opal","name":"오팔","stat":"ultgain","base":0.01,"color":"#f0a0d0"},{"key":"pearl","name":"진주","stat":"heal","base":0.01,"color":"#f0ece0"},{"key":"obsidian","name":"흑요석","stat":"breakdmg","base":0.018,"color":"#3a3048"}],"gemEffectCount":{"UC":1,"C":1,"R":1,"SR":2,"SSR":2,"UR":2,"L":3,"E":3},"gemMult":{"UC":1.0,"C":1.25,"R":1.5,"SR":1.8,"SSR":2.1,"UR":2.4,"L":2.65,"E":2.9},"gemExtraRatio":0.6,"gemSkillExtras":[{"key":"s1_power","name":"① 갑옷 스킬 위력","base":0.03},{"key":"s2_power","name":"② 무기 스킬 위력","base":0.03},{"key":"ult_power","name":"③ 필살기 위력","base":0.03}],"tiers":[{"tier":1,"name":"견습","hp":1.12,"atk":1.12,"recGrade":"UC"},{"tier":2,"name":"숙련","hp":1.42,"atk":1.42,"recGrade":"C"},{"tier":3,"name":"정예","hp":1.67,"atk":1.67,"recGrade":"R"},{"tier":4,"name":"영웅","hp":2.28,"atk":2.28,"recGrade":"SR"},{"tier":5,"name":"전설","hp":2.55,"atk":2.55,"recGrade":"SSR"},{"tier":6,"name":"신화","hp":3.28,"atk":3.28,"recGrade":"UR"},{"tier":7,"name":"고대","hp":4.27,"atk":4.27,"recGrade":"L"},{"tier":8,"name":"태초","hp":5.83,"atk":5.83,"recGrade":"E"}],"dropSources":[{"key":"battle","name":"일반 전투 보상 (3택1 장비 카드)"},{"key":"elite","name":"정예 처치"},{"key":"boss","name":"보스 처치 (장비 1 + 보석 1)"},{"key":"shop","name":"던전 상인 판매"}],"drops":{"battle":{"1":[75.81,13.96,0.55,0.0,0.0,0.0,0.0,0.0],"2":[88.42,75.81,13.96,0.55,0.0,0.0,0.0,0.0],"3":[22.15,88.42,75.81,13.96,0.55,0.0,0.0,0.0],"4":[1.19,22.15,88.42,75.81,13.96,0.55,0.0,0.0],"5":[0.01,1.19,22.15,88.42,75.81,13.96,0.08,0.0],"6":[0.0,0.01,1.19,22.15,88.42,75.81,2.09,0.0],"7":[0.0,0.0,0.01,1.19,22.15,88.42,11.37,0.0],"8":[0.0,0.0,0.0,0.01,1.19,22.15,13.26,0.0]},"elite":{"1":[88.42,75.81,13.96,0.55,0.0,0.0,0.0,0.0],"2":[22.15,88.42,75.81,13.96,0.55,0.0,0.0,0.0],"3":[1.19,22.15,88.42,75.81,13.96,0.55,0.0,0.0],"4":[0.01,1.19,22.15,88.42,75.81,13.96,0.22,0.0],"5":[0.0,0.01,1.19,22.15,88.42,75.81,5.58,0.0],"6":[0.0,0.0,0.01,1.19,22.15,88.42,30.33,1.12],"7":[0.0,0.0,0.0,0.01,1.19,22.15,35.37,6.07],"8":[0.0,0.0,0.0,0.0,0.01,1.19,8.86,7.07]},"boss":{"1":[46.34,100.0,46.34,4.61,0.1,0.0,0.0,0.0],"2":[4.61,46.34,100.0,46.34,4.61,0.1,0.0,0.0],"3":[0.1,4.61,46.34,100.0,46.34,4.61,0.0,0.0],"4":[0.0,0.1,4.61,46.34,100.0,46.34,3.69,0.0],"5":[0.0,0.0,0.1,4.61,46.34,100.0,37.07,0.0],"6":[0.0,0.0,0.0,0.1,4.61,46.34,80.0,16.22],"7":[0.0,0.0,0.0,0.0,0.1,4.61,37.07,35.0],"8":[0.0,0.0,0.0,0.0,0.0,0.1,3.69,16.22]},"shop":{"1":[46.34,4.61,0.1,0.0,0,0,0,0],"2":[100.0,46.34,4.61,0.1,0,0,0,0],"3":[46.34,100.0,46.34,4.61,0,0,0,0],"4":[4.61,46.34,100.0,46.34,0,0,0,0],"5":[0.1,4.61,46.34,100.0,0,0,0,0],"6":[0.0,0.1,4.61,46.34,0,0,0,0],"7":[0.0,0.0,0.1,4.61,0,0,0,0],"8":[0.0,0.0,0.0,0.1,0,0,0,0]}},"caps":{"dr":0.5,"aspd":0.5,"crit":0.6,"cdr":0.4,"ultgain":0.8,"mspd":0.5},"enhance":{"mainPerLevel":0.06,"failBonusStep":0.1,"failBonusMax":1.0,"artisanFactor":0.465,"capByGrade":{"UC":5,"C":7,"R":9,"SR":11,"SSR":13,"UR":15,"L":15,"E":15},"visualTiers":[5,10,15],"levels":[{"rate":1.0,"stones":1,"gold":20},{"rate":1.0,"stones":1,"gold":30},{"rate":0.95,"stones":2,"gold":40},{"rate":0.9,"stones":2,"gold":55},{"rate":0.85,"stones":3,"gold":70},{"rate":0.75,"stones":3,"gold":90},{"rate":0.65,"stones":4,"gold":110},{"rate":0.55,"stones":4,"gold":135},{"rate":0.45,"stones":5,"gold":160},{"rate":0.35,"stones":6,"gold":190},{"rate":0.25,"stones":7,"gold":230},{"rate":0.18,"stones":8,"gold":270},{"rate":0.12,"stones":10,"gold":320},{"rate":0.08,"stones":12,"gold":380},{"rate":0.05,"stones":15,"gold":450}]},"dismantle":{"UC":1,"C":2,"R":3,"SR":5,"SSR":8,"UR":12,"L":18,"E":25},"stoneReward":{"battle":2,"elite":4,"boss":8},"passives":[{"key":"iron_heart","name":"무쇠 심장","min":"UC","kind":"stat","stat":"hp_pct","v":0.03,"text":"최대 HP +{v}"},{"key":"trained_arm","name":"단련된 팔","min":"UC","kind":"stat","stat":"atk_pct","v":0.02,"text":"공격력 +{v}"},{"key":"light_feet","name":"가벼운 발","min":"UC","kind":"stat","stat":"mspd","v":0.06,"text":"이동 속도 +{v}"},{"key":"clear_mind","name":"맑은 정신","min":"C","kind":"stat","stat":"cdr","v":0.025,"text":"쿨타임 -{v}"},{"key":"oath_guard","name":"수호의 맹세","min":"C","kind":"stat","stat":"dr","v":0.02,"text":"받는 피해 -{v}"},{"key":"breaker","name":"부수는 손","min":"R","kind":"stat","stat":"breakdmg","v":0.06,"text":"그로기 피해 +{v}"},{"key":"hawk_eye","name":"매의 눈","min":"R","kind":"stat","stat":"crit","v":0.025,"text":"치명타 확률 +{v}"},{"key":"finisher","name":"결정타","min":"R","kind":"stat","stat":"vsbroken","v":0.06,"text":"그로기 적에게 피해 +{v}"},{"key":"firefly","name":"반딧불 신호","min":"SR","kind":"hook","v":8,"unit":"","text":"차지·호출을 끊으면 필살기 게이지 +{v}"},{"key":"first_breath","name":"첫 숨결","min":"SR","kind":"hook","v":10,"unit":"","text":"전투 시작 시 필살기 게이지 +{v}"},{"key":"stubborn","name":"끈질긴 생명","min":"SSR","kind":"hook","v":1.0,"unit":"초","text":"HP 25% 이하가 되면 {v}간 무적 (전투당 1회)"},{"key":"hunter_rain","name":"여우비","min":"SSR","kind":"hook","v":0.2,"text":"적이 그로기가 되면 ② 무기 스킬 쿨타임 {v} 감소"},{"key":"old_root","name":"늙은 참나무의 뿌리","min":"UR","kind":"trade","stat":"breakdmg","v":0.08,"pen":{"stat":"mspd","v":-0.2},"text":"그로기 피해 +{v}","penText":"이동 속도 -20%"},{"key":"berserk","name":"광전사의 피","min":"UR","kind":"trade","stat":"atk_pct","v":0.06,"pen":{"stat":"dr","v":-0.12},"text":"공격력 +{v}","penText":"받는 피해 +12%"},{"key":"moon_oath","name":"달빛 맹세","min":"L","kind":"trade","stat":"vsbroken","v":0.16,"pen":{"stat":"nonbroken","v":-0.2},"text":"그로기 적에게 피해 +{v}","penText":"그로기가 아닌 큰 적에게 피해 -20%"},{"key":"first_light","name":"숲의 첫 숨","min":"E","kind":"trade","stat":"ultpow","v":0.13,"pen":{"stat":"ultonlybreak","v":1},"text":"필살기 위력 +{v}","penText":"필살기 게이지는 그로기 적이 있을 때만 충전"}],"passiveMult":{"UC":1.0,"C":1.15,"R":1.3,"SR":1.5,"SSR":1.75,"UR":2.0,"L":2.3,"E":2.6},"passiveGradeRoll":[25,35,25,15]};
 
 // ---------- 01c_characters.js
 // ===== 01c_characters.js : 가챠 캐릭터 15명 (직업 5 × 3) — 캐릭터 고유 필살기 풀 + 돌파 =====
@@ -908,7 +917,7 @@ const BREAKTHROUGH = {
     { bt: 1, text: '첫 번째 필살기 위력 +20%', boost: { A: 0.2 } },
     { bt: 2, text: '첫 번째 필살기 변주 해금', unlock: 'A2' },
     { bt: 3, text: '두 번째 필살기 변주 해금', unlock: 'B2' },
-    { bt: 4, text: '두 번째·세 번째 필살기 위력 +15%', boost: { B: 0.15, C: 0.15 } },
+    { bt: 4, text: '두·세 번째 필살기 위력 +15%', boost: { B: 0.15, C: 0.15 } },
     { bt: 5, text: '세 번째 필살기 변주 해금', unlock: 'C2' },
   ],
 };
@@ -920,153 +929,153 @@ const CLASS_BASE = { tank: 'tobi', melee: 'danbi', ranged: 'byeolbi', mage: 'sol
 const CHARACTERS = [
   // ---------------- 탱커
   { id: 'tobi', name: '토비', role: 'tank', title: '철벽 수호자', sprite: 'knight', trait: 'sturdy', starter: true,
-    desc: '순수 방어형. 파티 전체를 지키고 차지 공격을 몸으로 받아낸다.',
+    desc: '파티 전체를 지키는 정통 방어형. 차지 공격도 몸으로 받아낸다.',
     ults: {
-      A: { base: 'tobi_ult', v: { name: '반격 철벽', fx: 'wall', effects: [{ status: 'guard', dur: 8, value: 0.5, to: 'party' }, { status: 'invuln', dur: 1.5, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }], desc: '8초간 파티 피해 -50%, 토비 1.5초 무적 + 도발.' } },
-      B: { name: '대지 방벽', target: 'self', fx: 'wall', effects: [{ status: 'guard', dur: 5, value: 0.7, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }], desc: '토비 받는 피해 -70% + 4초 도발. 차지 공격을 막아낸다.',
-        v: { name: '흔들리지 않는 산', effects: [{ status: 'guard', dur: 7, value: 0.8, to: 'self' }, { status: 'taunt', dur: 5, to: 'all_enemies' }, { status: 'regen', dur: 6, value: 0.02, to: 'party' }], desc: '토비 받는 피해 -80%, 5초 도발, 파티 재생.' } },
-      C: { name: '고목의 수호', target: 'party', fx: 'tree', effects: [{ status: 'inspire', dur: 6, value: 0.3, to: 'party' }, { status: 'vuln', dur: 6, to: 'self' }], desc: '6초간 파티 공격력 +30%. 대신 토비가 취약해진다.',
-        v: { name: '천년 고목', effects: [{ status: 'inspire', dur: 7, value: 0.4, to: 'party' }], desc: '7초간 파티 공격력 +40%, 단점 없음.' } },
+      A: { base: 'tobi_ult', v: { name: '반격 철벽', fx: 'wall', effects: [{ status: 'guard', dur: 8, value: 0.5, to: 'party' }, { status: 'invuln', dur: 1.5, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }], desc: '8초간 파티 받는 피해 -50%. 토비 1.5초 무적 + 3초 도발.' } },
+      B: { name: '대지 방벽', target: 'self', fx: 'wall', effects: [{ status: 'guard', dur: 5, value: 0.7, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }], desc: '5초간 토비 받는 피해 -70% + 4초 도발. 차지 공격도 받아낸다.',
+        v: { name: '흔들리지 않는 산', effects: [{ status: 'guard', dur: 7, value: 0.8, to: 'self' }, { status: 'taunt', dur: 5, to: 'all_enemies' }, { status: 'regen', dur: 6, value: 0.02, to: 'party' }], desc: '7초간 토비 받는 피해 -80% + 5초 도발 + 6초간 파티 재생(초당 2%).' } },
+      C: { name: '고목의 수호', target: 'party', fx: 'tree', effects: [{ status: 'inspire', dur: 6, value: 0.3, to: 'party' }, { status: 'vuln', dur: 6, to: 'self' }], desc: '6초간 파티 공격력 +30%. 대신 토비가 6초간 취약.',
+        v: { name: '천년 고목', effects: [{ status: 'inspire', dur: 7, value: 0.4, to: 'party' }], desc: '7초간 파티 공격력 +40%. 토비 취약 없음.' } },
     } },
   { id: 'leon', name: '레온', role: 'tank', title: '성기사', sprite: 'knight_b', trait: 'gentle', stat: { hp: 0.95, atk: 1.1 },
-    desc: '방어와 회복을 함께 하는 탱커. 때릴수록 파티가 회복된다.',
+    desc: '방어와 회복을 겸하는 탱커. 적을 내리칠수록 파티가 회복된다.',
     ults: {
-      A: { name: '신성한 방패', target: 'party', fx: 'wall', healPct: 0.12, effects: [{ status: 'guard', dur: 5, value: 0.3, to: 'party' }], desc: '파티 HP 12% 회복 + 5초간 피해 -30%.',
-        v: { name: '축복의 방패', healPct: 0.18, cleanse: true, effects: [{ status: 'guard', dur: 6, value: 0.35, to: 'party' }], desc: '파티 HP 18% 회복, 해로운 효과 해제, 피해 -35%.' } },
-      B: { name: '심판의 망치', target: 'enemy', fx: 'bash', power: 2.6, poise: 60, partyHeal: 0.3, effects: [{ status: 'stun', dur: 2 }], desc: '강타 + 2초 기절 + 그로기 대량. 준 피해의 30%로 파티 회복.',
-        v: { name: '천벌', target: 'area_enemy', areaR: 90, fx: 'meteor', power: 2.0, poise: 40, partyHeal: 0.3, effects: [{ status: 'stun', dur: 1.5 }], desc: '범위 강타 + 기절. 준 피해로 파티 회복.' } },
-      C: { name: '성역', target: 'party', fx: 'tree', healPct: 0.08, effects: [{ status: 'regen', dur: 8, value: 0.03, to: 'party' }, { status: 'guard', dur: 8, value: 0.2, to: 'party' }], desc: '8초간 파티 재생 + 피해 -20%.',
-        v: { name: '불굴의 성역', effects: [{ status: 'regen', dur: 8, value: 0.04, to: 'party' }, { status: 'guard', dur: 8, value: 0.3, to: 'party' }, { status: 'invuln', dur: 1, to: 'party' }], desc: '파티 재생 + 피해 -30% + 1초 무적.' } },
+      A: { name: '신성한 방패', target: 'party', fx: 'wall', healPct: 0.12, effects: [{ status: 'guard', dur: 5, value: 0.3, to: 'party' }], desc: '파티 HP 12% 회복 + 5초간 받는 피해 -30%.',
+        v: { name: '축복의 방패', healPct: 0.18, cleanse: true, effects: [{ status: 'guard', dur: 6, value: 0.35, to: 'party' }], desc: '파티 HP 18% 회복 + 해로운 효과 해제 + 6초간 받는 피해 -35%.' } },
+      B: { name: '심판의 망치', target: 'enemy', fx: 'bash', power: 2.6, poise: 60, partyHeal: 0.3, effects: [{ status: 'stun', dur: 2 }], desc: '강타 + 2초 기절 + 그로기 게이지 대량 감소. 준 피해의 30%로 파티 회복.',
+        v: { name: '천벌', target: 'area_enemy', areaR: 90, fx: 'meteor', power: 2.0, poise: 40, partyHeal: 0.3, effects: [{ status: 'stun', dur: 1.5 }], desc: '범위 강타 + 1.5초 기절 + 그로기 게이지 감소. 준 피해의 30%로 파티 회복.' } },
+      C: { name: '성역', target: 'party', fx: 'tree', healPct: 0.08, effects: [{ status: 'regen', dur: 8, value: 0.03, to: 'party' }, { status: 'guard', dur: 8, value: 0.2, to: 'party' }], desc: '파티 HP 8% 회복 + 8초간 재생(초당 3%), 받는 피해 -20%.',
+        v: { name: '불굴의 성역', effects: [{ status: 'regen', dur: 8, value: 0.04, to: 'party' }, { status: 'guard', dur: 8, value: 0.3, to: 'party' }, { status: 'invuln', dur: 1, to: 'party' }], desc: '파티 HP 8% 회복 + 8초간 재생(초당 4%), 받는 피해 -30% + 1초 무적.' } },
     } },
   { id: 'gor', name: '고르', role: 'tank', title: '망자 기사', sprite: 'knight_c', trait: 'brave', stat: { hp: 1.15, atk: 0.9 },
-    desc: '쓰러지지 않는 좀비 탱커. 적을 약화·중독시키며 흡혈로 버틴다.',
+    desc: '쓰러지지 않는 망자 탱커. 적을 약화·중독시키고 흡혈로 버틴다.',
     ults: {
-      A: { name: '불사의 맹세', target: 'self', fx: 'wall', effects: [{ status: 'invuln', dur: 3, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'lifesteal', dur: 8, value: 0.4, to: 'self' }], desc: '3초 무적 + 도발, 8초간 흡혈 40%.',
-        v: { name: '죽음을 거부한 자', effects: [{ status: 'invuln', dur: 4, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }, { status: 'lifesteal', dur: 10, value: 0.6, to: 'self' }], desc: '4초 무적 + 도발, 10초간 흡혈 60%.' } },
-      B: { name: '부식의 외침', target: 'all_enemies', fx: 'nova', power: 0.6, effects: [{ status: 'weaken', dur: 6, value: 0.3 }, { status: 'poison', dur: 6, dps: 0.3 }], desc: '적 전체 약화(주는 피해 -30%) + 중독.',
-        v: { name: '역병의 외침', effects: [{ status: 'weaken', dur: 8, value: 0.35 }, { status: 'vuln', dur: 8 }, { status: 'poison', dur: 8, dps: 0.45 }], desc: '적 전체 약화 + 취약 + 강한 중독.' } },
-      C: { name: '망자의 행진', target: 'self_area', fx: 'spin', areaR: 100, power: 1.4, hits: 3, lifesteal: 0.5, effects: [{ status: 'slow', dur: 4, value: 0.4 }], desc: '주변 3연타 + 둔화. 준 피해의 50% 흡혈.',
-        v: { name: '묘지의 군주', hits: 5, lifesteal: 0.7, desc: '주변 5연타 + 둔화. 준 피해의 70% 흡혈.' } },
+      A: { name: '불사의 맹세', target: 'self', fx: 'wall', effects: [{ status: 'invuln', dur: 3, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'lifesteal', dur: 8, value: 0.4, to: 'self' }], desc: '3초 무적 + 3초 도발 + 8초간 흡혈 40%.',
+        v: { name: '죽음을 거부한 자', effects: [{ status: 'invuln', dur: 4, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }, { status: 'lifesteal', dur: 10, value: 0.6, to: 'self' }], desc: '4초 무적 + 4초 도발 + 10초간 흡혈 60%.' } },
+      B: { name: '부식의 외침', target: 'all_enemies', fx: 'nova', power: 0.6, effects: [{ status: 'weaken', dur: 6, value: 0.3 }, { status: 'poison', dur: 6, dps: 0.3 }], desc: '적 전체 6초 약화(주는 피해 -30%) + 6초 중독.',
+        v: { name: '역병의 외침', effects: [{ status: 'weaken', dur: 8, value: 0.35 }, { status: 'vuln', dur: 8 }, { status: 'poison', dur: 8, dps: 0.45 }], desc: '적 전체 8초 약화(-35%) + 취약 + 강한 중독.' } },
+      C: { name: '망자의 행진', target: 'self_area', fx: 'spin', areaR: 100, power: 1.4, hits: 3, lifesteal: 0.5, effects: [{ status: 'slow', dur: 4, value: 0.4 }], desc: '주변 적 3연타 + 4초 둔화. 준 피해의 50% 흡혈.',
+        v: { name: '묘지의 군주', hits: 5, lifesteal: 0.7, desc: '주변 적 5연타 + 4초 둔화. 준 피해의 70% 흡혈.' } },
     } },
   // ---------------- 근딜
   { id: 'danbi', name: '단비', role: 'melee', title: '출혈 검사', sprite: 'sword', trait: 'brave', starter: true,
-    desc: '출혈을 쌓아 오래 싸울수록 강해지는 검사.',
+    desc: '출혈을 쌓으며 오래 싸울수록 강해지는 검사.',
     ults: {
-      A: { base: 'danbi_ult', v: { name: '천 갈래 칼날', target: 'self_area', areaR: 110, fx: 'spin', power: 0.7, hits: 6, brokenMult: 1.5, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], desc: '6연타가 주변 모든 적에게. 그로기 적에게 1.5배.' } },
-      B: { name: '회오리 칼날', target: 'self_area', areaR: 100, fx: 'spin', power: 1.0, hits: 4, effects: [{ status: 'bleed', dur: 4, dps: 0.3 }], desc: '주변 4연타 + 출혈.',
-        v: { name: '피의 회오리', hits: 5, lifesteal: 0.3, desc: '주변 5연타 + 출혈, 30% 흡혈.' } },
-      C: { name: '결전의 일격', target: 'enemy', fx: 'slash', power: 3.0, brokenMult: 2.2, desc: '단일 강타. 그로기 적에게 2.2배.',
-        v: { name: '끝맺음', power: 3.2, brokenMult: 2.6, execute: { below: 0.35, mult: 1.8 }, desc: '그로기 적 2.6배, HP 35% 이하 적 1.8배.' } },
+      A: { base: 'danbi_ult', v: { name: '천 갈래 칼날', target: 'self_area', areaR: 110, fx: 'spin', power: 0.7, hits: 6, brokenMult: 1.5, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], desc: '주변 적 6연타 + 6초 강한 출혈. 그로기 적에게 1.5배.' } },
+      B: { name: '회오리 칼날', target: 'self_area', areaR: 100, fx: 'spin', power: 1.0, hits: 4, effects: [{ status: 'bleed', dur: 4, dps: 0.3 }], desc: '주변 적 4연타 + 4초 출혈.',
+        v: { name: '피의 회오리', hits: 5, lifesteal: 0.3, desc: '주변 적 5연타 + 4초 출혈. 준 피해의 30% 흡혈.' } },
+      C: { name: '결전의 일격', target: 'enemy', fx: 'slash', power: 3.0, brokenMult: 2.2, desc: '강력한 일격. 그로기 적에게 2.2배.',
+        v: { name: '종결의 일격', power: 3.2, brokenMult: 2.6, execute: { below: 0.35, mult: 1.8 }, desc: '더 강력한 일격. 그로기 적에게 2.6배, HP 35% 이하 적에게 1.8배.' } },
     } },
   { id: 'kai', name: '카이', role: 'melee', title: '그림자 암살자', sprite: 'sword_b', trait: 'keen', stat: { hp: 0.85, atk: 1.2, aspd: 1.1 },
-    desc: '빈사의 적을 끝내는 처형자. 연막으로 위험을 피한다.',
+    desc: '빈사의 적을 마무리하는 처형자. 연막으로 위기를 넘긴다.',
     ults: {
-      A: { name: '그림자 일격', target: 'enemy', fx: 'slash', power: 2.2, execute: { below: 0.4, mult: 2.5 }, desc: '단일 강타. HP 40% 이하 적에게 2.5배.',
-        v: { name: '심판의 그림자', execute: { below: 0.5, mult: 3 }, desc: 'HP 50% 이하 적에게 3배.' } },
+      A: { name: '그림자 일격', target: 'enemy', fx: 'slash', power: 2.2, execute: { below: 0.4, mult: 2.5 }, desc: '강력한 일격. HP 40% 이하 적에게 2.5배.',
+        v: { name: '심판의 그림자', execute: { below: 0.5, mult: 3 }, desc: '강력한 일격. HP 50% 이하 적에게 3배.' } },
       B: { name: '연막', target: 'self', fx: 'wall', effects: [{ status: 'invuln', dur: 2, to: 'self' }, { status: 'inspire', dur: 4, value: 0.5, to: 'self' }], desc: '2초 무적 + 4초간 공격력 +50%.',
-        v: { name: '그림자 춤', effects: [{ status: 'invuln', dur: 2.5, to: 'self' }, { status: 'inspire', dur: 5, value: 0.6, to: 'self' }, { status: 'lifesteal', dur: 5, value: 0.25, to: 'self' }], desc: '2.5초 무적 + 공격력 +60% + 흡혈.' } },
-      C: { name: '사신의 춤', target: 'multi_enemy', fx: 'flurry', count: 3, power: 1.6, execute: { below: 0.3, mult: 2.5 }, desc: 'HP 비율이 낮은 적부터 3명 연속 처형 공격.',
-        v: { name: '죽음의 연무', count: 5, desc: 'HP 비율이 낮은 적부터 5명 연속 처형 공격.' } },
+        v: { name: '그림자 춤', effects: [{ status: 'invuln', dur: 2.5, to: 'self' }, { status: 'inspire', dur: 5, value: 0.6, to: 'self' }, { status: 'lifesteal', dur: 5, value: 0.25, to: 'self' }], desc: '2.5초 무적 + 5초간 공격력 +60%, 흡혈 25%.' } },
+      C: { name: '사신의 춤', target: 'multi_enemy', fx: 'flurry', count: 3, power: 1.6, execute: { below: 0.3, mult: 2.5 }, desc: 'HP 비율이 낮은 적부터 3명 연속 공격. HP 30% 이하 적에게 2.5배.',
+        v: { name: '죽음의 연무', count: 5, desc: 'HP 비율이 낮은 적부터 5명 연속 공격. HP 30% 이하 적에게 2.5배.' } },
     } },
   { id: 'bran', name: '브란', role: 'melee', title: '파쇄 투사', sprite: 'sword_c', trait: 'sturdy', stat: { hp: 1.2, atk: 1.05, aspd: 0.85 },
-    desc: '그로기 게이지를 부수는 데 특화된 투사. 큰 적 공략의 핵심.',
+    desc: '그로기 게이지를 부수는 데 특화된 투사. 덩치 큰 적 공략의 핵심.',
     ults: {
-      A: { name: '대지 가르기', target: 'enemy', fx: 'bash', power: 2.0, poise: 90, effects: [{ status: 'stun', dur: 1 }], desc: '그로기 게이지 대량 감소 + 기절.',
-        v: { name: '산 가르기', poise: 130, effects: [{ status: 'stun', dur: 1.5 }], desc: '그로기 게이지 초대량 감소 + 1.5초 기절.' } },
-      B: { name: '분쇄 연타', target: 'enemy', fx: 'flurry', power: 0.55, hits: 6, poise: 18, desc: '6연타, 매 타마다 그로기 감소.',
-        v: { name: '멈추지 않는 주먹', hits: 9, desc: '9연타, 매 타마다 그로기 감소.' } },
-      C: { name: '거인 사냥', target: 'enemy', fx: 'slash', power: 2.0, brokenMult: 3.0, desc: '그로기 적에게 3배.',
-        v: { name: '거신 처형', brokenMult: 3.5, effects: [{ status: 'inspire', dur: 4, value: 0.2, to: 'party' }], desc: '그로기 적에게 3.5배 + 파티 공격력 +20%.' } },
+      A: { name: '대지 가르기', target: 'enemy', fx: 'bash', power: 2.0, poise: 90, effects: [{ status: 'stun', dur: 1 }], desc: '강타 + 1초 기절 + 그로기 게이지 대량 감소.',
+        v: { name: '산 가르기', poise: 130, effects: [{ status: 'stun', dur: 1.5 }], desc: '강타 + 1.5초 기절 + 그로기 게이지 초대량 감소.' } },
+      B: { name: '분쇄 연타', target: 'enemy', fx: 'flurry', power: 0.55, hits: 6, poise: 18, desc: '6연타. 매 타격마다 그로기 게이지 감소.',
+        v: { name: '멈추지 않는 주먹', hits: 9, desc: '9연타. 매 타격마다 그로기 게이지 감소.' } },
+      C: { name: '거인 사냥', target: 'enemy', fx: 'slash', power: 2.0, brokenMult: 3.0, desc: '강력한 일격. 그로기 적에게 3배.',
+        v: { name: '거신 처형', brokenMult: 3.5, effects: [{ status: 'inspire', dur: 4, value: 0.2, to: 'party' }], desc: '그로기 적에게 3.5배 + 4초간 파티 공격력 +20%.' } },
     } },
   // ---------------- 원딜
   { id: 'byeolbi', name: '별비', role: 'ranged', title: '명사수', sprite: 'archer', trait: 'keen', starter: true,
-    desc: '안정적인 단일·광역 사격. 어느 파티에나 맞는 원거리 딜러.',
+    desc: '단일·광역 사격을 고루 갖춘 원딜. 어느 파티에나 잘 어울린다.',
     ults: {
-      A: { base: 'byeolbi_ult', v: { name: '꿰뚫는 별', power: 4.6, poise: 40, effects: [{ status: 'vuln', dur: 8 }], desc: '초강력 사격 + 그로기 감소 + 8초 취약.' } },
-      B: { name: '화살 폭풍', target: 'all_enemies', fx: 'arrowrain', power: 1.2, hits: 3, desc: '적 전체 3연속 사격.',
-        v: { name: '하늘을 덮는 화살', hits: 5, desc: '적 전체 5연속 사격.' } },
-      C: { name: '관통 일제 사격', target: 'area_enemy', fx: 'arrowrain', areaR: 120, power: 2.2, effects: [{ status: 'vuln', dur: 5 }], desc: '넓은 범위 사격 + 취약.',
-        v: { name: '꿰뚫는 비', power: 2.6, effects: [{ status: 'vuln', dur: 6 }, { status: 'slow', dur: 4, value: 0.3 }], desc: '넓은 범위 사격 + 취약 + 둔화.' } },
+      A: { base: 'byeolbi_ult', v: { name: '꿰뚫는 별', power: 4.6, poise: 40, effects: [{ status: 'vuln', dur: 8 }], desc: '더 강력한 단일 사격 + 8초 취약 + 그로기 게이지 감소.' } },
+      B: { name: '화살 폭풍', target: 'all_enemies', fx: 'arrowrain', power: 1.2, hits: 3, desc: '적 전체 3연사.',
+        v: { name: '하늘을 덮는 화살', hits: 5, desc: '적 전체 5연사.' } },
+      C: { name: '관통 일제 사격', target: 'area_enemy', fx: 'arrowrain', areaR: 120, power: 2.2, effects: [{ status: 'vuln', dur: 5 }], desc: '넓은 범위 사격 + 5초 취약.',
+        v: { name: '폭풍 일제 사격', power: 2.6, effects: [{ status: 'vuln', dur: 6 }, { status: 'slow', dur: 4, value: 0.3 }], desc: '넓은 범위 강한 사격 + 6초 취약 + 4초 둔화.' } },
     } },
   { id: 'haram', name: '하람', role: 'ranged', title: '저격수', sprite: 'archer_b', trait: 'cautious', stat: { hp: 0.85, atk: 1.25, aspd: 0.75 },
-    desc: '시전이 길지만 한 방이 가장 강하다. 그로기 타이밍을 노리는 극딜러.',
+    desc: '조준은 길지만 한 방은 누구보다 강하다. 그로기 순간을 노리는 저격수.',
     ults: {
       A: { name: '별똥 저격', target: 'enemy', fx: 'snipe', delay: 1.5, power: 6.5, desc: '1.5초 조준 후 초강력 저격.',
         v: { name: '유성 저격', delay: 1.2, power: 7.5, desc: '1.2초 조준 후 더 강한 저격.' } },
-      B: { name: '표식 사냥', target: 'enemy', fx: 'pierce', power: 1.0, effects: [{ status: 'vuln', dur: 8 }, { status: 'weaken', dur: 8, value: 0.2 }], desc: '표식: 8초간 취약 + 약화.',
-        v: { name: '사냥꾼의 낙인', effects: [{ status: 'vuln', dur: 10 }, { status: 'weaken', dur: 10, value: 0.25 }, { status: 'slow', dur: 6, value: 0.4 }], desc: '10초간 취약 + 약화 + 둔화.' } },
-      C: { name: '일격필살', target: 'enemy', fx: 'snipe', delay: 2.5, power: 6.0, brokenMult: 2.5, desc: '2.5초 조준. 그로기 적에게 2.5배.',
-        v: { name: '신의 화살', delay: 2.0, power: 7.0, brokenMult: 3.0, desc: '2초 조준. 그로기 적에게 3배.' } },
+      B: { name: '표식 사냥', target: 'enemy', fx: 'pierce', power: 1.0, effects: [{ status: 'vuln', dur: 8 }, { status: 'weaken', dur: 8, value: 0.2 }], desc: '표식을 남겨 8초간 취약 + 약화(-20%).',
+        v: { name: '사냥꾼의 낙인', effects: [{ status: 'vuln', dur: 10 }, { status: 'weaken', dur: 10, value: 0.25 }, { status: 'slow', dur: 6, value: 0.4 }], desc: '10초간 취약 + 약화(-25%) + 6초 둔화.' } },
+      C: { name: '일격필살', target: 'enemy', fx: 'snipe', delay: 2.5, power: 6.0, brokenMult: 2.5, desc: '2.5초 조준 후 초강력 저격. 그로기 적에게 2.5배.',
+        v: { name: '신의 화살', delay: 2.0, power: 7.0, brokenMult: 3.0, desc: '2초 조준 후 더 강한 저격. 그로기 적에게 3배.' } },
     } },
   { id: 'mir', name: '미르', role: 'ranged', title: '독침 사냥꾼', sprite: 'archer_c', trait: 'keen', stat: { atk: 0.95, aspd: 1.15 },
-    desc: '중독과 약화로 적을 서서히 무너뜨린다. 쌓은 독을 한 번에 터뜨릴 수 있다.',
+    desc: '중독과 약화로 적을 서서히 무너뜨린다. 쌓인 독은 한 번에 터뜨릴 수 있다.',
     ults: {
-      A: { name: '독안개', target: 'area_enemy', fx: 'aoeheal', areaR: 120, power: 0.4, effects: [{ status: 'poison', dur: 8, dps: 0.5 }, { status: 'weaken', dur: 6, value: 0.25 }], desc: '범위 중독 + 약화.',
-        v: { name: '죽음의 안개', effects: [{ status: 'poison', dur: 10, dps: 0.7 }, { status: 'weaken', dur: 8, value: 0.3 }], desc: '강한 범위 중독 + 약화.' } },
-      B: { name: '마비 화살', target: 'enemy', fx: 'pierce', power: 1.4, poise: 30, effects: [{ status: 'stun', dur: 2.5 }], desc: '2.5초 기절 + 그로기 감소. 차지를 끊는다.',
-        v: { name: '신경독', effects: [{ status: 'stun', dur: 3 }, { status: 'slow', dur: 5, value: 0.5 }], desc: '3초 기절 + 둔화.' } },
-      C: { name: '맹독 폭발', target: 'all_enemies', fx: 'nova', power: 0.8, detonate: { status: 'poison', mult: 1.0 }, desc: '적 전체의 남은 중독 피해를 한 번에 터뜨린다.',
-        v: { name: '연쇄 폭발', detonate: { status: 'poison', mult: 1.5 }, effects: [{ status: 'poison', dur: 6, dps: 0.3 }], desc: '남은 중독 피해 1.5배로 터뜨리고 다시 중독.' } },
+      A: { name: '독안개', target: 'area_enemy', fx: 'aoeheal', areaR: 120, power: 0.4, effects: [{ status: 'poison', dur: 8, dps: 0.5 }, { status: 'weaken', dur: 6, value: 0.25 }], desc: '범위 8초 중독 + 6초 약화(-25%).',
+        v: { name: '죽음의 안개', effects: [{ status: 'poison', dur: 10, dps: 0.7 }, { status: 'weaken', dur: 8, value: 0.3 }], desc: '범위 10초 강한 중독 + 8초 약화(-30%).' } },
+      B: { name: '마비 화살', target: 'enemy', fx: 'pierce', power: 1.4, poise: 30, effects: [{ status: 'stun', dur: 2.5 }], desc: '2.5초 기절 + 그로기 게이지 감소. 차지 공격을 끊는다.',
+        v: { name: '신경독', effects: [{ status: 'stun', dur: 3 }, { status: 'slow', dur: 5, value: 0.5 }], desc: '3초 기절 + 5초 둔화(-50%) + 그로기 게이지 감소.' } },
+      C: { name: '맹독 폭발', target: 'all_enemies', fx: 'nova', power: 0.8, detonate: { status: 'poison', mult: 1.0 }, desc: '적 전체 피해 + 남은 중독 피해를 한 번에 터뜨림.',
+        v: { name: '연쇄 폭발', detonate: { status: 'poison', mult: 1.5 }, effects: [{ status: 'poison', dur: 6, dps: 0.3 }], desc: '남은 중독 피해를 1.5배로 터뜨린 뒤 다시 6초 중독.' } },
     } },
   // ---------------- 매지션
   { id: 'soldam', name: '솔담', role: 'mage', title: '화염 마법사', sprite: 'mage', trait: 'cautious', starter: true,
-    desc: '광역 화염 마법. 졸개가 많은 전투에 강하다.',
+    desc: '광역 화염 마법사. 졸개가 많은 전투에 강하다.',
     ults: {
-      A: { base: 'soldam_ult', v: { name: '대화염진', power: 3.0, effects: [{ status: 'burn', dur: 6, dps: 0.45 }], desc: '적 전체 큰 피해 + 강한 화상.' } },
-      B: { name: '유성 낙하', target: 'area_enemy', fx: 'meteor', delay: 1.0, areaR: 120, power: 3.2, effects: [{ status: 'burn', dur: 4, dps: 0.3 }], desc: '1초 뒤 넓은 범위에 운석.',
-        v: { name: '유성군', areaR: 150, power: 3.6, desc: '1초 뒤 더 넓은 범위에 운석.' } },
-      C: { name: '화염 정령', target: 'all_enemies', fx: 'nova', power: 0.5, effects: [{ status: 'burn', dur: 10, dps: 0.6 }, { status: 'inspire', dur: 8, value: 0.3, to: 'self' }], desc: '적 전체 긴 화상 + 솔담 공격력 +30%.',
-        v: { name: '불사조', effects: [{ status: 'burn', dur: 10, dps: 0.6 }, { status: 'inspire', dur: 8, value: 0.2, to: 'party' }], desc: '적 전체 긴 화상 + 파티 공격력 +20%.' } },
+      A: { base: 'soldam_ult', v: { name: '대화염진', power: 3.0, effects: [{ status: 'burn', dur: 6, dps: 0.45 }], desc: '적 전체 큰 피해 + 6초 강한 화상.' } },
+      B: { name: '유성 낙하', target: 'area_enemy', fx: 'meteor', delay: 1.0, areaR: 120, power: 3.2, effects: [{ status: 'burn', dur: 4, dps: 0.3 }], desc: '1초 시전 후 넓은 범위에 운석 + 4초 화상.',
+        v: { name: '유성군', areaR: 150, power: 3.6, desc: '1초 시전 후 더 넓은 범위에 더 강한 운석 + 4초 화상.' } },
+      C: { name: '화염 정령', target: 'all_enemies', fx: 'nova', power: 0.5, effects: [{ status: 'burn', dur: 10, dps: 0.6 }, { status: 'inspire', dur: 8, value: 0.3, to: 'self' }], desc: '적 전체 10초 화상 + 8초간 솔담 공격력 +30%.',
+        v: { name: '불사조', effects: [{ status: 'burn', dur: 10, dps: 0.6 }, { status: 'inspire', dur: 8, value: 0.2, to: 'party' }], desc: '적 전체 10초 화상 + 8초간 파티 공격력 +20%.' } },
     } },
   { id: 'seori', name: '서리', role: 'mage', title: '빙결술사', sprite: 'mage_b', trait: 'cautious', stat: { hp: 1.05, atk: 0.9 },
-    desc: '얼리고 느리게 만드는 제어형 마법사. 차지 끊기와 그로기에 강하다.',
+    desc: '얼리고 늦추는 제어형 매지션. 차지 끊기와 그로기에 강하다.',
     ults: {
-      A: { name: '얼음 감옥', target: 'area_enemy', fx: 'meteor', areaR: 100, power: 1.0, poise: 30, effects: [{ status: 'stun', dur: 2 }], desc: '범위 2초 빙결(기절) + 그로기 감소.',
-        v: { name: '빙하 감옥', areaR: 130, effects: [{ status: 'stun', dur: 2.5 }], desc: '더 넓은 범위 2.5초 빙결.' } },
-      B: { name: '눈보라', target: 'area_enemy', fx: 'arrowrain', areaR: 140, power: 0.5, hits: 4, effects: [{ status: 'slow', dur: 5, value: 0.5 }], desc: '넓은 범위 4연타 + 둔화.',
-        v: { name: '한파', hits: 6, effects: [{ status: 'slow', dur: 6, value: 0.5 }, { status: 'vuln', dur: 6 }], desc: '6연타 + 둔화 + 취약.' } },
-      C: { name: '절대영도', target: 'all_enemies', fx: 'nova', power: 1.2, poise: 60, effects: [{ status: 'stun', dur: 2 }], desc: '적 전체 빙결 + 그로기 대량 감소.',
-        v: { name: '영원한 겨울', poise: 80, brokenMult: 1.5, effects: [{ status: 'stun', dur: 2.5 }], desc: '적 전체 2.5초 빙결 + 그로기 초대량 감소.' } },
+      A: { name: '얼음 감옥', target: 'area_enemy', fx: 'meteor', areaR: 100, power: 1.0, poise: 30, effects: [{ status: 'stun', dur: 2 }], desc: '범위 2초 빙결(기절) + 그로기 게이지 감소.',
+        v: { name: '빙하 감옥', areaR: 130, effects: [{ status: 'stun', dur: 2.5 }], desc: '더 넓은 범위 2.5초 빙결(기절) + 그로기 게이지 감소.' } },
+      B: { name: '눈보라', target: 'area_enemy', fx: 'arrowrain', areaR: 140, power: 0.5, hits: 4, effects: [{ status: 'slow', dur: 5, value: 0.5 }], desc: '넓은 범위 4연타 + 5초 둔화(-50%).',
+        v: { name: '한파', hits: 6, effects: [{ status: 'slow', dur: 6, value: 0.5 }, { status: 'vuln', dur: 6 }], desc: '넓은 범위 6연타 + 6초 둔화(-50%) + 6초 취약.' } },
+      C: { name: '절대영도', target: 'all_enemies', fx: 'nova', power: 1.2, poise: 60, effects: [{ status: 'stun', dur: 2 }], desc: '적 전체 2초 빙결 + 그로기 게이지 대량 감소.',
+        v: { name: '영원한 겨울', poise: 80, brokenMult: 1.5, effects: [{ status: 'stun', dur: 2.5 }], desc: '적 전체 2.5초 빙결 + 그로기 게이지 대량 감소. 그로기 적에게 1.5배.' } },
     } },
   { id: 'nox', name: '녹스', role: 'mage', title: '저주술사', sprite: 'mage_c', trait: 'brave', stat: { hp: 0.95, atk: 1.05 },
-    desc: '저주와 지연 폭발. 준비가 길지만 맞추면 판을 뒤집는다.',
+    desc: '저주와 지연 폭발의 매지션. 준비는 길지만 적중하면 판을 뒤집는다.',
     ults: {
-      A: { name: '저주', target: 'all_enemies', fx: 'nova', power: 0.5, effects: [{ status: 'weaken', dur: 8, value: 0.3 }, { status: 'vuln', dur: 8 }], desc: '적 전체 약화 + 취약.',
-        v: { name: '대저주', effects: [{ status: 'weaken', dur: 10, value: 0.4 }, { status: 'vuln', dur: 10 }, { status: 'slow', dur: 6, value: 0.3 }], desc: '적 전체 강한 약화 + 취약 + 둔화.' } },
-      B: { name: '영혼 착취', target: 'enemy', fx: 'starbolt', power: 2.2, partyHeal: 0.5, effects: [{ status: 'poison', dur: 8, dps: 0.6 }], desc: '단일 피해 + 중독. 준 피해의 50%로 파티 회복.',
-        v: { name: '영혼 포식', partyHeal: 0.8, ultGive: 15, desc: '준 피해 80%로 파티 회복 + 아군 필살기 게이지 +15.' } },
-      C: { name: '파멸의 낙인', target: 'enemy', fx: 'snipe', delay: 3.0, power: 7.0, brokenMult: 1.5, desc: '3초 뒤 폭발하는 낙인. 그로기 순간에 맞추면 1.5배.',
-        v: { name: '종말의 낙인', power: 8.5, execute: { below: 0.4, mult: 1.5 }, desc: '3초 뒤 더 큰 폭발. HP 40% 이하 적 1.5배.' } },
+      A: { name: '저주', target: 'all_enemies', fx: 'nova', power: 0.5, effects: [{ status: 'weaken', dur: 8, value: 0.3 }, { status: 'vuln', dur: 8 }], desc: '적 전체 8초 약화(-30%) + 취약.',
+        v: { name: '심연의 저주', effects: [{ status: 'weaken', dur: 10, value: 0.4 }, { status: 'vuln', dur: 10 }, { status: 'slow', dur: 6, value: 0.3 }], desc: '적 전체 10초 약화(-40%) + 취약 + 6초 둔화.' } },
+      B: { name: '영혼 착취', target: 'enemy', fx: 'starbolt', power: 2.2, partyHeal: 0.5, effects: [{ status: 'poison', dur: 8, dps: 0.6 }], desc: '단일 피해 + 8초 중독. 준 피해의 50%로 파티 회복.',
+        v: { name: '영혼 포식', partyHeal: 0.8, ultGive: 15, desc: '단일 피해 + 8초 중독. 준 피해의 80%로 파티 회복 + 다른 아군 필살기 게이지 +15.' } },
+      C: { name: '파멸의 낙인', target: 'enemy', fx: 'snipe', delay: 3.0, power: 7.0, brokenMult: 1.5, desc: '3초 시전 후 낙인 폭발. 그로기 적에게 1.5배.',
+        v: { name: '종말의 낙인', power: 8.5, execute: { below: 0.4, mult: 1.5 }, desc: '3초 시전 후 더 큰 폭발. 그로기 적, HP 40% 이하 적에게 각각 1.5배.' } },
     } },
   // ---------------- 서포터
   { id: 'bori', name: '보리', role: 'support', title: '생명의 사제', sprite: 'priest', trait: 'gentle', starter: true,
-    desc: '광역 회복 특화. 오래 버티는 전투의 중심.',
+    desc: '광역 회복 특화. 장기전을 버티게 하는 파티의 중심.',
     ults: {
-      A: { base: 'bori_ult', v: { name: '세계수', effects: [{ status: 'regen', dur: 10, value: 0.06, to: 'party' }, { status: 'guard', dur: 10, value: 0.15, to: 'party' }], desc: '10초간 파티 강한 재생 + 피해 -15%.' } },
-      B: { name: '꽃비', target: 'party', fx: 'aoeheal', heal: 1.5, healPct: 0.2, desc: '파티 즉시 회복.',
-        v: { name: '치유의 폭우', healPct: 0.3, cleanse: true, desc: '파티 큰 즉시 회복 + 해로운 효과 해제.' } },
-      C: { name: '부활의 씨앗', target: 'party', fx: 'tree', revive: 0.4, healPct: 0.1, desc: '쓰러진 동료 1명을 HP 40%로 부활 + 파티 회복.',
-        v: { name: '윤회', revive: 0.6, healPct: 0.15, effects: [{ status: 'invuln', dur: 2, to: 'party' }], desc: 'HP 60%로 부활 + 파티 2초 무적.' } },
+      A: { base: 'bori_ult', v: { name: '세계수', effects: [{ status: 'regen', dur: 10, value: 0.06, to: 'party' }, { status: 'guard', dur: 10, value: 0.15, to: 'party' }], desc: '10초간 파티 재생(초당 6%) + 받는 피해 -15%.' } },
+      B: { name: '꽃비', target: 'party', fx: 'aoeheal', heal: 1.5, healPct: 0.2, desc: '파티 즉시 회복(최대 HP 20% + 공격력 비례).',
+        v: { name: '치유의 폭우', healPct: 0.3, cleanse: true, desc: '파티 즉시 회복(최대 HP 30% + 공격력 비례) + 해로운 효과 해제.' } },
+      C: { name: '부활의 씨앗', target: 'party', fx: 'tree', revive: 0.4, healPct: 0.1, desc: '쓰러진 동료 1명을 HP 40%로 부활 + 파티 HP 10% 회복.',
+        v: { name: '윤회', revive: 0.6, healPct: 0.15, effects: [{ status: 'invuln', dur: 2, to: 'party' }], desc: '쓰러진 동료 1명을 HP 60%로 부활 + 파티 HP 15% 회복 + 2초 무적.' } },
     } },
   { id: 'lumi', name: '루미', role: 'support', title: '축복의 음유시인', sprite: 'priest_b', trait: 'gentle', stat: { hp: 0.95, atk: 1.15 },
-    desc: '파티를 강하게 만드는 버퍼. 지속 회복과 쿨타임 가속.',
+    desc: '파티를 강하게 만드는 버퍼. 공격력 강화와 쿨타임 가속이 특기.',
     ults: {
-      A: { name: '용기의 노래', target: 'party', fx: 'tree', effects: [{ status: 'inspire', dur: 8, value: 0.25, to: 'party' }, { status: 'regen', dur: 8, value: 0.02, to: 'party' }], desc: '8초간 파티 공격력 +25% + 재생.',
-        v: { name: '영웅의 노래', effects: [{ status: 'inspire', dur: 8, value: 0.35, to: 'party' }, { status: 'regen', dur: 8, value: 0.03, to: 'party' }], desc: '파티 공격력 +35% + 재생.' } },
-      B: { name: '서두름의 가락', target: 'party', fx: 'wall', cdReduce: 4, ultGive: 15, desc: '아군 스킬 쿨타임 4초 감소 + 필살기 게이지 +15.',
-        v: { name: '질풍의 가락', cdReduce: 6, ultGive: 25, desc: '아군 쿨타임 6초 감소 + 필살기 게이지 +25.' } },
-      C: { name: '결전의 찬가', target: 'party', fx: 'wall', effects: [{ status: 'inspire', dur: 6, value: 0.4, to: 'party' }, { status: 'lifesteal', dur: 6, value: 0.2, to: 'party' }], desc: '6초간 파티 공격력 +40% + 흡혈.',
-        v: { name: '승리의 찬가', effects: [{ status: 'inspire', dur: 6, value: 0.5, to: 'party' }, { status: 'lifesteal', dur: 6, value: 0.3, to: 'party' }, { status: 'guard', dur: 6, value: 0.15, to: 'party' }], desc: '파티 공격력 +50% + 흡혈 + 피해 감소.' } },
+      A: { name: '용기의 노래', target: 'party', fx: 'tree', effects: [{ status: 'inspire', dur: 8, value: 0.25, to: 'party' }, { status: 'regen', dur: 8, value: 0.02, to: 'party' }], desc: '8초간 파티 공격력 +25% + 재생(초당 2%).',
+        v: { name: '영웅의 노래', effects: [{ status: 'inspire', dur: 8, value: 0.35, to: 'party' }, { status: 'regen', dur: 8, value: 0.03, to: 'party' }], desc: '8초간 파티 공격력 +35% + 재생(초당 3%).' } },
+      B: { name: '재촉의 가락', target: 'party', fx: 'wall', cdReduce: 4, ultGive: 15, desc: '다른 아군 스킬 쿨타임 -4초 + 필살기 게이지 +15.',
+        v: { name: '질풍의 가락', cdReduce: 6, ultGive: 25, desc: '다른 아군 스킬 쿨타임 -6초 + 필살기 게이지 +25.' } },
+      C: { name: '결전의 찬가', target: 'party', fx: 'wall', effects: [{ status: 'inspire', dur: 6, value: 0.4, to: 'party' }, { status: 'lifesteal', dur: 6, value: 0.2, to: 'party' }], desc: '6초간 파티 공격력 +40% + 흡혈 20%.',
+        v: { name: '승리의 찬가', effects: [{ status: 'inspire', dur: 6, value: 0.5, to: 'party' }, { status: 'lifesteal', dur: 6, value: 0.3, to: 'party' }, { status: 'guard', dur: 6, value: 0.15, to: 'party' }], desc: '6초간 파티 공격력 +50% + 흡혈 30% + 받는 피해 -15%.' } },
     } },
   { id: 'sera', name: '세라', role: 'support', title: '수호 치유사', sprite: 'priest_c', trait: 'gentle', stat: { hp: 1.05, atk: 0.9 },
-    desc: '한 명을 확실히 살리는 단일 회복 특화. 보호막과 희생.',
+    desc: '한 명을 확실히 살리는 단일 회복 특화. 보호막과 희생으로 위기를 넘긴다.',
     ults: {
-      A: { name: '기적', target: 'ally', fx: 'heal', heal: 3.0, healPct: 0.45, effects: [{ status: 'invuln', dur: 1.5 }], desc: '아군 1명 대량 회복 + 1.5초 무적.',
-        v: { name: '대기적', healPct: 0.6, effects: [{ status: 'invuln', dur: 2.5 }], desc: '아군 1명 초대량 회복 + 2.5초 무적.' } },
-      B: { name: '빛의 보호막', target: 'ally', fx: 'heal', shieldPct: 0.45, cleanse: true, desc: '아군 1명에게 최대 HP 45% 보호막 + 해제.',
-        v: { name: '삼중 보호막', target: 'party', fx: 'wall', shieldPct: 0.22, desc: '파티 전원에게 최대 HP 22% 보호막.' } },
-      C: { name: '희생', target: 'ally', fx: 'heal', healPct: 0.7, cleanse: true, selfCost: 0.2, desc: '세라 HP 20%를 바쳐 아군 1명 HP 70% 회복.',
-        v: { name: '성녀의 희생', healPct: 1.0, partyHealPct: 0.15, selfCost: 0.15, desc: '세라 HP 15%로 아군 1명 완전 회복 + 파티 15% 회복.' } },
+      A: { name: '기적', target: 'ally', fx: 'heal', heal: 3.0, healPct: 0.45, effects: [{ status: 'invuln', dur: 1.5 }], desc: '아군 1명 대량 회복(최대 HP 45% + 공격력 비례) + 1.5초 무적.',
+        v: { name: '성스러운 기적', healPct: 0.6, effects: [{ status: 'invuln', dur: 2.5 }], desc: '아군 1명 초대량 회복(최대 HP 60% + 공격력 비례) + 2.5초 무적.' } },
+      B: { name: '빛의 보호막', target: 'ally', fx: 'heal', shieldPct: 0.45, cleanse: true, desc: '아군 1명에게 8초간 최대 HP 45% 보호막 + 해로운 효과 해제.',
+        v: { name: '빛의 장막', target: 'party', fx: 'wall', shieldPct: 0.22, desc: '파티 전원에게 8초간 최대 HP 22% 보호막 + 해로운 효과 해제.' } },
+      C: { name: '희생', target: 'ally', fx: 'heal', healPct: 0.7, cleanse: true, selfCost: 0.2, desc: '세라 HP 20%를 바쳐 아군 1명 HP 70% 회복 + 해로운 효과 해제.',
+        v: { name: '성녀의 희생', healPct: 1.0, partyHealPct: 0.15, selfCost: 0.15, desc: '세라 HP 15%를 바쳐 아군 1명 완전 회복 + 해제, 파티 HP 15% 회복.' } },
     } },
 ];
 const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
@@ -1108,7 +1117,7 @@ const CHAR_LV = {
   max: 70,
   ultUnlock: { A: 1, B: 10, C: 20, A2: 30, B2: 40, C2: 50 },
   mastery: [{ lv: 60, boost: 0.05 }, { lv: 70, boost: 0.05 }],
-  recByTier: [1, 8, 16, 24, 32, 40, 50, 60, 70], // 난이도 단계별 권장 캐릭터 레벨
+  recByTier: [1, 3, 12, 22, 32, 40, 50, 60, 70], // 난이도 단계별 권장 캐릭터 레벨
   expNext(lv) { return Math.round(20 + 10 * Math.pow(Math.max(0, lv - 1), 1.3)); },
   reward: { battle: 12, elite: 30, boss: 80 }, tierMult: 0.6, deadMult: 0.5,
 };
@@ -1139,42 +1148,42 @@ function ultDefFor(id, choice, bt, lv) {
 // 장비 등급 = 스킬 랭크 (위력·회복 +GEAR_SKILL_RANK × 등급 순서)
 
 Object.assign(STATUS, {
-  reflect: { name: '반격', short: '반', color: '#c8a070', desc: '받은 근접 평타 피해의 일부를 되돌린다.' },
+  reflect: { name: '반격', short: '반', color: '#c8a070', desc: '받은 근접 평타 피해 일부를 되돌림.' },
 });
 
 const GEAR_SKILL_RANK = 0.05;
 
 Object.assign(SKILLS, {
   // ---------------- 탱커 ① 갑옷 (도발 계열)
-  gs_tank_s1_b: { name: '맹세의 외침', target: 'party', cd: 10, power: 0, shieldPct: 0.15, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.15, to: 'self' }], fx: 'taunt', desc: '3초 도발 + 파티 전원에게 최대 HP 15% 보호막.', ai: { cond: 'saveForCharge', target: 'nearest' } },
-  gs_tank_s1_c: { name: '가시 반격', target: 'self', cd: 9, power: 0, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.1, to: 'self' }, { status: 'reflect', dur: 4, value: 0.6, to: 'self' }], fx: 'taunt', desc: '3초 도발. 4초간 받은 근접 평타 피해의 60%를 되돌린다.', ai: { cond: 'saveForCharge', target: 'nearest' } },
+  gs_tank_s1_b: { name: '맹세의 외침', target: 'party', cd: 10, power: 0, shieldPct: 0.15, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.15, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적 도발 + 파티 전원에게 최대 HP 15% 보호막.', ai: { cond: 'saveForCharge', target: 'nearest' } },
+  gs_tank_s1_c: { name: '가시 반격', target: 'self', cd: 9, power: 0, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.1, to: 'self' }, { status: 'reflect', dur: 4, value: 0.6, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적 도발. 4초간 받은 근접 평타 피해 60% 반격.', ai: { cond: 'saveForCharge', target: 'nearest' } },
   // ---------------- 탱커 ② 무기 (기절 = 끊기 칸 전부)
-  gs_tank_s2_b: { name: '돌진 베기', target: 'enemy', cd: 9, hint: 'enemyCharging', power: 1.7, effects: [{ status: 'stun', dur: 1.2 }], fx: 'bash', desc: '돌진해 강타. 1.2초 기절 (끊기 칸 전부).', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  gs_tank_s2_b: { name: '돌진 베기', target: 'enemy', cd: 9, hint: 'enemyCharging', power: 1.7, effects: [{ status: 'stun', dur: 1.2 }], fx: 'bash', desc: '돌진 강타 + 1.2초 기절 (끊기 칸 전부).', ai: { cond: 'smartInterrupt', target: 'charging' } },
   gs_tank_s2_c: { name: '대지 강타', target: 'self_area', cd: 11, hint: 'enemyCharging', power: 1.0, areaR: 95, effects: [{ status: 'stun', dur: 1.5 }], fx: 'spin', desc: '주변 모든 적 1.5초 기절 (끊기 칸 전부).', ai: { cond: 'smartInterrupt', target: 'charging' } },
   // ---------------- 근딜 ① 갑옷 (끊기 ●●)
-  gs_melee_s1_b: { name: '발목 베기', target: 'enemy', cd: 5, power: 1.2, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'slow', dur: 3, value: 0.4 }], fx: 'slash', desc: '둔화. 쿨이 짧다. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
-  gs_melee_s1_c: { name: '피의 일격', target: 'enemy', cd: 7, power: 2.1, interrupt: 2, interruptBack: 0.5, selfCost: 0.04, effects: [{ status: 'bleed', dur: 5, dps: 0.5 }], fx: 'slash', desc: '자기 HP 4%를 써서 강타 + 깊은 출혈. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_melee_s1_b: { name: '발목 베기', target: 'enemy', cd: 5, power: 1.2, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'slow', dur: 3, value: 0.4 }], fx: 'slash', desc: '강타 + 3초 둔화. 쿨타임 짧음. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_melee_s1_c: { name: '피의 일격', target: 'enemy', cd: 7, power: 2.1, interrupt: 2, interruptBack: 0.5, selfCost: 0.04, effects: [{ status: 'bleed', dur: 5, dps: 0.5 }], fx: 'slash', desc: '자기 HP 4% 소모. 강타 + 5초 깊은 출혈. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
   // ---------------- 근딜 ② 무기
   gs_melee_s2_b: { name: '파쇄 일격', target: 'enemy', cd: 10, power: 2.0, brokenMult: 1.6, effects: [], fx: 'slash', desc: '강타. 그로기 적에게 1.6배.', ai: { cond: 'breakWindow', target: 'focus' } },
-  gs_melee_s2_c: { name: '그림자 연격', target: 'enemy', cd: 8, power: 0.75, hits: 3, effects: [{ status: 'vuln', dur: 3 }], fx: 'slash', desc: '3연타 + 취약.', ai: { cond: 'always', target: 'focus' } },
+  gs_melee_s2_c: { name: '그림자 연격', target: 'enemy', cd: 8, power: 0.75, hits: 3, effects: [{ status: 'vuln', dur: 3 }], fx: 'slash', desc: '3연타 + 3초 취약.', ai: { cond: 'always', target: 'focus' } },
   // ---------------- 원딜 ① 갑옷 (끊기 ●●)
-  gs_ranged_s1_b: { name: '견제 사격', target: 'enemy', cd: 5, power: 1.1, interrupt: 2, effects: [{ status: 'slow', dur: 3, value: 0.35 }], fx: 'pierce', desc: '둔화. 쿨이 짧다. 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_ranged_s1_b: { name: '견제 사격', target: 'enemy', cd: 5, power: 1.1, interrupt: 2, effects: [{ status: 'slow', dur: 3, value: 0.35 }], fx: 'pierce', desc: '3초 둔화. 쿨타임 짧음. 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
   gs_ranged_s1_c: { name: '표식 사격', target: 'enemy', cd: 8, power: 1.3, interrupt: 2, shakeExtend: 2, effects: [{ status: 'vuln', dur: 8 }], fx: 'pierce', desc: '8초 취약. 끊기 ●●, 흔들림 +2초.', ai: { cond: 'smartInterrupt', target: 'focus' } },
   // ---------------- 원딜 ② 무기
   gs_ranged_s2_b: { name: '연사', target: 'enemy', cd: 8, power: 0.5, hits: 4, effects: [], fx: 'pierce', desc: '빠른 4연사.', ai: { cond: 'always', target: 'focus' } },
-  gs_ranged_s2_c: { name: '저격', target: 'enemy', cd: 12, power: 3.4, delay: 1.0, brokenMult: 1.3, effects: [], fx: 'snipe', desc: '1초 조준 후 강한 한 발. 그로기 적에게 1.3배.', ai: { cond: 'breakWindow', target: 'focus' } },
+  gs_ranged_s2_c: { name: '저격', target: 'enemy', cd: 12, power: 3.4, delay: 1.0, brokenMult: 1.3, effects: [], fx: 'snipe', desc: '1초 조준 후 강력한 한 발. 그로기 적에게 1.3배.', ai: { cond: 'breakWindow', target: 'focus' } },
   // ---------------- 매지션 ① 갑옷
-  gs_mage_s1_b: { name: '화염 파동', target: 'area_enemy', cd: 6, power: 1.2, areaR: 65, effects: [{ status: 'burn', dur: 4, dps: 0.3 }], fx: 'nova', desc: '작은 범위 화염 + 화상.', ai: { cond: 'always', target: 'nearest' } },
-  gs_mage_s1_c: { name: '마나 보호막', target: 'ally', cd: 8, power: 0, shieldPct: 0.3, effects: [{ status: 'inspire', dur: 6, value: 0.35 }], fx: 'heal', desc: '아군 1명에게 최대 HP 30% 보호막 + 6초간 공격력 +35% (위급한 아군이 없으면 가장 센 동료에게).', ai: { cond: 'always', target: 'lowestAlly' } },
+  gs_mage_s1_b: { name: '화염 파동', target: 'area_enemy', cd: 6, power: 1.2, areaR: 65, effects: [{ status: 'burn', dur: 4, dps: 0.3 }], fx: 'nova', desc: '좁은 범위 화염 + 4초 화상.', ai: { cond: 'always', target: 'nearest' } },
+  gs_mage_s1_c: { name: '마나 보호막', target: 'ally', cd: 8, power: 0, shieldPct: 0.3, effects: [{ status: 'inspire', dur: 6, value: 0.35 }], fx: 'heal', desc: '아군 1명에게 최대 HP 30% 보호막 + 6초간 공격력 +35%. 위급한 아군이 없으면 가장 강한 동료에게.', ai: { cond: 'always', target: 'lowestAlly' } },
   // ---------------- 매지션 ② 무기 (범위 끊기 ●)
   gs_mage_s2_b: { name: '번개 사슬', target: 'multi_enemy', count: 3, cd: 9, hint: 'cluster', power: 1.0, interrupt: 1, effects: [], fx: 'starbolt', desc: '시전 중인 적부터 3명 연쇄. 맞은 적마다 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
-  gs_mage_s2_c: { name: '빙결 고리', target: 'area_enemy', cd: 12, hint: 'cluster', power: 0.8, areaR: 115, interrupt: 1, effects: [{ status: 'slow', dur: 4, value: 0.5 }], fx: 'nova', desc: '넓은 범위 둔화. 범위 안 모든 적 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_mage_s2_c: { name: '빙결 고리', target: 'area_enemy', cd: 12, hint: 'cluster', power: 0.8, areaR: 115, interrupt: 1, effects: [{ status: 'slow', dur: 4, value: 0.5 }], fx: 'nova', desc: '넓은 범위 4초 둔화. 범위 안 모든 적 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
   // ---------------- 서포터 ① 갑옷 (공명)
-  gs_support_s1_b: { name: '수호의 기도', target: 'ally', cd: 6, power: 0, shieldPct: 0.26, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 보호막(최대 HP 26%) + 5초간 그로기 피해 +30%.', ai: { cond: 'always', target: 'lowestAlly' } },
+  gs_support_s1_b: { name: '수호의 기도', target: 'ally', cd: 6, power: 0, shieldPct: 0.26, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명에게 최대 HP 26% 보호막 + 5초간 그로기 피해 +30%.', ai: { cond: 'always', target: 'lowestAlly' } },
   gs_support_s1_c: { name: '재생의 축복', target: 'ally', cd: 6, heal: 0.8, effects: [{ status: 'regen', dur: 6, value: 0.03 }, { status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 6초 재생 + 5초간 그로기 피해 +30%.', ai: { cond: 'always', target: 'lowestAlly' } },
   // ---------------- 서포터 ② 무기
-  gs_support_s2_b: { name: '빛의 심판', target: 'enemy', cd: 8, power: 1.9, effects: [{ status: 'vuln', dur: 4 }], fx: 'starbolt', desc: '빛으로 공격 + 4초 취약.', ai: { cond: 'always', target: 'focus' } },
-  gs_support_s2_c: { name: '정화의 빛', target: 'party', cd: 12, healPct: 0.08, cleanse: true, effects: [], fx: 'aoeheal', desc: '파티 전원 회복(최대 HP 8%) + 해로운 효과 해제.', ai: { cond: 'allyHpBelow', param: 70, target: 'lowestAlly' } },
+  gs_support_s2_b: { name: '빛의 심판', target: 'enemy', cd: 8, power: 1.9, effects: [{ status: 'vuln', dur: 4 }], fx: 'starbolt', desc: '빛의 일격 + 4초 취약.', ai: { cond: 'always', target: 'focus' } },
+  gs_support_s2_c: { name: '정화의 빛', target: 'party', cd: 12, healPct: 0.08, cleanse: true, effects: [], fx: 'aoeheal', desc: '파티 전원 최대 HP 8% 회복 + 해로운 효과 해제.', ai: { cond: 'allyHpBelow', param: 70, target: 'lowestAlly' } },
 });
 
 // 장비 종류(EQUIP_DB 아이템 id) → 스킬
@@ -2258,16 +2267,16 @@ const EQ = (() => {
   const SLOT_NAME = {}; DB.slots.forEach((s) => { SLOT_NAME[s.key] = s.name; });
   // 게임 내에서 효과가 구현된 스킬 보너스 (L·E). 직업 전용 스킬 보너스는 스킬 풀 개편 때 추가
   const SKILL_BONUS = [
-    { key: 's1pow', text: '① 스킬 위력 +{v}', L: 0.10, E: 0.12 },
-    { key: 's2pow', text: '② 스킬 위력 +{v}', L: 0.10, E: 0.12 },
+    { key: 's1pow', text: '① 갑옷 스킬 위력 +{v}', L: 0.10, E: 0.12 },
+    { key: 's2pow', text: '② 무기 스킬 위력 +{v}', L: 0.10, E: 0.12 },
     { key: 'ultpow', text: '③ 필살기 위력 +{v}', L: 0.10, E: 0.12 },
-    { key: 's1cd', text: '① 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
-    { key: 's2cd', text: '② 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
+    { key: 's1cd', text: '① 갑옷 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
+    { key: 's2cd', text: '② 무기 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
     { key: 'ultgain', text: '필살기 충전 +{v}', L: 0.08, E: 0.09 },
   ];
   const SB = {}; SKILL_BONUS.forEach((b) => { SB[b.key] = b; });
   const GEM_SKILL = { s1_power: 's1pow', s2_power: 's2pow', ult_power: 'ultpow' };
-  const EXTRA_STAT_NAME = { s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultpow: '필살기 위력', s1cd: '① 쿨타임', s2cd: '② 쿨타임', nonbroken: '그로기 아닌 적 피해' };
+  const EXTRA_STAT_NAME = { s1pow: '① 갑옷 스킬 위력', s2pow: '② 무기 스킬 위력', ultpow: '③ 필살기 위력', s1cd: '① 갑옷 스킬 쿨타임', s2cd: '② 무기 스킬 쿨타임', nonbroken: '그로기가 아닌 적에게 피해' };
 
   const heroClass = (heroId) => HEROES[heroId].role;
   const classInfo = (cls) => DB.classes.find((c) => c.key === cls);
@@ -2713,12 +2722,12 @@ function resourceBar(run) {
 
 // 회복약 사용 (지도/휴식에서)
 function usePotionFlow(run, onDone) {
-  if (run.potions <= 0) { Game.toast('회복약이 없어요.'); return; }
+  if (run.potions <= 0) { Game.toast('회복약이 없어요'); return; }
   const box = el('div', 'pick-box');
-  box.appendChild(el('div', 'modal-title', '회복약 사용 — 누구에게?'));
+  box.appendChild(el('div', 'modal-title', '회복약을 누구에게 쓸까요?'));
   box.appendChild(partyPanel(run, { onSelect: (id) => {
     const h = run.heroes[id];
-    if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요.'); return; }
+    if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요'); return; }
     run.potions--;
     h.hp = Math.min(h.maxHp, h.hp + h.maxHp * REWARD.potionHealPct);
     Sfx.play('heal');
@@ -2751,10 +2760,12 @@ const MapScene = {
     for (const st of run.map.stages) for (const node of st) {
       const p = mapNodePos(node);
       const nt = NODE_TYPES[node.type];
-      const b = el('button', 'map-node t-' + node.type, nt.short);
+      const visited0 = run.path.some((q) => q.stage === node.stage && q.row === node.row);
+      const known = node.type === 'boss' || visited0; // 방 종류는 들어가 봐야 안다
+      const b = el('button', 'map-node t-' + (known ? node.type : 'unknown'), known ? nt.short : '?');
       b.type = 'button';
       b.style.left = p.x + 'px'; b.style.top = p.y + 'px';
-      b.style.setProperty('--nc', nt.color);
+      b.style.setProperty('--nc', known ? nt.color : '#6a6080');
       b.dataset.stage = node.stage; b.dataset.row = node.row;
       const visited = run.path.some((q) => q.stage === node.stage && q.row === node.row);
       const current = run.pos.stage === node.stage && run.pos.row === node.row;
@@ -2779,7 +2790,7 @@ const MapScene = {
       ui.appendChild(lab);
     }
 
-    const legend = el('div', 'map-legend', Object.keys(NODE_TYPES).map((k) => `<span><b style="background:${NODE_TYPES[k].color}">${NODE_TYPES[k].short}</b>${NODE_TYPES[k].name.replace('일반 ', '')}</span>`).join(''));
+    const legend = el('div', 'map-legend', '<span><b style="background:#6a6080">?</b>들어가 봐야 아는 방</span><span><b style="background:' + NODE_TYPES.boss.color + '">' + NODE_TYPES.boss.short + '</b>굴의 주인</span>');
     ui.appendChild(legend);
 
     const side = el('div', 'map-actions');
@@ -2796,26 +2807,22 @@ const MapScene = {
 
   select(node, reachable) {
     this.selected = node;
-    const nt = NODE_TYPES[node.type];
     const info = this.info;
     info.innerHTML = '';
     info.classList.remove('hidden');
     info.classList.toggle('left', mapNodePos(node).x >= 480); // 탭한 노드를 가리지 않도록 반대편에
-    info.appendChild(el('div', 'mi-title', `<b style="background:${nt.color}">${nt.short}</b> ${nt.name} <small>스테이지 ${node.stage}</small>`));
-    let desc = nt.desc;
-    if (node.type === 'event') desc = `${EVENTS[node.event].title} — ${nt.desc}`;
-    if (nt.combat) {
-      const waves = encounterFor(node);
-      const names = {};
-      waves.flat().forEach((id) => { names[ENEMIES[id].name] = (names[ENEMIES[id].name] || 0) + 1; });
-      desc += `<br><small>${waves.length}웨이브 · ` + Object.entries(names).map(([n, c]) => `${n}×${c}`).join(', ') + '</small>';
+    if (node.type === 'boss') {
+      info.appendChild(el('div', 'mi-title', `<b style="background:${NODE_TYPES.boss.color}">${NODE_TYPES.boss.short}</b> 가장 깊은 곳 <small>${node.stage}번째 방</small>`));
+      info.appendChild(el('div', 'mi-desc', `굴의 주인이 기다린다: 「${ENEMIES[encounterFor(node)[0][0]].name}」. 가는 길에 모닥불이나 상인을 만날 수도 있다.`));
+    } else {
+      info.appendChild(el('div', 'mi-title', `<b style="background:#6a6080">?</b> 알 수 없는 방 <small>${node.stage}번째 방</small>`));
+      info.appendChild(el('div', 'mi-desc', '무엇이 있는지는 들어가 봐야 안다. 걸어가다 보면 적 무리, 갈림길, 상인, 수상한 것을 만난다.'));
     }
-    info.appendChild(el('div', 'mi-desc', desc));
     const row = el('div', 'mi-btns');
     row.appendChild(btn('취소', 'ghost', () => { this.selected = null; info.classList.add('hidden'); }, { sfx: 'back', id: 'btn-node-cancel' }));
     if (reachable) {
-      const go = btn('이동하기 →', 'primary', () => this.moveTo(node), { id: 'btn-node-go' });
-      if (Game.run.torch <= 0 && node.type === 'battle') info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다! 어둠 속 전투는 정예로 바뀔 수 있다.'));
+      const go = btn('이동 ▶', 'primary', () => this.moveTo(node), { id: 'btn-node-go' });
+      if (Game.run.torch <= 0) info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다. 어둠 속에서는 정예가 습격할 수 있다.'));
       row.appendChild(go);
     } else {
       row.appendChild(el('div', 'mi-locked', '갈 수 없는 방'));
@@ -2828,23 +2835,11 @@ const MapScene = {
     run.pos = { stage: node.stage, row: node.row };
     run.path.push({ stage: node.stage, row: node.row });
     run.stats.nodes++;
-    const wasDark = run.torch <= 0;
     run.torch = Math.max(0, run.torch - CONST.TORCH_PER_MOVE);
     run.lastNode = node;
     Sfx.play('door');
-    let type = node.type;
-    if (type === 'battle' && wasDark) {
-      const r = makeRng(hashSeed(run.seed, 'dark', node.stage, node.row));
-      if (r() < CONST.TORCH_DARK_ELITE_CHANCE && ENCOUNTERS.elite[node.stage]) {
-        type = 'elite';
-        Game.toast('어둠 속에서 정예가 습격했다!', 2200);
-      }
-    }
-    if (NODE_TYPES[type].combat) {
-      const n = Object.assign({}, node, { type });
-      openPreBattle(n);
-    } else if (type === 'event') Game.go('event', { node });
-    else Game.go(type, { node });
+    run.room = genRoom(run, node, node.type); // 방 안으로: 걸어가며 만나는 것들 (어둠 속 습격은 전투 직전에 판정)
+    Game.go('explore');
   },
 
   update(dt) { this.t += dt; },
@@ -2908,19 +2903,20 @@ function showRulesHelp() {
   box.innerHTML = `
     <div class="modal-title">규칙 안내</div>
     <div class="help-cols">
-      <div><h4>지도</h4><ul>
-        <li>다음 스테이지의 <b>같은 줄 또는 위·아래 줄</b>로만 이동.</li>
-        <li>방 종류는 미리 보인다. 이동마다 횃불 -${CONST.TORCH_PER_MOVE}.</li>
-        <li>횃불이 꺼지면 치명타 감소, 일반 전투가 정예로 변할 수 있다.</li>
-        <li>휴식: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복.</li>
-        <li><b>영구 사망</b>: 쓰러진 동료는 이번 원정에서 돌아오지 않는다.</li>
+      <div><h4>원정</h4><ul>
+        <li>지도에서 <b>같은 줄이나 바로 위·아래 줄</b>의 다음 방으로 가요. 무엇이 있는지는 들어가 봐야 알아요 (보스 방만 보여요).</li>
+        <li>방 안에서는 파티가 앞으로 걸어가며 적 무리, 갈림길, 상인, 수상한 것, 모닥불, 고목, 상자를 만나요. 갈림길에서는 단서를 보고 길을 골라요.</li>
+        <li><b>횃불</b>: 방을 옮길 때마다 -${CONST.TORCH_PER_MOVE}. 꺼지면 치명타가 줄고, 적 무리가 정예로 바뀌어 습격할 수 있어요.</li>
+        <li><b>모닥불</b>: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}.</li>
+        <li><b>영구 사망</b>: 쓰러진 동료는 이번 원정에서 돌아오지 않아요.</li>
       </ul></div>
       <div><h4>전투</h4><ul>
-        <li>평타는 자동. 스킬 2개 + 궁극기(게이지).</li>
-        <li><b>수동</b>: 스킬을 누르면 시간 정지 → 적 칩/초상화 탭 → 확정.</li>
-        <li>범위 스킬은 바닥의 범위를 드래그해서 옮긴다.</li>
-        <li><b>자동</b>: 캐릭터별 규칙 3개를 위에서부터 검사.</li>
-        <li>오우거의 <b>차지 공격</b>은 기절(방패 강타)로 캔슬!</li>
+        <li>평타는 자동. 캐릭터마다 ① 갑옷 스킬 · ② 무기 스킬 · ③ 필살기(게이지).</li>
+        <li>스킬 버튼을 <b>탭</b>하면 알아서 대상을 잡고, <b>끌면</b> 원하는 곳에 써요. 캐릭터를 끌면 이동하거나, 적 위에 놓아 공격시켜요. 적을 탭하면 집중 공격.</li>
+        <li>작전: 돌격 · 대형 · 후퇴. <b>자동</b>이면 스킬도 전략대로 써요.</li>
+        <li><b>끊기·그로기</b>: 큰 적의 차지·호출 위 끊기 칸(●●●)을 2초 안에 채우면 끊기고 <b>흔들림</b>! 이때 그로기 게이지를 깎으면 무방비가 돼요. 같은 직업은 한 칸만 채워요 (탱커의 기절은 전부).</li>
+        <li><b>짓누름</b>: 보스 평타에 맞을수록 쌓여 점점 아파요. 탱커는 거의 영향이 없어요.</li>
+        <li><b>레벨 차</b>: 전투 Lv(캐릭터 Lv + 장비 Lv)이 던전 Lv보다 낮으면 크게 불리해요.</li>
       </ul></div>
     </div>`;
   box.appendChild(btn('닫기', 'primary', () => Game.closeModal(), { id: 'help-close' }));
@@ -2944,6 +2940,12 @@ class BattleSim {
     this.waves = opts.waves.map((w) => w.slice());
     this.partyScale = PARTY_ENEMY_SCALE[clamp(opts.partySize || opts.heroes.length, 1, 3)] || 1;
     this.tier = opts.tier || { hp: 1, atk: 1 }; // 난이도 단계 배율 (보스 포함 모든 적)
+    // 전장 폭 (탐험 중 조우 전투는 화면 2배). 좌표는 전장 기준(0 ~ W)
+    this.W = opts.fieldW || 960;
+    this.X0 = CONST.FIELD_X0; this.X1 = this.W - (960 - CONST.FIELD_X1);
+    this.heroSpawnX = opts.heroSpawnX !== undefined ? opts.heroSpawnX : CONST.HERO_SPAWN_X;
+    this.enemySpawnX = opts.enemySpawnX !== undefined ? opts.enemySpawnX : CONST.ENEMY_SPAWN_X;
+    this.heroPos = opts.heroPos || null; // 탐험에서 이어지는 전투: 걷던 자리 그대로 시작
     this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
@@ -2989,7 +2991,7 @@ class BattleSim {
       atkInterval: def.atkInterval / (1 + Math.min(m.aspd || 0, cap.aspd)),
       defPct: 1 - (1 - def.def) * (1 - Math.min(m.dr || 0, cap.dr)), size: 1, mods: m,
       melee: def.range === 'melee', reach: def.reach || 0, speed: def.moveSpeed * (1 + Math.min(m.mspd || 0, cap.mspd)),
-      x: CONST.HERO_SPAWN_X - 140 - i * 20, y, tx: 0, ty: 0, face: 1, moving: false,
+      x: this.heroPos ? this.heroPos[i].x : this.heroSpawnX - 140 - i * 20, y: this.heroPos ? this.heroPos[i].y : y, tx: 0, ty: 0, face: 1, moving: false,
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
       levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
@@ -3028,7 +3030,7 @@ class BattleSim {
     const ids = this.waves[i];
     ids.forEach((id, k) => {
       const y = lerp(CONST.FIELD_Y0 + 8, CONST.FIELD_Y1 - 8, ids.length === 1 ? 0.5 : k / (ids.length - 1));
-      const x = (initial ? CONST.ENEMY_SPAWN_X + 150 : 1010) + (k % 2) * 40 + ENEMIES[id].size * 20;
+      const x = (initial ? this.enemySpawnX + 150 : this.W + 50) + (k % 2) * 40 + ENEMIES[id].size * 20;
       this.enemies.push(this._makeEnemy(id, x, y + (this.rng() - 0.5) * 10));
     });
     this.events.push({ type: 'wave', index: i, total: this.waves.length });
@@ -3037,7 +3039,7 @@ class BattleSim {
   _summon(ids, by) {
     for (const id of ids) {
       if (this.aliveEnemies().length >= 7) break;
-      const e = this._makeEnemy(id, clamp(by.x + 40 + this.rng() * 40, CONST.FIELD_X0, 990), clamp(by.y + (this.rng() - 0.5) * 70, CONST.FIELD_Y0, CONST.FIELD_Y1));
+      const e = this._makeEnemy(id, clamp(by.x + 40 + this.rng() * 40, this.X0, this.W + 30), clamp(by.y + (this.rng() - 0.5) * 70, CONST.FIELD_Y0, CONST.FIELD_Y1));
       this.enemies.push(e);
       this.events.push({ type: 'summon', unit: e, by });
     }
@@ -3106,7 +3108,7 @@ class BattleSim {
         if (br) u.target = br;
         const squishy = u.role !== 'tank' && (u.role !== 'melee' || this.hpPct(u) < 0.5);
         if (squishy) for (const e of enemies) if (e.charge && this.inChargeZone(u, e.charge)) { // 위험 범위 밖으로
-          u.tx = clamp(e.charge.cx - e.charge.r - 30, F.FIELD_X0, F.FIELD_X1); u.ty = u.y; return;
+          u.tx = clamp(e.charge.cx - e.charge.r - 30, this.X0, this.X1); u.ty = u.y; return;
         }
       }
       // 개별 명령 (캐릭터 끌기): 지점 이동 / 대상 공격
@@ -3121,19 +3123,19 @@ class BattleSim {
       const anchor = tank && tank !== u ? tank : this.frontHero();
       if (intro || !u.target) { // 입장/대기: 기본 대형
         const order = HERO_ORDER.indexOf(u.key);
-        u.tx = F.HERO_SPAWN_X + 120 - order * 30; u.ty = u.y;
+        u.tx = this.heroPos ? u.x : this.heroSpawnX + 120 - order * 30; u.ty = u.y;
         return;
       }
       const t = u.target;
       if (this.order === 'retreat' && !u.cmd) {
-        u.tx = F.FIELD_X0 + 40 + (u.melee ? 70 : 0); u.ty = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
+        u.tx = this.X0 + 40 + (u.melee ? 70 : 0); u.ty = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
         return;
       }
       if (u.melee) { // 대상에게 붙는다 (대상 앞쪽, 살짝 위아래로 어긋나게)
         const r = this.attackRange(u, t) * 0.8;
         let side = u.x <= t.x ? -1 : 1;
         if (CONST.BREAK_V2 && t.poiseMax && u.role === 'melee' && t.face) side = -t.face; // 큰 적은 등 뒤에서 (후방 끊기)
-        u.tx = clamp(t.x + side * r, CONST.FIELD_X0, CONST.FIELD_X1); u.ty = t.y + ((u.uid % 3) - 1) * 10;
+        u.tx = clamp(t.x + side * r, this.X0, this.X1); u.ty = t.y + ((u.uid % 3) - 1) * 10;
       } else {
         const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
         let tx = t.x - keep;
@@ -3146,7 +3148,7 @@ class BattleSim {
         } else u.ty = t.y + ((u.uid % 3) - 1) * 18;
         // 너무 가까이 붙은 적이 있으면 뒤로 빠진다
         const near = this.nearest(u, enemies);
-        if (near && this.dist(u, near) < 70 && u.x > F.FIELD_X0 + 30) tx = Math.min(tx, u.x - 60);
+        if (near && this.dist(u, near) < 70 && u.x > this.X0 + 30) tx = Math.min(tx, u.x - 60);
         u.tx = tx;
       }
     } else {
@@ -3160,7 +3162,7 @@ class BattleSim {
         const tankAggro = u.def.abilities.includes('boss') && heroes.find((h) => h.role === 'tank' && this.dist(u, h) < 320); // 보스는 가까운 탱커를 먼저 노린다 (위협)
         u.target = back.length ? this.nearest(u, back) : tankAggro ? tankAggro : u.size <= 1 && this.rng() < 0.3 ? heroes[Math.floor(this.rng() * heroes.length)] : this.nearest(u, heroes); // 사슴왕: 후열 사냥
       }
-      if (intro) { u.tx = F.ENEMY_SPAWN_X - (u.uid % 3) * 30; u.ty = u.y; return; }
+      if (intro) { u.tx = Math.min(u.x, this.enemySpawnX - (u.uid % 3) * 30); u.ty = u.y; return; }
       const t = u.target;
       const r = this.attackRange(u, t) * 0.8;
       // 같은 대상을 노리는 적들은 둘러싸듯 흩어진다
@@ -3172,7 +3174,7 @@ class BattleSim {
   // 개별 명령: { type: 'move', x, y } | { type: 'attack', unit } | null (작전으로 복귀)
   command(h, cmd) {
     if (!h.alive || this.outcome) return false;
-    if (cmd && cmd.type === 'move') cmd = { type: 'move', x: clamp(cmd.x, CONST.FIELD_X0, CONST.FIELD_X1), y: clamp(cmd.y, CONST.FIELD_Y0, CONST.FIELD_Y1) };
+    if (cmd && cmd.type === 'move') cmd = { type: 'move', x: clamp(cmd.x, this.X0, this.X1), y: clamp(cmd.y, CONST.FIELD_Y0, CONST.FIELD_Y1) };
     if (cmd && cmd.type === 'attack' && !(cmd.unit && cmd.unit.alive && cmd.unit.side === 'enemy')) return false;
     h.cmd = cmd || null;
     if (cmd && cmd.type === 'attack') { h.target = cmd.unit; h.retarget = CONST.RETARGET_SEC; }
@@ -3189,7 +3191,7 @@ class BattleSim {
       if (u.statuses.stun || u.charge || u.call || u.broken > 0 || u.actLock > 0) { u.moving = false; continue; }
       const dx = u.tx - u.x, dy = u.ty - u.y;
       const d = Math.hypot(dx, dy);
-      const fast = (u.side === 'enemy' && u.x > 960) || this.introT > 0 ? 2.2 : 1;
+      const fast = (u.side === 'enemy' && u.x > this.W) || this.introT > 0 ? 2.2 : 1;
       const sp = u.speed * fast * (this.order === 'retreat' && u.side === 'hero' ? 1.25 : 1) * (u.statuses.slow ? 1 - u.statuses.slow.value : 1);
       if (d > 3) {
         const k = Math.min(1, (sp * dt) / d);
@@ -3209,8 +3211,8 @@ class BattleSim {
       }
     }
     for (const u of all) {
-      if (u.side === 'enemy' && u.x > 960) continue; // 입장 중
-      u.x = clamp(u.x, F.FIELD_X0, F.FIELD_X1); u.y = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
+      if (u.side === 'enemy' && u.x > this.W) continue; // 입장 중
+      u.x = clamp(u.x, this.X0, this.X1); u.y = clamp(u.y, F.FIELD_Y0, F.FIELD_Y1);
     }
   }
 
@@ -3268,13 +3270,13 @@ class BattleSim {
     if (u.atkTimer > 0) return;
     let tgt = u.target && u.target.alive ? u.target : null;
     // 보스 추격: 대상이 사거리 밖에 오래 있으면 덮쳐 든다 (멀리서 끌기만으로는 버틸 수 없게)
-    if (u.side === 'enemy' && u.def.abilities.includes('boss') && tgt && u.x < 960) {
+    if (u.side === 'enemy' && u.def.abilities.includes('boss') && tgt && u.x < this.W) {
       if (this.dist(u, tgt) > this.attackRange(u, tgt) + 20) u.chase = (u.chase || 0) + u.atkInterval * 0.5 + 0.15;
       else u.chase = 0;
       if (u.chase >= CONST.BOSS_LEAP_AFTER) {
         u.chase = 0;
         const side = u.x >= tgt.x ? 1 : -1;
-        u.x = clamp(tgt.x + side * this.attackRange(u, tgt) * 0.7, CONST.FIELD_X0, CONST.FIELD_X1); u.y = tgt.y;
+        u.x = clamp(tgt.x + side * this.attackRange(u, tgt) * 0.7, this.X0, this.X1); u.y = tgt.y;
         this.events.push({ type: 'dash', unit: u }); this.events.push({ type: 'bossLeap', unit: u, target: tgt });
       }
     }
@@ -3318,8 +3320,8 @@ class BattleSim {
       else if (!stunned) { u.call.t -= dt; if (u.call.t <= 0) { u.call = null; u.callCd = d.callEvery; this._callComplete(u); } }
       return;
     }
-    if (d.abilities.includes('buds') && u.x <= 960) this._buds(u, dt);
-    if (stunned || u.x > 960) return;
+    if (d.abilities.includes('buds') && u.x <= this.W) this._buds(u, dt);
+    if (stunned || u.x > this.W) return;
     if (d.abilities.includes('charge')) {
       u.chargeCd -= dt;
       const tgt = u.target && u.target.alive ? u.target : this.nearest(u, this.aliveHeroes());
@@ -3349,7 +3351,7 @@ class BattleSim {
       if (b.unit && b.unit.alive) return;
       if (b.unit && !b.unit.alive && !b.regrow) b.regrow = d.budRegrow;
       if (b.regrow > 0) { b.regrow -= dt; if (b.regrow > 0) return; }
-      const e = this._makeEnemy('thorn_bud', clamp(Math.min(u.x, 800) - 40 + i * 30, CONST.FIELD_X0, 830), (CONST.FIELD_Y0 + CONST.FIELD_Y1) / 2 + (i - 1) * 26);
+      const e = this._makeEnemy('thorn_bud', clamp(Math.min(u.x, this.W - 160) - 40 + i * 30, this.X0, this.W - 130), (CONST.FIELD_Y0 + CONST.FIELD_Y1) / 2 + (i - 1) * 26);
       e.callHost = u; b.unit = e; b.regrow = 0;
       this.enemies.push(e); this.events.push({ type: 'summon', unit: e, by: u });
     });
@@ -3639,7 +3641,7 @@ class BattleSim {
   skillHint(h, slot) {
     const sk = this.skillDef(h, slot);
     if (!h.alive) return '';
-    if (sk.interrupt && this.aliveEnemies().some((e) => (e.charge || e.call) && e.x < 960)) return 'now';
+    if (sk.interrupt && this.aliveEnemies().some((e) => (e.charge || e.call) && e.x < this.W)) return 'now';
     if (!sk.hint) return '';
     switch (sk.hint) {
       case 'enemyCharging': return this.aliveEnemies().some((e) => e.charge || e.call) ? 'now' : '';
@@ -3787,7 +3789,7 @@ class BattleSim {
     const dead = this.heroes.find((u) => !u.alive);
     if (!dead) return;
     dead.alive = true; dead.hp = Math.round(dead.maxHp * pct); dead.statuses = {}; dead.ult = 0;
-    dead.x = clamp(h.x - 30, CONST.FIELD_X0, CONST.FIELD_X1); dead.y = h.y; dead.cmd = null;
+    dead.x = clamp(h.x - 30, this.X0, this.X1); dead.y = h.y; dead.cmd = null;
     this.events.push({ type: 'revive', unit: dead });
   }
 
@@ -3871,7 +3873,7 @@ class BattleSim {
       }
       case 'auto': { // 필살기 종류에 맞춰 자동: 부활 / 회복 / 그로기 만들기 / 무방비 수확
         const sk = this.skillDef(h, slot);
-        const big = this.aliveEnemies().filter((e) => e.poiseMax && e.x < 960);
+        const big = this.aliveEnemies().filter((e) => e.poiseMax && e.x < this.W);
         if (sk.revive) return this.heroes.some((u) => !u.alive);
         const healer = (sk.heal || sk.healPct || sk.shieldPct) && !sk.power;
         if (healer) return this.aliveHeroes().some((a) => this.hpPct(a) <= 0.6);
@@ -3885,7 +3887,7 @@ class BattleSim {
         return !big.some((e) => e.poise / e.poiseMax <= 0.4 || (e.shaken > 0 && e.poise / e.poiseMax <= 0.7));
       }
       case 'smartInterrupt': { // 끊기 스킬: 지금 시전 중인 적이 있거나, 다음 차지·호출 전에 쿨이 돌아오면 사용
-        const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && e.x < 960);
+        const threats = this.aliveEnemies().filter((e) => (e.def.abilities.includes('charge') || e.def.abilities.includes('caller')) && e.x < this.W);
         if (!threats.length || threats.some((e) => e.charge || e.call)) return true;
         if (!threats.some((e) => this.canPartyCancel(e))) return true; // 아껴도 못 끊는 상대면 그냥 사용
         const next = Math.min(...threats.map((e) => Math.min(e.def.abilities.includes('charge') ? e.chargeCd : 99, e.def.abilities.includes('caller') ? e.callCd : 99)));
@@ -3931,7 +3933,7 @@ BattleSim.runHeadless = function (opts, maxTime) {
 // ---------- 07_battle_view.js
 // ===== 07_battle_view.js : 실시간 파티 전투 장면 (렌더/연출/HUD/입력) =====
 // BattleSim(로직)을 고정 타임스텝으로 돌리고, sim.events를 소비해 연출만 담당한다.
-// HUD: 캐릭터별 묶음 [얼굴 + ① 기본 ② 상황 ③ 필살기]. 버튼 탭 = 자동 대상 즉시 시전,
+// HUD: 캐릭터별 묶음 [얼굴 + ① 갑옷 ② 무기 ③ 필살기]. 버튼 탭 = 자동 대상 즉시 시전,
 //      버튼을 끌면 슬로모션 → 놓는 곳에 대상/범위 지정. 적 칩/적 탭 = 집중 공격. 오른쪽 = 작전 명령.
 
 const BattleScene = {
@@ -3940,7 +3942,9 @@ const BattleScene = {
     const node = params.node;
     this.node = node;
     this.run = run;
-    const waves = encounterFor(node);
+    const waves = node.waves || encounterFor(node);
+    const ex = params.explore || null; // 탐험 중 조우: { fieldW, heroPos, enemySpawnX, worldX(전장 0의 탐험 좌표), theme }
+    this.explore = ex;
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
       const lo = EQ.heroLoadout(Game.profile, id);
@@ -3954,7 +3958,9 @@ const BattleScene = {
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
+      fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
     });
+    this.camX = this.camTarget(); // 카메라 (전장 좌표, 화면 폭 960)
     this.acc = 0;
     this.t = 0;
     this.speed = Game.settings.speed || 1;
@@ -3980,6 +3986,17 @@ const BattleScene = {
   },
 
   exit() { this.drag = null; this.cmdDrag = null; this.cmdPress = null; },
+
+  // ------------------------------------------------------------ 카메라 (전장이 화면보다 넓을 때)
+  camTarget() {
+    const sim = this.sim;
+    if (sim.W <= 960) return 0;
+    const hs = sim.aliveHeroes(), es = sim.aliveEnemies().filter((e) => e.x < sim.W);
+    const avg = (l) => l.reduce((a, u) => a + u.x, 0) / l.length;
+    const hc = hs.length ? avg(hs) : sim.W / 2, ec = es.length ? avg(es) : hc;
+    return clamp((hs.length ? hc * 0.6 + ec * 0.4 : ec) - 480, 0, sim.W - 960);
+  },
+  toWorld(p) { return p ? { x: p.x + this.camX, y: p.y } : p; },
 
   // ------------------------------------------------------------ HUD 구성 (DOM)
   buildHud() {
@@ -4048,7 +4065,7 @@ const BattleScene = {
         const b = el('button', 'sk sk-' + slot);
         b.type = 'button';
         b.id = `sk-${h.key}-${slot}`;
-        b.innerHTML = `<span class="sk-tag"></span><span class="sk-icon">${skillGlyph(sk)}</span><span class="sk-cd"></span><span class="sk-name">${sk.name}</span><span class="sk-kind">${slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기'}</span>`;
+        b.innerHTML = `<span class="sk-tag"></span><span class="sk-icon">${skillGlyph(sk)}</span><span class="sk-cd"></span><span class="sk-name">${sk.name}</span><span class="sk-kind">${slot === 's1' ? '① 갑옷' : slot === 's2' ? '② 무기' : '③ 필살기'}</span>`;
         this.bindSkillButton(b, h, slot);
         g.appendChild(b);
         btns[slot] = b;
@@ -4115,13 +4132,13 @@ const BattleScene = {
       const pr = this.cmdPress;
       if (!pr || pr.el !== face) return;
       if (!this.cmdDrag && Math.hypot(ev.clientX - pr.x0, ev.clientY - pr.y0) > 12) this.startCmd(pr);
-      if (this.cmdDrag) this.updateCmd(Input.toLogical(ev));
+      if (this.cmdDrag) this.updateCmd(this.toWorld(Input.toLogical(ev)));
     });
     const up = (ev) => {
       const pr = this.cmdPress;
       if (!pr || pr.el !== face) return;
       this.cmdPress = null;
-      if (this.cmdDrag) this.endCmd(ev.type === 'pointerup' ? Input.toLogical(ev) : null);
+      if (this.cmdDrag) this.endCmd(ev.type === 'pointerup' ? this.toWorld(Input.toLogical(ev)) : null);
     };
     face.addEventListener('pointerup', up);
     face.addEventListener('pointercancel', up);
@@ -4137,7 +4154,7 @@ const BattleScene = {
     if (!d) return;
     d.x = p.x; d.y = p.y;
     d.over = p.y < 430 && p.y > 64;
-    d.fx = clamp(p.x, CONST.FIELD_X0, CONST.FIELD_X1); d.fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1);
+    d.fx = clamp(p.x, this.sim.X0, this.sim.X1); d.fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1);
     d.unit = null;
     let bd = 70;
     for (const u of this.sim.aliveEnemies()) { const dd = Math.hypot(u.x - p.x, (u.y - 40) - p.y); if (dd < bd) { bd = dd; d.unit = u; } }
@@ -4152,12 +4169,12 @@ const BattleScene = {
     if (!ok) return;
     Sfx.play('click');
     if (d.unit) this.popup(d.unit.x, this.unitTop(d.unit) - 18, `${d.h.name} 공격`, '#ffb0a0', 16, { label: true });
-    else this.popup(d.fx, d.fy - 50, d.h.actLock > 0 ? `${d.h.name} 동작 후 이동` : `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
+    else this.popup(d.fx, d.fy - 50, d.h.actLock > 0 ? `${d.h.name} 동작 끝나고 이동` : `${d.h.name} 이동`, '#c8f0ff', 16, { label: true });
   },
 
   explainCant(h, slot) {
     Sfx.play('back');
-    if (h.statuses.stun) Game.toast(`${h.name} 기절 중!`, 900);
+    if (h.statuses.stun) Game.toast(`${h.name} 기절 중`, 900);
     else if (slot === 'ult') Game.toast(`필살기 게이지 ${Math.floor(h.ult)}%`, 900);
     else Game.toast(`쿨타임 ${h.cds[slot].toFixed(1)}초`, 900);
   },
@@ -4184,7 +4201,8 @@ const BattleScene = {
   updateDrag(p) {
     const d = this.drag;
     if (!d) return;
-    d.x = p.x; d.y = p.y;
+    d.x = p.x; d.y = p.y; // 화면 좌표 (끌기 선)
+    p = this.toWorld(p);
     d.over = p.y < 430 && p.y > 64; // 전장 위에 있는가
     const fy = clamp(p.y + 30, CONST.FIELD_Y0, CONST.FIELD_Y1); // 손가락 아래 바닥 지점 (손가락에 가리지 않게 살짝 위를 가리킴)
     d.fx = p.x; d.fy = fy;
@@ -4218,7 +4236,7 @@ const BattleScene = {
   // ------------------------------------------------------------ 회복약 (초상화/아군 탭)
   startPotion() {
     if (this.sim.outcome) return;
-    if (this.run.potions <= 0) { Game.toast('회복약이 없어요.', 900); return; }
+    if (this.run.potions <= 0) { Game.toast('회복약이 없어요', 900); return; }
     this.potionPick = true;
     this.tmsg.innerHTML = '회복약을 누구에게 쓸까요?';
     this.tmsg.classList.remove('hidden');
@@ -4262,18 +4280,21 @@ const BattleScene = {
   },
 
   pointerDown(p) {
+    p = this.toWorld(p);
     if (this.potionPick) { const u = this.unitAt(p); if (u && u.side === 'hero') this.usePotionOn(u); else { Sfx.play('back'); this.endPotion(); } return; }
     const u = this.unitAt(p);
     if (u && u.side === 'enemy') this.onChip(u); // 적을 탭하면 집중 공격
     else if (u && u.side === 'hero' && !this.sim.outcome) this.cmdPress = { h: u, x0: p.x, y0: p.y, el: null };
   },
   pointerMove(p) {
+    p = this.toWorld(p);
     const pr = this.cmdPress;
     if (!pr || pr.el) return;
     if (!this.cmdDrag && Math.hypot(p.x - pr.x0, p.y - pr.y0) > 10) this.startCmd(pr);
     if (this.cmdDrag) this.updateCmd(p);
   },
   pointerUp(p) {
+    p = this.toWorld(p);
     const pr = this.cmdPress;
     if (!pr || pr.el) return;
     this.cmdPress = null;
@@ -4289,8 +4310,8 @@ const BattleScene = {
     st.innerHTML = this.sim.heroes.map((h) => `<div><b>${h.name}</b> 피해 ${Math.round(h.stats.dealt)} · 회복 ${Math.round(h.stats.healed)}</div>`).join('');
     box.appendChild(st);
     const row = el('div', 'btn-col');
-    row.appendChild(btn('▶ 계속하기', 'primary', () => { Game.closeModal(); this.paused = false; }, { id: 'pause-resume' }));
-    row.appendChild(btn('⚙ 자동 전략 편집', '', () => openStrategyEditor(this.run, () => { this.sim.strategy = this.run.strategy; this.openPause(); }), { id: 'pause-strategy' }));
+    row.appendChild(btn('계속 ▶', 'primary', () => { Game.closeModal(); this.paused = false; }, { id: 'pause-resume' }));
+    row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(this.run, () => { this.sim.strategy = this.run.strategy; this.openPause(); }), { id: 'pause-strategy' }));
     row.appendChild(btn(`효과음: ${Game.settings.sound ? '켬' : '끔'}`, '', (e) => { Game.settings.sound = !Game.settings.sound; Sfx.enabled = Game.settings.sound; Game.saveSettings(); e.target.innerHTML = `효과음: ${Game.settings.sound ? '켬' : '끔'}`; }, { id: 'pause-sound' }));
     row.appendChild(btn('원정 포기', 'danger', () => this.confirmGiveUp(), { id: 'pause-giveup' }));
     box.appendChild(row);
@@ -4300,7 +4321,7 @@ const BattleScene = {
   confirmGiveUp() {
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', '정말 포기할까요?'));
-    box.appendChild(el('p', '', '이번 원정은 패배로 기록됩니다.'));
+    box.appendChild(el('p', '', '이번 원정은 여기서 끝나요.'));
     const row = el('div', 'btn-row');
     row.appendChild(btn('돌아가기', 'ghost', () => this.openPause(), { sfx: 'back', id: 'giveup-no' }));
     row.appendChild(btn('포기', 'danger', () => { Game.closeModal(); this.finish('lose', true); }, { id: 'giveup-yes' }));
@@ -4333,6 +4354,7 @@ const BattleScene = {
       steps++;
       this.consumeEvents();
     }
+    this.camX += (this.camTarget() - this.camX) * Math.min(1, dtReal * 3);
     this.shake = Math.max(0, this.shake - dtReal * 30);
     this.updateFx(dtReal * (scale > 0 ? Math.min(scale, 2) : 0.15));
     if (this.banner) { this.banner.t += dtReal; if (this.banner.t > this.banner.dur) this.banner = null; }
@@ -4343,7 +4365,7 @@ const BattleScene = {
 
   consumeEvents() {
     const ev = this.sim.events;
-    if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < 960)) { this.breakHintPending = false; Game.hint('break'); }
+    if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < this.sim.W)) { this.breakHintPending = false; Game.hint('break'); }
     if (!ev.length) return;
     for (const e of ev) this.onEvent(e);
     ev.length = 0;
@@ -4381,7 +4403,7 @@ const BattleScene = {
         const u = e.unit;
         this.smoke(u.x, u.y - 20, u.size || 1);
         Sfx.play('death');
-        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}스테이지`; this.shake = 6; }
+        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}번째 방`; this.shake = 6; }
         break;
       }
       case 'projectile':
@@ -4406,17 +4428,17 @@ const BattleScene = {
         this.shake = 12; this.hitstop = 0.12;
         for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, r = Math.random() * e.r; this.fx.push({ type: 'dust', x: e.cx + Math.cos(a) * r, y: e.cy + Math.sin(a) * r * 0.45, vx: (Math.random() - 0.5) * 120, vy: -40 - Math.random() * 90, t: 0, dur: 0.7 + Math.random() * 0.4 }); }
         this.fx.push({ type: 'flash', t: 0, dur: 0.25, color: 'rgba(255,90,60,' });
-        if (e.blocked) this.popup(e.cx, e.cy - 120, '토비가 막았다!', '#7ab8f0', 20);
+        if (e.blocked) this.popup(e.cx, e.cy - 120, '막아냈다!', '#7ab8f0', 20);
         else if (!e.hit) this.popup(e.cx, e.cy - 60, '회피!', '#9fd0ff', 24, { crit: true });
         break;
-      case 'chargeCancel': Sfx.play('cancel'); this.popup(e.unit.x, this.unitTop(e.unit) - 14, '캔슬!', '#ffd34a', 30, { crit: true }); this.hitstop = 0.1; break;
+      case 'chargeCancel': Sfx.play('cancel'); this.popup(e.unit.x, this.unitTop(e.unit) - 14, '끊었다!', '#ffd34a', 30, { crit: true }); this.hitstop = 0.1; break;
       case 'callStart': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '동료 호출!', '#ffb04a', 18); Sfx.play('summon'); break;
-      case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 저지!', '#ffd34a', 20); Sfx.play('cancel'); break;
+      case 'callCancel': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '호출 끊기!', '#ffd34a', 20); Sfx.play('cancel'); break;
       case 'summon': this.smoke(e.unit.x, e.unit.y - 20, 0.8); break;
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
-      case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓눌림!', '#ff9a6a', 17, { label: true }); break;
+      case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓누름!', '#ff9a6a', 17, { label: true }); break;
       case 'bossLeap': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '덮치기!', '#ff9a6a', 18, { label: true }); this.shake = Math.max(this.shake, 6); break;
       case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
       case 'immune': this.popup(e.unit.x, this.unitTop(e.unit) - 10, '면역', '#cfcfcf', 15); break;
@@ -4515,6 +4537,10 @@ const BattleScene = {
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
+      if (this.explore && run.room && this.node.exploreId) { // 탐험으로 복귀: 쓰러뜨린 무리를 지나간 자리에서 이어서
+        const it = roomTrack(run.room).find((x) => x.id === this.node.exploreId);
+        if (it) { it.done = true; run.room.x = Math.max(run.room.x, it.x - 40); }
+      }
       if (this.node.type === 'boss') { run.result = 'victory'; Game.go('result'); }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
       else Game.go('reward', { node: this.node });
@@ -4528,7 +4554,7 @@ const BattleScene = {
   // ------------------------------------------------------------ HUD 갱신
   updateHud() {
     const sim = this.sim;
-    this.stageLabel.textContent = `던전 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
+    this.stageLabel.textContent = `방 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
     // 위험 경고
@@ -4614,7 +4640,7 @@ const BattleScene = {
         b.classList.toggle('glow', ready && slot === 'ult');
         b.classList.toggle('auto', !!auto);
         const kind = b.children[4];
-        const kt = auto ? (slot === 's1' ? '① 자동' : slot === 's2' ? '② 자동' : '③ 자동') : (slot === 's1' ? '① 기본' : slot === 's2' ? '② 상황' : '③ 필살기');
+        const kt = auto ? (slot === 's1' ? '① 자동' : slot === 's2' ? '② 자동' : '③ 자동') : (slot === 's1' ? '① 갑옷' : slot === 's2' ? '② 무기' : '③ 필살기');
         if (kind.textContent !== kt) kind.textContent = kt;
       }
     }
@@ -4626,7 +4652,10 @@ const BattleScene = {
     const t = this.t;
     ctx.save();
     if (this.shake > 0) ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
-    this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
+    if (this.explore) drawCorridor(ctx, this.explore.worldX + this.camX, t, this.explore.theme);
+    else this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
+    const cam = Math.round(this.camX);
+    ctx.translate(-cam, 0);
     // 차지 위험 범위 (원형)
     for (const e of sim.enemies) {
       if (!e.alive || !e.charge) continue;
@@ -4663,6 +4692,7 @@ const BattleScene = {
     this.drawFx(ctx);
     this.drawPopups(ctx);
     ctx.restore();
+    if (sim.W > 960) this.drawOffscreen(ctx, cam, t);
     for (const f of this.fx) if (f.type === 'flash') { ctx.fillStyle = f.color + (0.5 * (1 - f.t / f.dur)).toFixed(3) + ')'; ctx.fillRect(0, 0, 960, 540); }
     if (this.danger) {
       const a = 0.2 + Math.sin(t * 12) * 0.1;
@@ -4676,20 +4706,38 @@ const BattleScene = {
       const bp = Input.toLogical({ clientX: br.left + br.width / 2, clientY: br.top });
       ctx.strokeStyle = d.over ? 'rgba(156,240,168,0.95)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
       ctx.beginPath(); ctx.moveTo(bp.x, bp.y); ctx.quadraticCurveTo((bp.x + d.x) / 2, Math.min(bp.y, d.y) - 60, d.x, d.y); ctx.stroke(); ctx.setLineDash([]);
-      if (d.unit) this.drawTargetArc(ctx, d.h, d.unit, t);
+      if (d.unit) { ctx.save(); ctx.translate(-cam, 0); this.drawTargetArc(ctx, d.h, d.unit, t); ctx.restore(); }
     }
     const cd = this.cmdDrag;
     if (cd) {
       ctx.fillStyle = 'rgba(30,60,90,0.22)'; ctx.fillRect(0, 0, 960, 540);
       ctx.strokeStyle = !cd.over ? 'rgba(255,255,255,0.5)' : cd.h.actLock > 0 ? 'rgba(255,180,90,0.95)' : 'rgba(200,240,255,0.95)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
+      ctx.save(); ctx.translate(-cam, 0);
       ctx.beginPath(); ctx.moveTo(cd.h.x, cd.h.y - 20); ctx.lineTo(cd.unit ? cd.unit.x : cd.fx, cd.unit ? cd.unit.y - 20 : cd.fy); ctx.stroke(); ctx.setLineDash([]);
       if (cd.over && cd.unit) this.drawTargetArc(ctx, cd.h, cd.unit, t);
       else if (cd.over) this.drawMoveMark(ctx, cd.fx, cd.fy, t, 1);
+      ctx.restore();
     }
+    ctx.save(); ctx.translate(-cam, 0);
     for (const h of sim.heroes) if (h.alive && h.cmd && h.cmd.type === 'move' && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) > 6) this.drawMoveMark(ctx, h.cmd.x, h.cmd.y, t, 0.6);
+    ctx.restore();
     if (this.potionPick) { ctx.fillStyle = 'rgba(20,40,30,0.25)'; ctx.fillRect(0, 0, 960, 540); }
     this.drawBanner(ctx);
     this.drawCutin(ctx);
+  },
+
+  // 화면 밖 유닛 표시 (넓은 전장): 가장자리 화살표, 차지 중이면 붉게 깜빡
+  drawOffscreen(ctx, cam, t) {
+    for (const u of this.sim.heroes.concat(this.sim.enemies)) {
+      if (!u.alive || u.x > this.sim.W) continue;
+      const sx = u.x - cam;
+      if (sx > 10 && sx < 950) continue;
+      const left = sx <= 10, x = left ? 14 : 946, y = u.y - 40;
+      const hot = u.charge || u.call;
+      ctx.fillStyle = u.side === 'hero' ? 'rgba(140,220,255,0.9)' : hot && Math.floor(t * 8) % 2 ? 'rgba(255,80,60,1)' : 'rgba(255,170,140,0.85)';
+      ctx.beginPath(); ctx.moveTo(x + (left ? -8 : 8), y); ctx.lineTo(x + (left ? 6 : -6), y - 9); ctx.lineTo(x + (left ? 6 : -6), y + 9); ctx.closePath(); ctx.fill();
+      if (u.size > 1) { ctx.font = '700 11px sans-serif'; ctx.textAlign = left ? 'left' : 'right'; ctx.fillText(u.name, x + (left ? 10 : -10), y + 22); }
+    }
   },
 
   floorEllipse(ctx, x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0, rx), Math.max(0, ry), 0, 0, Math.PI * 2); ctx.fill(); },
@@ -5056,12 +5104,12 @@ const FieldScene = {
     this.pendingInteract = null;
     const run = Game.run;
     if (it.key === 'chest') {
-      if (run.gotSupply) { Game.toast('상자는 비어 있다.'); return; }
+      if (run.gotSupply) { Game.toast('상자가 비어 있어요'); return; }
       run.gotSupply = true;
       run.food += CONST.SUPPLY_BOX_FOOD;
       run.potions += 1;
       Sfx.play('coin');
-      Game.toast(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD}, 회복약 +1`, 2200);
+      Game.toast(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD} · 회복약 +1`, 2200);
       this.refreshRes();
     } else if (it.key === 'smith') {
       openBlacksmith(() => this.refreshRes());
@@ -5080,7 +5128,7 @@ const FieldScene = {
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장!', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }
@@ -5098,16 +5146,16 @@ const FieldScene = {
     const ti = EQ.tierInfo(p.tier);
     const ids = partyIds(Game.run), lv = Math.round(ids.reduce((a, id) => a + EQ.heroLevel(p, id), 0) / Math.max(1, ids.length)), dl = EQ.tierLevel(p.tier);
     const gap = lv - dl, gm = levelGapMult(gap);
-    const gapTxt = gap === 0 ? '레벨 같음' : `레벨 차 ${gap > 0 ? '+' : ''}${gap}: 주는 피해 ${Math.round((gm.dealt - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.dealt - 1) * 100)}% · 받는 피해 ${Math.round((gm.taken - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.taken - 1) * 100)}%`;
-    wrap.appendChild(el('div', 'tier-desc', `던전 Lv ${dl} · 파티 Lv ${lv} (${gapTxt})<br>` + (p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade}` : '기본 난이도') + (gap < 20 && !ids.some((id) => HEROES[id].role === 'tank') ? '<br><b class="warn">탱커 없이는 보스를 버티기 어려워요</b>' : '')));
+    const gapTxt = gap === 0 ? '레벨 차 없음' : `레벨 차 ${gap > 0 ? '+' : ''}${gap}: 주는 피해 ${Math.round((gm.dealt - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.dealt - 1) * 100)}% · 받는 피해 ${Math.round((gm.taken - 1) * 100) >= 0 ? '+' : ''}${Math.round((gm.taken - 1) * 100)}%`;
+    wrap.appendChild(el('div', 'tier-desc', `던전 Lv ${dl} · 파티 전투 Lv ${lv} (${gapTxt})<br>` + (p.tier ? `적 체력·공격력 ×${ti.hp} · 권장 장비 ${ti.recGrade}` : '기본 난이도') + (gap < 20 && !ids.some((id) => HEROES[id].role === 'tank') ? '<br><b class="warn">탱커 없이는 보스를 버티기 어려워요</b>' : '')));
     return wrap;
   },
 
   openGuide(page) {
     const pages = [
-      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 다섯 개의 방을 지나면 굴의 주인이 기다리지. 원정마다 다른 놈이 나오니 상대를 보고 동료를 고르게.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 캠프에서 제대로 쉴 수 없어.' },
-      { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방 종류는 미리 보이니 길을 잘 고르게.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
-      { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. <b>기절</b>로 흔들어 놓고 비틀거릴 때 몰아치게.<br><br>오우거가 힘을 모으면 <b>토비의 방패 강타</b>로 끊거나 붉은 원 밖으로 피하게. 쓰러진 동료는... 이번 원정에선 돌아오지 못하네.' },
+      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 가장 깊은 방에서 굴의 주인이 기다리지. 원정마다 다른 놈이 나오니 상대를 보고 동료를 고르게.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 모닥불 앞에서도 제대로 쉴 수 없어.' },
+      { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방에 뭐가 있는지는 들어가 봐야 알아. 방 안 갈림길에서는 귀를 기울이면 단서가 들릴 걸세.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
+      { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. 놈이 힘을 모을 때 머리 위 <b>끊기 칸</b>을 여러 직업이 함께 채우면 끊기고 <b>흔들리지</b>. 그때 몰아쳐 <b>그로기</b>로 만들게.<br><br>보스의 주먹은 맞을수록 묵직해지니(<b>짓누름</b>) 탱커를 앞세우게. 쓰러진 동료는… 이번 원정에선 돌아오지 못하네.' },
     ];
     const p = pages[page];
     const box = el('div', 'dialog-box');
@@ -5439,6 +5487,353 @@ const FieldScene = {
   },
 };
 
+// ---------- 08b_explore.js
+// ===== 08b_explore.js : 방 안 탐험 (옆으로 걷는 실시간 탐험 — 갈림길·조우 전투·상인·이벤트·모닥불) =====
+// 지도에서 방을 고르면 그 방이 무엇인지는 들어가 봐야 안다. 방 안에서는 파티가 오른쪽으로 걸어가며
+// 길 위의 것들을 만난다. 적 무리에 닿으면 그 자리에서 실시간 전투(전장 = 화면 2배 폭)로 이어진다.
+
+const EXPLORE = {
+  SPEED: 150,          // 걷는 속도 (px/초)
+  START_X: 200,
+  CAM_LEAD: 380,       // 화면에서 선두 캐릭터 위치 (왼쪽에서)
+  SPOT_DIST: 520,      // 적 무리를 발견(전투 시작)하는 거리
+  STOP_DIST: 70,       // 상인·이벤트 앞에 멈추는 거리
+  FIELD_W: 1920,       // 조우 전투 전장 폭 (화면 2배)
+  LANES: [342, 372, 402],
+};
+
+// 갈림길 단서: 75%는 맞는 단서, 나머지는 아무 단서도 없다
+const EXPLORE_HINTS = {
+  fight: '거친 숨소리가 들린다',
+  elite: '묵직한 발소리가 땅을 울린다',
+  chest: '바닥에서 무언가 반짝인다',
+  event: '알 수 없는 기운이 감돈다',
+  shop: '희미한 등불이 보인다',
+  rest: '모닥불 냄새가 난다',
+  tree: '커다란 나무 그림자가 드리워 있다',
+  none: '조용하다',
+};
+const EXPLORE_LABEL = {
+  shop: { name: '떠돌이 상인', act: '거래하기' },
+  event: { name: '수상한 것', act: '살펴보기' },
+  rest: { name: '모닥불 자리', act: '쉬어 가기' },
+  tree: { name: '고목', act: '다가가기' },
+};
+
+// 방 구성 (숨겨진 방 종류 → 길 위의 것들). 갈림길 두 갈래 중 하나만 지나간다
+// 방 하나에 전투 1~2번 (원정 전체 8번 안팎)
+const ROOM_PLANS = {
+  battle: { first: ['fight'], branches: [['chest', 'fight'], ['event']], last: [] },
+  elite:  { first: ['fight'], branches: [['elite'], ['chest']], last: [] },
+  rest:   { first: [], branches: [['fight'], ['chest']], last: ['rest'] },
+  event:  { first: ['event'], branches: [['fight'], ['chest']], last: [] },
+  shop:   { first: ['fight'], branches: [['shop'], ['event']], last: [] },
+  tree:   { first: ['tree'], branches: [['fight'], ['chest']], last: [] },
+  boss:   { first: ['fight'], branches: [['rest'], ['shop']], last: ['boss'] },
+};
+
+function genRoom(run, node, type) {
+  const rng = makeRng(hashSeed(run.seed, 'room', node.stage, node.row));
+  const plan = ROOM_PLANS[type] || ROOM_PLANS.battle;
+  let uid = 0, x = 1400;
+  const mk = (kind, at) => {
+    const it = { id: ++uid, kind, x: at, done: false };
+    if (kind === 'fight' || kind === 'elite' || kind === 'boss') it.enc = kind === 'boss' ? node.enc : rng.int(0, 99);
+    if (kind === 'event') it.event = Object.keys(EVENTS)[rng.int(0, Object.keys(EVENTS).length - 1)];
+    return it;
+  };
+  const items = [];
+  for (const k of plan.first) { items.push(mk(k, x)); x += 700; }
+  const forkX = x - 150;
+  const branches = plan.branches.map((list, bi) => {
+    let bx = forkX + 650;
+    const its = list.map((k) => { const it = mk(k, bx); bx += 650; return it; });
+    const real = rng() < 0.75;
+    return { items: its, end: bx, hint: EXPLORE_HINTS[real ? its[0].kind : 'none'], side: bi === 0 ? '위쪽 길' : '아래쪽 길' };
+  });
+  const after = Math.max(...branches.map((b) => b.end));
+  const tail = []; let tx = after;
+  for (const k of plan.last) { tail.push(mk(k, tx)); tx += 700; }
+  return { stage: node.stage, row: node.row, type, items, forkX, branches, chosen: -1, tail, exitX: tx + (plan.last.length ? 0 : 100), x: EXPLORE.START_X, theme: node.stage };
+}
+// 지금 길 위에 있는 것들 (갈림길에서 고른 갈래 포함)
+function roomTrack(room) {
+  const out = room.items.slice();
+  if (room.chosen >= 0) out.push(...room.branches[room.chosen].items, ...room.tail);
+  return out;
+}
+// 다른 화면(전투·상점·이벤트·보상)이 끝나면 돌아갈 곳
+function backToRun() { Game.go(Game.run && Game.run.room ? 'explore' : 'map'); }
+
+const ExploreScene = {
+  enter() {
+    const run = Game.run, room = run.room;
+    this.t = 0;
+    this.moving = true;
+    this.prompt = null;
+    this.fx = [];
+    this.camX = Math.max(0, room.x - EXPLORE.CAM_LEAD);
+    this.buildHud();
+    if (!room.seen) { room.seen = true; Game.toast(room.stage === CONST.STAGES ? '가장 깊은 곳에 들어섰다. 굴의 주인이 가까이 있다.' : `${room.stage}번째 방에 들어섰다. 무엇이 있을지 모른다.`, 1800); Game.hint('explore'); }
+  },
+  exit() {},
+
+  buildHud() {
+    const run = Game.run, ui = Game.ui;
+    ui.innerHTML = '';
+    const top = el('div', 'map-top ex-top');
+    const hdr = el('div', 'map-hdr');
+    hdr.appendChild(el('div', 'map-title', `고블린 굴 — ${run.room.stage === CONST.STAGES ? '가장 깊은 곳' : `${run.room.stage}/${CONST.STAGES}`}`));
+    hdr.appendChild(resourceBar(run));
+    top.appendChild(hdr);
+    top.appendChild(partyPanel(run, { compact: true }));
+    ui.appendChild(top);
+    const side = el('div', 'map-actions ex-actions');
+    this.walkBtn = btn('', 'small', () => { this.moving = !this.moving; this.refreshWalk(); }, { id: 'btn-walk' });
+    side.appendChild(this.walkBtn);
+    side.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(run), { id: 'btn-strategy' }));
+    side.appendChild(btn('🧪 회복약', 'small', () => usePotionFlow(run, () => this.buildHud()), { id: 'btn-potion' }));
+    ui.appendChild(side);
+    this.act = el('div', 'ex-act hidden');
+    ui.appendChild(this.act);
+    this.refreshWalk();
+  },
+  refreshWalk() { if (this.walkBtn) this.walkBtn.innerHTML = this.moving ? '⏸ 멈춤' : '▶ 전진'; },
+
+  party() {
+    const run = Game.run, room = run.room;
+    const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
+    return ids.map((id, i) => ({ id, x: room.x - i * 46, y: EXPLORE.LANES[i % 3] }));
+  },
+
+  update(dt) {
+    this.t += dt;
+    const run = Game.run, room = run.room;
+    if (!room || Game.modalOpen) return;
+    for (let i = this.fx.length - 1; i >= 0; i--) { const f = this.fx[i]; f.t += dt; f.y -= 30 * dt; if (f.t > f.dur) this.fx.splice(i, 1); }
+    // 갈림길
+    if (room.chosen < 0 && room.x >= room.forkX - EXPLORE.STOP_DIST && !this.prompt) { this.openFork(); return; }
+    const next = roomTrack(room).filter((it) => !it.done).sort((a, b) => a.x - b.x)[0];
+    let limit = room.chosen < 0 ? room.forkX - EXPLORE.STOP_DIST : room.exitX;
+    if (next) {
+      if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
+        if (room.x >= next.x - EXPLORE.SPOT_DIST) { this.startFight(next); return; }
+      } else if (next.kind === 'chest') {
+        if (room.x >= next.x - 20) this.openChest(next);
+      } else {
+        limit = Math.min(limit, next.x - EXPLORE.STOP_DIST);
+        if (room.x >= next.x - EXPLORE.STOP_DIST - 1) this.showAct(next); else this.hideAct();
+      }
+    }
+    if (this.moving) room.x = Math.min(limit, room.x + EXPLORE.SPEED * dt * ((Game.debug && Game.debug.simMult) || 1));
+    if (room.chosen >= 0 && room.x >= room.exitX - 1 && !roomTrack(room).some((it) => !it.done)) { this.leaveRoom(); return; }
+    this.camX += (Math.max(0, room.x - EXPLORE.CAM_LEAD) - this.camX) * Math.min(1, dt * 4);
+  },
+
+  showAct(it) {
+    if (this.prompt === it.id) return;
+    this.prompt = it.id;
+    const L = EXPLORE_LABEL[it.kind];
+    this.act.innerHTML = '';
+    this.act.appendChild(el('div', 'ex-act-title', L.name));
+    const row = el('div', 'btn-row');
+    row.appendChild(btn('지나가기', 'ghost', () => { it.done = true; this.hideAct(); }, { id: 'ex-skip', sfx: 'back' }));
+    row.appendChild(btn(L.act, 'primary', () => this.enterPoi(it), { id: 'ex-go' }));
+    this.act.appendChild(row);
+    this.act.classList.remove('hidden');
+  },
+  hideAct() { if (this.prompt !== null) { this.prompt = null; this.act.classList.add('hidden'); } },
+
+  enterPoi(it) {
+    const run = Game.run, room = run.room;
+    it.done = true;
+    this.hideAct();
+    const node = { stage: room.stage, row: room.row, type: it.kind, event: it.event, sub: it.id };
+    Sfx.play('door');
+    Game.go(it.kind, { node });
+  },
+
+  openChest(it) {
+    const run = Game.run, room = run.room;
+    it.done = true;
+    const rng = makeRng(hashSeed(run.seed, 'chest', room.stage, room.row, it.id));
+    const gold = rng.int(12, 30) + room.stage * 4;
+    run.gold += gold;
+    let text = `골드 +${gold}`;
+    if (rng() < 0.4) { const s = 1 + rng.int(0, 2); Game.profile.stones += s; text += ` · 강화석 +${s}`; saveProfile(); }
+    if (rng() < 0.2) { run.potions++; text += ' · 회복약 +1'; }
+    Sfx.play('coin');
+    this.fx.push({ x: it.x, y: 300, text, t: 0, dur: 1.8 });
+    this.buildHud();
+  },
+
+  openFork() {
+    const room = Game.run.room;
+    this.prompt = 'fork';
+    this.moving = false; this.refreshWalk();
+    const box = el('div', 'fork-box');
+    box.appendChild(el('div', 'modal-title', '갈림길'));
+    box.appendChild(el('div', 'muted', '어느 쪽으로 갈까?'));
+    const col = el('div', 'btn-col');
+    room.branches.forEach((b, i) => col.appendChild(btn(`${b.side}<small>${b.hint}</small>`, 'choice', () => {
+      room.chosen = i; Game.closeModal(); this.prompt = null; this.moving = true; this.refreshWalk(); Sfx.play('click');
+    }, { id: 'fork-' + i })));
+    box.appendChild(col);
+    Game.modal(box, { dim: true });
+  },
+
+  startFight(it) {
+    const run = Game.run, room = run.room;
+    const worldX = Math.round(it.x - 1250);
+    const heroPos = this.party().map((p) => ({ x: clamp(p.x - worldX, CONST.FIELD_X0 + 10, EXPLORE.FIELD_W - 60), y: p.y }));
+    let type = it.kind;
+    if (type === 'fight' && run.torch <= 0) { // 횃불이 꺼지면 어둠 속 습격 (정예로 바뀔 수 있다)
+      const r = makeRng(hashSeed(run.seed, 'dark', room.stage, room.row, it.id));
+      if (r() < CONST.TORCH_DARK_ELITE_CHANCE && ENCOUNTERS.elite[room.stage]) { type = 'elite'; Game.toast('어둠 속에서 정예가 습격했다!', 2000); }
+    }
+    const node = { stage: room.stage, row: room.row, type: type === 'fight' ? 'battle' : type, enc: it.enc, sub: it.id, exploreId: it.id };
+    Sfx.play('skill');
+    Game.go('battle', { node, explore: { fieldW: EXPLORE.FIELD_W, heroPos, enemySpawnX: 1100, worldX, theme: room.theme } });
+  },
+
+  leaveRoom() {
+    const run = Game.run;
+    run.room = null;
+    Sfx.play('door');
+    Game.go('map');
+  },
+
+  render(ctx) {
+    const run = Game.run, room = run.room, t = this.t;
+    if (!room) return;
+    const cam = Math.round(this.camX);
+    drawCorridor(ctx, cam, t, room.theme);
+    ctx.save(); ctx.translate(-cam, 0);
+    // 갈림길 표지판
+    if (room.chosen < 0) drawSignpost(ctx, room.forkX, t);
+    // 출구
+    drawExitDoor(ctx, room.exitX + 60, t);
+    const objs = [];
+    for (const it of roomTrack(room)) if (!it.done) objs.push({ y: 380, draw: () => drawPoi(ctx, it, t) });
+    for (const p of this.party()) objs.push({ y: p.y, draw: () => {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
+      const walking = this.moving && !Game.modalOpen;
+      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
+    } });
+    objs.sort((a, b) => a.y - b.y).forEach((o) => o.draw());
+    ctx.textAlign = 'center';
+    for (const f of this.fx) { ctx.globalAlpha = 1 - f.t / f.dur; ctx.font = '800 18px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#1a0f08'; ctx.strokeText(f.text, f.x, f.y); ctx.fillStyle = '#ffd34a'; ctx.fillText(f.text, f.x, f.y); }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+    // 횃불이 약하면 시야가 어두워진다
+    const dark = run.torch <= 0 ? 0.55 : run.torch < 30 ? 0.3 : 0.1;
+    const g = ctx.createRadialGradient(EXPLORE.CAM_LEAD + 120, 330, 120, EXPLORE.CAM_LEAD + 120, 330, 620);
+    g.addColorStop(0, 'rgba(8,6,14,0)'); g.addColorStop(1, `rgba(8,6,14,${dark + 0.35})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 960, 540);
+  },
+};
+
+// ---------------------------------------------------------------- 그림 (탐험·조우 전투 공용)
+// 숲속 굴 복도: 먼 벽(느린 시차) · 기둥과 나무뿌리 · 횃불 · 바닥. camX는 탐험 세계 좌표
+function drawCorridor(ctx, camX, t, theme) {
+  const W = 960, top = CONST.FIELD_Y0 - 30;
+  const tint = ['#231c33', '#231c33', '#1f2430', '#22202c', '#261c2a', '#2a1a22'][theme || 0] || '#231c33';
+  ctx.fillStyle = tint; ctx.fillRect(0, 0, W, 540);
+  // 먼 돌벽
+  const o1 = -camX * 0.3;
+  for (let row = 0; row < 9; row++) {
+    const y = 40 + row * 34, off = (row % 2) * 44;
+    const start = Math.floor((-o1 - off) / 88) * 88 + off + o1 - 88;
+    for (let x = start; x < W + 88; x += 88) { ctx.fillStyle = row % 3 === 0 ? '#2e2642' : '#2b2340'; ctx.fillRect(Math.round(x), y, 84, 30); ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(Math.round(x), y, 84, 3); }
+  }
+  // 나무뿌리 (중간 시차)
+  const o2 = -camX * 0.55;
+  for (let k = Math.floor((-o2 - 200) / 340); k < Math.floor((-o2 + W + 200) / 340) + 1; k++) {
+    const x = k * 340 + o2 + ((k * 97) % 120);
+    ctx.strokeStyle = '#3a2a22'; ctx.lineWidth = 10 + (k % 3) * 4;
+    ctx.beginPath(); ctx.moveTo(x, -10); ctx.bezierCurveTo(x + 30, 80, x - 20, 160, x + 10 + (k % 2) * 30, 270); ctx.stroke();
+    ctx.strokeStyle = 'rgba(120,160,90,0.25)'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x + 4, 20); ctx.bezierCurveTo(x + 26, 90, x - 14, 150, x + 12, 240); ctx.stroke();
+  }
+  // 기둥 + 횃불 (가까운 시차)
+  const o3 = -camX * 0.8;
+  for (let k = Math.floor((-o3 - 300) / 600); k < Math.floor((-o3 + W + 300) / 600) + 1; k++) {
+    const px = k * 600 + o3 + 200;
+    ctx.fillStyle = '#3a3152'; ctx.fillRect(px - 16, 70, 32, 220); ctx.fillStyle = '#463c62'; ctx.fillRect(px - 16, 70, 8, 220);
+    ctx.fillStyle = '#4c4268'; ctx.fillRect(px - 22, 62, 44, 12); ctx.fillRect(px - 22, 282, 44, 14);
+    const tx = px + 50;
+    const fl = 0.88 + Math.sin(t * 9 + k) * 0.07 + Math.sin(t * 21 + k * 2) * 0.05;
+    const g = ctx.createRadialGradient(tx, 150, 6, tx, 150, 150 * fl);
+    g.addColorStop(0, 'rgba(255,170,80,0.42)'); g.addColorStop(0.5, 'rgba(255,140,60,0.12)'); g.addColorStop(1, 'rgba(255,140,60,0)');
+    ctx.fillStyle = g; ctx.fillRect(tx - 170, 0, 340, 340);
+    ctx.fillStyle = '#5e3a20'; ctx.fillRect(tx - 3, 150, 6, 26);
+    const fh = 12 + Math.sin(t * 14 + k) * 3;
+    ctx.fillStyle = '#ff9a2a'; ctx.fillRect(tx - 4, 148 - fh, 8, fh); ctx.fillStyle = '#ffe066'; ctx.fillRect(tx - 2, 148 - fh * 0.6, 4, fh * 0.6);
+  }
+  // 바닥
+  const g2 = ctx.createLinearGradient(0, top, 0, 540);
+  g2.addColorStop(0, '#3b3150'); g2.addColorStop(1, '#221b30');
+  ctx.fillStyle = g2; ctx.fillRect(0, top, W, 540 - top);
+  ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
+  const o4 = -camX;
+  for (let k = Math.floor((-o4 - 400) / 80); k < Math.floor((-o4 + W + 400) / 80); k++) { const x = k * 80 + o4; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo((x - 480) * 1.35 + 480, 540); ctx.stroke(); }
+  for (const y of [top + 30, top + 75, top + 130, top + 200]) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, top, W, 3);
+}
+
+function drawPoi(ctx, it, t) {
+  const x = it.x, y = 380;
+  if (it.kind === 'fight' || it.kind === 'elite' || it.kind === 'boss') {
+    const waves = encounterFor({ type: it.kind === 'fight' ? 'battle' : it.kind, stage: Game.run.room.stage, enc: it.enc });
+    waves[0].forEach((id, k) => {
+      const ey = EXPLORE.LANES[k % 3] + (k >= 3 ? 12 : 0), ex = x + (k % 2) * 40 + ENEMIES[id].size * 20;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(ex, ey + 2, 24 * ENEMIES[id].size, 7, 0, 0, Math.PI * 2); ctx.fill();
+      drawSprite(ctx, ENEMIES[id].sprite, ex, ey, { scale: CONST.SPRITE_SCALE * (ENEMIES[id].abilities.includes('boss') ? 1.15 : 1), flip: true, t, phase: k });
+    });
+    return;
+  }
+  if (it.kind === 'chest') {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a4a24'; ctx.fillRect(x - 22, y - 26, 44, 28); ctx.fillStyle = '#9a6232'; ctx.fillRect(x - 22, y - 34, 44, 10);
+    ctx.fillStyle = '#ffd34a'; ctx.fillRect(x - 4, y - 22, 8, 8);
+    const s = 0.5 + Math.sin(t * 5) * 0.5; ctx.fillStyle = `rgba(255,230,140,${s})`; ctx.fillRect(x + 14, y - 44 - s * 4, 3, 3);
+    return;
+  }
+  if (it.kind === 'shop') { drawSprite(ctx, 'guide', x, y, { scale: 2.6, t }); ctx.fillStyle = '#7a5a34'; ctx.fillRect(x + 30, y - 30, 50, 30); ctx.fillStyle = '#ffd34a'; ctx.beginPath(); ctx.arc(x + 40, y - 70, 8 + Math.sin(t * 6), 0, 7); ctx.fill(); return; }
+  if (it.kind === 'rest') {
+    ctx.fillStyle = '#5e3a20'; ctx.fillRect(x - 18, y - 6, 36, 8);
+    const fh = 18 + Math.sin(t * 12) * 4;
+    ctx.fillStyle = '#ff9a2a'; ctx.beginPath(); ctx.moveTo(x - 12, y - 4); ctx.quadraticCurveTo(x, y - 4 - fh * 2, x + 12, y - 4); ctx.fill();
+    ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.moveTo(x - 6, y - 4); ctx.quadraticCurveTo(x, y - 4 - fh, x + 6, y - 4); ctx.fill();
+    const g = ctx.createRadialGradient(x, y - 20, 4, x, y - 20, 140); g.addColorStop(0, 'rgba(255,170,80,0.35)'); g.addColorStop(1, 'rgba(255,170,80,0)'); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 160, 280, 200);
+    return;
+  }
+  if (it.kind === 'tree') {
+    ctx.fillStyle = '#4a3020'; ctx.fillRect(x - 14, y - 150, 28, 150);
+    ctx.fillStyle = '#3c6a34'; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(x + Math.cos(i) * 40, y - 170 + Math.sin(i * 2) * 24, 40, 0, 7); ctx.fill(); }
+    ctx.fillStyle = `rgba(255,120,90,${0.6 + Math.sin(t * 3) * 0.3})`; ctx.beginPath(); ctx.arc(x + 20, y - 150, 6, 0, 7); ctx.fill();
+    return;
+  }
+  if (it.kind === 'event') {
+    const s = 1 + Math.sin(t * 3) * 0.1;
+    const g = ctx.createRadialGradient(x, y - 40, 2, x, y - 40, 60 * s); g.addColorStop(0, 'rgba(180,140,255,0.55)'); g.addColorStop(1, 'rgba(180,140,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 70, y - 110, 140, 140);
+    ctx.fillStyle = '#5a4a6a'; ctx.fillRect(x - 16, y - 30, 32, 30); ctx.fillStyle = '#c8b0ff'; ctx.font = '900 26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('?', x, y - 38 - Math.sin(t * 4) * 4);
+  }
+}
+function drawSignpost(ctx, x, t) {
+  const y = 380;
+  ctx.fillStyle = '#5e3a20'; ctx.fillRect(x - 4, y - 90, 8, 90);
+  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 40, y - 90, 70, 18); ctx.fillRect(x - 30, y - 64, 70, 18);
+  ctx.fillStyle = '#f0e0c0'; ctx.font = '800 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('↗', x - 5, y - 76); ctx.fillText('↘', x + 5, y - 50);
+}
+function drawExitDoor(ctx, x, t) {
+  const y = 330;
+  ctx.fillStyle = '#1a1424'; ctx.fillRect(x - 40, y - 150, 80, 160);
+  ctx.strokeStyle = '#4c4268'; ctx.lineWidth = 8; ctx.strokeRect(x - 44, y - 154, 88, 168);
+  const g = ctx.createLinearGradient(x, y - 150, x, y + 10); g.addColorStop(0, 'rgba(255,230,170,0.05)'); g.addColorStop(1, `rgba(255,230,170,${0.15 + Math.sin(t * 2) * 0.05})`);
+  ctx.fillStyle = g; ctx.fillRect(x - 40, y - 150, 80, 160);
+}
+
 // ---------- 09_scenes.js
 // ===== 09_scenes.js : 타이틀 / 전투 전 팝업 / 보상 / 이벤트 / 상점 / 휴식 / 고목 / 결과 / 전략 편집 =====
 
@@ -5470,7 +5865,7 @@ const TitleScene = {
   seedDialog() {
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', '시드 입력'));
-    box.appendChild(el('p', '', '같은 시드는 같은 지도·전투 결과를 만듭니다.'));
+    box.appendChild(el('p', '', '같은 시드면 같은 지도와 전투가 나와요.'));
     const inp = el('input', 'seed-input');
     inp.type = 'number'; inp.value = this.seed; inp.id = 'seed-input';
     box.appendChild(inp);
@@ -5478,7 +5873,7 @@ const TitleScene = {
     row.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'seed-cancel' }));
     row.appendChild(btn('적용', 'primary', () => {
       const v = parseInt(inp.value, 10);
-      if (!isFinite(v) || v < 0) { Game.toast('0 이상의 숫자를 입력하세요.'); return; }
+      if (!isFinite(v) || v < 0) { Game.toast('0 이상의 숫자를 입력해 주세요'); return; }
       this.seed = v >>> 0; this.seedLabel.textContent = `시드 ${this.seed}`; Game.closeModal();
     }, { id: 'seed-ok' }));
     box.appendChild(row);
@@ -5524,7 +5919,7 @@ function openPreBattle(node) {
   });
   box.appendChild(wl);
   const tips = [];
-  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격: 기절로 끊을 수 있다');
+  if (waves.flat().some((id) => ENEMIES[id].abilities.includes('charge'))) tips.push('차지 공격: 끊기 칸을 채우면 끊긴다');
   if (waves.flat().includes('goblin_caller')) tips.push('나팔수: 동료를 부른다');
   if (run.fruit) tips.push(`고목의 열매: 공격력 +${Math.round(run.fruit.bonus * 100)}% (남은 전투 ${run.fruit.battles})`);
   if (run.torch <= 0) tips.push('횃불이 꺼졌다: 치명타 확률 감소');
@@ -5538,7 +5933,7 @@ function openPreBattle(node) {
   mode.appendChild(seg);
   box.appendChild(mode);
   const row = el('div', 'btn-row');
-  row.appendChild(btn('⚙ 전략 편집', '', () => openStrategyEditor(run, () => openPreBattle(node)), { id: 'pb-strategy' }));
+  row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(run, () => openPreBattle(node)), { id: 'pb-strategy' }));
   row.appendChild(btn('⚔ 전투 시작', 'primary', () => { Game.closeModal(); Game.go('battle', { node }); }, { id: 'pb-start', sfx: 'skill' }));
   box.appendChild(row);
   Game.modal(box, { dim: true });
@@ -5561,12 +5956,12 @@ const RewardScene = {
     if (run.lastLoot) {
       const L = run.lastLoot;
       box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
-      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 배움</b>` : ''}`).join(' · ')));
+      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>` : ''}`).join(' · ')));
       run.lastLoot = null;
     }
     if (params.goldOnly) {
       box.appendChild(el('p', 'muted', '고블린의 보따리에서 골드를 챙겼다.'));
-      box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
+      box.appendChild(btn('계속 ▶', 'primary big', () => backToRun(), { id: 'btn-continue' }));
       ui.appendChild(box);
       return;
     }
@@ -5574,12 +5969,12 @@ const RewardScene = {
     const options = this.makeOptions(run, rng, node.type === 'elite');
     const cards = el('div', 'reward-cards');
     let chosen = null;
-    const confirm = btn('선택 확정', 'primary big', () => {
+    const confirm = btn('확정', 'primary big', () => {
       if (!chosen) return;
       chosen.apply();
       Sfx.play('coin');
-      Game.toast(chosen.title + ' 획득!');
-      Game.go('map');
+      Game.toast(chosen.title + (chosen.kind === 'skill' ? ' 강화!' : ' 획득!'));
+      backToRun();
     }, { id: 'btn-reward-confirm' });
     confirm.disabled = true;
     options.forEach((o, i) => {
@@ -5599,7 +5994,7 @@ const RewardScene = {
     });
     box.appendChild(cards);
     const row = el('div', 'btn-row');
-    row.appendChild(btn('건너뛰기', 'ghost', () => Game.go('map'), { sfx: 'back', id: 'btn-reward-skip' }));
+    row.appendChild(btn('건너뛰기', 'ghost', () => backToRun(), { sfx: 'back', id: 'btn-reward-skip' }));
     row.appendChild(confirm);
     box.appendChild(row);
     ui.appendChild(box);
@@ -5617,8 +6012,8 @@ const RewardScene = {
       const sk = heroSkill(hid, slot);
       opts.push({
         kind: 'skill', kindName: '스킬 강화', icon: '★',
-        title: `${def.name}: ${sk.name}`,
-        desc: kind === 'power' ? `위력/회복 +${REWARD.skillUpgradePower * 100}%` : `쿨타임 -${Math.round((1 - REWARD.skillUpgradeCd) * 100)}%`,
+        title: `${def.name} 「${sk.name}」`,
+        desc: kind === 'power' ? `위력·회복 +${Math.round(REWARD.skillUpgradePower * 100)}%` : `쿨타임 -${Math.round((1 - REWARD.skillUpgradeCd) * 100)}%`,
         apply: () => { const u = run.heroes[hid].upgrades[slot] || (run.heroes[hid].upgrades[slot] = { power: 0, cd: 0 }); u[kind]++; },
       });
     }
@@ -5639,7 +6034,7 @@ const RewardScene = {
       return opts;
     }
     const n = elite ? 2 : 1;
-    opts.push({ kind: 'potion', kindName: '회복약', icon: '🧪', title: `회복약 ×${n}`, desc: `아군 1명 HP ${REWARD.potionHealPct * 100}% 회복. 전투 중에도 사용 가능.`, apply: () => { run.potions += n; } });
+    opts.push({ kind: 'potion', kindName: '회복약', icon: '🧪', title: `회복약 ×${n}`, desc: `아군 1명 HP ${REWARD.potionHealPct * 100}% 회복. 전투 중에도 쓸 수 있다.`, apply: () => { run.potions += n; } });
     return opts;
   },
   update(dt) { this.t += dt; },
@@ -5700,7 +6095,7 @@ const EVENT_EFFECTS = {
     const u = run.heroes[hid].upgrades[slot] || (run.heroes[hid].upgrades[slot] = { power: 0, cd: 0 });
     u.power++;
     const sk = heroSkill(hid, slot);
-    return { text: `보리의 치유 (HP -${cost}). 정찰병이 비법을 알려줬다: ${HEROES[hid].name}「${sk.name}」 위력 +30%`, good: true };
+    return { text: `보리가 정찰병을 치료했다 (보리 HP -${cost}). 정찰병이 보답으로 비법을 알려줬다: ${HEROES[hid].name} 「${sk.name}」 위력 +30%`, good: true };
   },
 };
 function frontAliveHero(run) { return partyAlive(run)[0] || null; }
@@ -5718,7 +6113,7 @@ const EventScene = {
     const col = el('div', 'btn-col event-choices');
     this.ev.choices.forEach((c, i) => {
       let why = '';
-      if (c.require && (!run.party.includes(c.require) || run.heroes[c.require].dead)) why = `${HEROES[c.require].name}이(가) 파티에 없다`;
+      if (c.require && (!run.party.includes(c.require) || run.heroes[c.require].dead)) why = `${HEROES[c.require].name} 없음`;
       if (c.cost && c.cost.gold && run.gold < c.cost.gold) why = '골드 부족';
       if (c.cost && c.cost.food && run.food < c.cost.food) why = '식량 부족';
       const b = btn(`${c.label}${c.hint ? `<small>${c.hint}</small>` : ''}${why ? `<small class="warn">${why}</small>` : ''}`, 'choice', () => this.choose(c), { id: 'event-choice-' + i });
@@ -5742,7 +6137,7 @@ const EventScene = {
       box.appendChild(btn('⚔ 전투!', 'primary big', () => {
         Game.go('battle', { node: { stage: this.node.stage, row: this.node.row, type: 'battle', waves: res.battle, fromEvent: true } });
       }, { id: 'btn-continue' }));
-    } else box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
+    } else box.appendChild(btn('계속 ▶', 'primary big', () => backToRun(), { id: 'btn-continue' }));
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
     ui.appendChild(partyPanel(run, { compact: true }));
@@ -5806,7 +6201,7 @@ const ShopScene = {
     const ui = Game.ui;
     ui.innerHTML = '';
     const box = el('div', 'shop-box');
-    box.appendChild(el('div', 'scene-title', '던전 상인 <small>"골드만 있으면 뭐든지!"</small>'));
+    box.appendChild(el('div', 'scene-title', '떠돌이 상인 <small>"골드만 있으면 뭐든지!"</small>'));
     const list = el('div', 'shop-list');
     this.stock.forEach((it, i) => {
       const row = el('div', 'shop-item' + (it.qty <= 0 ? ' soldout' : ''));
@@ -5819,8 +6214,8 @@ const ShopScene = {
     });
     box.appendChild(list);
     const row = el('div', 'btn-row');
-    row.appendChild(btn('🧪 회복약 사용', '', () => usePotionFlow(run, () => this.build()), { id: 'shop-usepotion' }));
-    row.appendChild(btn('떠나기 ▶', 'primary', () => Game.go('map'), { id: 'btn-continue' }));
+    row.appendChild(btn('🧪 회복약', '', () => usePotionFlow(run, () => this.build()), { id: 'shop-usepotion' }));
+    row.appendChild(btn('떠나기 ▶', 'primary', () => backToRun(), { id: 'btn-continue' }));
     box.appendChild(row);
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -5859,20 +6254,20 @@ const RestScene = {
     const ui = Game.ui;
     ui.innerHTML = '';
     const box = el('div', 'rest-box');
-    box.appendChild(el('div', 'scene-title', '캠프 <small>모닥불 앞에서 잠시 쉬어간다</small>'));
+    box.appendChild(el('div', 'scene-title', '모닥불 자리 <small>불가에 앉아 잠시 쉬어 간다</small>'));
     if (!this.rested) {
       const col = el('div', 'btn-col');
-      const eat = btn(`🍞 식량 1개로 휴식 <small>살아있는 동료 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(true), { id: 'rest-food' });
+      const eat = btn(`🍞 식량 1개로 휴식 <small>살아 있는 동료 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(true), { id: 'rest-food' });
       if (run.food <= 0) eat.disabled = true;
       col.appendChild(eat);
       col.appendChild(btn(`굶고 쉬기 <small>HP ${CONST.REST_HUNGRY_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(false), { id: 'rest-hungry' }));
       box.appendChild(col);
     } else box.appendChild(el('div', 'event-result good', this.msg));
     const row = el('div', 'btn-row');
-    row.appendChild(btn('⚙ 전략 편집', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
+    row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
     row.appendChild(btn('🎒 장비', '', () => openInventory({ onClose: () => this.build() }), { id: 'rest-inv' }));
     row.appendChild(btn('🧪 회복약', '', () => usePotionFlow(run, () => this.build()), { id: 'rest-potion' }));
-    row.appendChild(btn(this.rested ? '출발 ▶' : '쉬지 않고 출발', this.rested ? 'primary' : 'ghost', () => Game.go('map'), { id: 'btn-continue' }));
+    row.appendChild(btn(this.rested ? '출발 ▶' : '쉬지 않고 출발', this.rested ? 'primary' : 'ghost', () => backToRun(), { id: 'btn-continue' }));
     box.appendChild(row);
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -5885,7 +6280,7 @@ const RestScene = {
     for (const h of partyAlive(run)) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * pct);
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + CONST.TORCH_REST_GAIN);
     this.rested = true;
-    this.msg = withFood ? `따뜻한 식사와 휴식. HP ${pct * 100}% 회복!` : `배가 고프지만 눈을 붙였다. HP ${pct * 100}% 회복`;
+    this.msg = withFood ? `따뜻한 식사로 기운을 차렸다. HP ${pct * 100}% 회복!` : `배는 고프지만 잠시 눈을 붙였다. HP ${pct * 100}% 회복`;
     Sfx.play('heal');
     this.build();
   },
@@ -5929,7 +6324,7 @@ const TreeScene = {
     box.appendChild(el('div', 'scene-title', '피를 원하는 고목 <small>"피를… 나누면… 열매를…"</small>'));
     if (this.done) {
       box.appendChild(el('div', 'event-result good', this.msg));
-      box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
+      box.appendChild(btn('계속 ▶', 'primary big', () => backToRun(), { id: 'btn-continue' }));
     } else {
       const deals = el('div', 'tree-deals');
       TREE_DEALS.forEach((d) => {
@@ -5941,19 +6336,19 @@ const TreeScene = {
         box.appendChild(el('div', 'reward-sub', '누구의 피를 바칠까?'));
         const pp = partyPanel(run, { compact: true, onSelect: (id) => {
           const h = run.heroes[id];
-          if (h.hp <= h.maxHp * this.deal.hpCost + 1) { Game.toast('HP가 부족해 거래할 수 없다.'); return; }
+          if (h.hp <= h.maxHp * this.deal.hpCost + 1) { Game.toast('HP가 부족해 거래할 수 없어요'); return; }
           this.hero = id; this.build();
         } });
         if (this.hero) pp.querySelector(`[data-hero="${this.hero}"]`).classList.add('sel');
         box.appendChild(pp);
       }
       const row = el('div', 'btn-row');
-      row.appendChild(btn('떠난다', 'ghost', () => Game.go('map'), { sfx: 'back', id: 'tree-leave' }));
+      row.appendChild(btn('떠나기', 'ghost', () => backToRun(), { sfx: 'back', id: 'tree-leave' }));
       const ok = btn('피의 거래', 'danger', () => this.confirm(), { id: 'tree-confirm' });
       if (!this.deal || !this.hero) ok.disabled = true;
       row.appendChild(ok);
       box.appendChild(row);
-      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다(+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 더 강한 효과만 남는다.`));
+      if (run.fruit) box.appendChild(el('div', 'muted', `이미 열매 효과가 있다 (+${Math.round(run.fruit.bonus * 100)}%, ${run.fruit.battles}회). 겹치지 않고 더 큰 값만 남는다.`));
     }
     ui.appendChild(box);
     ui.appendChild(resourceBar(run));
@@ -5998,7 +6393,7 @@ const ResultScene = {
     const ui = Game.ui;
     const box = el('div', 'result-box ' + (win ? 'win' : 'lose'));
     box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
-    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `스테이지 ${Math.max(1, run.pos.stage)}에서 원정이 끝났다.`));
+    box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : `${Math.max(1, run.pos.stage)}번째 방에서 원정이 끝났다.`));
     const settle = settleRun(run);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `
@@ -6087,7 +6482,7 @@ function openStrategyEditor(run, onClose) {
     box.appendChild(rules);
     const row = el('div', 'btn-row');
     row.appendChild(btn('기본값으로', 'ghost', () => { run.strategy[cur] = JSON.parse(JSON.stringify(AI_PRESETS[cur])); render(); }, { id: 'strat-reset' }));
-    row.appendChild(btn('저장하고 닫기', 'primary', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'strat-close' }));
+    row.appendChild(btn('닫기', 'primary', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'strat-close' }));
     box.appendChild(row);
   };
   render();
@@ -6129,7 +6524,7 @@ function openPartySelect(run, onDone) {
         Sfx.play('click');
         if (on) pick = pick.filter((x) => x !== id);
         else if (pick.length < CONST.PARTY_SIZE) pick.push(id);
-        else { Game.toast(`최대 ${CONST.PARTY_SIZE}명까지 출전할 수 있어요.`, 1200); return; }
+        else { Game.toast(`최대 ${CONST.PARTY_SIZE}명까지 출전할 수 있어요`, 1200); return; }
         render();
       });
       grid.appendChild(c);
@@ -6137,7 +6532,7 @@ function openPartySelect(run, onDone) {
     box.appendChild(grid);
     const roles = pick.map((id) => HEROES[id].role);
     const tips = [];
-    if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 오우거의 차지 공격을 막기 어려워요.');
+    if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 보스를 버티기 어려워요.');
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
     if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
@@ -6334,7 +6729,7 @@ function openInventory(opts) {
     const wrap = el('div', 'inv-list');
     let items = p.inv.filter((it) => EQ.usableBy(it, st.hero) && (!st.slot || EQ.BASE[it.base].slot === st.slot));
     items = items.map((it) => ({ it, sc: EQ.itemScore(p, it, st.hero) })).sort((a, b) => b.sc - a.sc);
-    wrap.appendChild(el('div', 'il-head', `${st.slot ? EQ.SLOT_NAME[st.slot] : '전체'} ${items.length}개 <small class="muted">${HEROES[st.hero].name}이(가) 쓸 수 있는 장비</small>`));
+    wrap.appendChild(el('div', 'il-head', `${st.slot ? EQ.SLOT_NAME[st.slot] : '전체'} ${items.length}개 <small class="muted">${HEROES[st.hero].name} 착용 가능</small>`));
     if (!items.length) wrap.appendChild(el('div', 'muted il-empty', '아직 장비가 없어요. 던전에서 얻을 수 있어요.'));
     for (const { it, sc } of items) {
       const r = el('button', 'inv-item'); r.type = 'button'; r.dataset.uid = it.uid;
@@ -6386,7 +6781,7 @@ function openInventory(opts) {
   const confirmDismantle = (item) => {
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', `${EQ.itemName(item)} 분해`));
-    box.appendChild(el('p', '', `강화석 ${EQ.DB.dismantle[item.grade] + item.enh}개를 얻습니다. 끼워진 보석은 돌려받습니다.`));
+    box.appendChild(el('p', '', `강화석 ${EQ.DB.dismantle[item.grade] + item.enh}개를 얻어요. 끼워 둔 보석은 돌려받아요.`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('취소', 'ghost', () => render(), { sfx: 'back', id: 'dis-no' }));
     row.appendChild(btn('분해', 'danger', () => { const n = EQ.dismantle(profile(), item); saveProfile(); Game.toast(`강화석 +${n}`); st.sel = null; render(); }, { id: 'dis-yes' }));
@@ -6436,7 +6831,7 @@ function openBlacksmith(onClose) {
         right.appendChild(el('div', 'bs-info', `
           <div class="bs-target">+${item.enh} → <b>+${info.target}</b> <small>주 스탯 +${Math.round(EQ.DB.enhance.mainPerLevel * 100)}%${vis ? ` · +${vis}에서 외형 강화` : ''}</small></div>
           <div class="bs-rate">성공 확률 <b>${Math.round(info.rate * 1000) / 10}%</b>${info.rate > info.base && !info.guaranteed ? ` <small>(기본 ${Math.round(info.base * 1000) / 10}% + 실패 보정)</small>` : ''}</div>
-          <div class="bs-art">장인의 기운 <div class="bar art"><div class="fill" style="width:${info.artisan * 100}%"></div></div> ${Math.round(info.artisan * 1000) / 10}%${info.guaranteed ? ' <b class="ok">다음 강화 확정 성공</b>' : ''}</div>
+          <div class="bs-art">장인의 기운 <div class="bar art"><div class="fill" style="width:${info.artisan * 100}%"></div></div> ${Math.round(info.artisan * 1000) / 10}%${info.guaranteed ? ' <b class="ok">다음 강화는 반드시 성공</b>' : ''}</div>
           <div class="bs-cost">비용 💎 ${info.stones} · ● ${info.gold}</div>`));
         const can = p.stones >= info.stones && p.gold >= info.gold;
         const b = btn('강화', 'primary big', () => {
@@ -6451,7 +6846,7 @@ function openBlacksmith(onClose) {
         right.appendChild(b);
         if (!can) right.appendChild(el('div', 'muted', p.stones < info.stones ? '강화석이 부족해요. 전투 보상이나 분해로 얻을 수 있어요.' : '골드가 부족해요.'));
       }
-      if (st.last) right.appendChild(el('div', 'bs-result ' + st.last, st.last === 'ok' ? `성공! +${item.enh}` : '실패… 장인의 기운이 쌓였다'));
+      if (st.last) right.appendChild(el('div', 'bs-result ' + st.last, st.last === 'ok' ? `성공! +${item.enh}` : '실패… 장인의 기운이 쌓였어요'));
     }
     body.appendChild(right);
     box.appendChild(body);
@@ -6567,7 +6962,7 @@ function openRoster(opts) {
     // ①② = 장비가 정함 (직업 공통 스킬 풀)
     const pool = gearSkillPool(d.role), cur = own ? EQ.heroLoadout(p, id).skills : {};
     wrap.appendChild(el('div', 'rd-gear', ['s1', 's2'].map((slot) => `<div><b>${slot === 's1' ? '① 갑옷 스킬' : '② 무기 스킬'}</b> ${pool[slot].map((sid) => `<span class="${cur[slot] === sid ? 'ok' : 'muted'}" title="${SKILLS[sid].desc}">${SKILLS[sid].name}</span>`).join(' · ')}</div>`).join('')));
-    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">필살기 배우기: B Lv10 · C Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파: ${s.text}</span>`).join('')));
+    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">필살기 습득: 두 번째 Lv10 · 세 번째 Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파: ${s.text}</span>`).join('')));
     return wrap;
   };
   render();
@@ -6586,7 +6981,7 @@ function openGacha(onClose) {
     head.appendChild(btn('닫기', 'ghost small', () => { Game.closeModal(); if (onClose) onClose(); }, { sfx: 'back', id: 'gacha-close' }));
     box.appendChild(head);
     const res = el('div', 'gacha-results');
-    if (!last) res.appendChild(el('div', 'muted gacha-empty', '보스를 쓰러뜨리면 소환권을 얻어요. 중복 캐릭터는 돌파되어 필살기가 강해지고 변주가 열립니다.'));
+    if (!last) res.appendChild(el('div', 'muted gacha-empty', '보스를 쓰러뜨리면 소환권을 얻어요. 이미 있는 캐릭터가 나오면 돌파해 필살기가 강해지고 변주가 열려요.'));
     else last.forEach((r, i) => {
       const c = CHAR[r.id];
       const card = el('div', 'gr-card' + (r.isNew ? ' new' : ''));
@@ -6629,6 +7024,7 @@ function boot() {
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
   Game.register('map', MapScene);
+  Game.register('explore', ExploreScene);
   Game.register('battle', BattleScene);
   Game.register('reward', RewardScene);
   Game.register('event', EventScene);
