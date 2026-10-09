@@ -116,7 +116,12 @@ const RewardScene = {
     const box = el('div', 'reward-box');
     box.appendChild(el('div', 'scene-title', node.type === 'elite' ? '정예 격파!' : '전투 승리!'));
     box.appendChild(el('div', 'reward-gold', `골드 +${gold} <small>(보유 ${run.gold})</small>`));
-    if (run.lastLoot) { box.appendChild(el('div', 'reward-loot', `💎 강화석 +${run.lastLoot.stones}${run.lastLoot.got.length ? ' · 획득 ' + lootHtml(run.lastLoot.got) : ''}`)); run.lastLoot = null; }
+    if (run.lastLoot) {
+      const L = run.lastLoot;
+      box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
+      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 배움</b>` : ''}`).join(' · ')));
+      run.lastLoot = null;
+    }
     if (params.goldOnly) {
       box.appendChild(el('p', 'muted', '고블린의 보따리에서 골드를 챙겼다.'));
       box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
@@ -167,7 +172,7 @@ const RewardScene = {
       const slot = rng.pick(['s1', 's2', 'ult']);
       const kind = slot === 'ult' || rng() < 0.5 ? 'power' : 'cd';
       const def = HEROES[hid];
-      const sk = SKILLS[slot === 'ult' ? def.ult : def.skills[slot === 's1' ? 0 : 1]];
+      const sk = heroSkill(hid, slot);
       opts.push({
         kind: 'skill', kindName: '스킬 강화', icon: '★',
         title: `${def.name}: ${sk.name}`,
@@ -252,7 +257,7 @@ const EVENT_EFFECTS = {
     const slot = rng.pick(['s1', 's2']);
     const u = run.heroes[hid].upgrades[slot] || (run.heroes[hid].upgrades[slot] = { power: 0, cd: 0 });
     u.power++;
-    const sk = SKILLS[HEROES[hid].skills[slot === 's1' ? 0 : 1]];
+    const sk = heroSkill(hid, slot);
     return { text: `보리의 치유 (HP -${cost}). 정찰병이 비법을 알려줬다: ${HEROES[hid].name}「${sk.name}」 위력 +30%`, good: true };
   },
 };
@@ -616,7 +621,7 @@ function openStrategyEditor(run, onClose) {
     const def = HEROES[cur];
     const rules = el('div', 'strat-rules');
     for (const slot of ['s1', 's2', 'ult']) {
-      const sk = SKILLS[slot === 'ult' ? def.ult : def.skills[slot === 's1' ? 0 : 1]];
+      const sk = heroSkill(cur, slot);
       const c = st[slot];
       const row = el('div', 'srule' + (c.auto ? '' : ' manual'));
       row.appendChild(el('div', 'sr-skill', `<span class="sr-slot">${AI_SKILL_SLOTS[slot]}</span><b>${sk.name}</b><small>${sk.desc}${sk.hint ? ` · 추천: ${SKILL_HINTS[sk.hint].name}` : ''}</small>`));
@@ -675,7 +680,7 @@ function openPartySelect(run, onDone) {
       c.type = 'button';
       c.id = 'ps-' + id;
       c.appendChild(portraitCanvas(d.sprite, 84));
-      const sk = d.skills.map((s) => SKILLS[s].name).join(' · ');
+      const sk = ['s1', 's2'].map((s) => heroSkill(id, s).name).join(' · ');
       c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>Lv ${EQ.heroLevel(Game.profile, id)} · HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
       if (on) c.appendChild(el('div', 'ps-badge', String(pick.indexOf(id) + 1)));
       c.addEventListener('click', () => {

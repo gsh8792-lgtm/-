@@ -409,7 +409,12 @@ async function playRun(p, seed, opts) {
   await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`);
   ok('도감: 필살기 6종 표시 (변주는 잠금)', (await p.locator('.rd-ult').count()) === 6);
   await p.click('#ult-B');
-  ok('도감: 필살기 선택 저장', await p.evaluate((id) => window.GAME.Game.profile.chars[id].ult === 'B', st.newcomer));
+  ok('도감: Lv1은 두 번째 필살기 잠금', await p.evaluate((id) => window.GAME.Game.profile.chars[id].ult === 'A', st.newcomer));
+  // 레벨을 올리면 배운다 (경험치 지급 → 도감 다시 열기)
+  const lv = await p.evaluate((id) => { const G = window.GAME; G.GACHA.addExp(G.Game.profile, id, 5000); return G.Game.profile.chars[id].lv; }, st.newcomer);
+  await p.click('#roster-close'); await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`);
+  await p.click('#ult-B');
+  ok('도감: 레벨업 후 필살기 선택 저장' + ` (Lv ${lv})`, await p.evaluate((id) => window.GAME.Game.profile.chars[id].ult === 'B', st.newcomer));
   await p.screenshot({ path: `${OUT}/roster.png` });
   await p.click('#roster-close');
   // 파티 편성에 새 캐릭터 → 전투에 선택한 필살기 적용

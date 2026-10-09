@@ -93,7 +93,7 @@ function powerBreakdown(cls, grade) {
 }
 
 // ------------------------------------------------------------ 시뮬 준비
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '06_battle_sim.js'].map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '06_battle_sim.js'].map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n');
 const ctx = {}; vm.createContext(ctx);
 vm.runInContext(code + '\nthis.S={BattleSim,ENCOUNTERS,HEROES,HERO_ORDER,AI_PRESETS,CONST};', ctx);
 const { BattleSim, ENCOUNTERS, HEROES, HERO_ORDER, AI_PRESETS } = ctx.S;

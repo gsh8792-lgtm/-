@@ -4,10 +4,10 @@
 //   --v1       : 이전 그로기 규칙(BREAK_V2=false)으로 비교
 const fs = require('fs'), vm = require('vm'), path = require('path');
 const ROOT = path.join(__dirname, '..');
-const files = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '06_battle_sim.js'];
+const files = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '06_battle_sim.js'];
 const ctx = { console }; vm.createContext(ctx);
-vm.runInContext(files.map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n') + '\nthis.X={BattleSim,HEROES,AI_PRESETS,ENCOUNTERS,ENEMIES,CHARACTERS,CHAR,ultDefFor,CONST};', ctx);
-const { BattleSim, HEROES, AI_PRESETS, ENCOUNTERS, ENEMIES, CHARACTERS, CHAR, ultDefFor, CONST } = ctx.X;
+vm.runInContext(files.map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n') + '\nthis.X={BattleSim,HEROES,AI_PRESETS,ENCOUNTERS,ENEMIES,CHARACTERS,CHAR,ultDefFor,CONST,GEAR_SKILLS,SKILLS};', ctx);
+const { BattleSim, HEROES, AI_PRESETS, ENCOUNTERS, ENEMIES, CHARACTERS, CHAR, ultDefFor, CONST, GEAR_SKILLS, SKILLS } = ctx.X;
 const args = process.argv.slice(2);
 const mode = args.find((a) => !a.startsWith('--')) || 'archetypes';
 const N = +(args[args.indexOf('--n') + 1] || 0) || (mode === 'chars' ? 24 : 60);
@@ -27,9 +27,9 @@ function strategy(profile) {
 }
 const STRAT = { smart: strategy('smart'), brute: strategy('brute') };
 
-function fight(ids, boss, seed, profile, ults, gap) {
+function fight(ids, boss, seed, profile, ults, gap, gear) {
   const sim = new BattleSim({ seed, levelGap: gap === undefined ? GAP : gap, stage: 5, waves: bossWaves(boss), strategy: STRAT[profile], partySize: ids.length,
-    heroes: ids.map((id) => { const u = (ults && ults[id]) || { k: 'A', bt: 0 }; return { id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {}, ultDef: ultDefFor(id, u.k, u.bt) }; }) });
+    heroes: ids.map((id) => { const u = (ults && ults[id]) || { k: 'A', bt: 0 }; return { id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {}, ultDef: ultDefFor(id, u.k, u.bt), skills: gear && gear[id] || null }; }) });
   // 끊기 놓친 시전 vs 끊은 시전
   let cancels = 0, casts = 0;
   while (!sim.outcome && sim.time < 260) {
@@ -41,10 +41,10 @@ function fight(ids, boss, seed, profile, ults, gap) {
   const sup = sim.heroes.find((h) => h.role === 'support');
   return { supDealt: sup ? sup.stats.dealt : 0, deaths: sim.heroes.filter((h) => !h.alive).length, win: sim.outcome === 'win', time: sim.time, breaks: sim.breakLog.length, first: sim.breakLog[0], poise: sim.poiseLog, cancels, casts, enrage: b ? b.enrageStacks : 0 };
 }
-function cell(ids, boss, profile, ults, n, gap) {
+function cell(ids, boss, profile, ults, n, gap, gear) {
   const r = { n, supDealt: 0, deaths: 0, wins: 0, breaks: 0, firsts: [], zeroWins: 0, time: 0, poise: {}, cancels: 0, casts: 0 };
   for (let s = 0; s < n; s++) {
-    const f = fight(ids, boss, 7000 + s * 13, profile, ults, gap);
+    const f = fight(ids, boss, 7000 + s * 13, profile, ults, gap, gear);
     r.supDealt += f.supDealt; r.deaths += f.deaths;
     r.wins += f.win; r.breaks += f.breaks; r.time += f.time; r.cancels += f.cancels; r.casts += f.casts;
     if (f.first !== undefined) r.firsts.push(f.first);
@@ -114,6 +114,25 @@ if (mode === 'pressure') {
     console.log(''.padEnd(24) + '  └ 보스별 (동레벨): ' + BOSSES.map((b) => `${ENEMIES[b].name} ${pct(row.cells[0] ? row.cells[0][b].win : 0)} 서포터딜 ${row.cells[0] ? row.cells[0][b].supDealt : '-'}`).join(' · '));
   }
   fs.writeFileSync(path.join(outDir, 'break_lab_pressure.json'), JSON.stringify(out, null, 1));
+}
+
+if (mode === 'gear') {
+  // 직업별 ① 갑옷 3종 × ② 무기 3종 = 9조합, 기준 파티(탱커 있음)의 같은 직업 자리
+  const base = { tank: ['tobi', 'danbi', 'bori'], melee: ['tobi', 'danbi', 'bori'], ranged: ['tobi', 'byeolbi', 'bori'], mage: ['tobi', 'soldam', 'bori'], support: ['tobi', 'danbi', 'bori'] };
+  const who = { tank: 'tobi', melee: 'danbi', ranged: 'byeolbi', mage: 'soldam', support: 'bori' };
+  const classes = (process.env.CLS || 'tank,melee,ranged,mage,support').split(',');
+  const out = { n: N, bosses: BOSSES, classes: {} };
+  for (const cls of classes) {
+    const rows = [];
+    for (let a = 1; a <= 3; a++) for (let w = 1; w <= 3; w++) {
+      const sk = { s1: GEAR_SKILLS[`${cls}_armor_${a}`], s2: GEAR_SKILLS[`${cls}_weapon_${w}`] };
+      const cells = {}; for (const b of BOSSES) cells[b] = cell(base[cls], b, 'smart', null, N, 0, { [who[cls]]: sk });
+      rows.push({ s1: sk.s1, s2: sk.s2, cells });
+      console.log(`${cls.padEnd(8)} ${SKILLS[sk.s1].name.padEnd(7)} + ${SKILLS[sk.s2].name.padEnd(7)}` + BOSSES.map((b) => `${pct(cells[b].win)} ${cells[b].breaks.toFixed(1)}회`.padStart(13)).join(''));
+    }
+    out.classes[cls] = rows;
+  }
+  fs.writeFileSync(path.join(outDir, `break_lab_gear${process.env.CLS ? '_' + process.env.CLS.replace(/,/g, '_') : ''}.json`), JSON.stringify(out, null, 1));
 }
 
 if (mode === 'chars') {

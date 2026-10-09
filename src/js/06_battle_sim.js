@@ -63,6 +63,7 @@ class BattleSim {
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
       levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
+      skillIds: h.skills || null, skillRank: h.skillRank || null, // 장비가 정한 ①② 스킬과 랭크
       upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0, ultDef: h.ultDef || null, casting: null,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
@@ -544,6 +545,7 @@ class BattleSim {
       if (sh.value <= 0) delete tgt.statuses.shield;
       if (dmg <= 0) { this.events.push({ type: 'hit', target: tgt, src, amount: 0, shielded: true }); return 0; }
     }
+    if (tgt.statuses.reflect && info.basic && src && src.side === 'enemy' && src.alive && src.melee) { const back = dmg * tgt.statuses.reflect.value; this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) this._damage(tgt, src, back, { noCrit: true, reflect: true }); } }); } // 가시 반격
     tgt.hp -= dmg;
     tgt.anim.hurt = 0.18;
     if (src && src.statuses && src.statuses.lifesteal && src.alive) this._heal(src, src, dmg * src.statuses.lifesteal.value, true);
@@ -683,7 +685,16 @@ class BattleSim {
   }
 
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
-  skillDef(h, slot) { if (slot === 'ult' && h.ultDef) return h.ultDef; return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
+  skillDef(h, slot) {
+    if (slot === 'ult') return h.ultDef || SKILLS[h.def.ult];
+    return SKILLS[(h.skillIds && h.skillIds[slot]) || h.def.skills[slot === 's1' ? 0 : 1]];
+  }
+  // 자동 전략: 장비로 스킬이 바뀌었으면 그 스킬의 기본 조건·대상을 따른다 (켜짐/꺼짐은 플레이어 설정 유지)
+  aiConfig(h, slot, c) {
+    if (!c || slot === 'ult' || !h.skillIds || !h.skillIds[slot] || h.skillIds[slot] === h.def.skills[slot === 's1' ? 0 : 1]) return c;
+    const ai = SKILLS[h.skillIds[slot]].ai;
+    return ai ? Object.assign({}, c, ai) : c;
+  }
   skillUp(h, slot) { return h.upgrades[slot] || { power: 0, cd: 0 }; }
   skillCdMax(h, slot) { const d = this.skillDef(h, slot); const m = h.mods || {}; return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd) * (1 - Math.min((m.cdr || 0) + (m[slot + 'cd'] || 0), CONST.STAT_CAPS.cdr)); }
 
@@ -730,7 +741,7 @@ class BattleSim {
   cast(h, slot, spec) {
     if (!this.canCast(h, slot)) return false;
     const sk = this.skillDef(h, slot);
-    const pmul = (1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower) * (1 + ((h.mods && h.mods[slot === 'ult' ? 'ultpow' : slot + 'pow']) || 0));
+    const pmul = (1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower) * (1 + ((h.mods && h.mods[slot === 'ult' ? 'ultpow' : slot + 'pow']) || 0)) * (1 + (slot !== 'ult' && h.skillRank ? (h.skillRank[slot] || 0) * GEAR_SKILL_RANK : 0));
     const dmul = pmul * (1 + ((h.mods && h.mods.skilldmg) || 0)); // 스킬 피해 보정 (회복에는 미적용)
     spec = spec || {};
     if ((sk.target === 'enemy' || sk.target === 'ally') && (!spec.unit || !spec.unit.alive)) return false;
@@ -768,7 +779,8 @@ class BattleSim {
         break;
       }
       case 'multi_enemy': { // HP 비율 낮은 적부터 연속 타격
-        const list = this.aliveEnemies().slice().sort((a, b) => this.hpPct(a) - this.hpPct(b)).slice(0, sk.count || 3);
+        const casting = (e) => (sk.interrupt && (e.charge || e.call) ? 0 : 1); // 끊기 스킬은 시전 중인 적부터
+        const list = this.aliveEnemies().slice().sort((a, b) => casting(a) - casting(b) || this.hpPct(a) - this.hpPct(b)).slice(0, sk.count || 3);
         list.forEach((tgt, i) => this.delayed.push({ t: fxDelay + i * 0.22, fn: () => { if (!tgt.alive || !h.alive) return; this.events.push({ type: 'dash', unit: h }); hit(tgt); applyEffects(tgt); } }));
         break;
       }
@@ -868,6 +880,12 @@ class BattleSim {
     switch (sk.target) {
       case 'enemy': { const u = pickEnemy(); return u ? { unit: u } : null; }
       case 'ally': {
+        if (sk.effects.some((e) => e.status === 'inspire')) { // 고양: 위급한 아군이 없으면 공격력이 가장 높은 동료에게
+          const low = lowestAlly();
+          if (low && this.hpPct(low) < 0.5) return { unit: low };
+          const pick = allies.filter((a) => a !== h).sort((a, b) => b.atk - a.atk)[0] || h;
+          return { unit: pick };
+        }
         const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly();
         if (u && (u.hp < u.maxHp || sk.shieldPct)) return { unit: u };
         if (sk.effects.some((e) => e.status === 'resonance')) { // 다친 아군이 없으면 그로기 담당에게 공명
@@ -958,7 +976,7 @@ class BattleSim {
       if (!h.alive || h.castLock > 0 || h.statuses.stun || this.travelling(h)) continue;
       const st = this.strategy[h.key] || AI_PRESETS[h.key];
       for (const slot of ['s2', 'ult', 's1']) {
-        const c = st[slot];
+        const c = this.aiConfig(h, slot, st[slot]);
         if (!c || !c.auto || !this.canCast(h, slot) || !this.checkCond(h, slot, c)) continue;
         const spec = this.resolveTarget(h, slot, c.target);
         // 위치 명령으로 자리를 지키는 근접 캐릭터는 자동 스킬로 돌진해 자리를 이탈하지 않는다

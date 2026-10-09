@@ -217,17 +217,28 @@ const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
   }
 })();
 
-// 돌파 단계에서 쓸 수 있는 필살기 선택지
-function ultChoices(id, bt) {
+// 캐릭터 레벨: 필살기는 레벨로 배우고(10레벨마다), 변주는 돌파까지 해야 쓴다. 60·70레벨은 필살기 숙련(위력 +5%씩)
+// 전투 레벨 = 캐릭터 레벨 + 장비 레벨 (04b_equip.heroLevel). 캐릭터 10레벨 ≈ 장비 1등급
+const CHAR_LV = {
+  max: 70,
+  ultUnlock: { A: 1, B: 10, C: 20, A2: 30, B2: 40, C2: 50 },
+  mastery: [{ lv: 60, boost: 0.05 }, { lv: 70, boost: 0.05 }],
+  recByTier: [1, 8, 16, 24, 32, 40, 50, 60, 70], // 난이도 단계별 권장 캐릭터 레벨
+  expNext(lv) { return Math.round(20 + 10 * Math.pow(Math.max(0, lv - 1), 1.3)); },
+  reward: { battle: 12, elite: 30, boss: 80 }, tierMult: 0.6, deadMult: 0.5,
+};
+// 쓸 수 있는 필살기 (돌파 + 레벨). lv를 빼면 레벨 제한 없이 (검증 도구용)
+function ultChoices(id, bt, lv) {
   const out = ['A', 'B', 'C'];
   for (const s of BREAKTHROUGH.steps) if (s.unlock && bt >= s.bt) out.push(s.unlock);
-  return out.sort();
+  return out.filter((k) => lv === undefined || lv >= CHAR_LV.ultUnlock[k]).sort();
 }
 // 실제 전투용 필살기 정의 (돌파 위력 보너스 반영)
-function ultDefFor(id, choice, bt) {
+function ultDefFor(id, choice, bt, lv) {
   const sk = SKILLS[`${id}_ult_${choice}`] || SKILLS[`${id}_ult_A`];
   let boost = 0;
   for (const s of BREAKTHROUGH.steps) if (s.boost && bt >= s.bt && s.boost[choice[0]]) boost += s.boost[choice[0]];
+  if (lv) for (const m of CHAR_LV.mastery) if (lv >= m.lv) boost += m.boost;
   if (!boost) return sk;
   const m = 1 + boost, out = Object.assign({}, sk);
   for (const k of ['power', 'heal', 'healPct', 'shieldPct', 'partyHealPct']) if (out[k]) out[k] = +(out[k] * m).toFixed(3);

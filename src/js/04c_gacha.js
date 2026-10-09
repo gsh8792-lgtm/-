@@ -11,22 +11,34 @@ const GACHA = {
   ensure(p) {
     if (!p.chars) {
       p.chars = {};
-      for (const c of CHARACTERS) if (c.starter) p.chars[c.id] = { bt: 0, ult: 'A' };
+      for (const c of CHARACTERS) if (c.starter) p.chars[c.id] = GACHA.newChar();
       p.tickets = (p.tickets || 0) + GACHA.START_TICKETS;
     }
     if (p.tickets === undefined) p.tickets = 0;
+    for (const id in p.chars) { const st = p.chars[id]; if (!st.lv) { st.lv = 1; st.exp = 0; } }
     for (const id of HERO_ORDER) if (!p.equip[id]) { p.equip[id] = {}; for (const s of EQ.SLOTS) p.equip[id][s] = null; }
     return p;
+  },
+  newChar() { return { bt: 0, ult: 'A', lv: 1, exp: 0 }; },
+  level(p, id) { return (p.chars && p.chars[id] && p.chars[id].lv) || 1; },
+  // 경험치 지급 → 오른 레벨 수와 새로 배운 필살기
+  addExp(p, id, n) {
+    const st = p.chars && p.chars[id]; if (!st) return null;
+    const from = st.lv; st.exp += Math.round(n);
+    while (st.lv < CHAR_LV.max && st.exp >= CHAR_LV.expNext(st.lv)) { st.exp -= CHAR_LV.expNext(st.lv); st.lv++; }
+    if (st.lv >= CHAR_LV.max) st.exp = 0;
+    const learned = Object.keys(CHAR_LV.ultUnlock).filter((k) => CHAR_LV.ultUnlock[k] > from && CHAR_LV.ultUnlock[k] <= st.lv && ultChoices(id, st.bt).includes(k));
+    return { id, exp: Math.round(n), from, to: st.lv, learned };
   },
   owned(p, id) { return !!(p.chars && p.chars[id]); },
   ownedIds(p) { return HERO_ORDER.filter((id) => GACHA.owned(p, id)); },
   // 전투에 쓸 필살기 정의 (선택한 필살기 + 돌파 위력 보너스)
   ultFor(p, id) {
-    const st = (p.chars && p.chars[id]) || { bt: 0, ult: 'A' };
-    const choice = ultChoices(id, st.bt).includes(st.ult) ? st.ult : 'A';
-    return ultDefFor(id, choice, st.bt);
+    const st = (p.chars && p.chars[id]) || GACHA.newChar();
+    const choice = ultChoices(id, st.bt, st.lv || 1).includes(st.ult) ? st.ult : 'A';
+    return ultDefFor(id, choice, st.bt, st.lv || 1);
   },
-  setUlt(p, id, choice) { const st = p.chars[id]; if (st && ultChoices(id, st.bt).includes(choice)) st.ult = choice; },
+  setUlt(p, id, choice) { const st = p.chars[id]; if (st && ultChoices(id, st.bt, st.lv || 1).includes(choice)) st.ult = choice; },
   // 소환 n회 (소환권 n장 소모). 결과: [{ id, isNew, bt, overflow }]
   pull(p, rng, n) {
     if ((p.tickets || 0) < n) return null;
@@ -35,7 +47,7 @@ const GACHA = {
     for (let i = 0; i < n; i++) {
       const c = CHARACTERS[Math.floor(rng() * CHARACTERS.length)];
       const st = p.chars[c.id];
-      if (!st) { p.chars[c.id] = { bt: 0, ult: 'A' }; out.push({ id: c.id, isNew: true, bt: 0 }); }
+      if (!st) { p.chars[c.id] = GACHA.newChar(); out.push({ id: c.id, isNew: true, bt: 0 }); }
       else if (st.bt < BREAKTHROUGH.max) { st.bt++; out.push({ id: c.id, isNew: false, bt: st.bt, step: BREAKTHROUGH.steps.find((s) => s.bt === st.bt) }); }
       else { p.stones += GACHA.OVERFLOW_STONES; out.push({ id: c.id, isNew: false, bt: st.bt, overflow: GACHA.OVERFLOW_STONES }); }
     }

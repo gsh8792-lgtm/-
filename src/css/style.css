@@ -419,6 +419,9 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .tier-desc { width: 100%; text-align: center; color: var(--muted); font-size: 13px; }
 .tier-desc .warn { color: #ff9a6a; }
 .reward-loot, .result-loot { text-align: center; font-size: 15px; margin: 6px 0; line-height: 1.6; }
+.reward-exp { text-align: center; font-size: 13px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
+.reward-exp .lvup { color: #ffd34a; }
+.reward-exp .learn { color: #8cd0ff; }
 .rc-icon .ic { margin: 0 auto; }
 .bs-box .inv-body { grid-template-columns: 330px 1fr; }
 
@@ -444,6 +447,11 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .rd-ult.locked { opacity: .5; }
 .boost { color: var(--green); font-size: 11px; }
 .rd-steps { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.rg-lv { position: absolute; top: 2px; left: 4px; color: #cfe6ff; font-size: 10px; }
+.rd-exp { display: inline-block; width: 70px; height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; vertical-align: middle; overflow: hidden; }
+.rd-exp i { display: block; height: 100%; background: #8cd0ff; }
+.rd-gear { font-size: 12px; display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
+.rd-gear .ok { color: #8cd0ff; font-weight: 700; }
 .gacha-box { width: 860px; display: flex; flex-direction: column; gap: 10px; }
 .gacha-results { min-height: 250px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .gacha-empty { max-width: 440px; text-align: center; line-height: 1.6; }

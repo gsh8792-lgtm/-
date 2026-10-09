@@ -99,8 +99,7 @@ function itemDetailHtml(item, heroId) {
   lines.push(`<div class="id-sub">${EQ.G[item.grade].name} · ${EQ.SLOT_NAME[base.slot]} · ${cls}${item.enh || EQ.enhanceCap(item) ? ` · 강화 ${item.enh}/${EQ.enhanceCap(item)}` : ''}</div>`);
   const sec = (title, arr) => { if (arr.length) lines.push(`<div class="id-sec"><b>${title}</b>${arr.map((x) => `<div>${x}</div>`).join('')}</div>`); };
   sec('주 스탯', EQ.mainStats(item).map((m) => EQ.fmtStat(m.stat, m.v)));
-  if (base.slot === 'armor') sec('① 스킬', [skillOf(base.cls, 's1')]);
-  if (base.slot === 'weapon') sec('② 스킬', [skillOf(base.cls, 's2')]);
+  if (base.slot === 'armor' || base.slot === 'weapon') sec(base.slot === 'armor' ? '① 스킬 (갑옷)' : '② 스킬 (무기)', [skillOf(item)]);
   if (item.passive) sec('패시브', [`<span class="psv g-${item.passive.grade}">「${EQ.PASSIVE[item.passive.key].name}」 ${item.passive.grade}</span> ${EQ.passiveText(item.passive)}`]);
   sec('추가 옵션', item.opts.map((o) => EQ.fmtStat(o.stat, o.v)));
   const extra = [];
@@ -113,11 +112,15 @@ function itemDetailHtml(item, heroId) {
   if (item.gems.length) sec('보석', item.gems.map((gu, i) => { const g = gu && EQ.findGem(p, gu); return g ? `${i + 1}. ${gemBadge(g)} ${EQ.gemEffects(g).map((e) => EQ.fmtStat(e.stat, e.v)).join(', ')}` : `${i + 1}. <span class="muted">빈 슬롯</span>`; }));
   return lines.join('');
 }
-function skillOf(cls, slot) {
-  const heroId = HERO_ORDER.find((id) => HEROES[id].role === cls);
-  const def = HEROES[heroId];
-  const sk = SKILLS[def.skills[slot === 's1' ? 0 : 1]];
-  return `${sk.name} <small class="muted">(${def.name})</small>`;
+function skillOf(item) {
+  const sk = SKILLS[GEAR_SKILLS[item.base]];
+  const rank = EQ.G[item.grade].idx;
+  return `<b>${sk.name}</b> <small class="muted">랭크 ${item.grade}${rank ? ` · 위력·회복 +${Math.round(rank * GEAR_SKILL_RANK * 100)}%` : ''} · 쿨 ${sk.cd}초</small><br><small>${sk.desc}</small>`;
+}
+// 영웅이 지금 쓰는 스킬 (갑옷 → ①, 무기 → ②, 필살기 = 고른 것)
+function heroSkill(id, slot) {
+  if (slot === 'ult') return GACHA.ultFor(Game.profile, id);
+  return SKILLS[EQ.heroLoadout(Game.profile, id).skills[slot]];
 }
 
 // ---------------------------------------------------------------- 장비창
@@ -312,8 +315,13 @@ function grantBattleLoot(run, node) {
   const got = [];
   if (src !== 'battle') { const it = EQ.dropItem(rng, p, src, run.tier, partyIds(run)); p.inv.push(it); got.push({ kind: 'item', uid: it.uid }); }
   if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
+  // 경험치: 출전한 캐릭터 모두 (쓰러진 캐릭터는 절반), 난이도가 높을수록 많이
+  const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0));
+  const exp = [];
+  for (const id of partyIds(run)) { const r = GACHA.addExp(p, id, expBase * (run.heroes[id].dead ? CHAR_LV.deadMult : 1)); if (r) exp.push(r); }
+  run.expGot = (run.expGot || 0) + Math.round(expBase);
   run.loot.push(...got);
-  run.lastLoot = { stones, got };
+  run.lastLoot = { stones, got, exp };
   saveProfile();
 }
 function lootHtml(entries) {

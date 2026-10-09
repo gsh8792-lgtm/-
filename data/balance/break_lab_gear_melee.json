@@ -1,0 +1,664 @@
+{
+ "n": 12,
+ "bosses": [
+  "ogre_chief",
+  "thorn_queen",
+  "mist_stag",
+  "swamp_turtle"
+ ],
+ "classes": {
+  "melee": [
+   {
+    "s1": "danbi_s1",
+    "s2": "danbi_s2",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 461,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.08,
+      "firstMed": 12.4,
+      "zeroWin": 0,
+      "time": 87.1,
+      "share": {
+       "basic": 0.169,
+       "skill": 0.209,
+       "stun": 0.221,
+       "cancel": 0.39,
+       "intrfail": 0.011
+      },
+      "cancelRate": 0.63
+     },
+     "thorn_queen": {
+      "supDealt": 907,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.58,
+      "firstMed": 14.1,
+      "zeroWin": 0,
+      "time": 152,
+      "share": {
+       "basic": 0.16,
+       "skill": 0.181,
+       "stun": 0.249,
+       "cancel": 0.411
+      },
+      "cancelRate": 0.24
+     },
+     "mist_stag": {
+      "supDealt": 265,
+      "deaths": 1.33,
+      "win": 0.667,
+      "breaks": 2.25,
+      "firstMed": 13.4,
+      "zeroWin": 0,
+      "time": 149.6,
+      "share": {
+       "basic": 0.301,
+       "skill": 0.328,
+       "stun": 0.112,
+       "cancel": 0.23,
+       "intrfail": 0.028
+      },
+      "cancelRate": 0.38
+     },
+     "swamp_turtle": {
+      "supDealt": 527,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.5,
+      "firstMed": 26.1,
+      "zeroWin": 0,
+      "time": 176.6,
+      "share": {
+       "basic": 0.449,
+       "skill": 0.36,
+       "stun": 0.149,
+       "intrfail": 0.042
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "danbi_s1",
+    "s2": "gs_melee_s2_b",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 481,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 3.92,
+      "firstMed": 13.6,
+      "zeroWin": 0,
+      "time": 84.5,
+      "share": {
+       "basic": 0.149,
+       "skill": 0.208,
+       "stun": 0.229,
+       "cancel": 0.393,
+       "intrfail": 0.021
+      },
+      "cancelRate": 0.65
+     },
+     "thorn_queen": {
+      "supDealt": 1170,
+      "deaths": 0,
+      "win": 0.917,
+      "breaks": 5.58,
+      "firstMed": 15.9,
+      "zeroWin": 0,
+      "time": 179.5,
+      "share": {
+       "basic": 0.117,
+       "skill": 0.158,
+       "stun": 0.263,
+       "cancel": 0.462
+      },
+      "cancelRate": 0.26
+     },
+     "mist_stag": {
+      "supDealt": 261,
+      "deaths": 1.75,
+      "win": 0.5,
+      "breaks": 1.75,
+      "firstMed": 17,
+      "zeroWin": 0,
+      "time": 146.9,
+      "share": {
+       "basic": 0.299,
+       "skill": 0.416,
+       "stun": 0.09,
+       "cancel": 0.17,
+       "intrfail": 0.024
+      },
+      "cancelRate": 0.28
+     },
+     "swamp_turtle": {
+      "supDealt": 454,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4,
+      "firstMed": 27.4,
+      "zeroWin": 0,
+      "time": 141.6,
+      "share": {
+       "basic": 0.429,
+       "skill": 0.386,
+       "stun": 0.143,
+       "intrfail": 0.042
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "danbi_s1",
+    "s2": "gs_melee_s2_c",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 451,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 3.58,
+      "firstMed": 8.4,
+      "zeroWin": 0,
+      "time": 73.3,
+      "share": {
+       "basic": 0.133,
+       "skill": 0.302,
+       "stun": 0.198,
+       "cancel": 0.345,
+       "intrfail": 0.022
+      },
+      "cancelRate": 0.72
+     },
+     "thorn_queen": {
+      "supDealt": 758,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4,
+      "firstMed": 8.5,
+      "zeroWin": 0,
+      "time": 117.8,
+      "share": {
+       "basic": 0.1,
+       "skill": 0.23,
+       "stun": 0.248,
+       "cancel": 0.422
+      },
+      "cancelRate": 0.26
+     },
+     "mist_stag": {
+      "supDealt": 288,
+      "deaths": 0.67,
+      "win": 0.833,
+      "breaks": 2,
+      "firstMed": 10.7,
+      "zeroWin": 0,
+      "time": 122.8,
+      "share": {
+       "basic": 0.222,
+       "skill": 0.542,
+       "stun": 0.069,
+       "cancel": 0.147,
+       "intrfail": 0.02
+      },
+      "cancelRate": 0.3
+     },
+     "swamp_turtle": {
+      "supDealt": 462,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.42,
+      "firstMed": 20.3,
+      "zeroWin": 0,
+      "time": 116.1,
+      "share": {
+       "basic": 0.316,
+       "skill": 0.524,
+       "stun": 0.115,
+       "intrfail": 0.045
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "gs_melee_s1_b",
+    "s2": "danbi_s2",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 520,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.33,
+      "firstMed": 12.1,
+      "zeroWin": 0,
+      "time": 101.2,
+      "share": {
+       "basic": 0.19,
+       "skill": 0.2,
+       "stun": 0.217,
+       "cancel": 0.365,
+       "intrfail": 0.028
+      },
+      "cancelRate": 0.59
+     },
+     "thorn_queen": {
+      "supDealt": 1184,
+      "deaths": 0,
+      "win": 0.583,
+      "breaks": 6.25,
+      "firstMed": 13.6,
+      "zeroWin": 0,
+      "time": 191.8,
+      "share": {
+       "basic": 0.119,
+       "skill": 0.183,
+       "stun": 0.265,
+       "cancel": 0.433
+      },
+      "cancelRate": 0.29
+     },
+     "mist_stag": {
+      "supDealt": 316,
+      "deaths": 0.92,
+      "win": 0.75,
+      "breaks": 2.42,
+      "firstMed": 13.4,
+      "zeroWin": 0,
+      "time": 178.1,
+      "share": {
+       "basic": 0.309,
+       "skill": 0.349,
+       "stun": 0.104,
+       "cancel": 0.208,
+       "intrfail": 0.03
+      },
+      "cancelRate": 0.35
+     },
+     "swamp_turtle": {
+      "supDealt": 565,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 5.08,
+      "firstMed": 26.5,
+      "zeroWin": 0,
+      "time": 181.6,
+      "share": {
+       "basic": 0.438,
+       "skill": 0.367,
+       "stun": 0.151,
+       "intrfail": 0.045
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "gs_melee_s1_b",
+    "s2": "gs_melee_s2_b",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 535,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.08,
+      "firstMed": 13.5,
+      "zeroWin": 0,
+      "time": 87.7,
+      "share": {
+       "basic": 0.157,
+       "skill": 0.19,
+       "stun": 0.227,
+       "cancel": 0.388,
+       "intrfail": 0.037
+      },
+      "cancelRate": 0.61
+     },
+     "thorn_queen": {
+      "supDealt": 993,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.33,
+      "firstMed": 19.1,
+      "zeroWin": 0,
+      "time": 157.8,
+      "share": {
+       "basic": 0.137,
+       "skill": 0.184,
+       "stun": 0.266,
+       "cancel": 0.414
+      },
+      "cancelRate": 0.23
+     },
+     "mist_stag": {
+      "supDealt": 306,
+      "deaths": 0.33,
+      "win": 1,
+      "breaks": 2.25,
+      "firstMed": 17,
+      "zeroWin": 0,
+      "time": 159.4,
+      "share": {
+       "basic": 0.286,
+       "skill": 0.434,
+       "stun": 0.082,
+       "cancel": 0.169,
+       "intrfail": 0.029
+      },
+      "cancelRate": 0.33
+     },
+     "swamp_turtle": {
+      "supDealt": 505,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4,
+      "firstMed": 27.5,
+      "zeroWin": 0,
+      "time": 147.8,
+      "share": {
+       "basic": 0.405,
+       "skill": 0.4,
+       "stun": 0.151,
+       "intrfail": 0.045
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "gs_melee_s1_b",
+    "s2": "gs_melee_s2_c",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 497,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4,
+      "firstMed": 8.4,
+      "zeroWin": 0,
+      "time": 75.5,
+      "share": {
+       "basic": 0.119,
+       "skill": 0.27,
+       "stun": 0.219,
+       "cancel": 0.377,
+       "intrfail": 0.014
+      },
+      "cancelRate": 0.7
+     },
+     "thorn_queen": {
+      "supDealt": 833,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.33,
+      "firstMed": 9.7,
+      "zeroWin": 0,
+      "time": 128.3,
+      "share": {
+       "basic": 0.108,
+       "skill": 0.234,
+       "stun": 0.247,
+       "cancel": 0.41
+      },
+      "cancelRate": 0.31
+     },
+     "mist_stag": {
+      "supDealt": 292,
+      "deaths": 0.08,
+      "win": 1,
+      "breaks": 2.5,
+      "firstMed": 10.6,
+      "zeroWin": 0,
+      "time": 130.8,
+      "share": {
+       "basic": 0.228,
+       "skill": 0.563,
+       "stun": 0.064,
+       "cancel": 0.13,
+       "intrfail": 0.015
+      },
+      "cancelRate": 0.3
+     },
+     "swamp_turtle": {
+      "supDealt": 557,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.92,
+      "firstMed": 21.1,
+      "zeroWin": 0,
+      "time": 131.7,
+      "share": {
+       "basic": 0.298,
+       "skill": 0.548,
+       "stun": 0.109,
+       "intrfail": 0.045
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "gs_melee_s1_c",
+    "s2": "danbi_s2",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 506,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.17,
+      "firstMed": 12.5,
+      "zeroWin": 0,
+      "time": 93.9,
+      "share": {
+       "basic": 0.193,
+       "skill": 0.192,
+       "stun": 0.212,
+       "cancel": 0.378,
+       "intrfail": 0.026
+      },
+      "cancelRate": 0.61
+     },
+     "thorn_queen": {
+      "supDealt": 794,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.25,
+      "firstMed": 14.9,
+      "zeroWin": 0,
+      "time": 135,
+      "share": {
+       "basic": 0.143,
+       "skill": 0.192,
+       "stun": 0.242,
+       "cancel": 0.403,
+       "intrfail": 0.019
+      },
+      "cancelRate": 0.24
+     },
+     "mist_stag": {
+      "supDealt": 263,
+      "deaths": 0.58,
+      "win": 0.917,
+      "breaks": 2.08,
+      "firstMed": 13.4,
+      "zeroWin": 0,
+      "time": 144.1,
+      "share": {
+       "basic": 0.3,
+       "skill": 0.337,
+       "stun": 0.11,
+       "cancel": 0.22,
+       "intrfail": 0.033
+      },
+      "cancelRate": 0.35
+     },
+     "swamp_turtle": {
+      "supDealt": 487,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.08,
+      "firstMed": 24.3,
+      "zeroWin": 0,
+      "time": 157.8,
+      "share": {
+       "basic": 0.46,
+       "skill": 0.347,
+       "stun": 0.151,
+       "intrfail": 0.042
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "gs_melee_s1_c",
+    "s2": "gs_melee_s2_b",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 469,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 3.75,
+      "firstMed": 13.6,
+      "zeroWin": 0,
+      "time": 85.4,
+      "share": {
+       "basic": 0.157,
+       "skill": 0.198,
+       "stun": 0.218,
+       "cancel": 0.389,
+       "intrfail": 0.037
+      },
+      "cancelRate": 0.63
+     },
+     "thorn_queen": {
+      "supDealt": 1075,
+      "deaths": 0,
+      "win": 0.917,
+      "breaks": 5.25,
+      "firstMed": 15.5,
+      "zeroWin": 0,
+      "time": 167.4,
+      "share": {
+       "basic": 0.12,
+       "skill": 0.158,
+       "stun": 0.253,
+       "cancel": 0.44,
+       "intrfail": 0.03
+      },
+      "cancelRate": 0.25
+     },
+     "mist_stag": {
+      "supDealt": 253,
+      "deaths": 0.75,
+      "win": 0.917,
+      "breaks": 1.75,
+      "firstMed": 17,
+      "zeroWin": 0,
+      "time": 138.4,
+      "share": {
+       "basic": 0.308,
+       "skill": 0.399,
+       "stun": 0.089,
+       "cancel": 0.173,
+       "intrfail": 0.031
+      },
+      "cancelRate": 0.29
+     },
+     "swamp_turtle": {
+      "supDealt": 448,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4,
+      "firstMed": 26.2,
+      "zeroWin": 0,
+      "time": 141.7,
+      "share": {
+       "basic": 0.418,
+       "skill": 0.404,
+       "stun": 0.131,
+       "intrfail": 0.046
+      },
+      "cancelRate": 0
+     }
+    }
+   },
+   {
+    "s1": "gs_melee_s1_c",
+    "s2": "gs_melee_s2_c",
+    "cells": {
+     "ogre_chief": {
+      "supDealt": 494,
+      "deaths": 0.25,
+      "win": 0.917,
+      "breaks": 3.75,
+      "firstMed": 8.4,
+      "zeroWin": 0,
+      "time": 75.8,
+      "share": {
+       "basic": 0.122,
+       "skill": 0.275,
+       "stun": 0.205,
+       "cancel": 0.365,
+       "intrfail": 0.033
+      },
+      "cancelRate": 0.64
+     },
+     "thorn_queen": {
+      "supDealt": 688,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 3.75,
+      "firstMed": 8.5,
+      "zeroWin": 0,
+      "time": 109.2,
+      "share": {
+       "basic": 0.109,
+       "skill": 0.25,
+       "stun": 0.229,
+       "cancel": 0.4,
+       "intrfail": 0.011
+      },
+      "cancelRate": 0.26
+     },
+     "mist_stag": {
+      "supDealt": 283,
+      "deaths": 0.25,
+      "win": 0.917,
+      "breaks": 2,
+      "firstMed": 10.7,
+      "zeroWin": 0,
+      "time": 119,
+      "share": {
+       "basic": 0.218,
+       "skill": 0.538,
+       "stun": 0.073,
+       "cancel": 0.151,
+       "intrfail": 0.019
+      },
+      "cancelRate": 0.31
+     },
+     "swamp_turtle": {
+      "supDealt": 409,
+      "deaths": 0,
+      "win": 1,
+      "breaks": 4.17,
+      "firstMed": 20.5,
+      "zeroWin": 0,
+      "time": 112,
+      "share": {
+       "basic": 0.336,
+       "skill": 0.515,
+       "stun": 0.118,
+       "intrfail": 0.031
+      },
+      "cancelRate": 0
+     }
+    }
+   }
+  ]
+ }
+}

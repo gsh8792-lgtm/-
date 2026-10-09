@@ -429,6 +429,9 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .tier-desc { width: 100%; text-align: center; color: var(--muted); font-size: 13px; }
 .tier-desc .warn { color: #ff9a6a; }
 .reward-loot, .result-loot { text-align: center; font-size: 15px; margin: 6px 0; line-height: 1.6; }
+.reward-exp { text-align: center; font-size: 13px; color: var(--muted); margin: 2px 0 6px; line-height: 1.5; }
+.reward-exp .lvup { color: #ffd34a; }
+.reward-exp .learn { color: #8cd0ff; }
 .rc-icon .ic { margin: 0 auto; }
 .bs-box .inv-body { grid-template-columns: 330px 1fr; }
 
@@ -454,6 +457,11 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .rd-ult.locked { opacity: .5; }
 .boost { color: var(--green); font-size: 11px; }
 .rd-steps { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.rg-lv { position: absolute; top: 2px; left: 4px; color: #cfe6ff; font-size: 10px; }
+.rd-exp { display: inline-block; width: 70px; height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; vertical-align: middle; overflow: hidden; }
+.rd-exp i { display: block; height: 100%; background: #8cd0ff; }
+.rd-gear { font-size: 12px; display: flex; flex-direction: column; gap: 2px; margin: 4px 0; }
+.rd-gear .ok { color: #8cd0ff; font-weight: 700; }
 .gacha-box { width: 860px; display: flex; flex-direction: column; gap: 10px; }
 .gacha-results { min-height: 250px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; }
 .gacha-empty { max-width: 440px; text-align: center; line-height: 1.6; }
@@ -1094,22 +1102,102 @@ const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
   }
 })();
 
-// 돌파 단계에서 쓸 수 있는 필살기 선택지
-function ultChoices(id, bt) {
+// 캐릭터 레벨: 필살기는 레벨로 배우고(10레벨마다), 변주는 돌파까지 해야 쓴다. 60·70레벨은 필살기 숙련(위력 +5%씩)
+// 전투 레벨 = 캐릭터 레벨 + 장비 레벨 (04b_equip.heroLevel). 캐릭터 10레벨 ≈ 장비 1등급
+const CHAR_LV = {
+  max: 70,
+  ultUnlock: { A: 1, B: 10, C: 20, A2: 30, B2: 40, C2: 50 },
+  mastery: [{ lv: 60, boost: 0.05 }, { lv: 70, boost: 0.05 }],
+  recByTier: [1, 8, 16, 24, 32, 40, 50, 60, 70], // 난이도 단계별 권장 캐릭터 레벨
+  expNext(lv) { return Math.round(20 + 10 * Math.pow(Math.max(0, lv - 1), 1.3)); },
+  reward: { battle: 12, elite: 30, boss: 80 }, tierMult: 0.6, deadMult: 0.5,
+};
+// 쓸 수 있는 필살기 (돌파 + 레벨). lv를 빼면 레벨 제한 없이 (검증 도구용)
+function ultChoices(id, bt, lv) {
   const out = ['A', 'B', 'C'];
   for (const s of BREAKTHROUGH.steps) if (s.unlock && bt >= s.bt) out.push(s.unlock);
-  return out.sort();
+  return out.filter((k) => lv === undefined || lv >= CHAR_LV.ultUnlock[k]).sort();
 }
 // 실제 전투용 필살기 정의 (돌파 위력 보너스 반영)
-function ultDefFor(id, choice, bt) {
+function ultDefFor(id, choice, bt, lv) {
   const sk = SKILLS[`${id}_ult_${choice}`] || SKILLS[`${id}_ult_A`];
   let boost = 0;
   for (const s of BREAKTHROUGH.steps) if (s.boost && bt >= s.bt && s.boost[choice[0]]) boost += s.boost[choice[0]];
+  if (lv) for (const m of CHAR_LV.mastery) if (lv >= m.lv) boost += m.boost;
   if (!boost) return sk;
   const m = 1 + boost, out = Object.assign({}, sk);
   for (const k of ['power', 'heal', 'healPct', 'shieldPct', 'partyHealPct']) if (out[k]) out[k] = +(out[k] * m).toFixed(3);
   out.boosted = boost;
   return out;
+}
+
+// ---------- 01d_gear_skills.js
+// ===== 01d_gear_skills.js : 장비가 정하는 ①② 스킬 (갑옷 → ①, 무기 → ②) =====
+// 직업마다 갑옷 3종 · 무기 3종 = 스킬 6종. 1번 계열은 직업 기본 스킬(장비가 없을 때도 이것).
+// 원칙: 어떤 조합이든 그 직업의 그로기 역할은 남는다 (탱커 ② 기절 · 근딜/원딜 ① 끊기 ●● · 매지션 ② 범위 끊기 ● · 서포터 ① 공명).
+// ai: 스킬을 바꿔 끼웠을 때 자동 전략이 따르는 기본값 { cond, target, param }
+// 장비 등급 = 스킬 랭크 (위력·회복 +GEAR_SKILL_RANK × 등급 순서)
+
+Object.assign(STATUS, {
+  reflect: { name: '반격', short: '반', color: '#c8a070', desc: '받은 근접 평타 피해의 일부를 되돌린다.' },
+});
+
+const GEAR_SKILL_RANK = 0.05;
+
+Object.assign(SKILLS, {
+  // ---------------- 탱커 ① 갑옷 (도발 계열)
+  gs_tank_s1_b: { name: '맹세의 외침', target: 'party', cd: 10, power: 0, shieldPct: 0.15, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.15, to: 'self' }], fx: 'taunt', desc: '3초 도발 + 파티 전원에게 최대 HP 15% 보호막.', ai: { cond: 'saveForCharge', target: 'nearest' } },
+  gs_tank_s1_c: { name: '가시 반격', target: 'self', cd: 9, power: 0, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.1, to: 'self' }, { status: 'reflect', dur: 4, value: 0.6, to: 'self' }], fx: 'taunt', desc: '3초 도발. 4초간 받은 근접 평타 피해의 60%를 되돌린다.', ai: { cond: 'saveForCharge', target: 'nearest' } },
+  // ---------------- 탱커 ② 무기 (기절 = 끊기 칸 전부)
+  gs_tank_s2_b: { name: '돌진 베기', target: 'enemy', cd: 9, hint: 'enemyCharging', power: 1.7, effects: [{ status: 'stun', dur: 1.2 }], fx: 'bash', desc: '돌진해 강타. 1.2초 기절 (끊기 칸 전부).', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  gs_tank_s2_c: { name: '대지 강타', target: 'self_area', cd: 11, hint: 'enemyCharging', power: 1.0, areaR: 95, effects: [{ status: 'stun', dur: 1.5 }], fx: 'spin', desc: '주변 모든 적 1.5초 기절 (끊기 칸 전부).', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  // ---------------- 근딜 ① 갑옷 (끊기 ●●)
+  gs_melee_s1_b: { name: '발목 베기', target: 'enemy', cd: 5, power: 1.2, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'slow', dur: 3, value: 0.4 }], fx: 'slash', desc: '둔화. 쿨이 짧다. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_melee_s1_c: { name: '피의 일격', target: 'enemy', cd: 7, power: 2.1, interrupt: 2, interruptBack: 0.5, selfCost: 0.04, effects: [{ status: 'bleed', dur: 5, dps: 0.5 }], fx: 'slash', desc: '자기 HP 4%를 써서 강타 + 깊은 출혈. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  // ---------------- 근딜 ② 무기
+  gs_melee_s2_b: { name: '파쇄 일격', target: 'enemy', cd: 10, power: 2.0, brokenMult: 1.6, effects: [], fx: 'slash', desc: '강타. 그로기 적에게 1.6배.', ai: { cond: 'breakWindow', target: 'focus' } },
+  gs_melee_s2_c: { name: '그림자 연격', target: 'enemy', cd: 8, power: 0.75, hits: 3, effects: [{ status: 'vuln', dur: 3 }], fx: 'slash', desc: '3연타 + 취약.', ai: { cond: 'always', target: 'focus' } },
+  // ---------------- 원딜 ① 갑옷 (끊기 ●●)
+  gs_ranged_s1_b: { name: '견제 사격', target: 'enemy', cd: 5, power: 1.1, interrupt: 2, effects: [{ status: 'slow', dur: 3, value: 0.35 }], fx: 'pierce', desc: '둔화. 쿨이 짧다. 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_ranged_s1_c: { name: '표식 사격', target: 'enemy', cd: 8, power: 1.3, interrupt: 2, shakeExtend: 2, effects: [{ status: 'vuln', dur: 8 }], fx: 'pierce', desc: '8초 취약. 끊기 ●●, 흔들림 +2초.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  // ---------------- 원딜 ② 무기
+  gs_ranged_s2_b: { name: '연사', target: 'enemy', cd: 8, power: 0.5, hits: 4, effects: [], fx: 'pierce', desc: '빠른 4연사.', ai: { cond: 'always', target: 'focus' } },
+  gs_ranged_s2_c: { name: '저격', target: 'enemy', cd: 12, power: 3.4, delay: 1.0, brokenMult: 1.3, effects: [], fx: 'snipe', desc: '1초 조준 후 강한 한 발. 그로기 적에게 1.3배.', ai: { cond: 'breakWindow', target: 'focus' } },
+  // ---------------- 매지션 ① 갑옷
+  gs_mage_s1_b: { name: '화염 파동', target: 'area_enemy', cd: 6, power: 1.2, areaR: 65, effects: [{ status: 'burn', dur: 4, dps: 0.3 }], fx: 'nova', desc: '작은 범위 화염 + 화상.', ai: { cond: 'always', target: 'nearest' } },
+  gs_mage_s1_c: { name: '마나 보호막', target: 'ally', cd: 8, power: 0, shieldPct: 0.3, effects: [{ status: 'inspire', dur: 6, value: 0.35 }], fx: 'heal', desc: '아군 1명에게 최대 HP 30% 보호막 + 6초간 공격력 +35% (위급한 아군이 없으면 가장 센 동료에게).', ai: { cond: 'always', target: 'lowestAlly' } },
+  // ---------------- 매지션 ② 무기 (범위 끊기 ●)
+  gs_mage_s2_b: { name: '번개 사슬', target: 'multi_enemy', count: 3, cd: 9, hint: 'cluster', power: 1.0, interrupt: 1, effects: [], fx: 'starbolt', desc: '시전 중인 적부터 3명 연쇄. 맞은 적마다 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_mage_s2_c: { name: '빙결 고리', target: 'area_enemy', cd: 12, hint: 'cluster', power: 0.8, areaR: 115, interrupt: 1, effects: [{ status: 'slow', dur: 4, value: 0.5 }], fx: 'nova', desc: '넓은 범위 둔화. 범위 안 모든 적 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
+  // ---------------- 서포터 ① 갑옷 (공명)
+  gs_support_s1_b: { name: '수호의 기도', target: 'ally', cd: 6, power: 0, shieldPct: 0.26, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 보호막(최대 HP 26%) + 5초간 그로기 피해 +30%.', ai: { cond: 'always', target: 'lowestAlly' } },
+  gs_support_s1_c: { name: '재생의 축복', target: 'ally', cd: 6, heal: 0.8, effects: [{ status: 'regen', dur: 6, value: 0.03 }, { status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 6초 재생 + 5초간 그로기 피해 +30%.', ai: { cond: 'always', target: 'lowestAlly' } },
+  // ---------------- 서포터 ② 무기
+  gs_support_s2_b: { name: '빛의 심판', target: 'enemy', cd: 8, power: 1.9, effects: [{ status: 'vuln', dur: 4 }], fx: 'starbolt', desc: '빛으로 공격 + 4초 취약.', ai: { cond: 'always', target: 'focus' } },
+  gs_support_s2_c: { name: '정화의 빛', target: 'party', cd: 12, healPct: 0.08, cleanse: true, effects: [], fx: 'aoeheal', desc: '파티 전원 회복(최대 HP 8%) + 해로운 효과 해제.', ai: { cond: 'allyHpBelow', param: 70, target: 'lowestAlly' } },
+});
+
+// 장비 종류(EQUIP_DB 아이템 id) → 스킬
+const GEAR_SKILLS = {
+  tank_armor_1: 'tobi_s1', tank_armor_2: 'gs_tank_s1_b', tank_armor_3: 'gs_tank_s1_c',
+  tank_weapon_1: 'tobi_s2', tank_weapon_2: 'gs_tank_s2_b', tank_weapon_3: 'gs_tank_s2_c',
+  melee_armor_1: 'danbi_s1', melee_armor_2: 'gs_melee_s1_b', melee_armor_3: 'gs_melee_s1_c',
+  melee_weapon_1: 'danbi_s2', melee_weapon_2: 'gs_melee_s2_b', melee_weapon_3: 'gs_melee_s2_c',
+  ranged_armor_1: 'byeolbi_s1', ranged_armor_2: 'gs_ranged_s1_b', ranged_armor_3: 'gs_ranged_s1_c',
+  ranged_weapon_1: 'byeolbi_s2', ranged_weapon_2: 'gs_ranged_s2_b', ranged_weapon_3: 'gs_ranged_s2_c',
+  mage_armor_1: 'soldam_s1', mage_armor_2: 'gs_mage_s1_b', mage_armor_3: 'gs_mage_s1_c',
+  mage_weapon_1: 'soldam_s2', mage_weapon_2: 'gs_mage_s2_b', mage_weapon_3: 'gs_mage_s2_c',
+  support_armor_1: 'bori_s1', support_armor_2: 'gs_support_s1_b', support_armor_3: 'gs_support_s1_c',
+  support_weapon_1: 'bori_s2', support_weapon_2: 'gs_support_s2_b', support_weapon_3: 'gs_support_s2_c',
+};
+// 기본 스킬의 자동 전략도 같은 형식으로 (스킬을 다시 기본으로 바꿨을 때 되돌릴 값)
+for (const id of ['tobi', 'danbi', 'byeolbi', 'soldam', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
+  const sk = SKILLS[HEROES[id].skills[i]], p = AI_PRESETS[id][slot];
+  if (!sk.ai) sk.ai = { cond: p.cond, target: p.target, param: p.param };
+}
+// 직업 → 슬롯별 스킬 목록 (도감·설명용)
+function gearSkillPool(cls) {
+  return { s1: [1, 2, 3].map((n) => GEAR_SKILLS[`${cls}_armor_${n}`]), s2: [1, 2, 3].map((n) => GEAR_SKILLS[`${cls}_weapon_${n}`]) };
 }
 
 // ---------- 02_sprites.js
@@ -2296,10 +2384,14 @@ const EQ = (() => {
     const mods = {};
     const add = (k, v) => { mods[k] = (mods[k] || 0) + v; };
     const passives = {};
+    const def0 = HEROES[heroId].skills;
+    const skills = { s1: def0[0], s2: def0[1] }, skillRank = { s1: 0, s2: 0 }; // 갑옷 → ①, 무기 → ② (등급 = 랭크)
     for (const s of SLOTS) {
       const uid = p.equip[heroId] && p.equip[heroId][s];
       const item = uid && findItem(p, uid);
       if (!item) continue;
+      const gs = (s === 'armor' || s === 'weapon') && typeof GEAR_SKILLS !== 'undefined' && GEAR_SKILLS[item.base];
+      if (gs) { const k = s === 'armor' ? 's1' : 's2'; skills[k] = gs; skillRank[k] = G[item.grade].idx; }
       for (const e of itemEffects(p, item, heroId)) add(e.stat, e.v);
       if (item.passive) { const cur = passives[item.passive.key]; if (!cur || G[cur.grade].idx < G[item.passive.grade].idx) passives[item.passive.key] = item.passive; }
     }
@@ -2313,7 +2405,7 @@ const EQ = (() => {
     mods.passives = hooks;
     const maxHp = Math.round((def.hp + (mods.hp || 0)) * (1 + (mods.hp_pct || 0)));
     delete mods.hp; delete mods.hp_pct;
-    return { maxHp, mods, passives };
+    return { maxHp, mods, passives, skills, skillRank };
   }
   // 대략적인 전투력 점수 (정렬·비교 표시용)
   function itemScore(p, item, heroId) {
@@ -2393,15 +2485,17 @@ const EQ = (() => {
   }
   function dropGem(rng, p, tier) { return rollGem(rng, p, dropGrade(rng, 'boss', tier)); }
 
-  // 전투 레벨: 장비 레벨(등급 × 10 + 강화) 6부위 평균. 던전 레벨과의 차이가 전투 보정(levelGapMult)이 된다
-  // (캐릭터 레벨이 생기면 여기에 더한다)
+  // 전투 레벨 = 캐릭터 레벨 + 장비 레벨(등급 × 10 + 강화, 6부위 평균). 던전 레벨과의 차이가 전투 보정(levelGapMult)이 된다
   function itemLevel(item) { return (G[item.grade].idx + 1) * 10 + (item.enh || 0); }
-  function heroLevel(p, heroId) {
+  function gearLevel(p, heroId) {
     let sum = 0;
     for (const s of SLOTS) { const uid = p.equip[heroId] && p.equip[heroId][s]; const item = uid && findItem(p, uid); if (item) sum += itemLevel(item); }
     return Math.round(sum / SLOTS.length);
   }
-  function tierLevel(t) { return t ? (G[DB.tiers[t - 1].recGrade].idx + 1) * 10 + 5 : 0; }
+  function charLevel(p, heroId) { return (p.chars && p.chars[heroId] && p.chars[heroId].lv) || 1; }
+  function heroLevel(p, heroId) { return charLevel(p, heroId) + gearLevel(p, heroId); }
+  // 던전 레벨 = 권장 캐릭터 레벨 + 권장 장비 레벨 (권장 등급 +5강)
+  function tierLevel(t) { return CHAR_LV.recByTier[t || 0] + (t ? (G[DB.tiers[t - 1].recGrade].idx + 1) * 10 + 5 : 0); }
   function levelGap(p, heroId, t) { return heroLevel(p, heroId) - tierLevel(t); }
 
   // 난이도 단계: 0 = 기본 던전(장비 없이 깰 수 있는 데모 난이도), 1~8 = EQUIP_DB.tiers
@@ -2431,7 +2525,7 @@ const EQ = (() => {
     heroClass, usableBy, newProfile, loadProfile, saveProfile, findItem, findGem, equippedBy,
     rollItem, rollPassive, rollGem, mainStats, itemEffects, heroLoadout, itemScore, passiveValue, gemEffects,
     enhanceCap, enhanceInfo, tryEnhance, visualTier, equip, unequip, dismantle, socket, unsocket,
-    dropGrade, dropItem, dropGem, tierInfo, itemLevel, heroLevel, tierLevel, levelGap, fmtStat, passiveText, itemName,
+    dropGrade, dropItem, dropGem, tierInfo, itemLevel, gearLevel, charLevel, heroLevel, tierLevel, levelGap, fmtStat, passiveText, itemName,
   };
 })();
 
@@ -2449,22 +2543,34 @@ const GACHA = {
   ensure(p) {
     if (!p.chars) {
       p.chars = {};
-      for (const c of CHARACTERS) if (c.starter) p.chars[c.id] = { bt: 0, ult: 'A' };
+      for (const c of CHARACTERS) if (c.starter) p.chars[c.id] = GACHA.newChar();
       p.tickets = (p.tickets || 0) + GACHA.START_TICKETS;
     }
     if (p.tickets === undefined) p.tickets = 0;
+    for (const id in p.chars) { const st = p.chars[id]; if (!st.lv) { st.lv = 1; st.exp = 0; } }
     for (const id of HERO_ORDER) if (!p.equip[id]) { p.equip[id] = {}; for (const s of EQ.SLOTS) p.equip[id][s] = null; }
     return p;
+  },
+  newChar() { return { bt: 0, ult: 'A', lv: 1, exp: 0 }; },
+  level(p, id) { return (p.chars && p.chars[id] && p.chars[id].lv) || 1; },
+  // 경험치 지급 → 오른 레벨 수와 새로 배운 필살기
+  addExp(p, id, n) {
+    const st = p.chars && p.chars[id]; if (!st) return null;
+    const from = st.lv; st.exp += Math.round(n);
+    while (st.lv < CHAR_LV.max && st.exp >= CHAR_LV.expNext(st.lv)) { st.exp -= CHAR_LV.expNext(st.lv); st.lv++; }
+    if (st.lv >= CHAR_LV.max) st.exp = 0;
+    const learned = Object.keys(CHAR_LV.ultUnlock).filter((k) => CHAR_LV.ultUnlock[k] > from && CHAR_LV.ultUnlock[k] <= st.lv && ultChoices(id, st.bt).includes(k));
+    return { id, exp: Math.round(n), from, to: st.lv, learned };
   },
   owned(p, id) { return !!(p.chars && p.chars[id]); },
   ownedIds(p) { return HERO_ORDER.filter((id) => GACHA.owned(p, id)); },
   // 전투에 쓸 필살기 정의 (선택한 필살기 + 돌파 위력 보너스)
   ultFor(p, id) {
-    const st = (p.chars && p.chars[id]) || { bt: 0, ult: 'A' };
-    const choice = ultChoices(id, st.bt).includes(st.ult) ? st.ult : 'A';
-    return ultDefFor(id, choice, st.bt);
+    const st = (p.chars && p.chars[id]) || GACHA.newChar();
+    const choice = ultChoices(id, st.bt, st.lv || 1).includes(st.ult) ? st.ult : 'A';
+    return ultDefFor(id, choice, st.bt, st.lv || 1);
   },
-  setUlt(p, id, choice) { const st = p.chars[id]; if (st && ultChoices(id, st.bt).includes(choice)) st.ult = choice; },
+  setUlt(p, id, choice) { const st = p.chars[id]; if (st && ultChoices(id, st.bt, st.lv || 1).includes(choice)) st.ult = choice; },
   // 소환 n회 (소환권 n장 소모). 결과: [{ id, isNew, bt, overflow }]
   pull(p, rng, n) {
     if ((p.tickets || 0) < n) return null;
@@ -2473,7 +2579,7 @@ const GACHA = {
     for (let i = 0; i < n; i++) {
       const c = CHARACTERS[Math.floor(rng() * CHARACTERS.length)];
       const st = p.chars[c.id];
-      if (!st) { p.chars[c.id] = { bt: 0, ult: 'A' }; out.push({ id: c.id, isNew: true, bt: 0 }); }
+      if (!st) { p.chars[c.id] = GACHA.newChar(); out.push({ id: c.id, isNew: true, bt: 0 }); }
       else if (st.bt < BREAKTHROUGH.max) { st.bt++; out.push({ id: c.id, isNew: false, bt: st.bt, step: BREAKTHROUGH.steps.find((s) => s.bt === st.bt) }); }
       else { p.stones += GACHA.OVERFLOW_STONES; out.push({ id: c.id, isNew: false, bt: st.bt, overflow: GACHA.OVERFLOW_STONES }); }
     }
@@ -2887,6 +2993,7 @@ class BattleSim {
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
       levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
+      skillIds: h.skills || null, skillRank: h.skillRank || null, // 장비가 정한 ①② 스킬과 랭크
       upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0, ultDef: h.ultDef || null, casting: null,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
@@ -3368,6 +3475,7 @@ class BattleSim {
       if (sh.value <= 0) delete tgt.statuses.shield;
       if (dmg <= 0) { this.events.push({ type: 'hit', target: tgt, src, amount: 0, shielded: true }); return 0; }
     }
+    if (tgt.statuses.reflect && info.basic && src && src.side === 'enemy' && src.alive && src.melee) { const back = dmg * tgt.statuses.reflect.value; this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) this._damage(tgt, src, back, { noCrit: true, reflect: true }); } }); } // 가시 반격
     tgt.hp -= dmg;
     tgt.anim.hurt = 0.18;
     if (src && src.statuses && src.statuses.lifesteal && src.alive) this._heal(src, src, dmg * src.statuses.lifesteal.value, true);
@@ -3507,7 +3615,16 @@ class BattleSim {
   }
 
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)
-  skillDef(h, slot) { if (slot === 'ult' && h.ultDef) return h.ultDef; return SKILLS[slot === 'ult' ? h.def.ult : h.def.skills[slot === 's1' ? 0 : 1]]; }
+  skillDef(h, slot) {
+    if (slot === 'ult') return h.ultDef || SKILLS[h.def.ult];
+    return SKILLS[(h.skillIds && h.skillIds[slot]) || h.def.skills[slot === 's1' ? 0 : 1]];
+  }
+  // 자동 전략: 장비로 스킬이 바뀌었으면 그 스킬의 기본 조건·대상을 따른다 (켜짐/꺼짐은 플레이어 설정 유지)
+  aiConfig(h, slot, c) {
+    if (!c || slot === 'ult' || !h.skillIds || !h.skillIds[slot] || h.skillIds[slot] === h.def.skills[slot === 's1' ? 0 : 1]) return c;
+    const ai = SKILLS[h.skillIds[slot]].ai;
+    return ai ? Object.assign({}, c, ai) : c;
+  }
   skillUp(h, slot) { return h.upgrades[slot] || { power: 0, cd: 0 }; }
   skillCdMax(h, slot) { const d = this.skillDef(h, slot); const m = h.mods || {}; return d.cd * Math.pow(REWARD.skillUpgradeCd, this.skillUp(h, slot).cd) * (1 - Math.min((m.cdr || 0) + (m[slot + 'cd'] || 0), CONST.STAT_CAPS.cdr)); }
 
@@ -3554,7 +3671,7 @@ class BattleSim {
   cast(h, slot, spec) {
     if (!this.canCast(h, slot)) return false;
     const sk = this.skillDef(h, slot);
-    const pmul = (1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower) * (1 + ((h.mods && h.mods[slot === 'ult' ? 'ultpow' : slot + 'pow']) || 0));
+    const pmul = (1 + this.skillUp(h, slot).power * REWARD.skillUpgradePower) * (1 + ((h.mods && h.mods[slot === 'ult' ? 'ultpow' : slot + 'pow']) || 0)) * (1 + (slot !== 'ult' && h.skillRank ? (h.skillRank[slot] || 0) * GEAR_SKILL_RANK : 0));
     const dmul = pmul * (1 + ((h.mods && h.mods.skilldmg) || 0)); // 스킬 피해 보정 (회복에는 미적용)
     spec = spec || {};
     if ((sk.target === 'enemy' || sk.target === 'ally') && (!spec.unit || !spec.unit.alive)) return false;
@@ -3592,7 +3709,8 @@ class BattleSim {
         break;
       }
       case 'multi_enemy': { // HP 비율 낮은 적부터 연속 타격
-        const list = this.aliveEnemies().slice().sort((a, b) => this.hpPct(a) - this.hpPct(b)).slice(0, sk.count || 3);
+        const casting = (e) => (sk.interrupt && (e.charge || e.call) ? 0 : 1); // 끊기 스킬은 시전 중인 적부터
+        const list = this.aliveEnemies().slice().sort((a, b) => casting(a) - casting(b) || this.hpPct(a) - this.hpPct(b)).slice(0, sk.count || 3);
         list.forEach((tgt, i) => this.delayed.push({ t: fxDelay + i * 0.22, fn: () => { if (!tgt.alive || !h.alive) return; this.events.push({ type: 'dash', unit: h }); hit(tgt); applyEffects(tgt); } }));
         break;
       }
@@ -3692,6 +3810,12 @@ class BattleSim {
     switch (sk.target) {
       case 'enemy': { const u = pickEnemy(); return u ? { unit: u } : null; }
       case 'ally': {
+        if (sk.effects.some((e) => e.status === 'inspire')) { // 고양: 위급한 아군이 없으면 공격력이 가장 높은 동료에게
+          const low = lowestAlly();
+          if (low && this.hpPct(low) < 0.5) return { unit: low };
+          const pick = allies.filter((a) => a !== h).sort((a, b) => b.atk - a.atk)[0] || h;
+          return { unit: pick };
+        }
         const u = rule === 'tank' ? (this.tankHero() || lowestAlly()) : lowestAlly();
         if (u && (u.hp < u.maxHp || sk.shieldPct)) return { unit: u };
         if (sk.effects.some((e) => e.status === 'resonance')) { // 다친 아군이 없으면 그로기 담당에게 공명
@@ -3782,7 +3906,7 @@ class BattleSim {
       if (!h.alive || h.castLock > 0 || h.statuses.stun || this.travelling(h)) continue;
       const st = this.strategy[h.key] || AI_PRESETS[h.key];
       for (const slot of ['s2', 'ult', 's1']) {
-        const c = st[slot];
+        const c = this.aiConfig(h, slot, st[slot]);
         if (!c || !c.auto || !this.canCast(h, slot) || !this.checkCond(h, slot, c)) continue;
         const spec = this.resolveTarget(h, slot, c.target);
         // 위치 명령으로 자리를 지키는 근접 캐릭터는 자동 스킬로 돌진해 자리를 이탈하지 않는다
@@ -3819,7 +3943,8 @@ const BattleScene = {
     const waves = encounterFor(node);
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
-      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, levelGap: EQ.levelGap(Game.profile, id, run.tier), ultDef: GACHA.ultFor(Game.profile, id) };
+      const lo = EQ.heroLoadout(Game.profile, id);
+      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: lo.mods, skills: lo.skills, skillRank: lo.skillRank, levelGap: EQ.levelGap(Game.profile, id, run.tier), ultDef: GACHA.ultFor(Game.profile, id) };
     });
     const ti = EQ.tierInfo(run.tier);
     this.sim = new BattleSim({
@@ -5433,7 +5558,12 @@ const RewardScene = {
     const box = el('div', 'reward-box');
     box.appendChild(el('div', 'scene-title', node.type === 'elite' ? '정예 격파!' : '전투 승리!'));
     box.appendChild(el('div', 'reward-gold', `골드 +${gold} <small>(보유 ${run.gold})</small>`));
-    if (run.lastLoot) { box.appendChild(el('div', 'reward-loot', `💎 강화석 +${run.lastLoot.stones}${run.lastLoot.got.length ? ' · 획득 ' + lootHtml(run.lastLoot.got) : ''}`)); run.lastLoot = null; }
+    if (run.lastLoot) {
+      const L = run.lastLoot;
+      box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
+      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 배움</b>` : ''}`).join(' · ')));
+      run.lastLoot = null;
+    }
     if (params.goldOnly) {
       box.appendChild(el('p', 'muted', '고블린의 보따리에서 골드를 챙겼다.'));
       box.appendChild(btn('계속 ▶', 'primary big', () => Game.go('map'), { id: 'btn-continue' }));
@@ -5484,7 +5614,7 @@ const RewardScene = {
       const slot = rng.pick(['s1', 's2', 'ult']);
       const kind = slot === 'ult' || rng() < 0.5 ? 'power' : 'cd';
       const def = HEROES[hid];
-      const sk = SKILLS[slot === 'ult' ? def.ult : def.skills[slot === 's1' ? 0 : 1]];
+      const sk = heroSkill(hid, slot);
       opts.push({
         kind: 'skill', kindName: '스킬 강화', icon: '★',
         title: `${def.name}: ${sk.name}`,
@@ -5569,7 +5699,7 @@ const EVENT_EFFECTS = {
     const slot = rng.pick(['s1', 's2']);
     const u = run.heroes[hid].upgrades[slot] || (run.heroes[hid].upgrades[slot] = { power: 0, cd: 0 });
     u.power++;
-    const sk = SKILLS[HEROES[hid].skills[slot === 's1' ? 0 : 1]];
+    const sk = heroSkill(hid, slot);
     return { text: `보리의 치유 (HP -${cost}). 정찰병이 비법을 알려줬다: ${HEROES[hid].name}「${sk.name}」 위력 +30%`, good: true };
   },
 };
@@ -5933,7 +6063,7 @@ function openStrategyEditor(run, onClose) {
     const def = HEROES[cur];
     const rules = el('div', 'strat-rules');
     for (const slot of ['s1', 's2', 'ult']) {
-      const sk = SKILLS[slot === 'ult' ? def.ult : def.skills[slot === 's1' ? 0 : 1]];
+      const sk = heroSkill(cur, slot);
       const c = st[slot];
       const row = el('div', 'srule' + (c.auto ? '' : ' manual'));
       row.appendChild(el('div', 'sr-skill', `<span class="sr-slot">${AI_SKILL_SLOTS[slot]}</span><b>${sk.name}</b><small>${sk.desc}${sk.hint ? ` · 추천: ${SKILL_HINTS[sk.hint].name}` : ''}</small>`));
@@ -5992,7 +6122,7 @@ function openPartySelect(run, onDone) {
       c.type = 'button';
       c.id = 'ps-' + id;
       c.appendChild(portraitCanvas(d.sprite, 84));
-      const sk = d.skills.map((s) => SKILLS[s].name).join(' · ');
+      const sk = ['s1', 's2'].map((s) => heroSkill(id, s).name).join(' · ');
       c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>Lv ${EQ.heroLevel(Game.profile, id)} · HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
       if (on) c.appendChild(el('div', 'ps-badge', String(pick.indexOf(id) + 1)));
       c.addEventListener('click', () => {
@@ -6124,8 +6254,7 @@ function itemDetailHtml(item, heroId) {
   lines.push(`<div class="id-sub">${EQ.G[item.grade].name} · ${EQ.SLOT_NAME[base.slot]} · ${cls}${item.enh || EQ.enhanceCap(item) ? ` · 강화 ${item.enh}/${EQ.enhanceCap(item)}` : ''}</div>`);
   const sec = (title, arr) => { if (arr.length) lines.push(`<div class="id-sec"><b>${title}</b>${arr.map((x) => `<div>${x}</div>`).join('')}</div>`); };
   sec('주 스탯', EQ.mainStats(item).map((m) => EQ.fmtStat(m.stat, m.v)));
-  if (base.slot === 'armor') sec('① 스킬', [skillOf(base.cls, 's1')]);
-  if (base.slot === 'weapon') sec('② 스킬', [skillOf(base.cls, 's2')]);
+  if (base.slot === 'armor' || base.slot === 'weapon') sec(base.slot === 'armor' ? '① 스킬 (갑옷)' : '② 스킬 (무기)', [skillOf(item)]);
   if (item.passive) sec('패시브', [`<span class="psv g-${item.passive.grade}">「${EQ.PASSIVE[item.passive.key].name}」 ${item.passive.grade}</span> ${EQ.passiveText(item.passive)}`]);
   sec('추가 옵션', item.opts.map((o) => EQ.fmtStat(o.stat, o.v)));
   const extra = [];
@@ -6138,11 +6267,15 @@ function itemDetailHtml(item, heroId) {
   if (item.gems.length) sec('보석', item.gems.map((gu, i) => { const g = gu && EQ.findGem(p, gu); return g ? `${i + 1}. ${gemBadge(g)} ${EQ.gemEffects(g).map((e) => EQ.fmtStat(e.stat, e.v)).join(', ')}` : `${i + 1}. <span class="muted">빈 슬롯</span>`; }));
   return lines.join('');
 }
-function skillOf(cls, slot) {
-  const heroId = HERO_ORDER.find((id) => HEROES[id].role === cls);
-  const def = HEROES[heroId];
-  const sk = SKILLS[def.skills[slot === 's1' ? 0 : 1]];
-  return `${sk.name} <small class="muted">(${def.name})</small>`;
+function skillOf(item) {
+  const sk = SKILLS[GEAR_SKILLS[item.base]];
+  const rank = EQ.G[item.grade].idx;
+  return `<b>${sk.name}</b> <small class="muted">랭크 ${item.grade}${rank ? ` · 위력·회복 +${Math.round(rank * GEAR_SKILL_RANK * 100)}%` : ''} · 쿨 ${sk.cd}초</small><br><small>${sk.desc}</small>`;
+}
+// 영웅이 지금 쓰는 스킬 (갑옷 → ①, 무기 → ②, 필살기 = 고른 것)
+function heroSkill(id, slot) {
+  if (slot === 'ult') return GACHA.ultFor(Game.profile, id);
+  return SKILLS[EQ.heroLoadout(Game.profile, id).skills[slot]];
 }
 
 // ---------------------------------------------------------------- 장비창
@@ -6337,8 +6470,13 @@ function grantBattleLoot(run, node) {
   const got = [];
   if (src !== 'battle') { const it = EQ.dropItem(rng, p, src, run.tier, partyIds(run)); p.inv.push(it); got.push({ kind: 'item', uid: it.uid }); }
   if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
+  // 경험치: 출전한 캐릭터 모두 (쓰러진 캐릭터는 절반), 난이도가 높을수록 많이
+  const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0));
+  const exp = [];
+  for (const id of partyIds(run)) { const r = GACHA.addExp(p, id, expBase * (run.heroes[id].dead ? CHAR_LV.deadMult : 1)); if (r) exp.push(r); }
+  run.expGot = (run.expGot || 0) + Math.round(expBase);
   run.loot.push(...got);
-  run.lastLoot = { stones, got };
+  run.lastLoot = { stones, got, exp };
   saveProfile();
 }
 function lootHtml(entries) {
@@ -6368,7 +6506,13 @@ function settleRun(run) {
 // ===== 09c_roster.js : 캐릭터 도감(보유·돌파·필살기 선택) + 소환(뽑기) 화면 =====
 
 function ultChoiceLabel(choice) { return { A: '첫 번째', B: '두 번째', C: '세 번째' }[choice[0]] + (choice.length > 1 ? ' 변주' : ''); }
-function ultUnlockText(choice) { const s = BREAKTHROUGH.steps.find((x) => x.unlock === choice); return s ? `${s.bt}돌파 필요` : ''; }
+// 잠긴 이유: 레벨 · 돌파
+function ultUnlockText(choice, cs) {
+  const s = BREAKTHROUGH.steps.find((x) => x.unlock === choice), need = [];
+  if ((cs.lv || 1) < CHAR_LV.ultUnlock[choice]) need.push(`Lv ${CHAR_LV.ultUnlock[choice]}`);
+  if (s && cs.bt < s.bt) need.push(`${s.bt}돌파`);
+  return need.length ? need.join(' + ') + ' 필요' : '';
+}
 
 // ---------------------------------------------------------------- 캐릭터 도감
 function openRoster(opts) {
@@ -6389,6 +6533,7 @@ function openRoster(opts) {
       const b = el('button', 'rg-card' + (own ? '' : ' locked') + (st.sel === id ? ' on' : '')); b.type = 'button'; b.id = 'rc-' + id;
       b.appendChild(portraitCanvas(HEROES[id].sprite, 52, { dead: !own }));
       b.appendChild(el('span', 'rg-name', c.name));
+      if (own) b.appendChild(el('span', 'rg-lv', 'Lv ' + p.chars[id].lv));
       if (own && p.chars[id].bt) b.appendChild(el('span', 'rg-bt', '★' + p.chars[id].bt));
       b.addEventListener('click', () => { Sfx.play('click'); st.sel = id; render(); });
       grid.appendChild(b);
@@ -6399,27 +6544,30 @@ function openRoster(opts) {
     Game.modal(box, { dim: true, cls: 'inv-modal' });
   };
   const detail = (id) => {
-    const c = CHAR[id], d = HEROES[id], own = GACHA.owned(p, id), cs = own ? p.chars[id] : { bt: 0, ult: 'A' };
+    const c = CHAR[id], d = HEROES[id], own = GACHA.owned(p, id), cs = own ? p.chars[id] : GACHA.newChar();
     const wrap = el('div', 'roster-detail');
     const top = el('div', 'rd-top');
     top.appendChild(portraitCanvas(d.sprite, 84, { dead: !own }));
     const stars = '★'.repeat(cs.bt) + '☆'.repeat(BREAKTHROUGH.max - cs.bt);
-    top.appendChild(el('div', 'rd-txt', `<div class="rd-name">${c.name} <small>${d.roleName} · ${c.title}</small></div><div class="rd-bt">${own ? `돌파 ${stars}` : '<span class="muted">미보유 — 소환에서 얻을 수 있어요</span>'}</div><div class="rd-desc">${c.desc}</div><div class="rd-stat">HP ${d.hp} · 공격 ${d.atk} · 공격 간격 ${d.atkInterval}초 · 특성 「${TRAITS[c.trait].name}」 ${TRAITS[c.trait].desc}</div>`));
+    top.appendChild(el('div', 'rd-txt', `<div class="rd-name">${c.name} <small>${d.roleName} · ${c.title}</small></div><div class="rd-bt">${own ? `Lv ${cs.lv}${cs.lv < CHAR_LV.max ? ` <span class="rd-exp"><i style="width:${Math.round(cs.exp / CHAR_LV.expNext(cs.lv) * 100)}%"></i></span> <small>${cs.exp}/${CHAR_LV.expNext(cs.lv)}</small>` : ' (최대)'} · 전투 Lv ${EQ.heroLevel(p, id)} · 돌파 ${stars}` : '<span class="muted">미보유 — 소환에서 얻을 수 있어요</span>'}</div><div class="rd-desc">${c.desc}</div><div class="rd-stat">HP ${d.hp} · 공격 ${d.atk} · 공격 간격 ${d.atkInterval}초 · 특성 「${TRAITS[c.trait].name}」 ${TRAITS[c.trait].desc}</div>`));
     wrap.appendChild(top);
     const list = el('div', 'rd-ults');
-    const choices = ultChoices(id, cs.bt);
+    const choices = ultChoices(id, cs.bt, cs.lv);
     for (const k of ['A', 'A2', 'B', 'B2', 'C', 'C2']) {
-      const sk = ultDefFor(id, k, cs.bt), open = own && choices.includes(k), on = own && cs.ult === k;
+      const sk = ultDefFor(id, k, cs.bt, cs.lv), open = own && choices.includes(k), on = own && cs.ult === k;
       const b = el('button', 'rd-ult' + (open ? '' : ' locked') + (on ? ' on' : '') + (k.length > 1 ? ' var' : '')); b.type = 'button'; b.id = 'ult-' + k;
-      b.innerHTML = `<b>${sk.name}${sk.boosted ? ` <span class="boost">+${Math.round(sk.boosted * 100)}%</span>` : ''}</b><small>${ultChoiceLabel(k)}${open ? '' : ' · 🔒 ' + (own ? ultUnlockText(k) : '미보유')}${on ? ' · <span class="ok">장착 중</span>' : ''}</small><span>${sk.desc}</span>`;
+      b.innerHTML = `<b>${sk.name}${sk.boosted ? ` <span class="boost">+${Math.round(sk.boosted * 100)}%</span>` : ''}</b><small>${ultChoiceLabel(k)}${open ? '' : ' · 🔒 ' + (own ? ultUnlockText(k, cs) : '미보유')}${on ? ' · <span class="ok">장착 중</span>' : ''}</small><span>${sk.desc}</span>`;
       b.addEventListener('click', () => {
-        if (!open) { Sfx.play('back'); Game.toast(own ? ultUnlockText(k) : '보유하지 않은 캐릭터예요', 900); return; }
+        if (!open) { Sfx.play('back'); Game.toast(own ? ultUnlockText(k, cs) : '보유하지 않은 캐릭터예요', 900); return; }
         Sfx.play('click'); GACHA.setUlt(p, id, k); saveProfile(); render();
       });
       list.appendChild(b);
     }
     wrap.appendChild(list);
-    wrap.appendChild(el('div', 'rd-steps', BREAKTHROUGH.steps.map((s) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파: ${s.text}</span>`).join('')));
+    // ①② = 장비가 정함 (직업 공통 스킬 풀)
+    const pool = gearSkillPool(d.role), cur = own ? EQ.heroLoadout(p, id).skills : {};
+    wrap.appendChild(el('div', 'rd-gear', ['s1', 's2'].map((slot) => `<div><b>${slot === 's1' ? '① 갑옷 스킬' : '② 무기 스킬'}</b> ${pool[slot].map((sid) => `<span class="${cur[slot] === sid ? 'ok' : 'muted'}" title="${SKILLS[sid].desc}">${SKILLS[sid].name}</span>`).join(' · ')}</div>`).join('')));
+    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">필살기 배우기: B Lv10 · C Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파: ${s.text}</span>`).join('')));
     return wrap;
   };
   render();

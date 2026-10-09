@@ -12,7 +12,8 @@ const BattleScene = {
     const waves = encounterFor(node);
     const heroes = partyIds(run).filter((id) => !run.heroes[id].dead).map((id) => {
       const h = run.heroes[id];
-      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: EQ.heroLoadout(Game.profile, id).mods, levelGap: EQ.levelGap(Game.profile, id, run.tier), ultDef: GACHA.ultFor(Game.profile, id) };
+      const lo = EQ.heroLoadout(Game.profile, id);
+      return { id, hp: h.hp, maxHp: h.maxHp, upgrades: h.upgrades, mods: lo.mods, skills: lo.skills, skillRank: lo.skillRank, levelGap: EQ.levelGap(Game.profile, id, run.tier), ultDef: GACHA.ultFor(Game.profile, id) };
     });
     const ti = EQ.tierInfo(run.tier);
     this.sim = new BattleSim({

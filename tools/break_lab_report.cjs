@@ -68,5 +68,26 @@ if (C) {
   }
   L.push('');
 }
+// 장비 ①② 스킬 조합 (직업별 파일을 합친다. 한 직업만 돌린 파일이 우선)
+{
+  const dir = path.join(ROOT, 'data/balance');
+  const files = fs.readdirSync(dir).filter((f) => f.startsWith('break_lab_gear')).sort((a, b) => b.split('_').length - a.split('_').length);
+  const G = {}; let gn = 0, gb = null;
+  // 여러 직업 파일 먼저, 한 직업 파일이 덮어씀
+  for (const f of files) { const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); gn = j.n; gb = j.bosses; for (const c in j.classes) G[c] = j.classes[c]; }
+  if (gb) {
+    const ctxS = {}; const vm = require('vm');
+    vm.createContext(ctxS); vm.runInContext(['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js'].map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n') + '\nthis.S = SKILLS;', ctxS);
+    const S = ctxS.S, CN = { tank: '탱커 (토비)', melee: '근딜 (단비)', ranged: '원딜 (별비)', mage: '매지션 (솔담)', support: '서포터 (보리)' };
+    L.push(`## 4. 장비 스킬 조합 (① 갑옷 × ② 무기, 셀당 ${gn}판)`, '');
+    L.push('기준 파티(탱커 + 근딜 + 서포터, 원딜·매지션은 근딜 자리)에서 해당 직업의 ①② 스킬만 바꿔 측정. 동레벨, 기믹 AI. 칸 = 승률 · 판당 그로기.', '');
+    for (const c of ['tank', 'melee', 'ranged', 'mage', 'support']) {
+      if (!G[c]) continue;
+      L.push(`### ${CN[c]}`, '', '| ① 갑옷 | ② 무기 | ' + gb.map((b) => BN[b]).join(' | ') + ' |', '|---|---|' + gb.map(() => '---').join('|') + '|');
+      for (const r of G[c]) L.push(`| ${S[r.s1].name} | ${S[r.s2].name} | ` + gb.map((b) => `${p(r.cells[b].win)} · ${r.cells[b].breaks}`).join(' | ') + ' |');
+      L.push('');
+    }
+  }
+}
 fs.writeFileSync(path.join(ROOT, 'docs/break_verification.md'), L.join('\n'));
 console.log('wrote docs/break_verification.md');

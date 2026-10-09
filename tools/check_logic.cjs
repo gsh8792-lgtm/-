@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 const typeCount = {};
 for (let seed = 1; seed <= 1000; seed++) {
@@ -238,14 +238,61 @@ if (sa !== sb) fail++;
     const s0 = mk(['danbi']), s1 = mk(['danbi'], { levelGap: 20 }); const hit = (s) => { const b = s.enemies[0], h = s.heroes[0]; const hp = b.hp; s._damage(h, b, 100, { noCrit: true }); return hp - b.hp; };
     if (!(hit(s1) > hit(s0) * 1.4)) errs.push('levelGap not applied'); }
   // 5) 전투 레벨: 장비 등급·강화로 오른다
-  { const p = EQ.newProfile(); const r = makeRng(3); if (EQ.heroLevel(p, 'tobi') !== 0) errs.push('no-gear level');
+  { const p = EQ.newProfile(); const r = makeRng(3); if (EQ.heroLevel(p, 'tobi') !== 1) errs.push('no-gear level ' + EQ.heroLevel(p, 'tobi'));
     for (const slot of EQ.SLOTS) { const base = Object.values(EQ.BASE).find((b) => b.slot === slot && (b.cls === 'tank' || b.cls === 'common')); const it = EQ.rollItem(r, p, { base: base.id, grade: 'C' }); it.enh = 4; p.inv.push(it); p.equip.tobi[slot] = it.uid; }
-    if (EQ.heroLevel(p, 'tobi') !== 24) errs.push('gear level ' + EQ.heroLevel(p, 'tobi')); if (EQ.tierLevel(2) !== 25) errs.push('tier level ' + EQ.tierLevel(2)); }
+    if (EQ.gearLevel(p, 'tobi') !== 24) errs.push('gear level ' + EQ.gearLevel(p, 'tobi')); if (EQ.tierLevel(2) !== 16 + 25) errs.push('tier level ' + EQ.tierLevel(2));
+    const lo = EQ.heroLoadout(p, 'tobi'); if (lo.skills.s1 !== GEAR_SKILLS[EQ.findItem(p, p.equip.tobi.armor).base] || lo.skillRank.s2 !== 1) errs.push('gear skills ' + JSON.stringify(lo.skills)); }
   // 6) 서포터도 평타 사거리 안에서 싸운다
   { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const sim = new BattleSim({ seed: 3, stage: 5, waves: [['ogre_chief']], strategy: st, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
     let shots = 0; while (!sim.outcome && sim.time < 40) { sim.step(1 / 60); shots += sim.events.filter((e) => e.type === 'projectile' && e.from.key === 'bori').length; sim.events.length = 0; }
     if (shots < 16) errs.push('support rarely attacks ' + shots); }
   console.log('boss pressure:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(crush, tank aggro/peel, leap, level gap, gear level, support attacks)');
+  if (errs.length) fail++;
+}
+// 장비 스킬 풀 (갑옷 → ①, 무기 → ②) · 랭크 · 자동 전략 · 그로기 역할 유지 + 캐릭터 레벨
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const ids = Object.keys(GEAR_SKILLS);
+  if (ids.length !== 30 || new Set(Object.values(GEAR_SKILLS)).size !== 30) errs.push('30 distinct gear skills');
+  // 직업별 그로기 역할: 어떤 조합이든 끊기/기절/공명 수단이 남는다
+  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance') };
+  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor' };
+  for (const cls in role) for (const n of [1, 2, 3]) { const sid = GEAR_SKILLS[`${cls}_${roleSlot[cls]}_${n}`]; if (!role[cls](SKILLS[sid])) errs.push('role lost ' + sid); }
+  // 모든 장비 스킬이 실제로 시전되고 오류가 없다
+  const mk = (id, skills, rank) => { const sim = new BattleSim({ seed: 11, stage: 5, waves: [['ogre_chief', 'goblin', 'goblin']], strategy: st0, autoMode: false, partySize: 3, heroes: [id, 'tobi', 'bori'].filter((x, i, a) => a.indexOf(x) === i).map((x) => ({ id: x, hp: 9999, maxHp: 9999, upgrades: {}, skills: x === id ? skills : null, skillRank: x === id ? rank : null })) }); for (let i = 0; i < 150; i++) sim.step(1 / 60); return sim; };
+  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi' };
+  for (const it of ids) {
+    const [cls, kind] = it.split('_'); const slot = kind === 'armor' ? 's1' : 's2'; const hid = clsHero[cls];
+    try {
+      const sim = mk(hid, { [slot]: GEAR_SKILLS[it] }, { [slot]: 0 }); const h = sim.heroes.find((x) => x.key === hid);
+      if (sim.skillDef(h, slot) !== SKILLS[GEAR_SKILLS[it]]) { errs.push('skillDef ' + it); continue; }
+      sim.heroes.forEach((x) => { x.hp = x.maxHp * 0.5; }); h.cds[slot] = 0; h.castLock = 0;
+      for (const e of sim.enemies) { e.x = h.x + 60; e.y = h.y; }
+      const sp = sim.resolveTarget(h, slot); if (!sp) { errs.push('no target ' + it); continue; }
+      if (!sim.cast(h, slot, sp)) { errs.push('cast ' + it); continue; } for (let i = 0; i < 120; i++) sim.step(1 / 60);
+      if (!(h.cds[slot] > 0)) errs.push('cd ' + it);
+    } catch (e) { errs.push(it + ' ' + e.message); }
+  }
+  // 랭크: 같은 스킬, 높은 등급이 더 아프다
+  { const hit = (rank) => { const sim = mk('kai', { s1: 'gs_melee_s1_c' }, { s1: rank }); const h = sim.heroes.find((x) => x.key === 'kai'); const e = sim.enemies.find((x) => x.key === 'goblin'); e.hp = e.maxHp = 1e6; sim.rng = () => 0.5; h.cds.s1 = 0; h.castLock = 0; sim.cast(h, 's1', { unit: e }); for (let i = 0; i < 30; i++) sim.step(1 / 60); return 1e6 - e.hp; };
+    if (!(hit(7) > hit(0) * 1.2)) errs.push('rank'); }
+  // 자동 전략: 바꾼 스킬의 기본 조건을 따른다
+  { const sim = mk('bori', { s2: 'gs_support_s2_b' }); const b = sim.heroes.find((x) => x.key === 'bori'); const c = sim.aiConfig(b, 's2', st0.bori.s2); if (c.cond !== 'always' || c.target !== 'focus') errs.push('ai override ' + JSON.stringify(c)); }
+  // 가시 반격
+  { const sim = mk('tobi', { s1: 'gs_tank_s1_c' }); const t = sim.heroes[0]; const g = sim.enemies.find((x) => x.key === 'goblin'); t.statuses.reflect = { t: 4, value: 0.6 }; const hp = g.hp; sim._damage(g, t, 100, { basic: true }); for (let i = 0; i < 10; i++) sim.step(1 / 60); if (!(g.hp < hp)) errs.push('reflect'); }
+  // 캐릭터 레벨: 경험치 → 레벨업 → 필살기 배움, 잠긴 필살기는 못 고름
+  { const p = GACHA.ensure(EQ.newProfile()); const st = p.chars.danbi;
+    if (st.lv !== 1 || ultChoices('danbi', 0, 1).join() !== 'A') errs.push('lv1 ults');
+    GACHA.setUlt(p, 'danbi', 'B'); if (st.ult !== 'A') errs.push('locked ult equipped');
+    let need = 0; for (let l = 1; l < 10; l++) need += CHAR_LV.expNext(l);
+    const r = GACHA.addExp(p, 'danbi', need); if (st.lv !== 10 || !r.learned.includes('B')) errs.push('levelup ' + JSON.stringify(r));
+    GACHA.setUlt(p, 'danbi', 'B'); if (st.ult !== 'B' || GACHA.ultFor(p, 'danbi') !== SKILLS.danbi_ult_B) errs.push('ult B');
+    GACHA.addExp(p, 'danbi', 1e9); if (st.lv !== CHAR_LV.max || st.exp !== 0) errs.push('max level');
+    if (!(GACHA.ultFor(p, 'danbi').power > SKILLS.danbi_ult_B.power)) errs.push('mastery');
+    if (ultChoices('danbi', 0, 70).length !== 3 || ultChoices('danbi', 5, 70).length !== 6) errs.push('variants need bt');
+    if (EQ.heroLevel(p, 'danbi') !== 70) errs.push('combat level'); }
+  console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(30 skills cast, roles kept, rank, AI, reflect, char level/ults)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);
