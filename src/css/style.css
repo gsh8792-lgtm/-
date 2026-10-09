@@ -572,3 +572,10 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .confirm-box .tier-pick { margin-bottom: 4px; }
 .confirm-box .portal-party { margin: 2px 0; }
 .confirm-box .portal-party span { padding: 2px 10px; flex-direction: row; gap: 6px; align-items: baseline; }
+
+/* ---------- 보상 화면 전투 기록 (한 줄) */
+.reward-meter { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; font-size: 12px; margin: 2px 0; }
+.reward-meter > small { color: #c8c0d8; }
+.rm-chip { background: rgba(0,0,0,.25); border-radius: 8px; padding: 2px 8px; color: #e0d8f0; }
+.rm-chip.dead { opacity: .5; }
+.rm-chip b { color: #ffd34a; }

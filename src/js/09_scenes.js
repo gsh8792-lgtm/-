@@ -129,6 +129,11 @@ const RewardScene = {
     const box = el('div', 'reward-box');
     box.appendChild(el('div', 'scene-title', node.type === 'elite' ? '정예 격파!' : '전투 승리!'));
     box.appendChild(el('div', 'reward-gold', `골드 +${gold} <small>(보유 ${run.gold})</small>`));
+    if (run.lastBattle) { // 전투 기록: 누가 얼마나 때리고·막고·살렸나
+      const B = run.lastBattle, mvp = B.heroes.reduce((a, h) => (!a || h.d + h.hl > a.d + a.hl ? h : a), null);
+      box.appendChild(el('div', 'reward-meter', `<small>전투 ${B.t}초</small> ` + B.heroes.map((h) => `<span class="rm-chip${h.alive ? '' : ' dead'}"><b>${HEROES[h.id].name}${mvp === h ? '👑' : ''}</b> 피해 ${h.d} · 받음 ${h.tk}${h.hl ? ` · 회복 ${h.hl}` : ''}</span>`).join('')));
+      run.lastBattle = null;
+    }
     if (run.lastLoot) {
       const L = run.lastLoot;
       box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));

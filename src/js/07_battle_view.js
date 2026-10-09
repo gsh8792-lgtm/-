@@ -651,6 +651,7 @@ const BattleScene = {
       run.stats.healed[h.id] += h.stats.healed;
     }
     run.stats.kills += sum.kills;
+    run.lastBattle = { t: Math.round(sum.time), heroes: sum.heroes.map((h) => ({ id: h.id, alive: h.alive, d: Math.round(h.stats.dealt), hl: Math.round(h.stats.healed), tk: Math.round(h.stats.taken) })) }; // 보상 화면 전투 기록
     { const kc = {}; for (const e of this.sim.enemies) if (!e.alive && !e.summonedByWipe) kc[e.key] = (kc[e.key] || 0) + 1; for (const k in kc) codexKill(Game.profile, k, kc[k]); }
     run.stats.battles++;
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
