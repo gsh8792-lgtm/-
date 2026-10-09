@@ -305,6 +305,8 @@ if (sa !== sb) fail++;
     const a = genRoom(run, node, type), b = genRoom(run, node, type);
     if (JSON.stringify(a) !== JSON.stringify(b)) errs.push('room not deterministic ' + type);
     if (a.branches.length !== 2 || !a.branches.every((x) => x.items.length && x.hint)) errs.push('fork ' + type);
+    if (!(a.doors[0] >= 200 + 2000 && a.doors[1] - a.doors[0] >= 260 && a.doors[1] - a.doors[0] <= 520)) errs.push('door placement ' + a.doors);
+    if (a.items.some((i) => i.x > a.doors[0] - 100)) errs.push('item past doors');
     for (const ch of [0, 1]) {
       a.chosen = ch; const tr = roomTrack(a);
       const xs = tr.map((i) => i.x); if (xs.some((x, i) => i && x <= xs[i - 1])) errs.push('track order ' + type);
@@ -313,6 +315,7 @@ if (sa !== sb) fail++;
       if (type !== 'boss') { fights += tr.filter((i) => i.kind === 'fight' || i.kind === 'elite').length; rooms++; }
     }
   }
+  { const xs = new Set(); for (let r = 0; r < 12; r++) xs.add(genRoom(run, { stage: 2, row: r % 3, enc: 0 }, 'battle').doors.join()); for (let r = 0; r < 12; r++) xs.add(genRoom({ seed: r }, { stage: 2, row: 0, enc: 0 }, 'battle').doors.join()); if (xs.size < 5) errs.push('doors not random'); }
   const avg = fights / rooms; if (!(avg >= 0.8 && avg <= 2)) errs.push('fights per room ' + avg.toFixed(2));
   // 넓은 전장: 화면 2배 폭에서 걷던 자리 그대로 시작, 적은 오른쪽, 전장 밖으로 나가지 않음
   { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const heroPos = [{ x: 740, y: 342 }, { x: 694, y: 372 }, { x: 648, y: 402 }];

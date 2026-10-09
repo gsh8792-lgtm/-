@@ -14,7 +14,7 @@ for (let i = 0; i < 400; i++) {
   const s = await sc(); if (seen[seen.length - 1] !== s) seen.push(s);
   if (s === 'map' || s === 'result') break;
   const fork = await p.evaluate(() => { const S = window.GAME.Game.scene, r = window.GAME.Game.run.room; return !!(r && r.chosen < 0 && r.x >= r.forkX - 180 && S.doorPick == null && S.forkSeen); });
-  if (fork) { await p.waitForTimeout(300); await p.screenshot({ path: 'test-output/ex_fork.png' }); await p.mouse.click(820, 330); await p.waitForTimeout(500); await p.screenshot({ path: 'test-output/ex_fork_walk.png' }); continue; }
+  if (fork) { await p.waitForTimeout(300); await p.screenshot({ path: 'test-output/ex_fork.png' }); await p.click('#btn-walk'); await p.waitForTimeout(500); await p.screenshot({ path: 'test-output/ex_fork_walk.png' }); continue; }
   if (s === 'explore' && await p.locator('#ex-go').isVisible().catch(() => false)) { await p.screenshot({ path: 'test-output/ex_poi.png' }); await p.click('#ex-go'); continue; }
   if (s === 'reward') { if (await p.locator('#reward-0').count()) { await p.click('#reward-0'); await p.click('#btn-reward-confirm'); } else await p.click('#btn-continue'); continue; }
   if (['event', 'shop', 'rest', 'tree'].includes(s)) { await p.screenshot({ path: `test-output/ex_${s}.png` }); const c = p.locator('#btn-continue, #tree-leave'); if (s === 'event') { const n = p.locator('.event-choices .btn:not([disabled])'); if (await n.count()) await n.first().click(); } await c.first().click(); continue; }

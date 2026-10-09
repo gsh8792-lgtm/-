@@ -54,9 +54,12 @@ function genRoom(run, node, type) {
   };
   const items = [];
   for (const k of plan.first) { items.push(mk(k, x)); x += 700; }
-  const forkX = x - 150;
+  // 갈림길 문 두 개: 위치는 방마다 무작위, 단 들어온 문에서는 멀리 (2000px 이상)
+  const d0 = Math.max(x - 250, EXPLORE.START_X + 2000) + rng.int(0, 700);
+  const doors = [d0, d0 + rng.int(260, 520)];
+  const forkX = doors[0];
   const branches = plan.branches.map((list, bi) => {
-    let bx = forkX + 650;
+    let bx = doors[1] + 650;
     const its = list.map((k) => { const it = mk(k, bx); bx += 650; return it; });
     const real = rng() < 0.75;
     return { items: its, end: bx, hint: EXPLORE_HINTS[real ? its[0].kind : 'none'], side: bi === 0 ? '왼쪽 길' : '오른쪽 길' };
@@ -64,12 +67,11 @@ function genRoom(run, node, type) {
   const after = Math.max(...branches.map((b) => b.end));
   const tail = []; let tx = after;
   for (const k of plan.last) { tail.push(mk(k, tx)); tx += 700; }
-  return { stage: node.stage, row: node.row, type, items, forkX, branches, chosen: -1, tail, exitX: tx + (plan.last.length ? 0 : 100), x: EXPLORE.START_X, theme: node.stage };
+  return { stage: node.stage, row: node.row, type, items, forkX, doors, branches, chosen: -1, tail, exitX: tx + (plan.last.length ? 0 : 100), x: EXPLORE.START_X, theme: node.stage };
 }
 // 지금 길 위에 있는 것들 (갈림길에서 고른 갈래 포함)
 // 갈림길 문 위치 (벽에 난 문 두 개). 문 앞으로 걸어가면 그 길로 들어간다
-const DOOR_GAP = 300;
-function doorX(room, i) { return room.forkX + i * DOOR_GAP; }
+function doorX(room, i) { return room.doors[i]; }
 function roomTrack(room) {
   const out = room.items.slice();
   if (room.chosen >= 0) out.push(...room.branches[room.chosen].items, ...room.tail);
@@ -103,7 +105,14 @@ const ExploreScene = {
     top.appendChild(partyPanel(run, { compact: true }));
     ui.appendChild(top);
     const side = el('div', 'map-actions ex-actions');
-    this.walkBtn = btn('', 'small', () => { this.moving = !this.moving; this.refreshWalk(); }, { id: 'btn-walk' });
+    this.walkBtn = btn('', 'small', () => {
+      const room = Game.run.room;
+      if (room && room.chosen < 0 && room.x >= room.forkX - 180) { // 갈림길에서 전진 = 가까운 문으로
+        const near = Math.abs(room.x - doorX(room, 0)) <= Math.abs(room.x - doorX(room, 1)) ? 0 : 1;
+        this.walkToDoor(near); return;
+      }
+      this.moving = !this.moving; this.refreshWalk();
+    }, { id: 'btn-walk' });
     side.appendChild(this.walkBtn);
     side.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(run), { id: 'btn-strategy' }));
     side.appendChild(btn('🧪 회복약', 'small', () => usePotionFlow(run, () => this.buildHud()), { id: 'btn-potion' }));
@@ -137,7 +146,7 @@ const ExploreScene = {
         if (Math.abs(d) < 1) this.walkTarget = null;
       }
       for (const i of [0, 1]) if (Math.abs(room.x - doorX(room, i)) < 8 && this.doorPick === i) { this.enterDoor(i); break; }
-      this.camX += (doorX(room, 0) + DOOR_GAP / 2 - 480 - this.camX) * Math.min(1, dt * 4);
+      this.camX += ((doorX(room, 0) + doorX(room, 1)) / 2 - 480 - this.camX) * Math.min(1, dt * 4);
       return;
     }
     const next = roomTrack(room).filter((it) => !it.done).sort((a, b) => a.x - b.x)[0];
@@ -197,7 +206,7 @@ const ExploreScene = {
   showForkGuide() {
     this.act.innerHTML = '';
     this.act.appendChild(el('div', 'ex-act-title', '갈림길'));
-    this.act.appendChild(el('div', 'muted', '문이 두 개 있다. 들어갈 문을 탭하면 그 앞으로 걸어가 들어간다.'));
+    this.act.appendChild(el('div', 'muted', '문이 두 개 있다. 문을 탭하면 그 문으로, ▶ 전진을 누르면 가까운 문으로 들어간다.'));
     this.act.classList.remove('hidden');
   },
   // 탭: 갈림길에서는 그 지점(문을 탭하면 그 문)으로 걸어간다
@@ -252,7 +261,8 @@ const ExploreScene = {
     ctx.save(); ctx.translate(-cam, 0);
     // 갈림길 표지판
     if (room.chosen < 0) for (const i of [0, 1]) drawForkDoor(ctx, doorX(room, i), t, room.branches[i], this.doorPick === i);
-    // 출구
+    // 들어온 문 · 출구
+    drawExitDoor(ctx, EXPLORE.START_X - 140, t);
     drawExitDoor(ctx, room.exitX + 60, t);
     const objs = [];
     for (const it of roomTrack(room)) if (!it.done) objs.push({ y: 380, draw: () => drawPoi(ctx, it, t) });

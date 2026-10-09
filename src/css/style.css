@@ -468,7 +468,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .bar.poise::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0, transparent calc(20% - 1px), rgba(0,0,0,0.75) calc(20% - 1px), rgba(0,0,0,0.75) 20%); pointer-events: none; }
 /* 탐험 (방 안) */
 .ex-actions { top: auto; bottom: 14px; right: 14px; }
-.ex-act { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); background: rgba(24,18,36,.92); border: 2px solid rgba(255,230,170,.35); border-radius: 14px; padding: 10px 16px; text-align: center; min-width: 260px; }
+.ex-act { position: absolute; left: 24px; bottom: 22px; max-width: 520px; background: rgba(24,18,36,.92); border: 2px solid rgba(255,230,170,.35); border-radius: 14px; padding: 10px 16px; text-align: center; min-width: 260px; }
 .ex-act-title { font-weight: 900; color: #ffe9a0; margin-bottom: 6px; }
 .fork-box { min-width: 320px; text-align: center; }
 .fork-box .btn-col { margin-top: 10px; }
