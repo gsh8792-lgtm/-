@@ -240,7 +240,7 @@ if (sa !== sb) fail++;
   // 5) 전투 레벨: 장비 등급·강화로 오른다
   { const p = EQ.newProfile(); const r = makeRng(3); if (EQ.heroLevel(p, 'tobi') !== 1) errs.push('no-gear level ' + EQ.heroLevel(p, 'tobi'));
     for (const slot of EQ.SLOTS) { const base = Object.values(EQ.BASE).find((b) => b.slot === slot && (b.cls === 'tank' || b.cls === 'common')); const it = EQ.rollItem(r, p, { base: base.id, grade: 'C' }); it.enh = 4; p.inv.push(it); p.equip.tobi[slot] = it.uid; }
-    if (EQ.gearLevel(p, 'tobi') !== 24) errs.push('gear level ' + EQ.gearLevel(p, 'tobi')); if (EQ.tierLevel(2) !== 16 + 25) errs.push('tier level ' + EQ.tierLevel(2));
+    if (EQ.gearLevel(p, 'tobi') !== 24) errs.push('gear level ' + EQ.gearLevel(p, 'tobi')); if (EQ.tierLevel(2) !== CHAR_LV.recByTier[2] + 25) errs.push('tier level ' + EQ.tierLevel(2));
     const lo = EQ.heroLoadout(p, 'tobi'); if (lo.skills.s1 !== GEAR_SKILLS[EQ.findItem(p, p.equip.tobi.armor).base] || lo.skillRank.s2 !== 1) errs.push('gear skills ' + JSON.stringify(lo.skills)); }
   // 6) 서포터도 평타 사거리 안에서 싸운다
   { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const sim = new BattleSim({ seed: 3, stage: 5, waves: [['ogre_chief']], strategy: st, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
