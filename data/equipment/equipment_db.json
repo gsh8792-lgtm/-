@@ -2026,57 +2026,57 @@
   {
    "tier": 1,
    "name": "견습",
-   "hp": 1.51,
-   "atk": 1.51,
+   "hp": 1.26,
+   "atk": 1.26,
    "recGrade": "UC"
   },
   {
    "tier": 2,
    "name": "숙련",
-   "hp": 1.6,
-   "atk": 1.6,
+   "hp": 1.42,
+   "atk": 1.42,
    "recGrade": "C"
   },
   {
    "tier": 3,
    "name": "정예",
-   "hp": 1.74,
-   "atk": 1.74,
+   "hp": 1.67,
+   "atk": 1.67,
    "recGrade": "R"
   },
   {
    "tier": 4,
    "name": "영웅",
-   "hp": 2.07,
-   "atk": 2.07,
+   "hp": 2.28,
+   "atk": 2.28,
    "recGrade": "SR"
   },
   {
    "tier": 5,
    "name": "전설",
-   "hp": 2.52,
-   "atk": 2.52,
+   "hp": 2.55,
+   "atk": 2.55,
    "recGrade": "SSR"
   },
   {
    "tier": 6,
    "name": "신화",
-   "hp": 3.09,
-   "atk": 3.09,
+   "hp": 3.28,
+   "atk": 3.28,
    "recGrade": "UR"
   },
   {
    "tier": 7,
    "name": "고대",
-   "hp": 4.19,
-   "atk": 4.19,
+   "hp": 4.27,
+   "atk": 4.27,
    "recGrade": "L"
   },
   {
    "tier": 8,
    "name": "태초",
-   "hp": 5.1,
-   "atk": 5.1,
+   "hp": 5.83,
+   "atk": 5.83,
    "recGrade": "E"
   }
  ],

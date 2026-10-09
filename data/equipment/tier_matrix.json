@@ -1,0 +1,292 @@
+{
+ "seeds": 8,
+ "enh": 5,
+ "offsets": [
+  -1,
+  0,
+  1,
+  2
+ ],
+ "rows": [
+  {
+   "tier": 1,
+   "recGrade": "UC",
+   "mult": 1.26,
+   "cells": {
+    "0": {
+     "grade": "UC",
+     "gap": 0,
+     "tank": 0.73,
+     "tankBoss": 0.547,
+     "noTank": 0.16,
+     "noTankBoss": 0
+    },
+    "1": {
+     "grade": "C",
+     "gap": 10,
+     "tank": 0.91,
+     "tankBoss": 0.813,
+     "noTank": 0.66,
+     "noTankBoss": 0.359
+    },
+    "2": {
+     "grade": "R",
+     "gap": 20,
+     "tank": 1,
+     "tankBoss": 1,
+     "noTank": 0.95,
+     "noTankBoss": 0.906
+    }
+   }
+  },
+  {
+   "tier": 2,
+   "recGrade": "C",
+   "mult": 1.42,
+   "cells": {
+    "0": {
+     "grade": "C",
+     "gap": 0,
+     "tank": 0.77,
+     "tankBoss": 0.594,
+     "noTank": 0.19,
+     "noTankBoss": 0
+    },
+    "1": {
+     "grade": "R",
+     "gap": 10,
+     "tank": 0.92,
+     "tankBoss": 0.844,
+     "noTank": 0.7,
+     "noTankBoss": 0.453
+    },
+    "2": {
+     "grade": "SR",
+     "gap": 20,
+     "tank": 1,
+     "tankBoss": 1,
+     "noTank": 1,
+     "noTankBoss": 1
+    },
+    "-1": {
+     "grade": "UC",
+     "gap": -10,
+     "tank": 0.27,
+     "tankBoss": 0.25,
+     "noTank": 0.03,
+     "noTankBoss": 0
+    }
+   }
+  },
+  {
+   "tier": 3,
+   "recGrade": "R",
+   "mult": 1.67,
+   "cells": {
+    "0": {
+     "grade": "R",
+     "gap": 0,
+     "tank": 0.73,
+     "tankBoss": 0.578,
+     "noTank": 0.22,
+     "noTankBoss": 0
+    },
+    "1": {
+     "grade": "SR",
+     "gap": 10,
+     "tank": 0.97,
+     "tankBoss": 0.938,
+     "noTank": 0.79,
+     "noTankBoss": 0.609
+    },
+    "2": {
+     "grade": "SSR",
+     "gap": 20,
+     "tank": 1,
+     "tankBoss": 1,
+     "noTank": 1,
+     "noTankBoss": 1
+    },
+    "-1": {
+     "grade": "C",
+     "gap": -10,
+     "tank": 0.23,
+     "tankBoss": 0.188,
+     "noTank": 0,
+     "noTankBoss": 0
+    }
+   }
+  },
+  {
+   "tier": 4,
+   "recGrade": "SR",
+   "mult": 2.28,
+   "cells": {
+    "0": {
+     "grade": "SR",
+     "gap": 0,
+     "tank": 0.66,
+     "tankBoss": 0.5,
+     "noTank": 0.07,
+     "noTankBoss": 0.016
+    },
+    "1": {
+     "grade": "SSR",
+     "gap": 10,
+     "tank": 0.92,
+     "tankBoss": 0.844,
+     "noTank": 0.74,
+     "noTankBoss": 0.609
+    },
+    "2": {
+     "grade": "UR",
+     "gap": 20,
+     "tank": 1,
+     "tankBoss": 1,
+     "noTank": 1,
+     "noTankBoss": 1
+    },
+    "-1": {
+     "grade": "R",
+     "gap": -10,
+     "tank": 0.11,
+     "tankBoss": 0.156,
+     "noTank": 0,
+     "noTankBoss": 0
+    }
+   }
+  },
+  {
+   "tier": 5,
+   "recGrade": "SSR",
+   "mult": 2.55,
+   "cells": {
+    "0": {
+     "grade": "SSR",
+     "gap": 0,
+     "tank": 0.72,
+     "tankBoss": 0.625,
+     "noTank": 0.14,
+     "noTankBoss": 0
+    },
+    "1": {
+     "grade": "UR",
+     "gap": 10,
+     "tank": 0.98,
+     "tankBoss": 0.953,
+     "noTank": 0.82,
+     "noTankBoss": 0.828
+    },
+    "2": {
+     "grade": "L",
+     "gap": 20,
+     "tank": 1,
+     "tankBoss": 1,
+     "noTank": 1,
+     "noTankBoss": 1
+    },
+    "-1": {
+     "grade": "SR",
+     "gap": -10,
+     "tank": 0.2,
+     "tankBoss": 0.203,
+     "noTank": 0,
+     "noTankBoss": 0
+    }
+   }
+  },
+  {
+   "tier": 6,
+   "recGrade": "UR",
+   "mult": 3.28,
+   "cells": {
+    "0": {
+     "grade": "UR",
+     "gap": 0,
+     "tank": 0.75,
+     "tankBoss": 0.656,
+     "noTank": 0.28,
+     "noTankBoss": 0.188
+    },
+    "1": {
+     "grade": "L",
+     "gap": 10,
+     "tank": 0.98,
+     "tankBoss": 0.953,
+     "noTank": 0.83,
+     "noTankBoss": 0.781
+    },
+    "2": {
+     "grade": "E",
+     "gap": 20,
+     "tank": 1,
+     "tankBoss": 1,
+     "noTank": 1,
+     "noTankBoss": 1
+    },
+    "-1": {
+     "grade": "SSR",
+     "gap": -10,
+     "tank": 0.14,
+     "tankBoss": 0.188,
+     "noTank": 0,
+     "noTankBoss": 0
+    }
+   }
+  },
+  {
+   "tier": 7,
+   "recGrade": "L",
+   "mult": 4.27,
+   "cells": {
+    "0": {
+     "grade": "L",
+     "gap": 0,
+     "tank": 0.73,
+     "tankBoss": 0.656,
+     "noTank": 0.27,
+     "noTankBoss": 0.203
+    },
+    "1": {
+     "grade": "E",
+     "gap": 10,
+     "tank": 0.97,
+     "tankBoss": 0.938,
+     "noTank": 0.83,
+     "noTankBoss": 0.813
+    },
+    "-1": {
+     "grade": "UR",
+     "gap": -10,
+     "tank": 0.16,
+     "tankBoss": 0.234,
+     "noTank": 0,
+     "noTankBoss": 0
+    }
+   }
+  },
+  {
+   "tier": 8,
+   "recGrade": "E",
+   "mult": 5.83,
+   "cells": {
+    "0": {
+     "grade": "E",
+     "gap": 0,
+     "tank": 0.77,
+     "tankBoss": 0.688,
+     "noTank": 0.28,
+     "noTankBoss": 0.188
+    },
+    "-1": {
+     "grade": "L",
+     "gap": -10,
+     "tank": 0.14,
+     "tankBoss": 0.156,
+     "noTank": 0,
+     "noTankBoss": 0
+    }
+   }
+  }
+ ]
+}

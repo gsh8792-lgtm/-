@@ -1,0 +1,64 @@
+{
+ "base": 0.905,
+ "raw": {
+  "C": 1.289,
+  "E": 5.277,
+  "L": 3.861,
+  "R": 1.512,
+  "SR": 2.067,
+  "SSR": 2.31,
+  "UC": 1.137,
+  "UR": 2.966,
+  "none": 0.905
+ },
+ "tiers": [
+  {
+   "tier": 1,
+   "recGrade": "UC",
+   "raw": 1.256,
+   "mult": 1.26
+  },
+  {
+   "tier": 2,
+   "recGrade": "C",
+   "raw": 1.424,
+   "mult": 1.42
+  },
+  {
+   "tier": 3,
+   "recGrade": "R",
+   "raw": 1.671,
+   "mult": 1.67
+  },
+  {
+   "tier": 4,
+   "recGrade": "SR",
+   "raw": 2.284,
+   "mult": 2.28
+  },
+  {
+   "tier": 5,
+   "recGrade": "SSR",
+   "raw": 2.552,
+   "mult": 2.55
+  },
+  {
+   "tier": 6,
+   "recGrade": "UR",
+   "raw": 3.277,
+   "mult": 3.28
+  },
+  {
+   "tier": 7,
+   "recGrade": "L",
+   "raw": 4.266,
+   "mult": 4.27
+  },
+  {
+   "tier": 8,
+   "recGrade": "E",
+   "raw": 5.831,
+   "mult": 5.83
+  }
+ ]
+}

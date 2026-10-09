@@ -93,17 +93,25 @@ function powerBreakdown(cls, grade) {
 }
 
 // ------------------------------------------------------------ 시뮬 준비
-const code = ['00_util.js', '01_data.js', '06_battle_sim.js'].map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '06_battle_sim.js'].map((f) => fs.readFileSync(path.join(ROOT, 'src/js', f), 'utf8')).join('\n');
 const ctx = {}; vm.createContext(ctx);
 vm.runInContext(code + '\nthis.S={BattleSim,ENCOUNTERS,HEROES,HERO_ORDER,AI_PRESETS,CONST};', ctx);
 const { BattleSim, ENCOUNTERS, HEROES, HERO_ORDER, AI_PRESETS } = ctx.S;
 const HERO2CLS = Object.fromEntries(DB.classes.map((c) => [c.hero, c.key]));
 
 // 시뮬에 넣을 장비 보정치(mods): 고유효과·스킬보너스(전투력 %)는 공격력%와 체력%로 절반씩 환산 (근사, 미구현 효과 대체)
+// 강화: 권장 강화 수치(ENH, 기본 +5, 등급 상한까지)만큼 주 스탯 증가
+const ENH = +(process.env.ENH || 5);
+const enhOf = (grade) => Math.min(ENH, DB.enhance.capByGrade[grade]);
+// 전투 레벨 (04b_equip.heroLevel과 같은 식): 등급 순서 × 10 + 강화 / 던전 레벨: 권장 등급 × 10 + 5
+const gearLevel = (grade) => grade ? (G[grade].idx + 1) * 10 + enhOf(grade) : 0;
+const tierLevel = (t) => t && t.recGrade ? (G[t.recGrade].idx + 1) * 10 + 5 : 0;
 function modsFor(heroId, grade) {
   if (!grade) return { mods: {}, hp: 0 };
   const cls = HERO2CLS[heroId];
   const { comp, total } = fullSet(cls, grade);
+  const em = 1 + enhOf(grade) * DB.enhance.mainPerLevel;
+  for (const k in comp.main) total[k] += comp.main[k] * (em - 1);
   const m = Object.assign({}, total);
   const extraPw = comp.innate + comp.skillPw + comp.gemSkillPw; // % 전투력
   m.atk_pct = (m.atk_pct || 0) + extraPw / 100;
@@ -113,33 +121,31 @@ function modsFor(heroId, grade) {
 }
 
 const COMPS = [['tobi', 'danbi', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'soldam']];
-const FIGHTS = [['battle', 4, 0, 'stage4'], ['elite', 4, 0, 'elite4'], ['boss', 5, 0, 'boss']];
+const FIGHTS = [['battle', 4, 0, 'stage4'], ['elite', 4, 0, 'elite4'], ['boss', 5, 0, 'boss'], ['boss', 5, 1, 'boss'], ['boss', 5, 2, 'boss'], ['boss', 5, 3, 'boss']]; // 보스 4종은 평균
 // AI 성향 2종: gimmick = 기믹 활용(② 추천 상황에만 사용, 차지 회피, 그로기 대상 집중) / brute = 딜만(쿨마다 아무 대상에게, 회피 없음)
-const STRAT = {};
-STRAT.gimmick = JSON.parse(JSON.stringify(AI_PRESETS));
-for (const k in STRAT.gimmick) { STRAT.gimmick[k].ult.auto = true; STRAT.gimmick[k].ult.cond = k === 'bori' || k === 'tobi' ? 'allyHpBelow' : 'breakWindow'; STRAT.gimmick[k].ult.param = 55; STRAT.gimmick[k].s2.auto = true; STRAT.gimmick[k].s2.cond = 'hint'; }
-// 기믹 AI = 딜 AI가 하는 것 전부 + 기믹 대응 (① 쿨마다 / 공격용 ② 쿨마다 / 토비 ② 차지 대비 / 보리 ② 다쳤을 때 / ③ 그로기 타이밍)
-for (const k in STRAT.gimmick) { STRAT.gimmick[k].s1.cond = k === 'bori' ? 'allyHpBelow' : 'always'; STRAT.gimmick[k].s1.param = 85; }
-for (const k of ['danbi', 'byeolbi', 'soldam']) STRAT.gimmick[k].s2.cond = 'always';
-STRAT.gimmick.tobi.s2.cond = 'saveForCharge'; STRAT.gimmick.tobi.s2.target = 'charging';
-STRAT.gimmick.tobi.s1.cond = 'saveForCharge'; // 강타가 쿨이면 도발(버티기)로 차지를 받아내 동료 보호
-STRAT.brute = JSON.parse(JSON.stringify(AI_PRESETS));
-for (const k in STRAT.brute) { for (const sl of ['s1', 's2', 'ult']) { STRAT.brute[k][sl].auto = true; STRAT.brute[k][sl].cond = 'always'; if (STRAT.brute[k][sl].target === 'charging' || STRAT.brute[k][sl].target === 'focus') STRAT.brute[k][sl].target = 'nearest'; } }
+// AI 성향 2종 (break_lab과 같음): gimmick = 끊기 타이밍·필살기 자동 판단 / brute = 모든 스킬을 쿨마다 가까운 적에게
+const STRAT = { gimmick: JSON.parse(JSON.stringify(AI_PRESETS)), brute: JSON.parse(JSON.stringify(AI_PRESETS)) };
+for (const k in STRAT.gimmick) { STRAT.gimmick[k].s2.auto = true; STRAT.gimmick[k].ult.auto = true; STRAT.gimmick[k].ult.cond = 'auto'; }
+for (const k in STRAT.brute) for (const sl of ['s1', 's2', 'ult']) { STRAT.brute[k][sl].auto = true; STRAT.brute[k][sl].cond = 'always'; if (['charging', 'focus'].includes(STRAT.brute[k][sl].target)) STRAT.brute[k][sl].target = 'nearest'; }
 let PROFILE = process.env.PROFILE || 'gimmick';
 
-function simCell(grade, tier, seeds, profile) {
+function simCell(grade, tier, seeds, profile, comps) {
   profile = profile || PROFILE;
-  const res = {};
+  const gap = gearLevel(grade) - tierLevel(tier);
+  const acc = {};
   for (const [type, st, i, label] of FIGHTS) {
+    const a = acc[label] = acc[label] || { win: 0, t: 0, hp: 0, n: 0 };
     let win = 0, t = 0, hp = 0, n = 0;
-    for (const comp of COMPS) for (let s = 0; s < seeds; s++) {
-      const heroes = HERO_ORDER.filter((id) => comp.includes(id)).map((id) => { const { mods, hp: mh } = modsFor(id, grade); return { id, hp: Math.round(mh ? mh * 0.85 : HEROES[id].hp * 0.85), maxHp: mh || HEROES[id].hp, upgrades: {}, mods }; });
+    for (const comp of comps || COMPS) for (let s = 0; s < seeds; s++) {
+      const heroes = HERO_ORDER.filter((id) => comp.includes(id)).map((id) => { const { mods, hp: mh } = modsFor(id, grade); return { id, hp: Math.round(mh ? mh * 0.85 : HEROES[id].hp * 0.85), maxHp: mh || HEROES[id].hp, upgrades: {}, mods, levelGap: gap }; });
       const sim = BattleSim.runHeadless({ seed: 9000 + s * 31 + st, stage: st, waves: ENCOUNTERS[type][st][i], strategy: STRAT[profile], heroes, partySize: 3, tier: { hp: tier.hp, atk: tier.atk }, aiProfile: profile }, 240);
       n++; if (sim.outcome === 'win') win++;
       t += sim.time; hp += sim.heroes.reduce((a, h) => a + Math.max(0, h.hp), 0) / sim.heroes.reduce((a, h) => a + h.maxHp, 0);
     }
-    res[label] = { win: +(win / n).toFixed(3), time: +(t / n).toFixed(1), hpLeft: +(hp / n).toFixed(3) };
+    a.win += win; a.t += t; a.hp += hp; a.n += n;
   }
+  const res = {};
+  for (const k in acc) res[k] = { win: +(acc[k].win / acc[k].n).toFixed(3), time: +(acc[k].t / acc[k].n).toFixed(1), hpLeft: +(acc[k].hp / acc[k].n).toFixed(3) };
   return res;
 }
 
@@ -188,28 +194,51 @@ for (const tier of seeds ? DB.tiers : []) {
   process.stdout.write(`tier ${tier.tier} done (${((Date.now() - t0) / 1000).toFixed(0)}s)\n`);
 }
 // 4b) 시뮬 보정: 등급별 '승률 85% 지점' 적 배율을 이분 탐색 → UC 기준 비율 = 난이도 배율 실측 제안
+// 레벨 차이 0(권장 등급 +강화 ENH로 그 단계에 들어감)에서 승률 85% 지점 적 배율을 로그 이분 탐색.
+// 병렬: CAL_GRADES=none,UC node tools/equip_balance.cjs --nosim --calibrate (등급마다 data/equipment/calib/<등급>.json)
+// 합치기: node tools/equip_balance.cjs --nosim --calib-merge → 단계 배율 = 등급 배율 / 장비 없음 배율 (기본 던전과 같은 체감 난이도)
 if (process.argv.includes('--calibrate')) {
-  const target = 0.85;
-  const CS = +(process.env.CAL_SEEDS || 5);
-  const score = (g, m) => { const r = simCell(g, { hp: m, atk: m }, CS); return (r.stage4.win + r.elite4.win + r.boss.win) / 3; };
-  report.calib = {};
-  for (const g of (process.env.CAL_GRADES ? process.env.CAL_GRADES.split(',') : GRADE_CODES)) {
-    let lo = 0.8, hi = 10;
-    for (let i = 0; i < 9; i++) { const mid = (lo + hi) / 2; if (score(g, mid) >= target) lo = mid; else hi = mid; }
-    report.calib[g] = +((lo + hi) / 2).toFixed(3);
-    console.log(`calib ${g}: 승률 ${target * 100}% 지점 적 배율 ${report.calib[g]}`);
+  const target = +(process.env.CAL_TARGET || 0.85);
+  const CS = +(process.env.CAL_SEEDS || 3);
+  const score = (g, m) => { const r = simCell(g === 'none' ? null : g, { hp: m, atk: m, recGrade: g === 'none' ? null : g }, CS); return (r.stage4.win + r.elite4.win + r.boss.win * 2) / 4; };
+  const dir = path.join(ROOT, 'data/equipment/calib'); fs.mkdirSync(dir, { recursive: true });
+  for (const g of (process.env.CAL_GRADES ? process.env.CAL_GRADES.split(',') : ['none'].concat(GRADE_CODES))) {
+    let lo = Math.log(0.4), hi = Math.log(14);
+    for (let i = 0; i < +(process.env.CAL_ITERS || 8); i++) { const mid = (lo + hi) / 2; if (score(g, Math.exp(mid)) >= target) lo = mid; else hi = mid; }
+    const m = +Math.exp((lo + hi) / 2).toFixed(3);
+    fs.writeFileSync(path.join(dir, g + '.json'), JSON.stringify({ grade: g, mult: m, target, seeds: CS, enh: ENH }));
+    console.log(`calib ${g}: 승률 ${target * 100}% 지점 적 배율 ${m}`);
   }
-  // 잡음 제거: ln(배율) = a + b·ln(1 + 전투력) 최소제곱 적합 → 적합값으로 난이도 배율 산출
-  const pts = Object.keys(report.calib).map((g) => { const P = DB.classes.reduce((a, c) => a + powerBreakdown(c.key, g).total, 0) / DB.classes.length; return [Math.log(1 + P / 100), Math.log(report.calib[g]), g]; });
-  if (pts.length >= 3) {
-    const n = pts.length, sx = pts.reduce((a, p) => a + p[0], 0), sy = pts.reduce((a, p) => a + p[1], 0), sxx = pts.reduce((a, p) => a + p[0] * p[0], 0), sxy = pts.reduce((a, p) => a + p[0] * p[1], 0);
-    const b = (n * sxy - sx * sy) / (n * sxx - sx * sx), a = (sy - b * sx) / n;
-    report.calibFit = { a: +a.toFixed(4), b: +b.toFixed(4), fitted: Object.fromEntries(pts.map((p) => [p[2], +Math.exp(a + b * p[0]).toFixed(3)])) };
-    console.log('회귀 적합 (배율 = e^a × (1+전투력)^b):', report.calibFit);
-    report.calibTiers = DB.tiers.map((t) => ({ tier: t.tier, recGrade: t.recGrade, mult: +(report.calibFit.fitted[t.recGrade] / report.calibFit.fitted.UC).toFixed(3) }));
+  process.exit(0);
+}
+if (process.argv.includes('--calib-merge')) {
+  const dir = path.join(ROOT, 'data/equipment/calib');
+  const c = Object.fromEntries(fs.readdirSync(dir).map((f) => { const j = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); return [j.grade, j.mult]; }));
+  let prev = 1;
+  const tiers = DB.tiers.map((t) => { const m = Math.max(prev + 0.05, +(c[t.recGrade] / c.none).toFixed(2)); prev = m; return { tier: t.tier, recGrade: t.recGrade, raw: +(c[t.recGrade] / c.none).toFixed(3), mult: +m.toFixed(2) }; });
+  console.log('기준(장비 없음) 85% 지점:', c.none); for (const t of tiers) console.log(`T${t.tier} ${t.recGrade.padEnd(3)} 실측 ${t.raw} → 배율 ${t.mult}`);
+  fs.writeFileSync(path.join(ROOT, 'data/equipment/calib_tiers.json'), JSON.stringify({ base: c.none, raw: c, tiers }, null, 1));
+  process.exit(0);
+}
+// 단계 × 장비 등급(권장 −1 ~ +2) × 탱커 유무: 동레벨 탱커 파티 ~85%, 탱커 없으면 등급을 올려야(레벨 차) 깨지는가
+if (process.argv.includes('--tier-matrix')) {
+  const MS = +(process.env.SEEDS || 6);
+  const TANK = [['tobi', 'danbi', 'bori'], ['tobi', 'byeolbi', 'soldam']], NOTANK = [['danbi', 'byeolbi', 'bori'], ['byeolbi', 'soldam', 'bori']];
+  const out = { seeds: MS, enh: ENH, offsets: [-1, 0, 1, 2], rows: [] };
+  const sc = (r) => (r.stage4.win + r.elite4.win + r.boss.win * 2) / 4;
+  console.log(`단계 × 장비 등급 (권장 대비, +${ENH}강) — 탱커 파티 / 탱커 없는 파티. 칸 = (일반+정예+보스×2)/4 승률, 괄호 = 보스 승률`);
+  for (const t of DB.tiers) {
+    const gi = G[t.recGrade].idx, row = { tier: t.tier, recGrade: t.recGrade, mult: t.hp, cells: {} };
+    for (const o of out.offsets) {
+      const g = GRADE_CODES[gi + o]; if (!g) continue;
+      const a = simCell(g, t, MS, 'gimmick', TANK), b = simCell(g, t, MS, 'gimmick', NOTANK);
+      row.cells[o] = { grade: g, gap: gearLevel(g) - tierLevel(t), tank: +sc(a).toFixed(2), tankBoss: a.boss.win, noTank: +sc(b).toFixed(2), noTankBoss: b.boss.win };
+    }
+    out.rows.push(row);
+    console.log(`T${t.tier} ${t.recGrade.padEnd(3)} ×${t.hp}  ` + out.offsets.map((o) => { const c = row.cells[o]; return c ? `${c.grade.padEnd(3)}(${c.gap >= 0 ? '+' : ''}${c.gap}) ${Math.round(c.tank * 100)}%(${Math.round(c.tankBoss * 100)}) / ${Math.round(c.noTank * 100)}%(${Math.round(c.noTankBoss * 100)})` : ''; }).map((x) => x.padEnd(34)).join(''));
   }
-  if (report.calib.UC && !report.calibTiers) report.calibTiers = DB.tiers.map((t) => ({ tier: t.tier, recGrade: t.recGrade, mult: +(report.calib[t.recGrade] / report.calib.UC).toFixed(3) }));
-  if (report.calibTiers) console.log('보정된 난이도 배율:', report.calibTiers.map((t) => `T${t.tier}=${t.mult}`).join(' '));
+  fs.writeFileSync(path.join(ROOT, 'data/equipment/tier_matrix.json'), JSON.stringify(out, null, 1));
+  process.exit(0);
 }
 // 5) 난이도 배율 제안: 권장 등급 풀세트 전투력 비율 (UC 기준) = 적 HP·공격력 배율
 const avgP = (g) => DB.classes.reduce((a, c) => a + report.power[c.key][g].total, 0) / DB.classes.length;

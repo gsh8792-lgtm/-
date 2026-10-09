@@ -10,7 +10,8 @@ from openpyxl.comments import Comment
 ROOT = os.path.join(os.path.dirname(__file__), '..')
 DB = json.load(open(os.path.join(ROOT, 'data/equipment/equipment_db.json'), encoding='utf-8'))
 REP = json.load(open(os.path.join(ROOT, 'data/equipment/balance_report.json'), encoding='utf-8'))
-CAL = json.load(open(os.path.join(ROOT, 'data/equipment/calibration.json'), encoding='utf-8'))
+CAL = json.load(open(os.path.join(ROOT, 'data/equipment/calib_tiers.json'), encoding='utf-8'))
+TM = json.load(open(os.path.join(ROOT, 'data/equipment/tier_matrix.json'), encoding='utf-8'))
 
 F = 'Arial'
 f_in = Font(name=F, color='0000FF')
@@ -281,14 +282,14 @@ for k, g in enumerate(GR): put(ws, rr, 5 + k, f'=등급!$M${GROW[g]}', font=f_li
 
 # ------------------------------------------------------------------ 9. 난이도
 ws = sheet('난이도')
-title(ws, '난이도 단계 (영구 장비 성장 대응)', '적 배율 = 권장 등급 풀세트로 기믹 공략 시 승률 85%가 되는 지점 (시뮬 보정 → 로그 회귀)')
-header(ws, 4, ['단계', '이름', '적 체력 배율', '적 공격력 배율', '권장 장비', '보정 실측(85% 지점)', '회귀 곡선', '전 단계 대비'], [7, 10, 12, 13, 10, 18, 11, 12])
+title(ws, '난이도 단계 (영구 장비 성장 대응)', '적 배율 = 권장 등급 풀세트 +5강(레벨 차 0)으로 탱커 파티 승률 85% 지점 ÷ 장비 없음 기준 (짓누름·레벨 보정 반영)')
+header(ws, 4, ['단계', '이름', '적 체력 배율', '적 공격력 배율', '권장 장비', '85% 지점 (절대)', '던전 레벨', '전 단계 대비'], [7, 10, 12, 13, 10, 18, 11, 12])
 for i, t in enumerate(DB['tiers']):
     rr = 5 + i
     put(ws, rr, 1, t['tier']); put(ws, rr, 2, t['name'], font=Font(name=F, bold=True)); put(ws, rr, 3, t['hp'], fmt='0.00'); put(ws, rr, 4, f'=C{rr}', fmt='0.00'); put(ws, rr, 5, t['recGrade'], font=Font(name=F))
-    put(ws, rr, 6, CAL['calib'][t['recGrade']], fmt='0.000'); put(ws, rr, 7, CAL['calibFit']['fitted'][t['recGrade']], fmt='0.000')
+    put(ws, rr, 6, CAL['raw'][t['recGrade']], fmt='0.000'); put(ws, rr, 7, (GR.index(t['recGrade']) + 1) * 10 + 5)
     put(ws, rr, 8, '-' if i == 0 else f'=C{rr}/C{rr - 1}-1', fmt=PCT, font=Font(name=F) if i == 0 else None)
-ws['F4'].comment = Comment('tools/equip_balance.cjs --calibrate (시드 5개/조합): 적 배율을 이분 탐색해 4스테이지 일반·정예·보스 평균 승률이 85%가 되는 값. 시드 수가 적어 잡음이 있어 G열 회귀 곡선을 채택.', 'balance')
+ws['F4'].comment = Comment('tools/equip_balance.cjs --calibrate → --calib-merge (시드 10개/조합): 적 배율을 로그 이분 탐색해 일반·정예·보스 4종 승률이 85%가 되는 값. C열 = 이 값 ÷ 장비 없음 값(' + str(CAL['base']) + '). 잡음 약 ±10%.', 'balance')
 ws.cell(row=14, column=1, value='배율 1.00 = 데모 기본 던전(장비 없음). 견습(T1)부터 장비를 갖춘 원정대를 가정.').font = f_note
 
 # ------------------------------------------------------------------ 10. 드랍테이블
@@ -401,42 +402,24 @@ for s in REP['stackMax']:
 ws.cell(row=r, column=1, value='초과분은 게임에서 상한으로 잘림 (CONST.STAT_CAPS). 일부러 한 스탯을 몰아도 상한까지만 → 빌드 다양성 유도.').font = f_note
 r += 2
 
-cells = REP['sim']['cells']
-fights = REP['sim']['fights']
-fname = {'stage4': '4스테이지 일반', 'elite4': '4스테이지 정예', 'boss': '보스'}
-for prof, pname in (('gimmick', '④ 시뮬 승률 — 기믹 공략 (기절로 차지 끊기, 그로기에 필살기 집중, 위험 범위 회피)'), ('brute', '⑤ 시뮬 승률 — 딜만 (쿨마다 스킬 난사, 가까운 적만 공격)')):
-    put(ws, r, 1, pname, font=f_bold); r += 1
-    ws.cell(row=r, column=1, value='행 = 난이도, 열 = 장비 등급. 값 = 일반/정예/보스 평균 승률. 대각선(권장 등급)이 기믹 기준 85% 근처가 목표.').font = f_note; r += 1
-    gcols = ['없음'] + GR
-    for j, c in enumerate(['난이도'] + gcols, 1):
-        x = ws.cell(row=r, column=j, value=c); x.font = f_head; x.fill = fill_head; x.border = box
-    r += 1
-    for t in DB['tiers']:
-        put(ws, r, 1, f"T{t['tier']} {t['name']} ({t['recGrade']})", font=Font(name=F))
-        for k, g in enumerate(gcols):
-            c = next((c for c in cells if c['tier'] == t['tier'] and c['grade'] == g and c['profile'] == prof), None)
-            if c:
-                v = sum(c[f]['win'] for f in fights) / len(fights)
-                x = put(ws, r, 2 + k, round(v, 3), fmt='0%')
-                x.font = f_calc
-                if g == t['recGrade']: x.fill = PatternFill('solid', fgColor='FFF2B3')
-                if g == t['recGrade'] or (prof == 'brute'): pass
-        r += 1
-    r += 1
-
-put(ws, r, 1, '⑥ 딜찍누 지수 — 같은 등급에서 기믹 vs 딜만, 딜만으로 85%를 넘으려면 필요한 등급 차이', font=f_bold); r += 1
-for j, c in enumerate(['난이도', '권장 등급', '기믹 승률', '딜만 승률', '차이', '딜만 85%에 필요한 추가 등급'], 1):
+put(ws, r, 1, '④ 단계 × 장비 등급 × 탱커 유무 (기믹 AI, 시드 ' + str(TM['seeds']) + '개, +' + str(TM['enh']) + '강)', font=f_bold); r += 1
+ws.cell(row=r, column=1, value='값 = (일반 + 정예 + 보스×2) / 4 승률. 탱커 = 토비+단비+보리 / 토비+별비+솔담, 탱커 없음 = 단비+별비+보리 / 별비+솔담+보리. 괄호 열 = 레벨 차.').font = f_note; r += 1
+hd = ['난이도', '적 배율']
+for o in TM['offsets']: hd += [f'권장{o:+d} 등급', '레벨 차', '탱커', '탱커 없음']
+for j, c in enumerate(hd, 1):
     x = ws.cell(row=r, column=j, value=c); x.font = f_head; x.fill = fill_head; x.border = box
 r += 1
-for b in REP['bruteIndex']:
-    put(ws, r, 1, f"T{b['tier']}"); ws.cell(row=r, column=1).font = Font(name=F)
-    put(ws, r, 2, b['recGrade'], font=Font(name=F)); x = put(ws, r, 3, b['gimmickWin'], fmt='0%'); x.font = f_calc
-    x = put(ws, r, 4, b['bruteWin'], fmt='0%'); x.font = f_calc
-    put(ws, r, 5, f'=C{r}-D{r}', fmt='+0%;-0%;0%')
-    nb = b['bruteNeedsGradesAbove']
-    put(ws, r, 6, '장비 범위 안에서 불가' if nb is None else f'+{nb}등급', font=Font(name=F))
+for row in TM['rows']:
+    put(ws, r, 1, f"T{row['tier']} ({row['recGrade']})", font=Font(name=F)); put(ws, r, 2, row['mult'], fmt='0.00')
+    for k, o in enumerate(TM['offsets']):
+        c = row['cells'].get(str(o)); col = 3 + k * 4
+        if not c: continue
+        put(ws, r, col, c['grade'], font=Font(name=F)); put(ws, r, col + 1, c['gap'])
+        x = put(ws, r, col + 2, c['tank'], fmt='0%'); x.font = f_calc
+        y = put(ws, r, col + 3, c['noTank'], fmt='0%'); y.font = f_calc
+        if o == 0: x.fill = PatternFill('solid', fgColor='FFF2B3'); y.fill = PatternFill('solid', fgColor='FFF2B3')
     r += 1
-ws.cell(row=r, column=1, value='시뮬 결과 값은 tools/equip_balance.cjs (SEEDS=4, 조합 3개) 실행 결과. 재생성: node tools/equip_balance.cjs → python3 tools/build_equipment_xlsx.py').font = f_note
+ws.cell(row=r, column=1, value='재생성: SEEDS=8 node tools/equip_balance.cjs --nosim --tier-matrix → python3 tools/build_equipment_xlsx.py').font = f_note
 
 for w in wb.worksheets:
     for row in w.iter_rows():
