@@ -126,6 +126,7 @@ const HuntScene = {
           if (rare) this.banner = { text: `${it.grade} 장신구 획득!`, sub: EQ.itemName(it), t: 0, dur: 2.6 };
           saveProfile();
         } else Sfx.play('coin');
+        if (e.mob.cls === 'elite') { achAdd(Game.profile, 'huntElite'); achCheck(Game.profile); }
         if (e.mob.cls === 'elite') this.banner = this.banner && this.banner.text.includes('장신구') ? this.banner : { text: `「${e.mob.name}」 처치!`, sub: `경험치 +${Math.round(e.exp)} · 골드 +${e.gold}`, t: 0, dur: 2 };
       }
     }

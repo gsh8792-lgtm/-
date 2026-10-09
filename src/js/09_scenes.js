@@ -572,6 +572,7 @@ const ResultScene = {
     box.appendChild(el('div', 'result-title', win ? '원정 성공!' : run.result === 'retreat' ? '무사 귀환' : run.result === 'giveup' ? '원정 포기' : '원정 실패…'));
     box.appendChild(el('div', 'result-sub', win ? '굴의 주인을 쓰러뜨렸다!' : run.result === 'retreat' ? `${Math.max(1, run.pos.stage)}층에서 계단을 거슬러 마을로 돌아왔다. (골드 절반 · 경험치 75%)` : `${Math.max(1, run.pos.stage)}층에서 원정이 끝났다. (골드 25% · 경험치 50%)`));
     const settle = settleRun(run);
+    achCheck(Game.profile);
     const stats = el('div', 'result-stats');
     stats.innerHTML = `
       <div><b>${Math.floor(sec / 60)}분 ${sec % 60}초</b><small>플레이 시간</small></div>

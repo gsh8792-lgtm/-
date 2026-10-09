@@ -534,7 +534,7 @@ const BattleScene = {
       case 'regenStop': this.popup(e.unit.x, this.unitTop(e.unit) - 16, '재생 멈춤!', '#ffb07a', 16, { label: true }); break;
       case 'reflect': this.popup(e.target.x, this.unitTop(e.target) - 6, `반사 ${e.v}`, '#9cd8ff', 14); this.spark(e.target.x, e.target.y - 30, 4, '#bfe8ff'); break;
       case 'counter': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '반격!', '#bfe8ff', 18, { label: true }); this.spark(e.target.x, e.target.y - 30, 8, '#bfe8ff'); Sfx.play('hit'); this.shake = Math.max(this.shake, 3); break;
-      case 'combo': { const ck = e.unit.uid + e.name, now = performance.now() / 1000; this.comboT = this.comboT || {}; if (!e.blast && (this.comboT[ck] || 0) > now) break; this.comboT[ck] = now + 3; }
+      case 'combo': achAdd(Game.profile, 'combo'); { const ck = e.unit.uid + e.name, now = performance.now() / 1000; this.comboT = this.comboT || {}; if (!e.blast && (this.comboT[ck] || 0) > now) break; this.comboT[ck] = now + 3; }
         this.popup(e.unit.x, this.unitTop(e.unit) - 30, `연계! ${e.name}`, '#ffe066', 19, { label: true }); if (e.blast) { this.fx.push({ type: 'zone', x: e.unit.x, y: e.unit.y, r: e.blast, t: 0, dur: 0.6, color: '170,220,70' }); this.spark(e.unit.x, e.unit.y - 30, 14, '#b8e050'); this.shake = Math.max(this.shake, 5); } break;
       case 'ambush': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '기습!', '#d8b0ff', 20, { label: true }); this.spark(e.target.x, e.target.y - 30, 10, '#c8a0ff'); Sfx.play('hit'); break;
       case 'vengeance': if (e.v > 5) this.popup(e.unit.x, this.unitTop(e.unit) - 34, `응징 +${e.v}`, '#ffb0ff', 18, { label: true }); break;
@@ -652,7 +652,7 @@ const BattleScene = {
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
       if (this.node.dref) dungeonBattleWon(run, this.node.dref); // 던전으로 복귀할 자리·방 정리
-      if (this.node.type === 'boss') { run.result = 'victory'; Game.go('result'); }
+      if (this.node.type === 'boss') { run.result = 'victory'; achBossWin(Game.profile, run, (this.sim.enemies.find((e) => e.def.abilities.includes('boss')) || {}).key); Game.go('result'); }
       else if (this.node.small) { // 복도의 작은 무리: 보상 화면 없이 골드만 챙기고 바로 이어서
         const g = 6 + this.node.stage * 3 + Math.floor(Math.random() * 6); run.gold += g;
         const L = run.lastLoot; run.lastLoot = null;

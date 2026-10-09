@@ -145,7 +145,7 @@ const DungeonScene = {
     box.appendChild(el('p', '', `원정을 여기서 끝낸다. 골드 ${Game.run.gold} 중 절반, 경험치 75%를 가져간다.<br>장비·강화석은 그대로 남는다.`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('계속 탐험', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'retreat-no' }));
-    row.appendChild(btn('후퇴', 'primary', () => { Game.closeModal(); Game.run.result = 'retreat'; Sfx.play('door'); Game.go('result'); }, { id: 'retreat-yes' }));
+    row.appendChild(btn('후퇴', 'primary', () => { Game.closeModal(); Game.run.result = 'retreat'; achAdd(Game.profile, 'retreat'); Sfx.play('door'); Game.go('result'); }, { id: 'retreat-yes' }));
     box.appendChild(row);
     Game.modal(box, { dim: true, closeOnBg: true });
   },

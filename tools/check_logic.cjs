@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
-const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '06_battle_sim.js', '08b_explore.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {}, saveProfile: () => {} }; vm.createContext(ctx);
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -522,6 +522,23 @@ if (sa !== sb) fail++;
   if (b.vanished) errs.push('still vanished'); if (z && Math.abs(b.x - z.x) > 90) errs.push('did not reappear near target');
   if (!ENCOUNTERS.boss[5].some((w) => w[0][0] === 'shadow_king')) errs.push('not in boss pool');
   console.log('shadow king:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(vanish, untargetable, telegraph, reappear, boss pool)');
+  if (errs.length) fail++;
+}
+// 업적 (v0.40): 보스 처치 기록 → 달성 → 보상 1회
+{
+  const errs = [];
+  const p = GACHA.ensure(EQ.newProfile()); const t0 = p.tickets, g0 = p.gold;
+  if (achCheck(p, true).length) errs.push('fresh profile unlocked something');
+  const run = { party: ['tobi', 'danbi', 'bori'], heroes: { tobi: {}, danbi: {}, bori: {} }, oaths: ['iron', 'fury', 'hunger'] };
+  achBossWin(p, run, 'shadow_king');
+  const got = achCheck(p, true).map((a) => a.id).sort().join(',');
+  if (got !== 'boss_shadow_king,first_clear,flawless,oath3') errs.push('got ' + got);
+  if (p.tickets !== t0 + 2 + 2 + 2 || p.gold !== g0 + 150) errs.push(`reward t${p.tickets - t0} g${p.gold - g0}`);
+  if (achCheck(p, true).length) errs.push('granted twice');
+  for (const k of ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle']) achAdd(p, 'boss_' + k);
+  if (!achCheck(p, true).some((a) => a.id === 'boss_all')) errs.push('boss_all');
+  if (ACHIEVEMENTS.some((a) => !a.prog(p) || a.prog(p).length !== 2)) errs.push('prog');
+  console.log('achievements:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(${ACHIEVEMENTS.length} achievements, boss/oath/flawless, rewards once)`);
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

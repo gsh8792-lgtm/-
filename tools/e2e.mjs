@@ -528,6 +528,8 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   await p.click('#btn-codex'); await p.waitForTimeout(200);
   ok('도감: 열기 · 등록된 적 카드 · 연계 효과 안내', await vis(p, '#cx-goblin_archer') && !(await p.locator('#cx-goblin_archer').getAttribute('class')).includes('unknown') && (await p.locator('.codex-combo').innerText()).includes('독연 폭발'));
   await p.screenshot({ path: `${OUT}/codex.png` });
+  await p.click('#codex-ach'); await p.waitForTimeout(150); ok('업적: 도감에서 열기 · 목록', await vis(p, '#ach-first_clear') && await vis(p, '#ach-boss_shadow_king'));
+  await p.screenshot({ path: `${OUT}/achievements.png` }); await p.click('#ach-codex'); await p.waitForTimeout(150);
   await p.click('#codex-close'); ok('도감: 닫기', !(await vis(p, '.codex-box')));
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'portal')); }); await p.waitForTimeout(200);
   await p.click('#oath-iron'); await p.waitForTimeout(100);

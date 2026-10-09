@@ -51,6 +51,7 @@ function openCodex(onClose) {
   const head = el('div', 'inv-head');
   head.appendChild(el('div', 'modal-title', `📖 적 도감 <small>${found} / ${keys.length}</small>`));
   head.appendChild(el('div', 'inv-res', '<span class="muted">처음 만난 적은 등록 보상 골드 · 전투 중에 대응법이 뜬다</span>'));
+  head.appendChild(btn('🏆 업적', 'small', () => openAchievements(onClose), { id: 'codex-ach', sfx: 'click' }));
   head.appendChild(btn('닫기', 'small', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'codex-close', sfx: 'back' }));
   box.appendChild(head);
   box.appendChild(el('div', 'codex-combo', '<b>⚡ 연계 효과</b> — 서로 다른 직업의 상태이상이 만나면 터진다<br>' + COMBO_INFO.map((c) => `<span><b>${c.name}</b> ${c.how} → ${c.fx}</span>`).join('')));
