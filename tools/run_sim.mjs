@@ -26,7 +26,7 @@ await p.evaluate(() => {
   setInterval(() => { const L = window.__log, fl = G.run && G.run.dungeon; if (!L || !fl) return; const k = fl.floor + ':' + (fl.at.corr !== undefined ? 'c' + fl.at.corr + ':' + fl.at.from : 'r' + fl.at.room); if (k !== L.lastK) { L.lastK = k; if (fl.at.corr !== undefined) L.corr[fl.floor] = (L.corr[fl.floor] || 0) + 1; else L.rooms[fl.floor] = (L.rooms[fl.floor] || 0) + 1; } }, 20);
 });
 const out = [];
-for (let i = 0; i < RUNS; i++) {
+for (let i = +(process.env.START || 0); i < RUNS; i++) { // START=3: 4번째 시드부터
   const party = PARTIES[i % PARTIES.length], seed = 1000 + i * 37;
   await p.evaluate(([s, M, SM]) => { const G = window.GAME.Game; window.__log = { battles: [], corr: {}, rooms: {} }; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1, explore: 1, dungeon: 1 }; G.debug.simMult = M; G.debug.smartAuto = SM; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, [seed, MULT, SMART]);
   await p.waitForTimeout(200);
