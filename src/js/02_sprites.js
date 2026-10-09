@@ -700,8 +700,8 @@ const SpriteCache = {};
 const _imgCache = {};
 
 function getSprite(name) {
-  const d = ART[name];
-  return { w: (d.box[2] - d.box[0]) * UNIT_TO_PX * 0.7, h: d.top * UNIT_TO_PX };
+  const d = ART[name], sh = spriteSheetFor(name);
+  return { w: (d.box[2] - d.box[0]) * UNIT_TO_PX * 0.7, h: d.top * UNIT_TO_PX * (sh ? (sh.hMul || 1.18) * 0.92 : 1) }; // 3D 시트는 키가 더 크다 (머리 위 표시 위치)
 }
 
 function renderLayer(name, layer, variant, k) {

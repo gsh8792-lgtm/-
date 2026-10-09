@@ -4,7 +4,7 @@
 // GLB → 정사영 카메라로 한 장씩 렌더 (bake_q3d.mjs가 호출)
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-const S = 640;
+const S = 1024; // 크게 그려 줄인다 (디테일 보존)
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
 renderer.setSize(S, S); renderer.setClearColor(0, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
 document.body.appendChild(renderer.domElement);
@@ -15,6 +15,27 @@ const sun = new THREE.DirectionalLight(0xffe8cc, 1.5); sun.position.set(-3, 4, 3
 const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
 const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('glb'));
 const root = gltf.scene; scene.add(root);
+// Unity 검수본과 같은 셰이딩 (?style=unity, 기본): SWI의 ReferenceCharacterToon.shader를 그대로 옮김
+//   색 = 텍스처 × lerp(그늘 틴트, 1, smoothstep(0.1-0.08, 0.1+0.08, N·L)), 그늘 틴트 = lerp(1, (0.78,0.75,0.86), 0.25)
+//   키라이트 = Unity Euler(35,-30,0) 방향광 (Unity 좌표 → three: x 반전)
+const STYLE = new URLSearchParams(location.search).get('style') || 'unity';
+const uLight = { value: new THREE.Vector3() };
+const LIGHT_DIR = new THREE.Vector3(-0.41, 0.574, -0.709).normalize(); // 빛이 오는 쪽 (월드)
+if (STYLE === 'unity') {
+  const srgb2lin = (c) => Math.pow(c, 2.2);
+  const shade = new THREE.Vector3(...[0.78, 0.75, 0.86].map((c) => 1 + (srgb2lin(c) - 1) * 0.25));
+  const cache = new Map();
+  root.traverse((o) => { if (!o.isMesh) return; const m = o.material; if (cache.has(m)) { o.material = cache.get(m); return; }
+    const b = new THREE.MeshBasicMaterial({ map: m.map, transparent: m.transparent, alphaTest: m.alphaTest, side: THREE.DoubleSide });
+    b.onBeforeCompile = (sh) => {
+      sh.uniforms.uLight = uLight; sh.uniforms.uShade = { value: shade };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vVN;')
+        .replace('#include <defaultnormal_vertex>', '#include <defaultnormal_vertex>\nvVN = normalize(transformedNormal);'); // 스킨 메시는 basic 재질도 법선을 계산한다
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vVN; uniform vec3 uLight; uniform vec3 uShade;')
+        .replace('#include <map_fragment>', '#include <map_fragment>\nfloat ndl = dot(normalize(vVN), uLight); float lit = smoothstep(0.02, 0.18, ndl); diffuseColor.rgb *= mix(uShade, vec3(1.0), lit);');
+    };
+    cache.set(m, b); o.material = b; });
+}
 // 카툰 렌더링 (?toon=1): 3단 계단 명암 + 텍스처 색 단순화(포스터화·채도↑) — 셀 애니메이션 느낌
 if (new URLSearchParams(location.search).get('toon') === '1') {
   const steps = new Uint8Array([72, 158, 255]); // 그림자 · 중간 · 밝음
@@ -45,6 +66,7 @@ window.SHOT = (clip, t, yawDeg, pitchDeg, head) => {
   cam.left = -h; cam.right = h; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
   const d = 10; cam.position.set(ctr.x + Math.sin(yaw) * Math.cos(pitch) * d, ctr.y + Math.sin(pitch) * d, ctr.z + Math.cos(yaw) * Math.cos(pitch) * d);
   cam.lookAt(ctr.x, ctr.y, ctr.z);
+  cam.updateMatrixWorld(); uLight.value.copy(LIGHT_DIR).transformDirection(cam.matrixWorldInverse); // 뷰 공간 빛 방향
   renderer.render(scene, cam);
   return renderer.domElement.toDataURL('image/png');
 };
