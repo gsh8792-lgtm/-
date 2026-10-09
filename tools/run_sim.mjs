@@ -4,7 +4,7 @@
 import { chromium } from 'playwright';
 import path from 'path';
 const RUNS = +(process.argv[2] || 6), MULT = +(process.argv[3] || 16), SMART = process.argv[4] === 'smart'; // smart: 잘 컨트롤하는 플레이어 흉내
-const LV = +(process.env.LV || 5), GEAR = process.env.GEAR || 'uc'; // 준비된 파티: 캐릭터 레벨 LV + 상인 UC 무기·갑옷 (GEAR=none이면 맨몸)
+const LV = +(process.env.LV || 5), GEAR = process.env.GEAR || 'uc', PREP = process.env.PREP !== '0'; // PREP: 상인에게서 물약 4 · 상급 1 · 식량 3 · 함정 도구 1을 사 가고, 던전에서 HP 40% 아래 동료에게 쓴다 // 준비된 파티: 캐릭터 레벨 LV + 상인 UC 무기·갑옷 (GEAR=none이면 맨몸)
 const PARTIES = [['tobi', 'danbi', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -31,19 +31,24 @@ for (let i = 0; i < RUNS; i++) {
   await p.evaluate(([s, M, SM]) => { const G = window.GAME.Game; window.__log = { battles: [], corr: {}, rooms: {} }; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1, explore: 1, dungeon: 1 }; G.debug.simMult = M; G.debug.smartAuto = SM; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, [seed, MULT, SMART]);
   await p.waitForTimeout(200);
   await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, party);
-  await p.evaluate(([pt, lv, gear]) => { const { Game, EQ, makeRng } = window.GAME, P = Game.profile;
+  await p.evaluate(([pt, lv, gear, prep]) => { const { Game, EQ, makeRng } = window.GAME, P = Game.profile;
     for (const id in P.chars) { P.chars[id].lv = lv; P.chars[id].exp = 0; }
     for (const id of pt) for (const s of EQ.SLOTS) P.equip[id][s] = null;
     if (gear === 'uc') for (const id of pt) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(7 + id.length), P, { base: base.id, grade: 'UC' }); P.inv.push(it); P.equip[id][slot] = it.uid; }
-  }, [party, LV, GEAR]);
+    if (prep) Object.assign(Game.run, { potions: 4, bigPotions: 1, food: 3, trapKits: 1 });
+  }, [party, LV, GEAR, PREP]);
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'chest')); });
   await p.click('#btn-automove'); await p.waitForSelector('#portal-yes', { timeout: 20000 }); await p.click('#portal-yes');
   const t0 = Date.now();
   for (let step = 0; step < 6000 && Date.now() - t0 < 900000; step++) {
     for (let k = 0; k < 3; k++) if (!(await clickIf('#hint-ok'))) break;
     const sc = await scene();
+    if (process.env.DEBUG && step % 40 === 0) console.log('dbg', Math.round((Date.now() - t0) / 1000) + 's', sc, await p.evaluate(() => { const G = window.GAME.Game, fl = G.run.dungeon, S = G.scene; return JSON.stringify({ modal: G.modalOpen, ov: G.modalOpen ? G.overlay.innerText.slice(0, 60) : '', floor: fl && fl.floor, at: fl && fl.at, sim: S.sim ? { t: Math.round(S.sim.time), out: S.sim.outcome } : null }); }));
     if (sc === 'result') break;
-    if (sc === 'dungeon') { await p.waitForTimeout(120); continue; }
+    if (sc === 'dungeon') {
+      if (PREP) await p.evaluate(() => { const r = window.GAME.Game.run; for (const id of r.party) { const h = r.heroes[id]; if (h.dead || h.hp > h.maxHp * 0.4) continue; if (r.bigPotions > 0) { r.bigPotions--; h.hp = h.maxHp; } else if (r.potions > 0) { r.potions--; h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.5); } } });
+      await p.waitForTimeout(120); continue;
+    }
     if (sc === 'battle') { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle' || !!document.querySelector('#hint-ok'), null, { timeout: 180000 }); continue; }
     if (sc === 'reward') { if (await vis('#reward-0')) { await p.click('#reward-0'); await p.click('#btn-reward-confirm'); } else await p.click('#btn-continue'); continue; }
     if (sc === 'event') { const n = await p.locator('.event-choices .btn:not([disabled])').count(); if (n) await p.locator('.event-choices .btn:not([disabled])').first().click(); await clickIf('#btn-continue'); continue; }

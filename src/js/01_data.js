@@ -246,7 +246,7 @@ const BOSS_KITS = {
 };
 const WIPE_AT = [0.6, 0.25], WIPE_EVERY = 70;
 // 자동 모드의 늦은 반응 (초): 장판이 생기고 이만큼 지나야 피한다. 수동으로 직접 끌어 피하면 바로 — 컨트롤의 몫
-const AUTO_REACT = { impact: 0.85, pool: 1.2, safe: 1.6 };
+const AUTO_REACT = { impact: 0.85, pool: 1.2, safe: 1.6, charge: 1.5 };
 
 // 정예 변이: 정예 전투의 우두머리(가장 HP가 큰 적)에 하나가 붙는다 (HP +25%)
 const ELITE_AFFIXES = {

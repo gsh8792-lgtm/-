@@ -224,8 +224,8 @@ class BattleSim {
       if (!u.cmd || u.cmd.auto) u.cmd = { type: 'move', x: safe.x + (i - 1) * 34, y: safe.y + ((i % 2) ? 18 : -18), auto: true };
       return false;
     }
-    // 적 차지(원형 강공격): 자동은 피하지 않는다 (끊기는 전략, 피하기는 손으로) — 측정용 컨트롤 흉내만 피한다
-    if (this.smartAuto) for (const e of this.enemies) if (e.alive && e.charge && e.charge.r && e.charge.t < 1.4 && u.role !== 'tank' && this.distXY(u, e.charge.cx, e.charge.cy) <= e.charge.r + 12) {
+    // 적 차지(원형 강공격): 자동은 늦게(AUTO_REACT.charge초 뒤) 피한다 — 대개 늦는다. 컨트롤 흉내는 제때
+    for (const e of this.enemies) if (e.alive && e.charge && e.charge.r && u.role !== 'tank' && (this.smartAuto ? e.charge.t < 1.4 : e.charge.total - e.charge.t >= AUTO_REACT.charge) && this.distXY(u, e.charge.cx, e.charge.cy) <= e.charge.r + 12) {
       const dir = u.x >= e.charge.cx ? 1 : -1; u.tx = clamp(e.charge.cx + dir * (e.charge.r + 40), this.X0, this.X1); u.ty = u.y; return true;
     }
     for (const z of this.zones) if ((z.kind === 'impact' || z.kind === 'pool') && R(z) && this.distXY(u, z.x, z.y) <= z.r + 12) {
@@ -321,7 +321,7 @@ class BattleSim {
         if (u.target && !u.target.alive) u.target = null;
         return;
       }
-      if (this.autoMode && !intro && (this.fullAuto || this.smartAuto) && (this.zones.length || this.smartAuto) && this._zoneMove(u)) return; // 큰 전투에서 자동은 피하지 않는다 (회피는 손으로)
+      if (this.autoMode && !intro && this._zoneMove(u)) return; // 자동 회피는 늦다 (AUTO_REACT) — 제때 피하려면 손으로
       const tank = this.tankHero();
       const anchor = tank && tank !== u ? tank : this.frontHero();
       if (intro || !u.target) { // 입장/대기: 기본 대형
