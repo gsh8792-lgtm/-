@@ -73,6 +73,8 @@ const CONST = {
   ULT_POISE_OUTSIDE: 0.5,      // 필살기 추가 그로기: 흔들림 밖에서는 절반
   UNBLOCKED_ENRAGE_FROM: 3, UNBLOCKED_ENRAGE_STACK: 0.1, // 끊지 못한 차지 3회째부터 격노 스택
   UNBLOCKED_CALL_ARMOR: 0.8, UNBLOCKED_CALL_DUR: 10,      // 끊지 못한 호출: 방어 태세 강화
+  REGEN_CAP: 1.0,              // 재생(동굴 트롤)은 전투당 최대 HP 100%까지
+  STALL_ENRAGE: 240,           // 보스가 아닌 전투가 4분을 넘으면 적 공격력이 10초마다 +10% (교착 방지)
   SOFT_ENRAGE_STEP: 0.05,      // 보스 소프트 인레이지: 10초마다 공격력 +5%
   // 장비 스탯 상한 (장비 DB 밸런스 분석 결과)
   STAT_CAPS: { dr: 0.5, cdr: 0.4, crit: 0.6, aspd: 0.5, mspd: 0.5, ultgain: 0.8 },

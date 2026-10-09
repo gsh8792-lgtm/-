@@ -536,7 +536,7 @@ class BattleSim {
       }
     }
     // 트롤: 화상·출혈이 없으면 빠르게 재생한다 (정답: 불·출혈로 재생을 막고 몰아친다)
-    if (d.regen && u.hp < u.maxHp) { if (u.statuses.burn || u.statuses.bleed || u.statuses.poison) { if (!u.regenOff) { u.regenOff = true; this.events.push({ type: 'regenStop', unit: u }); } } else { u.regenOff = false; u.hp = Math.min(u.maxHp, u.hp + u.maxHp * d.regen * dt); } }
+    if (d.regen && u.hp < u.maxHp) { if (u.statuses.burn || u.statuses.bleed || u.statuses.poison) { if (!u.regenOff) { u.regenOff = true; this.events.push({ type: 'regenStop', unit: u }); } } else if ((u.regenUsed || 0) < u.maxHp * CONST.REGEN_CAP) { u.regenOff = false; const a = Math.min(u.maxHp - u.hp, u.maxHp * d.regen * dt); u.hp += a; u.regenUsed = (u.regenUsed || 0) + a; if (u.regenUsed >= u.maxHp * CONST.REGEN_CAP) this.events.push({ type: 'regenStop', unit: u, spent: true }); } } // 재생은 전투당 최대 HP의 REGEN_CAP까지 (탱커+서포터만 남아도 끝나게)
     // 덫사냥꾼: 주기적으로 영웅 발밑에 끈끈이 덫(초록 웅덩이)을 던진다 (정답: 덫에서 빼내거나 먼저 잡는다)
     if (d.trapEvery && !stunned) { u.trapCd = (u.trapCd === undefined ? d.trapEvery * 0.6 : u.trapCd) - dt; if (u.trapCd <= 0) { u.trapCd = d.trapEvery; const hs = this.aliveHeroes(); if (hs.length) { const v = hs.filter((h) => !h.melee)[0] || hs[0]; this.zones.push({ kind: 'pool', x: v.x, y: v.y, r: 70, t: 6, total: 6, dps: this._atkOf(u) * 0.5, src: u, acc: 0, name: '끈끈이 덫', slow: true }); this.events.push({ type: 'bossSkill', unit: u, name: '끈끈이 덫', target: v }); } } }
     // 광전사: 멀리 있는 약한 영웅에게 도약 (예고 1초) — 정답: 기절로 끊거나 대상을 탱커 쪽으로 빼낸다
@@ -664,6 +664,7 @@ class BattleSim {
     if (u.side === 'enemy') {
       if (u.enrageStacks) m += u.enrageStacks * CONST.UNBLOCKED_ENRAGE_STACK;
       if (CONST.BREAK_V2 && u.def.softEnrage && this.time > u.def.softEnrage) m += CONST.SOFT_ENRAGE_STEP * Math.floor((this.time - u.def.softEnrage) / 10 + 1);
+      else if (!u.def.softEnrage && this.time > CONST.STALL_ENRAGE) m += CONST.SOFT_ENRAGE_STEP * 2 * Math.floor((this.time - CONST.STALL_ENRAGE) / 10 + 1); // 일반 전투가 너무 길어지면 적이 지치지 않고 광폭 (교착 방지)
     }
     if (u.side === 'hero' && u.def.traits.includes('brave')) m += 0.4 * (1 - u.hp / u.maxHp);
     if (u.side === 'hero' && this.focus && u.target === this.focus) m += 0.1; // 집중 공격 보너스

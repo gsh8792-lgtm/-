@@ -552,4 +552,16 @@ if (sa !== sb) fail++;
   console.log('second dungeon:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(mine encounters valid, boss pool, unlock)');
   if (errs.length) fail++;
 }
+// 교착 방지 (v0.46): 트롤 재생 한도 · 4분 넘은 일반 전투 광폭
+{
+  const errs = [];
+  const sim = new BattleSim({ seed: 2, stage: 3, waves: [['cave_troll']], strategy: JSON.parse(JSON.stringify(AI_PRESETS)), autoMode: false, partySize: 1, heroes: [{ id: 'bori', hp: 99999, maxHp: 99999, upgrades: {}, ultDef: null }] });
+  const t = sim.enemies[0];
+  for (let i = 0; i < 60 * 30; i++) { sim.step(1 / 60); if (t.hp > t.maxHp * 0.5) t.hp = t.maxHp * 0.5; }
+  if (!(t.regenUsed >= t.maxHp * CONST.REGEN_CAP - 1)) errs.push('regen cap not reached ' + Math.round(t.regenUsed));
+  const h0 = t.hp; for (let i = 0; i < 60 * 5; i++) sim.step(1 / 60); if (t.hp > h0 + 1) errs.push('regen after cap');
+  const a0 = sim._atkOf(t); sim.time = CONST.STALL_ENRAGE + 25; if (!(sim._atkOf(t) > a0 * 1.25)) errs.push('stall enrage');
+  console.log('stalemate guard:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(troll regen cap, long battle enrage)');
+  if (errs.length) fail++;
+}
 process.exit(fail ? 1 : 0);
