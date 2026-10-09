@@ -26,8 +26,9 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp, atk: ti.atk * f * o.atk }; })(),
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
-      eliteAffix: node.affix || null, named: node.named || null, surprise: !!(ex && ex.surprise) && !(run.camp && run.camp.guard),
+      eliteAffix: node.affix || null, named: node.named || null, surprise: (!!(ex && ex.surprise) || !!run.ambushNext) && !(run.camp && run.camp.guard),
     });
+    run.ambushNext = false; // 우상의 저주는 한 번
     if (run.camp) { // 야영 활동 효과 (다음 전투 한 번)
       for (const h of this.sim.heroes) { if (run.camp.ult) h.ult = Math.min(100, h.ult + run.camp.ult); if (run.camp.guard) h.statuses.shield = { t: 20, value: h.maxHp * 0.12 }; }
       run.camp = null;

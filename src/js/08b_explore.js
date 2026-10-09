@@ -278,6 +278,19 @@ const DungeonScene = {
         ['횃불을 적셔 둔다', () => { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 30); return '횃불 +30'; }],
         ['지나간다', () => '샘을 지나쳤다'],
       ],
+      idol: [
+        ['보석을 뜯어낸다', () => { const s = 2 + fl.floor; Game.profile.stones += s; run.stonesGot += s; hurtAll(0.08); return `강화석 +${s}. 우상의 저주! 파티 HP -8%`; }],
+        ['머리를 조아린다', () => { if (rng() < 0.5) { run.fruit = { bonus: Math.max(0.15, (run.fruit && run.fruit.bonus) || 0), battles: 3 }; return '검은 힘이 스며든다. 3전투 동안 공격력 +15%'; } run.ambushNext = true; return '우상의 눈이 번뜩였다… 다음 전투는 기습당한다!'; }],
+        ['지나간다', () => '우상을 외면했다'],
+      ],
+      cache: [
+        ['손을 넣어 뒤진다', () => { const rogue = alive.some((id) => HEROES[id].role === 'rogue'); const v = rng(); if (!rogue && v < 0.25) { hurtAll(0.06); return '쥐에게 물렸다! 파티 HP -6%'; } const n = rogue ? 2 : 1; run.potions += n; run.trapKits = (run.trapKits || 0) + (v < 0.5 ? 1 : 0); return `회복약 +${n}` + (v < 0.5 ? ' · 함정 해제 도구 +1' : '') + (rogue ? ' (도적이 솜씨 좋게 꺼냈다)' : ''); }],
+        ['지나간다', () => '보급품을 두고 지나갔다'],
+      ],
+      stele: [
+        ['이름을 기린다', () => { run.camp = Object.assign(run.camp || {}, { ult: Math.max(25, (run.camp && run.camp.ult) || 0) }); return '마음을 다잡았다. 다음 전투 필살기 게이지 +25'; }],
+        ['기록을 베껴 쓴다', () => { run.pendExp = run.pendExp || {}; const e = 12 + fl.floor * 6; for (const id of alive) run.pendExp[id] = (run.pendExp[id] || 0) + e; return `옛 원정의 교훈. 원정이 끝나면 경험치 +${e} (각자)`; }],
+      ],
     }[it.curio];
     const finish = (fn) => { Game.closeModal(); it.done = true; const text = fn(); Sfx.play('coin'); this.fx.push({ x: p.x, y: 300, text, t: 0, dur: 2.2 }); Game.toast(`${C.icon} ${text}`, 2000); this.buildHud(); };
     if (run.autoMode) { const safe = opts.find((o) => o[0].startsWith('🧰')) || opts.find((o) => o[0].startsWith('🗝')) || opts[opts.length - 1]; finish(safe[1]); return; } // 자동: 위험 없는 쪽
