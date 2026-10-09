@@ -355,7 +355,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 
 /* ---------- 장비창 / 대장간 */
 .inv-modal .modal { padding: 10px 12px; max-height: 528px; overflow: hidden; }
-.inv-box { width: 920px; height: 500px; display: flex; flex-direction: column; }
+.inv-box { width: 896px; height: 500px; display: flex; flex-direction: column; }
 .inv-head { display: flex; align-items: center; gap: 14px; }
 .inv-head .modal-title { margin: 0; }
 .inv-res { flex: 1; display: flex; gap: 14px; font-weight: 700; color: var(--text); }
@@ -512,4 +512,19 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .tc-node.cap { border-color: #c8a03a; }
 .tc-node.cap.on { background: #4a3a1a; }
 
+/* ---------- 적 도감 */
+.codex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 8px; margin-top: 8px; overflow-y: auto; flex: 1; min-height: 0; align-content: start; }
+.codex-combo { font-size: 12px; color: #e8e0f0; background: rgba(255,224,102,.08); border: 1px solid rgba(255,224,102,.35); border-radius: 10px; padding: 6px 10px; margin-top: 6px; line-height: 1.5; }
+.codex-combo span { display: inline-block; margin-right: 14px; }
+.codex-combo span b { color: #ffe066; }
+.codex-card { display: flex; gap: 8px; align-items: flex-start; background: #2e2646; border: 2px solid #4a3e6a; border-radius: 10px; padding: 6px 8px; }
+.codex-card.elite { border-color: #6a8ac8; }
+.codex-card.boss { border-color: #c8a03a; background: #3a2e2a; }
+.codex-card.unknown { opacity: .7; }
+.codex-card canvas { flex: none; border-radius: 8px; background: rgba(0,0,0,.25); }
+.cx-txt { font-size: 13px; color: #eee; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cx-txt small { color: #c8c0d8; font-size: 11px; }
+.cx-kind { font-size: 11px; color: #ffd34a; }
+.cx-tags span { display: inline-block; font-size: 10px; background: #4a3e6a; border-radius: 6px; padding: 1px 5px; margin: 0 3px 2px 0; }
+.cx-ans { font-size: 12px; color: #bfe8a8; line-height: 1.35; }
 .talent-box .inv-head { flex-wrap: wrap; }

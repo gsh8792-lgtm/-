@@ -478,4 +478,22 @@ if (sa !== sb) fail++;
   console.log('rogue class:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(opening stealth, untargetable, ambush, poison 5 stacks, detonate, backline, gear/talents)');
   if (errs.length) fail++;
 }
+// 연계 효과 (v0.37): 독연 폭발 · 동결 · 상처 벌리기
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = () => new BattleSim({ seed: 9, stage: 2, waves: [['orc', 'orc', 'goblin']], strategy: st0, autoMode: false, partySize: 3, heroes: ['soldam', 'yeon', 'bori'].map((id) => ({ id, hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null })) });
+  { const sim = mk(); for (let i = 0; i < 90; i++) sim.step(1 / 60); const [a, b] = sim.enemies; b.x = a.x + 30; b.y = a.y; const m = sim.heroes[0], y = sim.heroes[1];
+    sim._applyStatus(m, a, { status: 'burn', dur: 5, dps: 0.3 }); const ha = a.hp, hb = b.hp; sim._applyStatus(y, a, { status: 'poison', dur: 8, dps: 0.2 });
+    if (a.statuses.burn) errs.push('burn not consumed'); if (!(ha - a.hp > 20 && hb - b.hp > 10)) errs.push(`blast ${ha - a.hp}/${hb - b.hp}`);
+    if (!b.statuses.poison) errs.push('poison not spread'); if (!sim.events.some((e) => e.type === 'combo' && e.name === '독연 폭발')) errs.push('no blast event'); }
+  { const sim = mk(); for (let i = 0; i < 90; i++) sim.step(1 / 60); const e = sim.enemies[2], m = sim.heroes[0];
+    sim._applyStatus(m, e, { status: 'slow', dur: 4, value: 0.3 }); sim._applyStatus(m, e, { status: 'stun', dur: 1 }); sim.step(1 / 60);
+    if (!(e.statuses.stun && e.statuses.stun.t > 1.4)) errs.push('freeze ' + (e.statuses.stun && e.statuses.stun.t)); }
+  { const run = (vuln) => { const sim = mk(); for (let i = 0; i < 90; i++) sim.step(1 / 60); const e = sim.enemies[0]; e.hp = e.maxHp = 99999; const y = sim.heroes[1]; for (const h of sim.heroes) h.atkTimer = 99;
+      sim._applyStatus(y, e, { status: 'bleed', dur: 4, dps: 0.4 }); if (vuln) e.statuses.vuln = { t: 9 }; const h0 = e.hp; for (let i = 0; i < 60; i++) { sim._tickUnit(e, 1 / 60); } return h0 - e.hp; };
+    const a = run(false), b = run(true); if (!(b > a * 1.6)) errs.push(`wound ${a} vs ${b}`); }
+  console.log('combos:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(poison×burn blast + spread, slow×stun freeze, bleed×vuln wound)');
+  if (errs.length) fail++;
+}
 process.exit(fail ? 1 : 0);

@@ -439,6 +439,7 @@ class BattleSim {
           let dmg = s.dps * 0.5;
           if (k === 'bleed' && this.relics.has('whetstone')) dmg *= 1.5;
           if (k === 'burn' && this.relics.has('ember')) dmg *= 1.3;
+          if (k === 'bleed' && u.side === 'enemy' && u.statuses.vuln) { dmg *= CONST.COMBO.woundMult; if (!s.comboShown) { s.comboShown = true; this.events.push({ type: 'combo', unit: u, name: '상처 벌리기' }); } } // 연계: 출혈 + 취약
           this._damage(s.src, u, dmg, { dot: k });
           if (!u.alive) return;
         }
@@ -844,6 +845,7 @@ class BattleSim {
 
   _applyStatus(src, tgt, eff) {
     if (!tgt.alive) return;
+    if (tgt.side === 'enemy' && src && src.side === 'hero') this._combo(src, tgt, eff);
     if (eff.status === 'stun' && tgt.stunImmune) { this.events.push({ type: 'immune', unit: tgt }); return; }
     let dur = eff.dur;
     const sm = (src && src.mods) || {};
@@ -874,6 +876,23 @@ class BattleSim {
       this._poiseHit(src, tgt, CONST.POISE_STUN * dr, 'stun');
       this._shake(tgt, CONST.SHAKE_DUR);
     }
+  }
+
+  // 연계 효과 (서로 다른 직업의 상태이상이 만나면): 독연 폭발(화상×중독) · 동결(둔화 중 기절 +0.6초) · 상처 벌리기(출혈×취약, 틱에서)
+  _combo(src, tgt, eff) {
+    const C = CONST.COMBO, st = tgt.statuses;
+    if ((eff.status === 'poison' && st.burn) || (eff.status === 'burn' && st.poison)) {
+      if ((tgt.comboCd || -99) > this.time) return;
+      tgt.comboCd = this.time + C.blastCd;
+      delete st.burn;
+      const dmg = this._atkOf(src) * C.blastPow;
+      this.events.push({ type: 'combo', unit: tgt, name: '독연 폭발', blast: C.blastR });
+      for (const e of this.aliveEnemies()) if (this.dist(e, tgt) <= C.blastR + e.size * 8) {
+        this._damage(src, e, dmg * (e === tgt ? 1 : 0.6), { noCrit: true, skill: 'combo' });
+        if (e !== tgt && e.alive) { const p = e.statuses.poison; const unit = (st.poison && st.poison.unit) || this._atkOf(src) * 0.2; e.statuses.poison = { t: 6, src, unit: Math.max(unit, (p && p.unit) || 0), n: Math.min(5, ((p && p.n) || 0) + 1), acc: p ? p.acc : 0 }; e.statuses.poison.dps = e.statuses.poison.unit * e.statuses.poison.n; }
+      }
+    }
+    if (eff.status === 'stun' && st.slow && !tgt.stunImmune && !tgt.comboFrozen) { tgt.comboFrozen = true; this.delayed.push({ t: 0, fn: () => { if (tgt.alive && tgt.statuses.stun) { tgt.statuses.stun.t += C.freezeAdd; this.events.push({ type: 'combo', unit: tgt, name: '동결' }); } tgt.comboFrozen = false; } }); }
   }
 
   // ------------------------------------------------------------ 스킬 (s1 ① 기본 / s2 ② 상황 / ult ③ 필살기)

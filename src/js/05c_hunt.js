@@ -23,6 +23,15 @@ const HUNT_FIELDS = {
     elite: { every: 100, first: 50, kinds: ['cave_troll'] },
     respawn: 7, safeR: 320,
   },
+  swamp: {
+    id: 'swamp', name: '안개 늪', level: 25, theme: 'swamp',
+    W: 2800, H: 1720,
+    entry: { x: 2660, y: 190 },
+    trash: { count: 14, kinds: ['goblin_shaman', 'goblin_trapper', 'goblin_stalker'] },
+    normal: { count: 9, kinds: ['orc_berserker', 'orc_hunter', 'orc'] },
+    elite: { every: 110, first: 55, kinds: ['ogre'] },
+    respawn: 7, safeR: 320,
+  },
 };
 
 const HUNT = {

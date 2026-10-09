@@ -509,6 +509,29 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   await p.close();
 }
 
+// ---------------------------------------------------------------- 도적 · 적 도감 · 연계 (v0.35~v0.36)
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, battle: 1, break: 1, charge: 1, crush: 1 }; G.scenes.title.start(77); });
+  await p.waitForTimeout(200);
+  ok('도적 연: 선물로 보유', await p.evaluate(() => !!window.GAME.Game.profile.chars.yeon));
+  const gold0 = await p.evaluate(() => window.GAME.Game.profile.gold);
+  await p.evaluate(() => { const G = window.GAME.Game; G.run.party = ['tobi', 'yeon', 'bori']; window.GAME.refreshRunLoadout(G.run); G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['goblin_archer', 'goblin']] } }); });
+  await p.waitForTimeout(700);
+  ok('도적: 전투 시작 은신', await p.evaluate(() => !!window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'yeon').statuses.stealth));
+  ok('도감: 처음 만난 적 등록 + 보상 골드', await p.evaluate((g0) => { const G = window.GAME.Game; return !!(G.profile.codex && G.profile.codex.goblin_archer) && G.profile.gold > g0; }, gold0));
+  await p.evaluate(() => { const G = window.GAME.Game; G.debug.simMult = 16; });
+  await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 60000 }).catch(() => {});
+  ok('도감: 전투 후 처치 수 기록', await p.evaluate(() => { const c = window.GAME.Game.profile.codex; return (c.goblin_archer && c.goblin_archer.kills >= 1) || (c.goblin && c.goblin.kills >= 1); }));
+  await p.evaluate(() => { const G = window.GAME.Game; G.debug.simMult = 1; G.go('field'); });
+  await p.waitForTimeout(300); await dismissHints(p);
+  await p.click('#btn-codex'); await p.waitForTimeout(200);
+  ok('도감: 열기 · 등록된 적 카드 · 연계 효과 안내', await vis(p, '#cx-goblin_archer') && !(await p.locator('#cx-goblin_archer').getAttribute('class')).includes('unknown') && (await p.locator('.codex-combo').innerText()).includes('독연 폭발'));
+  await p.screenshot({ path: `${OUT}/codex.png` });
+  await p.click('#codex-close'); ok('도감: 닫기', !(await vis(p, '.codex-box')));
+  await p.close();
+}
+
 await browser.close();
 const errs = [...new Set(report.errors)];
 ok('콘솔/페이지 에러 0건', errs.length === 0, errs.slice(0, 5).join(' | '));

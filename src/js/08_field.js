@@ -52,6 +52,7 @@ const FieldScene = {
     r.appendChild(btn('✨ 소환', 'small', () => openGacha(() => this.refreshRes()), { id: 'btn-gacha' }));
     r.appendChild(btn('🧑 캐릭터', 'small', () => openRoster({ onClose: () => this.refreshRes() }), { id: 'btn-roster' }));
     r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
+    r.appendChild(btn('📖 도감', 'small', () => openCodex(() => this.refreshRes()), { id: 'btn-codex' }));
     r.appendChild(btn('👥 파티 편성', 'small', () => openPartySelect(Game.run, () => this.rebuildParty()), { id: 'btn-party' }));
     r.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(Game.run), { id: 'btn-f-strategy' }));
     top.appendChild(r);

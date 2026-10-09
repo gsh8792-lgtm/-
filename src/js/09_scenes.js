@@ -713,6 +713,7 @@ function openPartySelect(run, onDone) {
     const tips = [];
     if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 보스를 버티기 어려워요.');
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
+    if (pick.length && roles.includes('rogue')) tips.push('도적: 함정 해제 · 상자 자물쇠 따기 · 후열 적부터 처리.');
     if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
     const row = el('div', 'btn-row');

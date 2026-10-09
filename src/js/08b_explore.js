@@ -232,7 +232,9 @@ const DungeonScene = {
     if (it.kind === 'trap') {
       const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
       const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0);
-      if (run.trapKits > 0) { run.trapKits--; const g = 10 + fl.floor * 4; run.gold += g; text = `함정 해제 도구로 해제! 부품 골드 +${g}`; Sfx.play('coin'); }
+      const rogue = ids.find((id) => HEROES[id].role === 'rogue');
+      if (rogue && rng() < 0.75) { const g = 6 + fl.floor * 3; run.gold += g; text = `도적 ${HEROES[rogue].name}: 함정 해제! 골드 +${g}`; Sfx.play('coin'); }
+      else if (run.trapKits > 0) { run.trapKits--; const g = 10 + fl.floor * 4; run.gold += g; text = `함정 해제 도구로 해제! 부품 골드 +${g}`; Sfx.play('coin'); }
       else if (rng() < spot) { text = '함정을 알아채고 피했다'; Sfx.play('click'); }
       else { for (const id of ids) { const h = run.heroes[id]; h.hp = Math.max(1, Math.round(h.hp - h.maxHp * 0.1)); } text = '함정! 파티 HP -10%'; Sfx.play('hit'); }
     } else {
@@ -258,6 +260,7 @@ const DungeonScene = {
     const opts = {
       chest: [
         ...(run.trapKits > 0 ? [['🧰 함정 해제 도구로 연다', () => { run.trapKits--; run.gold += g * 2; const s = 2 + fl.floor; Game.profile.stones += s; run.stonesGot += s; return `안전하게 열었다. 골드 +${g * 2} · 강화석 +${s}`; }]] : []),
+        ...(alive.some((id) => HEROES[id].role === 'rogue') ? [[`🗝 도적이 자물쇠를 딴다`, () => { if (rng() < 0.85) { run.gold += g * 2; const s = 1 + fl.floor; Game.profile.stones += s; run.stonesGot += s; return `딸깍! 골드 +${g * 2} · 강화석 +${s}`; } hurtAll(0.06); return '바늘이 살짝 스쳤다. 파티 HP -6%'; }]] : []),
         ['그냥 연다 (위험)', () => rng() < 0.55 ? (run.gold += g * 2, `골드 +${g * 2}`) : (hurtAll(0.15), '바늘 함정! 파티 HP -15%')],
         ['지나간다', () => '상자를 두고 지나갔다'],
       ],
@@ -277,7 +280,7 @@ const DungeonScene = {
       ],
     }[it.curio];
     const finish = (fn) => { Game.closeModal(); it.done = true; const text = fn(); Sfx.play('coin'); this.fx.push({ x: p.x, y: 300, text, t: 0, dur: 2.2 }); Game.toast(`${C.icon} ${text}`, 2000); this.buildHud(); };
-    if (run.autoMode) { const safe = opts.find((o) => o[0].startsWith('🧰')) || opts[opts.length - 1]; finish(safe[1]); return; } // 자동: 위험 없는 쪽
+    if (run.autoMode) { const safe = opts.find((o) => o[0].startsWith('🧰')) || opts.find((o) => o[0].startsWith('🗝')) || opts[opts.length - 1]; finish(safe[1]); return; } // 자동: 위험 없는 쪽
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', `${C.icon} ${C.name}`));
     box.appendChild(el('p', '', C.text));

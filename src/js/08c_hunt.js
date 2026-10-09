@@ -17,7 +17,7 @@ const HuntScene = {
     // 화면 위 버튼
     const ui = Game.ui;
     const top = el('div', 'f-top');
-    top.appendChild(el('div', 'f-title', `${this.field.theme === 'dark' ? '🌲' : '🌾'} ${this.field.name} <small>Lv ${this.field.level}</small>`));
+    top.appendChild(el('div', 'f-title', `${this.field.theme === 'dark' ? '🌲' : this.field.theme === 'swamp' ? '🌫️' : '🌾'} ${this.field.name} <small>Lv ${this.field.level}</small>`));
     const r = el('div', 'f-right');
     r.appendChild(btn('◀ 마을로', 'small', () => this.leave(), { id: 'btn-hunt-back' }));
     this.autoBtn = btn('', 'small', () => { this.sim.autoHunt = !this.sim.autoHunt; Game.settings.huntAuto = this.sim.autoHunt; Game.saveSettings(); this.refreshBtns(); }, { id: 'btn-hunt-auto' });
@@ -139,9 +139,11 @@ const HuntScene = {
     const F = this.field, cv = document.createElement('canvas');
     cv.width = F.W; cv.height = F.H;
     const g = cv.getContext('2d'), rng = makeRng(hashSeed('hunt-ground', F.id));
-    const dark = F.theme === 'dark', pal = dark ? ['#2f4a3a', '#2a4234', '#35523f', '#26392e', '#3b5a44'] : ['#5fa04e', '#548f44', '#68aa56', '#4e8a40', '#76b25e'];
-    g.fillStyle = dark ? '#2c4636' : '#5a9a4a'; g.fillRect(0, 0, F.W, F.H);
+    const swamp = F.theme === 'swamp', dark = F.theme === 'dark' || swamp;
+    const pal = swamp ? ['#3e4a32', '#46523a', '#3a4430', '#4c5a3c', '#34402e'] : dark ? ['#2f4a3a', '#2a4234', '#35523f', '#26392e', '#3b5a44'] : ['#5fa04e', '#548f44', '#68aa56', '#4e8a40', '#76b25e'];
+    g.fillStyle = swamp ? '#3c4832' : dark ? '#2c4636' : '#5a9a4a'; g.fillRect(0, 0, F.W, F.H);
     for (let i = 0; i < 1400; i++) { g.fillStyle = pal[Math.floor(rng() * 5)]; g.beginPath(); g.ellipse(rng() * F.W, rng() * F.H, 20 + rng() * 70, 10 + rng() * 34, 0, 0, Math.PI * 2); g.fill(); }
+    if (swamp) for (let i = 0; i < 46; i++) { const x = rng() * F.W, y = rng() * F.H, rx = 50 + rng() * 140, ry = 20 + rng() * 50; g.fillStyle = 'rgba(40,70,72,0.85)'; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = 'rgba(150,170,120,0.35)'; g.lineWidth = 3; g.stroke(); g.fillStyle = 'rgba(190,220,210,0.18)'; g.beginPath(); g.ellipse(x - rx * 0.3, y - ry * 0.3, rx * 0.35, ry * 0.25, 0, 0, Math.PI * 2); g.fill(); } // 늪 웅덩이
     // 마른 풀밭 띠
     for (let i = 0; i < 9; i++) { g.fillStyle = 'rgba(200,180,90,0.22)'; g.beginPath(); g.ellipse(rng() * F.W, rng() * F.H, 160 + rng() * 260, 60 + rng() * 120, rng(), 0, Math.PI * 2); g.fill(); }
     // 흙길: 입구에서 들판 가운데로 갈라진다
@@ -209,6 +211,7 @@ const HuntScene = {
       }
     }
     ctx.restore();
+    if (F.theme === 'swamp') { const t = performance.now() / 1000; ctx.fillStyle = 'rgba(170,190,180,0.16)'; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.ellipse((i * 211 + t * 14) % 1160 - 100, 120 + i * 70, 260, 50, 0, 0, Math.PI * 2); ctx.fill(); } const vg = ctx.createRadialGradient(480, 270, 160, 480, 270, 600); vg.addColorStop(0, 'rgba(20,30,20,0)'); vg.addColorStop(1, 'rgba(20,30,20,0.5)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, 960, 540); } // 안개
     if (F.theme === 'dark') { const vg = ctx.createRadialGradient(480, 270, 180, 480, 270, 600); vg.addColorStop(0, 'rgba(0,10,20,0)'); vg.addColorStop(1, 'rgba(0,10,20,0.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, 960, 540); }
     // 화면 고정 UI: 배너 · 파티 HP · 미니맵 · 정예 타이머
     if (this.banner) {

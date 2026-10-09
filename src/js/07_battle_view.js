@@ -449,6 +449,11 @@ const BattleScene = {
 
   consumeEvents() {
     const ev = this.sim.events;
+    if (this.sim.enemies.length !== this.codexN) { // 도감: 처음 보는 적 → 등록 + 대응법
+      this.codexN = this.sim.enemies.length;
+      const fresh = []; for (const e of this.sim.enemies) if (codexSee(Game.profile, e.key)) fresh.push(e);
+      if (fresh.length) { saveProfile(); Game.toast(fresh.map((e) => `📖 <b>${e.def.name}</b> 도감 등록 (+● ${codexReward(e.key)}) <small>💡 ${ENEMY_CODEX[e.key].answer}</small>`).join('<br>'), 3000 + fresh.length * 1200); }
+    }
     if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < this.sim.W)) { this.breakHintPending = false; Game.hint('break'); }
     if (!ev.length) return;
     for (const e of ev) this.onEvent(e);
@@ -525,6 +530,7 @@ const BattleScene = {
       case 'regenStop': this.popup(e.unit.x, this.unitTop(e.unit) - 16, '재생 멈춤!', '#ffb07a', 16, { label: true }); break;
       case 'reflect': this.popup(e.target.x, this.unitTop(e.target) - 6, `반사 ${e.v}`, '#9cd8ff', 14); this.spark(e.target.x, e.target.y - 30, 4, '#bfe8ff'); break;
       case 'counter': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '반격!', '#bfe8ff', 18, { label: true }); this.spark(e.target.x, e.target.y - 30, 8, '#bfe8ff'); Sfx.play('hit'); this.shake = Math.max(this.shake, 3); break;
+      case 'combo': this.popup(e.unit.x, this.unitTop(e.unit) - 30, `연계! ${e.name}`, '#ffe066', 19, { label: true }); if (e.blast) { this.fx.push({ type: 'zone', x: e.unit.x, y: e.unit.y, r: e.blast, t: 0, dur: 0.6, color: '170,220,70' }); this.spark(e.unit.x, e.unit.y - 30, 14, '#b8e050'); this.shake = Math.max(this.shake, 5); } break;
       case 'ambush': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '기습!', '#d8b0ff', 20, { label: true }); this.spark(e.target.x, e.target.y - 30, 10, '#c8a0ff'); Sfx.play('hit'); break;
       case 'vengeance': if (e.v > 5) this.popup(e.unit.x, this.unitTop(e.unit) - 34, `응징 +${e.v}`, '#ffb0ff', 18, { label: true }); break;
       case 'wipeStart': this.banner = { text: e.name, sub: e.hint, t: 0, dur: 1.8 }; Sfx.play('phase'); this.shake = Math.max(this.shake, 6); this.slowmo = 0.6; break;
@@ -635,6 +641,7 @@ const BattleScene = {
       run.stats.healed[h.id] += h.stats.healed;
     }
     run.stats.kills += sum.kills;
+    { const kc = {}; for (const e of this.sim.enemies) if (!e.alive && !e.summonedByWipe) kc[e.key] = (kc[e.key] || 0) + 1; for (const k in kc) codexKill(Game.profile, k, kc[k]); }
     run.stats.battles++;
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
     if (outcome === 'win' && !gaveUp) {

@@ -2,6 +2,7 @@
 // 로직 코드는 이 테이블의 id만 참조한다. 수치 조정은 여기서만.
 
 const CONST = {
+  COMBO: { blastPow: 1.3, blastR: 85, blastCd: 4, freezeAdd: 0.6, woundMult: 1.5 }, // 연계 효과 (v0.37)
   VIEW_W: 960, VIEW_H: 540,          // 가로 16:9 논리 해상도
   PARTY_SIZE: 3,                     // 최대 출전 인원 (로스터 5명 중 선택)
   SIM_DT: 1 / 60,                    // 고정 타임스텝
