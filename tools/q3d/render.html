@@ -1,0 +1,78 @@
+<!doctype html><html><body style="margin:0;background:transparent">
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+<script type="module">
+// GLB → 정사영 카메라로 한 장씩 렌더 (bake_q3d.mjs가 호출)
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const S = 640;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.setSize(S, S); renderer.setClearColor(0, 0); renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+// 게임 공통 조명과 맞춤: 좌상단 따뜻한 빛 + 아래 차가운 앰비언트
+scene.add(new THREE.HemisphereLight(0xfff0dc, 0x5a4a78, 2.0));
+const sun = new THREE.DirectionalLight(0xffe8cc, 1.5); sun.position.set(-3, 4, 3); scene.add(sun);
+const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
+const gltf = await new GLTFLoader().loadAsync(new URLSearchParams(location.search).get('glb'));
+const root = gltf.scene; scene.add(root);
+// 카툰 렌더링 (?toon=1): 3단 계단 명암 + 텍스처 색 단순화(포스터화·채도↑) — 셀 애니메이션 느낌
+if (new URLSearchParams(location.search).get('toon') === '1') {
+  const steps = new Uint8Array([72, 158, 255]); // 그림자 · 중간 · 밝음
+  const grad = new THREE.DataTexture(steps, 3, 1, THREE.RedFormat); grad.minFilter = grad.magFilter = THREE.NearestFilter; grad.needsUpdate = true;
+  const toonTex = (tex) => {
+    if (!tex || !tex.image) return tex;
+    const im = tex.image, c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+    const x = c.getContext('2d'); x.filter = 'saturate(1.35) contrast(1.05)'; x.drawImage(im, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height), a = d.data, L = 7; // 채널당 7단계
+    for (let i = 0; i < a.length; i += 4) for (let j = 0; j < 3; j++) a[i + j] = Math.round(Math.round(a[i + j] / 255 * L) / L * 255);
+    x.putImageData(d, 0, 0);
+    const t = new THREE.CanvasTexture(c); t.flipY = tex.flipY; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = tex.wrapS; t.wrapT = tex.wrapT; return t;
+  };
+  const cache = new Map();
+  root.traverse((o) => { if (!o.isMesh) return; const m = o.material; if (!cache.has(m)) cache.set(m, new THREE.MeshToonMaterial({ map: toonTex(m.map), gradientMap: grad, transparent: m.transparent, alphaTest: m.alphaTest, side: m.side })); o.material = cache.get(m); });
+  scene.children.filter((c) => c.isHemisphereLight).forEach((h) => { h.intensity = 0.95; });
+  scene.children.filter((c) => c.isDirectionalLight).forEach((d) => { d.intensity = 2.0; });
+}
+const box = new THREE.Box3().setFromObject(root), size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
+const mixer = new THREE.AnimationMixer(root);
+window.INFO = { clips: gltf.animations.map((a) => [a.name, a.duration]) };
+let headBone = null; root.traverse((o) => { if (o.isBone && o.name === 'Head') headBone = o; });
+window.SHOT = (clip, t, yawDeg, pitchDeg, head) => {
+  if (clip !== '__pose') mixer.stopAllAction();
+  if (clip && clip !== '__pose') { const a = mixer.clipAction(gltf.animations.find((x) => x.name === clip)); a.reset().play(); mixer.setTime(t); }
+  if (headBone) { headBone.scale.setScalar(head || 1); root.updateMatrixWorld(true); } // 치비 비율: 머리 뼈 확대
+  const h = size.y * 0.66, yaw = yawDeg * Math.PI / 180, pitch = pitchDeg * Math.PI / 180;
+  cam.left = -h; cam.right = h; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
+  const d = 10; cam.position.set(ctr.x + Math.sin(yaw) * Math.cos(pitch) * d, ctr.y + Math.sin(pitch) * d, ctr.z + Math.cos(yaw) * Math.cos(pitch) * d);
+  cam.lookAt(ctr.x, ctr.y, ctr.z);
+  renderer.render(scene, cam);
+  return renderer.domElement.toDataURL('image/png');
+};
+// 직접 만든 자세: POSE({ 뼈이름: [x, y, z](도) }, { y: 몸 높이 이동, x }) — 기본 자세(rest) 위에 더한다
+const bones = {}; root.traverse((o) => { if (o.isBone) { bones[o.name] = o; o.userData.rest = o.quaternion.clone(); o.userData.restPos = o.position.clone(); } });
+window.BONES = Object.keys(bones);
+window.HIPINFO = () => { const h = bones.Hips, v = new THREE.Vector3(); h.getWorldScale(v); return { pos: h.position.toArray(), worldScale: v.toArray() }; };
+const D = Math.PI / 180, _q = new THREE.Quaternion(), _e = new THREE.Euler();
+window.POSE = (p, off) => {
+  mixer.stopAllAction();
+  for (const n in bones) { bones[n].quaternion.copy(bones[n].userData.rest); bones[n].position.copy(bones[n].userData.restPos); }
+  for (const n in p) { const b = bones[n] || bones[n.replace(/\./g, '')]; if (!b) continue; /* three.js는 이름의 '.'을 지운다 */ const r = p[n]; _e.set(r[0] * D, r[1] * D, r[2] * D, 'XYZ'); _q.setFromEuler(_e); b.quaternion.copy(b.userData.rest).multiply(_q); }
+  if (off && bones.Hips) { bones.Hips.position.y += (off.y || 0); bones.Hips.position.x += (off.x || 0); bones.Hips.position.z += (off.z || 0); }
+};
+window.POSESHOT = (p, off, yawDeg, pitchDeg, head) => { window.POSE(p, off); return window.SHOT('__pose', 0, yawDeg, pitchDeg, head); };
+// 축 조사: 뼈마다 x/y/z로 +30도 돌렸을 때 첫 자식(끝점)이 월드에서 움직이는 방향
+window.AXES = () => {
+  const out = {}, v0 = new THREE.Vector3(), v1 = new THREE.Vector3();
+  for (const n in bones) { const b = bones[n], c = b.children.find((x) => x.isBone); if (!c) continue;
+    const res = {};
+    for (const [k, ax] of [['x', [30, 0, 0]], ['y', [0, 30, 0]], ['z', [0, 0, 30]]]) {
+      window.POSE({}); root.updateMatrixWorld(true); c.getWorldPosition(v0);
+      window.POSE({ [n]: ax }); root.updateMatrixWorld(true); c.getWorldPosition(v1);
+      const d = v1.sub(v0); res[k] = [d.x, d.y, d.z].map((q) => +(q * 100).toFixed(1));
+    }
+    window.POSE({}); root.updateMatrixWorld(true); c.getWorldPosition(v0); b.getWorldPosition(v1);
+    res.dir = v0.clone().sub(v1).toArray().map((q) => +(q * 100).toFixed(1)); res.child = c.name; out[n] = res; }
+  return out;
+};
+window.READY = true;
+</script></body></html>

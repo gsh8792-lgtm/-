@@ -28,7 +28,7 @@ async function dismissHints(p) { for (let i = 0; i < 3; i++) if (!(await clickIf
 // ---------------------------------------------------------------- 1. 한 판 자동 진행 (정책: 전투 우선, HP 낮으면 휴식)
 async function playRun(p, seed, opts) {
   opts = opts || {};
-  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 16; G.scenes.title.start(s); G.settings.seenHints.dungeon = 1; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
+  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 16; G.debug.smartAuto = true; G.scenes.title.start(s); G.settings.seenHints.dungeon = 1; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
   await p.waitForTimeout(200);
   if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
   // 보급 상자 → 포털
@@ -79,7 +79,7 @@ async function playRun(p, seed, opts) {
     if (r.result === 'victory') wins++;
     if (seed === 101) await p.screenshot({ path: `${OUT}/run_result.png` });
   }
-  ok('던전 완주 (6층 보스 격파) 최소 1회', wins >= 1, `${wins}/3 시드 승리 (자동 모드, 시뮬 16배속)`);
+  ok('던전 완주 (6층 보스 격파) 최소 1회', wins >= 1, `${wins}/3 시드 승리 (자동 + 컨트롤 흉내, 시뮬 16배속)`);
   // 결과 화면 버튼
   await p.evaluate(() => { window.GAME.Game.run.result = 'victory'; window.GAME.Game.go('result'); });
   await p.click('#res-same'); ok('결과: 같은 시드로 다시 → 필드', (await scene(p)) === 'field');

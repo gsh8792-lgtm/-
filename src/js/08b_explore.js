@@ -338,7 +338,7 @@ const DungeonScene = {
     const walking = this.moving && !Game.modalOpen;
     for (const p of list.slice().sort((a, b) => a.y - b.y)) {
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
-      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft && walking, phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
+      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft && walking, anim: walking ? 'walk' : 'idle', phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
     }
   },
 };

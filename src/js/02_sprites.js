@@ -758,6 +758,21 @@ function drawSprite(ctx, name, x, y, opt) {
   if (opt.flip) ctx.scale(-1, 1);
   ctx.scale(sx * ppu / k, sy * ppu / k);
   if (opt.alpha !== undefined) ctx.globalAlpha = opt.alpha;
+  const sheet = spriteSheetFor(name);
+  if (sheet) { // 3D 모델을 구운 동작 시트: idle / walk / cast
+    const img = sheetImage(sheet);
+    if (img.complete && img.naturalWidth) {
+      const an = sheet.anims[opt.anim] || sheet.anims.idle;
+      const f = !an.loop && opt.animK !== undefined ? clamp(Math.floor(opt.animK * an.n), 0, an.n - 1) : Math.floor((t + ph * 0.37) * an.fps) % an.n; // 한 번짜리 동작은 진행도(animK)로
+      const h = d.top * k * (sheet.hMul || 1.18), w = sheet.fw / sheet.fh * h;
+      ctx.scale(1 / sx, 1 / sy); // 숨쉬기 변형은 동작 프레임이 대신한다 (찌그러짐만 유지)
+      if (opt.squash) ctx.scale(1, opt.squash);
+      const tintF = opt.tint === 'white' ? 'brightness(2.4) saturate(0)' : opt.tint === 'dark' ? 'brightness(0)' : opt.tint === 'red' && opt.tintAlpha ? `sepia(1) saturate(4) hue-rotate(-30deg) opacity(${1 - opt.tintAlpha * 0.5})` : '';
+      if (tintF) ctx.filter = tintF;
+      ctx.drawImage(img, f * sheet.fw, an.row * sheet.fh, sheet.fw, sheet.fh, -w / 2, -h, w, h);
+      ctx.restore(); return;
+    }
+  }
   const ovr = SPRITE_IMAGE_OVERRIDES[name];
   if (ovr) {
     let img = _imgCache[ovr];
@@ -779,11 +794,31 @@ function drawSprite(ctx, name, x, y, opt) {
   ctx.restore();
 }
 
+// 3D 시트 사용 여부: SPRITE_SHEETS에 있고, 설정에서 켰을 때 (Game.settings.q3d)
+function spriteSheetFor(name) {
+  const s = typeof SPRITE_SHEETS !== 'undefined' && SPRITE_SHEETS[name];
+  return s && typeof Game !== 'undefined' && Game.settings && Game.settings.q3d ? s : null;
+}
+function sheetImage(sheet) { let img = _imgCache[sheet.src]; if (!img) { img = _imgCache[sheet.src] = new Image(); img.src = sheet.src; } return img; }
+
 // 초상화: 머리 영역(headBox)을 잘라 그린다
 function drawPortrait(canvas, name, opts) {
   const d = ART[name];
   const c = canvas.getContext('2d');
   c.clearRect(0, 0, canvas.width, canvas.height);
+  const sheet = spriteSheetFor(name);
+  if (sheet) { // 시트 첫 프레임의 머리 부분 (위 25%)
+    const img = sheetImage(sheet), draw = () => {
+      c.clearRect(0, 0, canvas.width, canvas.height); c.save();
+      if (opts && opts.dead) c.filter = 'grayscale(1) brightness(0.55)';
+      if (opts && opts.flip) { c.translate(canvas.width, 0); c.scale(-1, 1); }
+      const sw = sheet.fw * 0.5, sh = sheet.fh * 0.25, s = Math.min(canvas.width / sw, canvas.height / sh);
+      c.drawImage(img, sheet.fw * 0.53 - sw / 2, 0, sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s);
+      c.restore();
+    };
+    if (img.complete && img.naturalWidth) draw(); else img.addEventListener('load', draw, { once: true });
+    return;
+  }
   const [hx0, hy0, hx1, hy1] = d.headBox;
   const k = Math.min(canvas.width / (hx1 - hx0), canvas.height / (hy1 - hy0));
   const kk = Math.ceil(k * 4) / 2; // 2배 슈퍼샘플

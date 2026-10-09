@@ -34,6 +34,7 @@ class BattleSim {
     this.torchDark = !!opts.torchDark;
     this.strategy = opts.strategy || {};
     this.autoMode = opts.autoMode !== undefined ? opts.autoMode : true;
+    this.smartAuto = !!opts.smartAuto; // 측정용: 잘 컨트롤하는 플레이어 흉내 (즉시 회피 + 모두 꽃봉오리 집중)
     this.order = 'hold';          // 작전: charge | hold | retreat
     this.focus = null;            // 집중 공격 대상 (적 유닛)
     this.time = 0;
@@ -165,8 +166,8 @@ class BattleSim {
     if (w.type === 'safe') {
       u.vanished = true;
       const hs = this.aliveHeroes(), hc = hs.reduce((a, h) => a + h.x, 0) / Math.max(1, hs.length);
-      let sx = hc + (this.rng() < 0.5 ? -1 : 1) * (260 + this.rng() * 160);
-      if (sx < this.X0 + 120 || sx > this.X1 - 120) sx = hc - Math.sign(sx - hc) * (260 + this.rng() * 160);
+      let sx = hc + (this.rng() < 0.5 ? -1 : 1) * (200 + this.rng() * 120);
+      if (sx < this.X0 + 120 || sx > this.X1 - 120) sx = hc - Math.sign(sx - hc) * (200 + this.rng() * 120);
       this.zones.push({ kind: 'safe', x: clamp(sx, this.X0 + 110, this.X1 - 110), y: (CONST.FIELD_Y0 + CONST.FIELD_Y1) / 2, r: w.safeR, t: w.cast + 0.2, total: w.cast, src: u });
     }
     if (w.type === 'shield') { u.wshield = Math.round(u.maxHp * w.shield); u.wshieldMax = u.wshield; }
@@ -215,13 +216,18 @@ class BattleSim {
   }
   // 자동 모드 영웅: 장판은 피하고, 피난처가 있으면 그 안으로
   _zoneMove(u) {
-    const safe = this.zones.find((z) => z.kind === 'safe');
+    const R = (z) => this.smartAuto || z.total - z.t >= (AUTO_REACT[z.kind] || 0); // 자동은 늦게 알아챈다
+    const safe = this.zones.find((z) => z.kind === 'safe' && R(z));
     if (safe) { // 이동 명령처럼 (가는 동안 공격하지 않는다)
       const i = this.aliveHeroes().indexOf(u);
       if (!u.cmd || u.cmd.auto) u.cmd = { type: 'move', x: safe.x + (i - 1) * 34, y: safe.y + ((i % 2) ? 18 : -18), auto: true };
       return false;
     }
-    for (const z of this.zones) if ((z.kind === 'impact' || z.kind === 'pool') && this.distXY(u, z.x, z.y) <= z.r + 12) {
+    // 적 차지(원형 강공격): 자동은 피하지 않는다 (끊기는 전략, 피하기는 손으로) — 측정용 컨트롤 흉내만 피한다
+    if (this.smartAuto) for (const e of this.enemies) if (e.alive && e.charge && e.charge.r && u.role !== 'tank' && this.distXY(u, e.charge.cx, e.charge.cy) <= e.charge.r + 12) {
+      const dir = u.x >= e.charge.cx ? 1 : -1; u.tx = clamp(e.charge.cx + dir * (e.charge.r + 40), this.X0, this.X1); u.ty = u.y; return true;
+    }
+    for (const z of this.zones) if ((z.kind === 'impact' || z.kind === 'pool') && R(z) && this.distXY(u, z.x, z.y) <= z.r + 12) {
       const dir = u.x >= z.x ? 1 : -1;
       u.tx = clamp(z.x + dir * (z.r + 40), this.X0, this.X1); u.ty = u.y; return true;
     }
@@ -295,7 +301,7 @@ class BattleSim {
         else if (!enemies.length) u.target = null;
         else if (u.role === 'ranged') { let b = enemies[0]; for (const e of enemies) if (this.hpPct(e) < this.hpPct(b)) b = e; u.target = b; }
         else u.target = this.nearest(u, enemies);
-        if (this.autoMode) { const buds = enemies.filter((e) => e.key === 'wipe_bud'); if (buds.length) u.target = this.nearest(u, buds); } // 전멸기 꽃봉오리 먼저
+        if (this.autoMode && (this.smartAuto || (u.role !== 'melee' && u.role !== 'tank'))) { const buds = enemies.filter((e) => e.key === 'wipe_bud'); if (buds.length) u.target = this.nearest(u, buds); } // 전멸기 꽃봉오리: 자동은 원거리만 (근접은 직접 집중 공격으로 돌려야)
       }
       if (this.aiProfile === 'gimmick') {
         const br = enemies.find((e) => e.broken > 0);
@@ -313,7 +319,7 @@ class BattleSim {
         if (u.target && !u.target.alive) u.target = null;
         return;
       }
-      if (this.autoMode && !intro && this.zones.length && this._zoneMove(u)) return;
+      if (this.autoMode && !intro && (this.zones.length || this.smartAuto) && this._zoneMove(u)) return;
       const tank = this.tankHero();
       const anchor = tank && tank !== u ? tank : this.frontHero();
       if (intro || !u.target) { // 입장/대기: 기본 대형
@@ -593,7 +599,7 @@ class BattleSim {
       this.delayed.push({ t: 0.1, fn: () => { if (tgt.alive && u.alive) this._damage(u, tgt, this._atkOf(u), { basic: true }); } });
       this.events.push({ type: 'attack', unit: u, target: tgt, melee: true });
     } else {
-      u.anim.cast = 0.18; u.face = tgt.x >= u.x ? 1 : -1;
+      u.anim.cast = 0.18; u.anim.castMax = 0.18; u.face = tgt.x >= u.x ? 1 : -1;
       const travel = 0.12 + this.dist(u, tgt) / 1400;
       this.events.push({ type: 'projectile', from: u, to: tgt, kind: u.key, travel });
       this.delayed.push({ t: travel, fn: () => { if (tgt.alive) this._damage(u, tgt, this._atkOf(u), { basic: true }); } });
@@ -894,7 +900,7 @@ class BattleSim {
     else h.cds[slot] = this.skillCdMax(h, slot);
     h.castLock = 0.35;
     h.actLock = Math.max(h.actLock, slot === 'ult' ? CONST.ACT_LOCK_ULT : CONST.ACT_LOCK_SKILL);
-    h.anim.cast = 0.3;
+    h.anim.cast = 0.45; h.anim.castMax = 0.45; // 스킬 시전 동작
     const atk = this._atkOf(h);
     const fxDelay = sk.delay || { meteor: 0.55, arrowrain: 0.5, nova: 0.35, starbolt: 0.22, pierce: 0.16, snipe: 0.3 }[sk.fx] || 0.08;
     if (sk.delay) { h.casting = { t: sk.delay, total: sk.delay, name: sk.name }; h.actLock = Math.max(h.actLock, sk.delay + 0.2); } // 긴 시전: 끝날 때까지 이동 불가

@@ -3,7 +3,7 @@
 // "1배속 체감 시간" = 전투 시뮬 시간 + 복도 걷기(210px/s) + 방 대기(1.4초) — 보상·야영 화면은 뺀 값.
 import { chromium } from 'playwright';
 import path from 'path';
-const RUNS = +(process.argv[2] || 6), MULT = +(process.argv[3] || 16);
+const RUNS = +(process.argv[2] || 6), MULT = +(process.argv[3] || 16), SMART = process.argv[4] === 'smart'; // smart: 잘 컨트롤하는 플레이어 흉내
 const PARTIES = [['tobi', 'danbi', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
@@ -27,7 +27,7 @@ await p.evaluate(() => {
 const out = [];
 for (let i = 0; i < RUNS; i++) {
   const party = PARTIES[i % PARTIES.length], seed = 1000 + i * 37;
-  await p.evaluate(([s, M]) => { const G = window.GAME.Game; window.__log = { battles: [], corr: {}, rooms: {} }; const P = G.profile; if (P && P.chars) for (const id in P.chars) { P.chars[id].lv = 1; P.chars[id].exp = 0; } G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1, explore: 1, dungeon: 1 }; G.debug.simMult = M; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, [seed, MULT]);
+  await p.evaluate(([s, M, SM]) => { const G = window.GAME.Game; window.__log = { battles: [], corr: {}, rooms: {} }; const P = G.profile; if (P && P.chars) for (const id in P.chars) { P.chars[id].lv = 1; P.chars[id].exp = 0; } G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1, explore: 1, dungeon: 1 }; G.debug.simMult = M; G.debug.smartAuto = SM; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, [seed, MULT, SMART]);
   await p.waitForTimeout(200);
   await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, party);
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'chest')); });

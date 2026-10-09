@@ -231,16 +231,18 @@ const ENEMIES = {
 // 보스 패턴: 일반 스킬 1개 + 전멸기 1개 (HP 60%·25%에서 한 번씩, 이후 WIPE_EVERY초마다)
 // 전멸기 대응 — break: 시전 중 그로기로 끊기 / buds: 함께 피는 꽃봉오리 부수기(남은 수만큼 피해) / safe: 빛나는 원 안으로 / shield: 껍질 보호막 깨기
 const BOSS_KITS = {
-  ogre_chief:   { skill: { key: 'rock', name: '바위 던지기', every: 13, first: 8, tele: 1.6, r: 75, mult: 2.4, target: 'far' },
+  ogre_chief:   { skill: { key: 'rock', name: '바위 던지기', every: 11, first: 7, tele: 1.6, r: 80, mult: 3.2, target: 'far' },
                   wipe: { key: 'quake', name: '대지 분쇄', type: 'break', cast: 6, mult: 0.9, hint: '그로기로 끊어라!' } },
-  thorn_queen:  { skill: { key: 'root', name: '덩굴 속박', every: 15, first: 9, dur: 2.5 },
+  thorn_queen:  { skill: { key: 'root', name: '덩굴 속박', every: 13, first: 8, dur: 3 },
                   wipe: { key: 'bloom', name: '꽃가루 만개', type: 'buds', cast: 9, per: 0.3, buds: 3, hint: '꽃봉오리를 부숴라!' } },
-  mist_stag:    { skill: { key: 'gore', name: '뿔 찌르기', every: 12, first: 7, tele: 1.5, r: 85, mult: 1.7, target: 'random' },
+  mist_stag:    { skill: { key: 'gore', name: '뿔 찌르기', every: 10, first: 6, tele: 1.5, r: 85, mult: 2.8, target: 'random' },
                   wipe: { key: 'mist', name: '안개 폭풍', type: 'safe', cast: 6, mult: 0.9, safeR: 95, hint: '빛나는 원 안으로!' } },
-  swamp_turtle: { skill: { key: 'spit', name: '독침', every: 11, first: 6, r: 85, dur: 6, dps: 0.25, target: 'random' },
+  swamp_turtle: { skill: { key: 'spit', name: '독침', every: 10, first: 6, r: 90, dur: 7, dps: 0.45, target: 'random' },
                   wipe: { key: 'tide', name: '늪의 해일', type: 'shield', cast: 8, mult: 0.9, shield: 0.085, hint: '껍질을 깨라!' } },
 };
 const WIPE_AT = [0.6, 0.25], WIPE_EVERY = 70;
+// 자동 모드의 늦은 반응 (초): 장판이 생기고 이만큼 지나야 피한다. 수동으로 직접 끌어 피하면 바로 — 컨트롤의 몫
+const AUTO_REACT = { impact: 0.85, pool: 1.2, safe: 1.6 };
 
 // 정예 변이: 정예 전투의 우두머리(가장 HP가 큰 적)에 하나가 붙는다 (HP +25%)
 const ELITE_AFFIXES = {

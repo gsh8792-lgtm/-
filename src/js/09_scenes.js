@@ -25,6 +25,11 @@ const TitleScene = {
       this.musicBtn.innerHTML = `음악: ${Game.settings.music ? '켬' : '끔'}`;
     }, { id: 'btn-music' });
     col.appendChild(this.musicBtn);
+    if (typeof SPRITE_SHEETS !== 'undefined' && Object.keys(SPRITE_SHEETS).length) {
+      const q = () => `3D 에셋(보리): ${Game.settings.q3d ? '켬' : '끔'}`;
+      this.q3dBtn = btn(q(), '', () => { Game.settings.q3d = !Game.settings.q3d; Game.saveSettings(); this.q3dBtn.innerHTML = q(); }, { id: 'btn-q3d' });
+      col.appendChild(this.q3dBtn);
+    }
     box.appendChild(col);
     this.seedLabel = el('div', 'title-seed', `시드 ${this.seed}`);
     box.appendChild(this.seedLabel);

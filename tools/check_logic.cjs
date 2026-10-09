@@ -3,8 +3,8 @@
 const fs = require('fs'), vm = require('vm');
 const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -369,7 +369,7 @@ if (sa !== sb) fail++;
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS)); for (const k in st0) { st0[k].s2.auto = true; st0[k].ult.auto = true; st0[k].ult.cond = 'auto'; }
   const bossOf = { quake: 'ogre_chief', bloom: 'thorn_queen', mist: 'mist_stag', tide: 'swamp_turtle' };
-  const mk = (key, autoMode) => new BattleSim({ seed: 31, stage: 5, waves: [[key]], strategy: st0, autoMode, partySize: 3, fieldW: 1440, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: 2000, maxHp: 2000, upgrades: {}, ultDef: ultDefFor(id, 'A', 0) })) });
+  const mk = (key, autoMode, smartAuto) => new BattleSim({ seed: 31, smartAuto, stage: 5, waves: [[key]], strategy: st0, autoMode, partySize: 3, fieldW: 1440, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: 2000, maxHp: 2000, upgrades: {}, ultDef: ultDefFor(id, 'A', 0) })) });
   const run = (sim, sec, until) => { for (let i = 0; i < sec * 60 && !sim.outcome; i++) { sim.step(1 / 60); if (until && until()) return true; } return false; };
   for (const [wk, key] of Object.entries(bossOf)) {
     if (!BOSS_KITS[key] || BOSS_KITS[key].wipe.key !== wk) { errs.push('kit ' + key); continue; }
@@ -380,13 +380,18 @@ if (sa !== sb) fail++;
       const log = sim.wipeLog[0]; if (!log) errs.push(wk + ' never resolved');
       else if (wk !== 'bloom' && wk !== 'tide' && log.ok) errs.push(wk + ' stopped without answer');
       else if (!log.ok && !sim.heroes.some((h, i) => hp0[i] - h.hp >= h.maxHp * 0.25)) errs.push(wk + ' no damage'); }
-    // 자동 전략: 대부분 저지
-    { let ok = 0; for (let s = 0; s < 4; s++) { const sim = mk(key, true); sim.rng = makeRng(77 + s); run(sim, 3); const b = sim.enemies[0]; b.hp = b.maxHp * (WIPE_AT[0] - 0.01); run(sim, 16, () => sim.wipeLog.length); const lg = sim.wipeLog[0]; ok += lg && (lg.ok || (wk === 'bloom' && lg.mult <= BOSS_KITS[key].wipe.per + 1e-9)) ? 1 : 0; }
-      if (ok < 2) errs.push(`${wk} auto stopped ${ok}/4`); }
+    // 잘 컨트롤하면(smartAuto: 즉시 회피 + 꽃봉오리 집중) 대부분 저지
+    { let ok = 0; for (let s = 0; s < 4; s++) { const sim = mk(key, true, true); sim.rng = makeRng(77 + s); run(sim, 3); const b = sim.enemies[0]; b.hp = b.maxHp * (WIPE_AT[0] - 0.01); run(sim, 16, () => sim.wipeLog.length); const lg = sim.wipeLog[0]; ok += lg && (lg.ok || (wk === 'bloom' && lg.mult <= BOSS_KITS[key].wipe.per + 1e-9)) ? 1 : 0; }
+      if (ok < 2) errs.push(`${wk} smart stopped ${ok}/4`); }
   }
+  // 자동은 장판을 늦게 알아챈다 (AUTO_REACT), 컨트롤 흉내는 바로
+  for (const smart of [false, true]) { const sim = mk('ogre_chief', true, smart); run(sim, 2); const h = sim.heroes[2];
+    const z = { kind: 'impact', x: h.x, y: h.y, r: 75, t: 1.6 - AUTO_REACT.impact * 0.5, total: 1.6, dmg: 1, src: sim.enemies[0] }; sim.zones.push(z);
+    const early = sim._zoneMove(h); z.t = 1.6 - AUTO_REACT.impact - 0.05; const late = sim._zoneMove(h);
+    if (early !== smart || !late) errs.push(`react smart=${smart} early=${early} late=${late}`); }
   // 보스 일반 스킬: 일정 시간 안에 한 번은 쓴다
   for (const key of Object.keys(BOSS_KITS)) { const sim = mk(key, true); let used = false; run(sim, 25, () => (used = used || sim.events.some((e) => e.type === 'bossSkill'), sim.events.length = 0, used)); if (!used) errs.push('skill ' + key); }
-  console.log('boss kits:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(4 wipes cast/hit/stopped or mitigated by auto, boss skills)');
+  console.log('boss kits:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(4 wipes cast/hit, stopped by good control, auto reacts late, boss skills)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

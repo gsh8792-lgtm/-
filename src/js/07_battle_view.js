@@ -21,10 +21,10 @@ const BattleScene = {
     this.sim = new BattleSim({
       seed: hashSeed(run.seed, 'battle', node.stage, node.row, node.type),
       stage: node.stage, waves, heroes,
-      relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, partySize: run.party.length,
+      relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, smartAuto: !!(Game.debug && Game.debug.smartAuto), partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
-      tier: { hp: ti.hp, atk: ti.atk },
+      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1; return { hp: ti.hp * f, atk: ti.atk * f }; })(),
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
       eliteAffix: node.affix || null, named: node.named || null, surprise: !!(ex && ex.surprise),
     });
@@ -789,6 +789,9 @@ const BattleScene = {
       ctx.strokeStyle = `rgba(${col},0.95)`; ctx.lineWidth = 2.5; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t * 30;
       ctx.beginPath(); ctx.ellipse(cx, cy, r, ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
     }
+    // 3D 시트가 있는 영웅은 쓰러진 모습(쓰러짐 동작 → 마지막 프레임)으로 남는다
+    this.downAt = this.downAt || {};
+    for (const h of sim.heroes) if (!h.alive && spriteSheetFor(h.sprite)) { if (this.downAt[h.uid] === undefined) this.downAt[h.uid] = t; const k = Math.min(1, (t - this.downAt[h.uid]) / 0.6); ctx.save(); ctx.globalAlpha = 0.85; drawSprite(ctx, h.sprite, h.x, h.y, { scale: this.unitScale(h), flip: h.face < 0, t, anim: 'down', animK: k }); ctx.restore(); }
     const units = sim.heroes.concat(sim.enemies).filter((u) => u.alive);
     units.sort((a, b) => a.y - b.y);
     const inArea = d && d.over && d.sk.areaR ? new Set(sim.unitsInArea(d.h, d.slot, d.fx, d.fy).map((u) => u.uid)) : null;
@@ -922,9 +925,10 @@ const BattleScene = {
     if (u.anim.hurt > 0.08) tint = 'white';
     if (u.charge && Math.floor(t * (6 + (1 - u.charge.t / u.charge.total) * 14)) % 2 === 0) tint = 'white';
     if (!tint && u.statuses.enrage) { tint = 'red'; tintAlpha = 0.25 + Math.sin(t * 8) * 0.1; }
-    const squash = u.anim.cast > 0 ? 1 + Math.sin((u.anim.cast / 0.3) * Math.PI) * 0.06 : (u.anim.hurt > 0 ? 0.94 : 1);
+    const squash = u.anim.cast > 0 ? 1 + Math.sin((u.anim.cast / (u.anim.castMax || 0.3)) * Math.PI) * 0.06 : (u.anim.hurt > 0 ? 0.94 : 1);
     const walk = u.moving ? Math.abs(Math.sin(t * 12 + u.uid)) * 3 : 0;
-    const so = { scale: sc, flip: u.face < 0, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, squash };
+    const so = { scale: sc, flip: u.face < 0, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, squash, anim: u.casting || (u.anim.cast > 0 && u.anim.castMax > 0.2) ? 'cast' : u.anim.lunge > 0 || u.anim.cast > 0 ? 'attack' : u.anim.hurt > 0.05 ? 'hurt' : u.moving ? 'walk' : 'idle',
+      animK: u.casting ? 1 - u.casting.t / u.casting.total : u.anim.cast > 0 ? 1 - u.anim.cast / (u.anim.castMax || 0.3) : u.anim.lunge > 0 ? 1 - u.anim.lunge / 0.22 : u.anim.hurt > 0.05 ? 1 - u.anim.hurt / 0.18 : 0 };
     if (tint === 'white') { // 피격/차지 섬광: 원래 그림 위에 반투명 흰색
       drawSprite(ctx, u.sprite, x, y - walk, so);
       drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'white', alpha: u.charge ? 0.7 : 0.5 }));
