@@ -486,6 +486,12 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .map-node.t-unknown { font-size: 26px; }
 
 .seg3 .seg-btn { min-width: 58px; padding: 4px 8px; }
+/* 던전 (방 + 복도) */
+.map-title .goal { font-size: 13px; color: #8cd0ff; margin-left: 8px; font-weight: 700; }
+.ex-walk { position: absolute; left: 24px; bottom: 120px; display: flex; gap: 10px; }
+.ex-walk.hidden { display: none; }
+.ex-walk-btn { min-width: 76px; min-height: 76px; font-size: 30px; border-radius: 50%; touch-action: none; }
+.ex-actions .on { background: linear-gradient(#ffd96a, #e8a83a); color: #2b1d10; }
 
 </style>
 </head>
@@ -810,6 +816,13 @@ const ENCOUNTERS = {
     3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['orc_shield', 'goblin_bomber', 'goblin_bomber'], ['orc_captain', 'goblin_shaman', 'goblin_archer']] ],
     4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['orc_captain', 'ogre', 'goblin_shaman']] ],
   },
+  // 복도의 작은 적 무리 (웨이브 1개, 금방 끝나는 전투)
+  small: {
+    1: [['goblin', 'goblin'], ['goblin', 'goblin_archer'], ['goblin_bomber', 'goblin'], ['goblin', 'goblin', 'goblin']],
+    2: [['goblin', 'goblin', 'goblin_archer'], ['orc', 'goblin'], ['goblin_shaman', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber']],
+    3: [['orc', 'goblin_archer', 'goblin'], ['orc_shield', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin'], ['orc', 'goblin_shaman']],
+    4: [['orc', 'orc', 'goblin'], ['orc_shield', 'goblin_archer', 'goblin_archer'], ['ogre', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin_shaman']],
+  },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
   boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
 };
@@ -899,6 +912,7 @@ const TREE_DEALS = [
 const HINTS = {
   field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방으로 갈 수 있어요. 방에 무엇이 있는지는 들어가 봐야 알아요.',
+  dungeon: '던전은 방과 복도로 이어져 있어요. 오른쪽 위 지도에서 이웃한 방을 탭하면 그쪽 복도로 걸어가요. 층마다 계단을 찾아 내려가고, 가장 깊은 곳에서 보스 방을 열어 쓰러뜨리면 원정 성공이에요. 자동 모드면 알아서 걷고, 수동이면 ▶을 누르고 있어야 걸어요.',
   explore: '파티가 앞으로 걸어가요. 적 무리를 만나면 그 자리에서 전투가 시작되고, 갈림길에서는 길을 골라요. 멈춤 버튼으로 언제든 멈출 수 있어요.',
   battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌어다 놓으면 그 자리로 이동하거나, 놓은 곳의 적을 공격해요.',
   break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 힘을 모아야 해요. 같은 직업은 한 번만 인정돼요.`,
@@ -2256,9 +2270,9 @@ function newRun(seed) {
   for (const id in heroes) strategy[id] = JSON.parse(JSON.stringify(AI_PRESETS[id]));
   const run = {
     seed: seed >>> 0,
-    map: generateMap(seed),
-    pos: { stage: 0, row: 1 },
-    path: [],
+    dungeon: null,          // 지금 층 (genFloor) — 포털로 들어가면 1층
+    pos: { stage: 0, row: 0 }, // stage = 층 (결과 화면·사망 위치 표시용)
+    bossEnc: makeRng(hashSeed(seed, 'boss'))() * 4 | 0, // 원정마다 보스가 다르다
     gold: CONST.START_GOLD, food: CONST.START_FOOD, potions: 1, torch: CONST.TORCH_MAX,
     relics: [], heroes, strategy,
     party: DEFAULT_PARTY.slice(0, CONST.PARTY_SIZE), // 출전 멤버 (던전 입장 전까지 변경 가능)
@@ -2719,80 +2733,13 @@ const GACHA = {
 };
 
 // ---------- 05_map.js
-// ===== 05_map.js : 경로 지도 생성 + 지도 장면 =====
-
-// 생성 제약:
-//  - 스테이지 1~4는 3갈래, 5는 보스 단일
-//  - 스테이지 1 정예 없음 / 각 스테이지 전투 계열 ≥ 1 / 상점·휴식 스테이지당 ≤ 1
-//  - 스테이지 4에는 휴식 또는 고목이 반드시 1개
-function generateMap(seed) {
-  const rng = makeRng(hashSeed(seed, 'map'));
-  const stages = [];
-  const eventIds = rng.shuffle(Object.keys(EVENTS).slice());
-  let eventCursor = 0;
-  for (let s = 1; s <= CONST.STAGES - 1; s++) {
-    let types = null;
-    for (let attempt = 0; attempt < 500; attempt++) {
-      const cand = [];
-      for (let r = 0; r < CONST.ROWS; r++) {
-        const entries = [];
-        for (const k in NODE_TYPES) {
-          const nt = NODE_TYPES[k];
-          if (!nt.weight) continue;
-          if (k === 'elite' && s === 1) continue;
-          let w = nt.weight;
-          if (s === 1 && k === 'battle') w *= 1.4;
-          entries.push([k, w]);
-        }
-        cand.push(rng.weighted(entries));
-      }
-      if (validStage(s, cand)) { types = cand; break; }
-    }
-    if (!types) types = s === 4 ? ['battle', 'rest', 'tree'] : ['battle', 'event', 'battle']; // 안전장치
-    stages.push(types.map((type, row) => {
-      const node = { stage: s, row, type };
-      if (NODE_TYPES[type].combat) node.enc = rng.int(0, 99);
-      if (type === 'event') node.event = eventIds[eventCursor++ % eventIds.length];
-      return node;
-    }));
-  }
-  stages.push([{ stage: CONST.STAGES, row: 1, type: 'boss', enc: rng.int(0, ENCOUNTERS.boss[CONST.STAGES].length - 1) }]); // 원정마다 보스가 다르다
-  return { seed, stages };
-}
-
-function validStage(s, types) {
-  const count = (t) => types.filter((x) => x === t).length;
-  if (s === 1 && count('elite') > 0) return false;
-  if (!types.some((t) => NODE_TYPES[t].combat)) return false;
-  if (count('shop') > 1 || count('rest') > 1) return false;
-  if (s === 4 && count('rest') + count('tree') < 1) return false;
-  if (count('tree') > 1) return false;
-  return true;
-}
-
-// 이동 규칙: 다음 스테이지의 같은 행 또는 위/아래 인접 행
-function canMoveTo(run, node) {
-  if (node.stage !== run.pos.stage + 1) return false;
-  if (node.type === 'boss') return true;
-  return Math.abs(node.row - run.pos.row) <= 1;
-}
-function getNode(map, stage, row) {
-  const st = map.stages[stage - 1];
-  if (!st) return null;
-  return st.find((n) => n.row === row) || st[0];
-}
+// ===== 05_map.js : 전투 웨이브 선택 · 공용 UI(파티 패널·자원 바·회복약) · 규칙 안내 =====
 
 // 노드 → 전투 웨이브
 function encounterFor(node) {
   if (node.waves) return node.waves; // 이벤트 등에서 직접 지정
   const table = ENCOUNTERS[node.type === 'boss' ? 'boss' : node.type][node.stage] || ENCOUNTERS.battle[Math.min(4, node.stage)];
   return table[node.enc % table.length];
-}
-
-// 지도 화면 좌표
-function mapNodePos(node) {
-  if (node.type === 'boss') return { x: 852, y: 318 };
-  return { x: 150 + (node.stage - 1) * 172, y: 222 + node.row * 96 };
 }
 
 // ---------------------------------------------------------------- 공용 UI: 파티 패널 / 자원 바
@@ -2862,143 +2809,6 @@ function usePotionFlow(run, onDone) {
 }
 
 // ---------------------------------------------------------------- 지도 장면
-const MapScene = {
-  selected: null,
-  t: 0,
-  enter() {
-    const run = Game.run;
-    this.selected = null;
-    this.t = 0;
-    const ui = Game.ui;
-    const top = el('div', 'map-top');
-    const hdr = el('div', 'map-hdr');
-    hdr.appendChild(el('div', 'map-title', `고블린 굴 — ${run.pos.stage === 0 ? '입구' : `${run.pos.stage}/${CONST.STAGES}`}`));
-    hdr.appendChild(resourceBar(run));
-    top.appendChild(hdr);
-    top.appendChild(partyPanel(run, { compact: true }));
-    ui.appendChild(top);
-
-    const nodesLayer = el('div', 'map-nodes');
-    for (const st of run.map.stages) for (const node of st) {
-      const p = mapNodePos(node);
-      const nt = NODE_TYPES[node.type];
-      const visited0 = run.path.some((q) => q.stage === node.stage && q.row === node.row);
-      const known = node.type === 'boss' || visited0; // 방 종류는 들어가 봐야 안다
-      const b = el('button', 'map-node t-' + (known ? node.type : 'unknown'), known ? nt.short : '?');
-      b.type = 'button';
-      b.style.left = p.x + 'px'; b.style.top = p.y + 'px';
-      b.style.setProperty('--nc', known ? nt.color : '#6a6080');
-      b.dataset.stage = node.stage; b.dataset.row = node.row;
-      const visited = run.path.some((q) => q.stage === node.stage && q.row === node.row);
-      const current = run.pos.stage === node.stage && run.pos.row === node.row;
-      const reachable = canMoveTo(run, node);
-      if (visited) b.classList.add('visited');
-      if (current) b.classList.add('current');
-      if (reachable) b.classList.add('reachable');
-      if (!reachable && !current) b.classList.add('locked');
-      b.addEventListener('click', () => {
-        Sfx.play('click');
-        this.select(node, reachable);
-      });
-      nodesLayer.appendChild(b);
-    }
-    ui.appendChild(nodesLayer);
-
-    // 스테이지 번호
-    for (let s = 1; s <= CONST.STAGES; s++) {
-      const p = mapNodePos(s === CONST.STAGES ? { type: 'boss' } : { stage: s, row: 0 });
-      const lab = el('div', 'stage-num' + (s === run.pos.stage + 1 ? ' next' : ''), String(s));
-      lab.style.left = p.x + 'px';
-      ui.appendChild(lab);
-    }
-
-    const legend = el('div', 'map-legend', '<span><b style="background:#6a6080">?</b>들어가 봐야 아는 방</span><span><b style="background:' + NODE_TYPES.boss.color + '">' + NODE_TYPES.boss.short + '</b>굴의 주인</span>');
-    ui.appendChild(legend);
-
-    const side = el('div', 'map-actions');
-    side.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(Game.run), { id: 'btn-strategy' }));
-    side.appendChild(btn('🧪 회복약', 'small', () => usePotionFlow(run, () => Game.go('map')), { id: 'btn-potion' }));
-    side.appendChild(btn('? 규칙', 'small', () => showRulesHelp(), { id: 'btn-help' }));
-    ui.appendChild(side);
-
-    this.info = el('div', 'map-info hidden');
-    ui.appendChild(this.info);
-
-    Game.hint('map');
-  },
-
-  select(node, reachable) {
-    this.selected = node;
-    const info = this.info;
-    info.innerHTML = '';
-    info.classList.remove('hidden');
-    info.classList.toggle('left', mapNodePos(node).x >= 480); // 탭한 노드를 가리지 않도록 반대편에
-    if (node.type === 'boss') {
-      info.appendChild(el('div', 'mi-title', `<b style="background:${NODE_TYPES.boss.color}">${NODE_TYPES.boss.short}</b> 가장 깊은 곳 <small>${node.stage}번째 방</small>`));
-      info.appendChild(el('div', 'mi-desc', `굴의 주인이 기다린다: 「${ENEMIES[encounterFor(node)[0][0]].name}」. 가는 길에 모닥불이나 상인을 만날 수도 있다.`));
-    } else {
-      info.appendChild(el('div', 'mi-title', `<b style="background:#6a6080">?</b> 알 수 없는 방 <small>${node.stage}번째 방</small>`));
-      info.appendChild(el('div', 'mi-desc', '무엇이 있는지는 들어가 봐야 안다. 걸어가다 보면 적 무리, 갈림길, 상인, 수상한 것을 만난다.'));
-    }
-    const row = el('div', 'mi-btns');
-    row.appendChild(btn('취소', 'ghost', () => { this.selected = null; info.classList.add('hidden'); }, { sfx: 'back', id: 'btn-node-cancel' }));
-    if (reachable) {
-      const go = btn('이동 ▶', 'primary', () => this.moveTo(node), { id: 'btn-node-go' });
-      if (Game.run.torch <= 0) info.appendChild(el('div', 'mi-warn', '횃불이 꺼졌다. 어둠 속에서는 정예가 습격할 수 있다.'));
-      row.appendChild(go);
-    } else {
-      row.appendChild(el('div', 'mi-locked', '갈 수 없는 방'));
-    }
-    info.appendChild(row);
-  },
-
-  moveTo(node) {
-    const run = Game.run;
-    run.pos = { stage: node.stage, row: node.row };
-    run.path.push({ stage: node.stage, row: node.row });
-    run.stats.nodes++;
-    run.torch = Math.max(0, run.torch - CONST.TORCH_PER_MOVE);
-    run.lastNode = node;
-    Sfx.play('door');
-    run.room = genRoom(run, node, node.type); // 방 안으로: 걸어가며 만나는 것들 (어둠 속 습격은 전투 직전에 판정)
-    Game.go('explore');
-  },
-
-  update(dt) { this.t += dt; },
-
-  render(ctx) {
-    const run = Game.run;
-    drawDungeonBackdrop(ctx, this.t, 0.55);
-    // 연결선
-    ctx.lineWidth = 3;
-    const stages = run.map.stages;
-    for (let s = 0; s < stages.length - 1; s++) {
-      for (const a of stages[s]) for (const b of stages[s + 1]) {
-        if (b.type !== 'boss' && Math.abs(a.row - b.row) > 1) continue;
-        const pa = mapNodePos(a), pb = mapNodePos(b);
-        const walked = run.path.some((q) => q.stage === a.stage && q.row === a.row) && run.path.some((q) => q.stage === b.stage && q.row === b.row);
-        const fromCur = run.pos.stage === a.stage && run.pos.row === a.row;
-        ctx.strokeStyle = walked ? '#ffd34a' : fromCur ? 'rgba(255,230,170,0.75)' : 'rgba(140,120,190,0.35)';
-        ctx.setLineDash(fromCur && !walked ? [8, 6] : []);
-        ctx.lineDashOffset = -this.t * 20;
-        ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
-      }
-    }
-    // 입구 → 스테이지 1
-    if (run.pos.stage === 0) {
-      ctx.strokeStyle = 'rgba(255,230,170,0.75)';
-      ctx.setLineDash([8, 6]);
-      for (const b of stages[0]) { const pb = mapNodePos(b); ctx.beginPath(); ctx.moveTo(40, 318); ctx.lineTo(pb.x, pb.y); ctx.stroke(); }
-    }
-    ctx.setLineDash([]);
-    // 파티 위치 마커
-    let px = 40, py = 318;
-    if (run.pos.stage > 0) { const p = mapNodePos(getNode(run.map, run.pos.stage, run.pos.row)); px = p.x; py = p.y; }
-    const bob = Math.sin(this.t * 4) * 3;
-    drawSprite(ctx, 'knight', px, py - 30 + bob, { scale: 2, t: this.t });
-  },
-};
-
 // 지도/이벤트 화면 공용 배경: 돌벽 + 횃불
 function drawDungeonBackdrop(ctx, t, dim) {
   const W = CONST.VIEW_W, H = CONST.VIEW_H;
@@ -3045,6 +2855,143 @@ function showRulesHelp() {
   Game.modal(box, { dim: true, closeOnBg: true });
 }
 
+// ---------- 05b_dungeon.js
+// ===== 05b_dungeon.js : 던전 층 생성 (다키스트 던전처럼 방 + 복도) =====
+// 한 원정 = 1~5층 + 보스 층(6층). 층마다 방 5~7개가 격자 위에 놓이고 복도로 이어진다.
+// 입구 방에서 시작해 계단 방(입구에서 가장 먼 방)을 찾아 내려간다.
+// 보스 층: 보스 방은 잠겨 있고, 열쇠 / 레버 / 봉인석 중 하나의 기믹을 풀어야 열린다.
+
+const DUNGEON = {
+  FLOORS: 5, BOSS_FLOOR: 6,
+  GRID_W: 5, GRID_H: 3,
+  ROOMS: [5, 7],
+  CORR_LEN: 2200,          // 복도 길이 (px) — 짧게
+  ROOM_W: 1200,            // 방 화면 폭
+  FIELD_W: 1440,           // 전투 영역 (고정, 화면 1.5배)
+};
+
+// 방 종류
+const ROOM_KINDS = {
+  start:    { name: '입구', icon: '⌂', color: '#8a8a9a' },
+  combat:   { name: '적의 소굴', icon: '⚔', color: '#b05a4a' },
+  elite:    { name: '정예의 방', icon: '☠', color: '#d0503a' },
+  camp:     { name: '야영지', icon: '♨', color: '#e09a3a' },
+  treasure: { name: '보물 방', icon: '◆', color: '#e8c040' },
+  stairs:   { name: '계단', icon: '▼', color: '#6ab0e0' },
+  boss:     { name: '보스 방', icon: '♛', color: '#c03a5a' },
+  key:      { name: '열쇠 방', icon: '⚷', color: '#e0d060' },
+  lever:    { name: '레버 방', icon: '⫯', color: '#a0c060' },
+  seal:     { name: '봉인석 방', icon: '◎', color: '#a070e0' },
+};
+// 보스 층 기믹: 무엇을 몇 개 모아야 보스 방이 열리는가
+const BOSS_GIMMICKS = {
+  key:   { name: '열쇠', need: 1, kind: 'key', text: '보스 방이 잠겨 있다. 정예가 지키는 열쇠를 찾아야 한다.' },
+  lever: { name: '레버', need: 2, kind: 'lever', text: '보스 방 문이 굳게 닫혀 있다. 층 어딘가의 레버 2개를 모두 내려야 한다.' },
+  seal:  { name: '봉인석', need: 3, kind: 'seal', text: '보스 방에 봉인이 걸려 있다. 봉인석 3개를 지키는 적을 쓰러뜨리고 부숴야 한다.' },
+};
+// 복도의 네임드 정예 이름
+const NAMED_ELITES = ['붉은 송곳니', '외눈 바르크', '뼈 수집가 그롬', '늪의 우그', '쇠사슬 크락', '피 묻은 도끼', '굴 지기 모르그'];
+
+// 층 번호 → 조우 테이블 단계 (1~4)
+function floorStage(floor) { return Math.max(1, Math.min(4, floor)); }
+
+function genFloor(seed, floor) {
+  const rng = makeRng(hashSeed(seed, 'floor', floor));
+  const boss = floor === DUNGEON.BOSS_FLOOR;
+  const n = boss ? 7 : rng.int(DUNGEON.ROOMS[0], DUNGEON.ROOMS[1]);
+  const W = DUNGEON.GRID_W, H = DUNGEON.GRID_H;
+  const cells = {}, rooms = [], edges = [];
+  const key = (x, y) => x + ',' + y;
+  const add = (x, y, parent) => { const r = { id: rooms.length, gx: x, gy: y, type: 'combat', visited: false, cleared: false }; rooms.push(r); cells[key(x, y)] = r; if (parent) edges.push([parent.id, r.id]); return r; };
+  add(0, rng.int(0, H - 1), null);
+  // 방을 하나씩 이웃 칸에 붙여 나간다 (오른쪽으로 뻗어 나가기 쉽게)
+  for (let guard = 0; rooms.length < n && guard < 500; guard++) {
+    const from = rooms[rng.int(0, rooms.length - 1)];
+    const dirs = rng.shuffle([[1, 0], [1, 0], [0, 1], [0, -1], [-1, 0]]);
+    for (const [dx, dy] of dirs) {
+      const x = from.gx + dx, y = from.gy + dy;
+      if (x < 0 || y < 0 || x >= W || y >= H || cells[key(x, y)]) continue;
+      add(x, y, from); break;
+    }
+  }
+  // 고리 몇 개 (이웃한 방 사이에 복도 추가)
+  for (const r of rooms) for (const [dx, dy] of [[1, 0], [0, 1]]) {
+    const o = cells[key(r.gx + dx, r.gy + dy)];
+    if (o && !edges.some((e) => (e[0] === r.id && e[1] === o.id) || (e[0] === o.id && e[1] === r.id)) && rng() < 0.3) edges.push([r.id, o.id]);
+  }
+  // 입구에서의 거리
+  const adj = rooms.map(() => []);
+  for (const [a, b] of edges) { adj[a].push(b); adj[b].push(a); }
+  const dist = rooms.map(() => Infinity); dist[0] = 0;
+  const q = [0];
+  while (q.length) { const c = q.shift(); for (const o of adj[c]) if (dist[o] === Infinity) { dist[o] = dist[c] + 1; q.push(o); } }
+  const far = rooms.slice(1).sort((a, b) => dist[b.id] - dist[a.id] || b.gx - a.gx)[0];
+  rooms[0].type = 'start'; rooms[0].visited = true; rooms[0].cleared = true;
+  const fl = { floor, seed, rooms, corridors: [], at: { room: 0 }, gimmick: null, have: 0 };
+  if (boss) {
+    far.type = 'boss';
+    const gk = rng.pick(Object.keys(BOSS_GIMMICKS)), G = BOSS_GIMMICKS[gk];
+    fl.gimmick = gk;
+    const cand = rng.shuffle(rooms.filter((r) => r.type === 'combat' && dist[r.id] >= 1));
+    cand.slice(0, G.need).forEach((r) => { r.type = G.kind; });
+  } else {
+    far.type = 'stairs';
+    for (const r of rooms) if (r.type === 'combat') {
+      const v = rng();
+      r.type = v < 0.2 && floor >= 2 ? 'elite' : v < 0.32 ? 'camp' : v < 0.46 ? 'treasure' : 'combat';
+    }
+  }
+  // 방 안의 적
+  const st = floorStage(floor);
+  for (const r of rooms) {
+    if (['combat', 'stairs', 'lever', 'seal'].includes(r.type)) r.fight = { type: 'battle', enc: rng.int(0, 99) };
+    if (r.type === 'elite' || r.type === 'key') r.fight = { type: 'elite', enc: rng.int(0, 99), affix: rng.pick(Object.keys(ELITE_AFFIXES)) };
+    if (r.type === 'boss') r.fight = { type: 'boss', enc: rng.int(0, 99) };
+    if (!r.fight) r.cleared = r.type === 'start';
+  }
+  // 복도: 작은 적 무리 2번 (가끔 하나가 네임드 정예) + 함정·보급 최대 2개
+  edges.forEach(([a, b], i) => {
+    const L = DUNGEON.CORR_LEN, items = [];
+    let uid = 0;
+    const fx = [Math.round(L * 0.3 + rng.int(-80, 80)), Math.round(L * 0.68 + rng.int(-80, 80))];
+    fx.forEach((x, k) => {
+      const named = k === 1 && rng() < 0.15 + floor * 0.02;
+      items.push(named
+        ? { id: ++uid, kind: 'elite', x, enc: rng.int(0, 99), affix: rng.pick(Object.keys(ELITE_AFFIXES)), named: rng.pick(NAMED_ELITES), done: false }
+        : { id: ++uid, kind: 'fight', x, small: true, enc: rng.int(0, 99), done: false });
+    });
+    const extras = rng.int(0, 2);
+    const spots = rng.shuffle([Math.round(L * 0.14), Math.round(L * 0.5), Math.round(L * 0.86)]).slice(0, extras);
+    for (const x of spots) items.push({ id: ++uid, kind: rng() < 0.45 ? 'trap' : 'supply', x, done: false });
+    items.sort((p, q2) => p.x - q2.x);
+    fl.corridors.push({ id: i, a, b, len: L, items, walked: false });
+  });
+  void st;
+  return fl;
+}
+
+// 방에 붙은 복도와 이웃 방
+function floorNeighbors(fl, roomId) {
+  return fl.corridors.filter((c) => c.a === roomId || c.b === roomId).map((c) => ({ corr: c, room: fl.rooms[c.a === roomId ? c.b : c.a] }));
+}
+// 지도에 보이는가: 가 본 방 + 그 이웃 (이웃은 종류를 모른다)
+function roomKnown(fl, r) { return r.visited; }
+function roomSeen(fl, r) { return r.visited || floorNeighbors(fl, r.id).some((n) => n.room.visited); }
+// 보스 방이 열렸는가
+function bossOpen(fl) { return !fl.gimmick || fl.have >= BOSS_GIMMICKS[fl.gimmick].need; }
+// 복도 안의 것들을 걷는 방향 기준 좌표로 (from 방에서 출발)
+function corridorTrack(c, fromId) {
+  const fwd = c.a === fromId;
+  return c.items.map((it) => ({ it, x: fwd ? it.x : c.len - it.x })).sort((p, q) => p.x - q.x);
+}
+// 조우 웨이브
+function corridorWaves(fl, it) {
+  const st = floorStage(fl.floor);
+  if (it.kind === 'elite') return encounterFor({ type: 'elite', stage: st, enc: it.enc });
+  const t = ENCOUNTERS.small[st];
+  return [t[it.enc % t.length]];
+}
+
 // ---------- 06_battle_sim.js
 // ===== 06_battle_sim.js : 실시간 파티 전투 시뮬레이션 (순수 로직) =====
 // 2D 바닥 위 자유 이동: 근접은 달려들고, 원거리는 거리를 유지하고, 서로 겹칠 수 있다.
@@ -3069,6 +3016,7 @@ class BattleSim {
     this.enemySpawnX = opts.enemySpawnX !== undefined ? opts.enemySpawnX : CONST.ENEMY_SPAWN_X;
     this.heroPos = opts.heroPos || null; // 탐험에서 이어지는 전투: 걷던 자리 그대로 시작
     this.eliteAffix = opts.eliteAffix || null; // 정예 변이 (ELITE_AFFIXES 키)
+    this.named = opts.named || null;           // 네임드 정예 이름
     this.surprise = !!opts.surprise;          // 기습: 파티가 잠깐 굳는다
     this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
@@ -3166,7 +3114,7 @@ class BattleSim {
   }
   _applyAffix(u, key) {
     const A = ELITE_AFFIXES[key]; if (!A) return;
-    u.name = A.name + ' ' + u.name; u.affix = key;
+    u.name = (this.named ? `「${this.named}」 ` : '') + A.name + ' ' + u.name; u.affix = key;
     u.maxHp = Math.round(u.maxHp * 1.25); u.hp = u.maxHp;
     if (key === 'iron') { u.armor = Math.min(0.8, (u.armor || 0) + 0.2); u.poiseMax = Math.round(u.poiseMax * 1.3); u.poise = u.poiseMax; u.poiseBase = u.poiseMax; }
     if (key === 'fury') { u.enraged = true; u.statuses.enrage = { t: Infinity }; }
@@ -4107,7 +4055,7 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
-      eliteAffix: node.affix || null, surprise: !!(ex && ex.surprise),
+      eliteAffix: node.affix || null, named: node.named || null, surprise: !!(ex && ex.surprise),
     });
     this.camX = this.camTarget(); // 카메라 (전장 좌표, 화면 폭 960)
     this.acc = 0;
@@ -4130,7 +4078,7 @@ const BattleScene = {
     this.buildHud();
     this.consumeEvents();
     if (node.type === 'boss') Music.play('boss');
-    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? (node.affix ? `정예: ${ELITE_AFFIXES[node.affix].name}` : '정예 전투!') : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? (node.named ? `네임드: 「${node.named}」` : node.affix ? `정예: ${ELITE_AFFIXES[node.affix].name}` : '정예 전투!') : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
   },
@@ -4693,11 +4641,15 @@ const BattleScene = {
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
-      if (this.explore && run.room && this.node.exploreId) { // 탐험으로 복귀: 쓰러뜨린 무리를 지나간 자리에서 이어서
-        const it = roomTrack(run.room).find((x) => x.id === this.node.exploreId);
-        if (it) { it.done = true; run.room.x = Math.max(run.room.x, it.x - 40); }
-      }
+      if (this.node.dref) dungeonBattleWon(run, this.node.dref); // 던전으로 복귀할 자리·방 정리
       if (this.node.type === 'boss') { run.result = 'victory'; Game.go('result'); }
+      else if (this.node.small) { // 복도의 작은 무리: 보상 화면 없이 골드만 챙기고 바로 이어서
+        const g = 6 + this.node.stage * 3 + Math.floor(Math.random() * 6); run.gold += g;
+        const L = run.lastLoot; run.lastLoot = null;
+        const lv = L && L.exp ? L.exp.filter((r) => r.to > r.from).map((r) => `${HEROES[r.id].name} Lv ${r.to}!`) : [];
+        Game.toast(`골드 +${g}` + (L && L.exp && L.exp[0] ? ` · 경험치 +${L.exp[0].exp}` : '') + (lv.length ? ' · ' + lv.join(' ') : ''), 1600);
+        backToRun();
+      }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
       else Game.go('reward', { node: this.node });
     } else {
@@ -4710,7 +4662,7 @@ const BattleScene = {
   // ------------------------------------------------------------ HUD 갱신
   updateHud() {
     const sim = this.sim;
-    this.stageLabel.textContent = `방 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
+    this.stageLabel.textContent = `${this.run.dungeon ? `${this.run.dungeon.floor}층` : `방 ${this.node.stage}`} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
     // 위험 경고
@@ -5284,7 +5236,7 @@ const FieldScene = {
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }
@@ -5644,355 +5596,444 @@ const FieldScene = {
 };
 
 // ---------- 08b_explore.js
-// ===== 08b_explore.js : 방 안 탐험 (옆으로 걷는 실시간 탐험 — 갈림길·조우 전투·상인·이벤트·모닥불) =====
-// 지도에서 방을 고르면 그 방이 무엇인지는 들어가 봐야 안다. 방 안에서는 파티가 오른쪽으로 걸어가며
-// 길 위의 것들을 만난다. 적 무리에 닿으면 그 자리에서 실시간 전투(전장 = 화면 2배 폭)로 이어진다.
+// ===== 08b_explore.js : 던전 화면 (방 + 복도, 다키스트 던전 방식) =====
+// 방: 들어서면 적이 있으면 바로 전투, 아니면 방의 것(야영지·보물·계단·레버·봉인석·열쇠)을 처리.
+// 복도: 옆으로 걷는다. 자동 모드면 알아서 걷고, 수동이면 ▶을 누르고 있거나 바닥을 탭해서 걷는다.
+//       작은 적 무리 2번(가끔 네임드 정예), 함정·보급 최대 2개. 전투 영역은 고정 (화면 1.5배).
+// 던전 지도(오른쪽 위): 가 본 방 + 이웃 방(?)이 보인다. 방에서 이웃 방을 탭하면 그 복도로 출발한다.
 
-const EXPLORE = {
-  SPEED: 170,          // 걷는 속도 (px/초)
-  START_X: 200,
-  CAM_LEAD: 380,       // 화면에서 선두 캐릭터 위치 (왼쪽에서)
-  SPOT_DIST: 520,      // 적 무리를 발견(전투 시작)하는 거리
-  STOP_DIST: 70,       // 상인·이벤트 앞에 멈추는 거리
-  FIELD_W: 1920,       // 조우 전투 전장 폭 (화면 2배)
-  LANES: [342, 372, 402],
-};
+const EXPLORE = { SPEED: 210, SPOT: 430, LANES: [342, 372, 402], CAM_LEAD: 380 };
+const MAP_BOX = { x: 600, y: 112, cw: 64, ch: 46, w: 5 * 64 + 12, h: 3 * 46 + 30 };
 
-// 갈림길 단서: 75%는 맞는 단서, 나머지는 아무 단서도 없다
-const EXPLORE_HINTS = {
-  fight: '거친 숨소리가 들린다',
-  elite: '묵직한 발소리가 땅을 울린다',
-  chest: '바닥에서 무언가 반짝인다',
-  event: '알 수 없는 기운이 감돈다',
-  shop: '희미한 등불이 보인다',
-  rest: '모닥불 냄새가 난다',
-  tree: '커다란 나무 그림자가 드리워 있다',
-  trap: '바닥에 수상한 자국이 있다',
-  none: '조용하다',
-};
-const EXPLORE_LABEL = {
-  shop: { name: '떠돌이 상인', act: '거래하기' },
-  event: { name: '수상한 것', act: '살펴보기' },
-  rest: { name: '모닥불 자리', act: '쉬어 가기' },
-  tree: { name: '고목', act: '다가가기' },
-};
+// 다른 화면(전투·상점·이벤트·보상·야영)이 끝나면 돌아갈 곳
+function backToRun() { Game.go(Game.run && Game.run.dungeon ? 'dungeon' : 'field'); }
 
-// 방 구성 (숨겨진 방 종류 → 길 위의 것들). 갈림길 두 갈래 중 하나만 지나간다
-// 방 하나에 전투 1~2번 (원정 전체 8번 안팎)
-const ROOM_PLANS = {
-  battle: { first: ['fight'], branches: [['chest', 'fight'], ['event']], last: [] },
-  elite:  { first: ['fight'], branches: [['elite'], ['chest']], last: [] },
-  rest:   { first: [], branches: [['fight'], ['chest']], last: ['rest'] },
-  event:  { first: ['event'], branches: [['fight'], ['chest']], last: [] },
-  shop:   { first: ['fight'], branches: [['shop'], ['event']], last: [] },
-  tree:   { first: ['tree'], branches: [['fight'], ['chest']], last: [] },
-  boss:   { first: ['fight'], branches: [['rest'], ['shop']], last: ['boss'] },
-};
-
-// 방 = 다키스트 던전의 복도처럼 긴 길: 칸(TILE) 단위로 대부분 빈 길, 사이사이 상자·수상한 것·함정·적.
-// 방 종류의 핵심 내용(ROOM_PLANS)은 갈림길 앞 구간 / 두 갈래 / 끝 구간에 들어간다
-const TILE = 900;
-function fillerKind(rng) {
-  const r = rng();
-  return r < 0.5 ? null : r < 0.66 ? 'chest' : r < 0.75 ? 'event' : r < 0.87 ? 'trap' : r < 0.93 ? 'fight' : null;
+// 원정 시작: 1층 입구 방
+function enterDungeon(run) {
+  run.dungeon = genFloor(run.seed, 1);
+  run.pos = { stage: 1, row: 0 };
+  Game.go('dungeon');
 }
-function genRoom(run, node, type) {
-  const rng = makeRng(hashSeed(run.seed, 'room', node.stage, node.row));
-  const plan = ROOM_PLANS[type] || ROOM_PLANS.battle;
-  const S = EXPLORE.START_X;
-  let uid = 0;
-  const tiles = [];
-  const mk = (kind, at) => {
-    const it = { id: ++uid, kind, x: at, done: false };
-    if (kind === 'fight' || kind === 'elite' || kind === 'boss') it.enc = kind === 'boss' ? node.enc : rng.int(0, 99);
-    if (kind === 'event') it.event = Object.keys(EVENTS)[rng.int(0, Object.keys(EVENTS).length - 1)];
-    if (kind === 'elite') it.affix = rng.pick(Object.keys(ELITE_AFFIXES));
-    return it;
-  };
-  // 구간 하나: n칸, 핵심 내용은 무작위 칸에, 나머지 칸은 빈 길 또는 잡동사니. 첫 칸은 비워 둔다
-  const segment = (x0, n, core, seg, keepLast) => {
-    const slots = []; for (let i = 1; i < n; i++) slots.push(i);
-    const coreAt = {};
-    const pool = rng.shuffle(slots.slice());
-    core.forEach((k, j) => { const i = keepLast && j === core.length - 1 ? n - 1 : pool.find((q) => !coreAt[q] && !(keepLast && q === n - 1)); coreAt[i] = k; });
-    const its = [];
-    for (let i = 0; i < n; i++) {
-      const kind = coreAt[i] || (i > 0 ? fillerKind(rng) : null);
-      const it = kind ? mk(kind, x0 + i * TILE + TILE / 2) : null;
-      if (it && kind === 'fight' && !coreAt[i] && rng() < 0.4) it.ambush = true; // 길에서 만나는 적 일부는 숨어 있다가 덮친다
-      if (it) its.push(it);
-      tiles.push({ x0: x0 + i * TILE, seg, item: it ? it.id : 0, kind: kind || '' });
-    }
-    return its;
-  };
-  const nA = rng.int(5, 7);
-  const items = segment(S - TILE / 2, nA, plan.first, 'A');
-  // 갈림길 문 두 개: 앞 구간 끝 (들어온 문에서 멀리), 위치는 방마다 무작위
-  const d0 = S - TILE / 2 + nA * TILE + rng.int(0, 400);
-  const doors = [d0, d0 + rng.int(260, 520)];
-  const forkX = doors[0];
-  const bx0 = doors[1] + 500, nB = rng.int(4, 5);
-  const branches = plan.branches.map((list, bi) => {
-    const its = segment(bx0, nB, list, bi);
-    const real = rng() < 0.75;
-    const first = its[0] ? its[0].kind : 'none';
-    return { items: its, end: bx0 + nB * TILE, hint: EXPLORE_HINTS[real ? first : 'none'], side: bi === 0 ? '왼쪽 길' : '오른쪽 길' };
-  });
-  const tx0 = bx0 + nB * TILE, nC = plan.last.length ? 2 : 1;
-  const tail = segment(tx0, nC, plan.last, 'T', true);
-  const exitX = tx0 + nC * TILE;
-  return { stage: node.stage, row: node.row, type, items, forkX, doors, branches, chosen: -1, tail, tiles, exitX, x: S, theme: node.stage };
-}
-// 지금 길 위에 있는 것들 (갈림길에서 고른 갈래 포함)
-// 갈림길 문 위치 (벽에 난 문 두 개). 문 앞으로 걸어가면 그 길로 들어간다
-function doorX(room, i) { return room.doors[i]; }
-function roomTrack(room) {
-  const out = room.items.slice();
-  if (room.chosen >= 0) out.push(...room.branches[room.chosen].items, ...room.tail);
-  return out;
-}
-// 다른 화면(전투·상점·이벤트·보상)이 끝나면 돌아갈 곳
-function backToRun() { Game.go(Game.run && Game.run.room ? 'explore' : 'map'); }
 
-const ExploreScene = {
+// 전투에서 이겼을 때 던전 쪽 정리 (BattleScene.finish에서 호출)
+function dungeonBattleWon(run, ref) {
+  const fl = run.dungeon; if (!fl) return;
+  if (ref.room !== undefined) {
+    const r = fl.rooms[ref.room]; r.cleared = true;
+    if (r.type === 'key') { fl.have++; Game.toast(`열쇠를 얻었다! (${fl.have}/${BOSS_GIMMICKS.key.need})`, 2000); }
+  } else if (ref.corr !== undefined) {
+    const c = fl.corridors[ref.corr], it = c.items.find((x) => x.id === ref.item);
+    if (it) it.done = true;
+    if (fl.at.corr === c.id) fl.at.x = Math.max(fl.at.x, ref.pos - 40);
+  }
+}
+
+const DungeonScene = {
   enter() {
-    const run = Game.run, room = run.room;
-    this.t = 0;
-    this.moving = true;
-    this.prompt = null;
-    this.fx = [];
-    this.camX = Math.max(0, room.x - EXPLORE.CAM_LEAD);
-    this.walkTarget = null; this.doorPick = null; this.forkSeen = false; this.fade = 0;
+    const run = Game.run, fl = run.dungeon;
+    this.t = 0; this.fx = []; this.hold = 0; this.walkTarget = null; this.fade = 0.5; this.pending = null;
+    this.camX = 0;
     this.buildHud();
-    if (!room.seen) { room.seen = true; Game.toast(room.stage === CONST.STAGES ? '가장 깊은 곳에 들어섰다. 굴의 주인이 가까이 있다.' : `${room.stage}번째 방에 들어섰다. 무엇이 있을지 모른다.`, 1800); Game.hint('explore'); }
+    if (fl.at.room !== undefined) this.arriveRoom(fl.rooms[fl.at.room], true);
+    if (!this.introShown && fl.floor === 1 && fl.at.room === 0) { this.introShown = true; Game.hint('dungeon'); }
   },
-  exit() {},
+  exit() { this.hold = 0; },
 
   buildHud() {
-    const run = Game.run, ui = Game.ui;
+    const run = Game.run, fl = run.dungeon, ui = Game.ui;
     ui.innerHTML = '';
     const top = el('div', 'map-top ex-top');
     const hdr = el('div', 'map-hdr');
-    hdr.appendChild(el('div', 'map-title', `고블린 굴 — ${run.room.stage === CONST.STAGES ? '가장 깊은 곳' : `${run.room.stage}/${CONST.STAGES}`}`));
+    const goal = fl.floor === DUNGEON.BOSS_FLOOR ? (bossOpen(fl) ? '보스 방이 열렸다' : `${BOSS_GIMMICKS[fl.gimmick].name} ${fl.have}/${BOSS_GIMMICKS[fl.gimmick].need}`) : '계단을 찾아라';
+    hdr.appendChild(el('div', 'map-title', `고블린 굴 ${fl.floor === DUNGEON.BOSS_FLOOR ? '— 가장 깊은 곳' : `${fl.floor}층`} <small class="goal">${goal}</small>`));
     hdr.appendChild(resourceBar(run));
     top.appendChild(hdr);
     top.appendChild(partyPanel(run, { compact: true }));
     ui.appendChild(top);
     const side = el('div', 'map-actions ex-actions');
-    this.walkBtn = btn('', 'small', () => {
-      const room = Game.run.room;
-      if (room && room.chosen < 0 && room.x >= room.forkX - 180) { // 갈림길에서 전진 = 가까운 문으로
-        const near = Math.abs(room.x - doorX(room, 0)) <= Math.abs(room.x - doorX(room, 1)) ? 0 : 1;
-        this.walkToDoor(near); return;
-      }
-      this.moving = !this.moving; this.refreshWalk();
-    }, { id: 'btn-walk' });
-    side.appendChild(this.walkBtn);
+    this.speedBtn = btn(`배속 ${Game.settings.speed || 1}x`, 'small', () => { Game.settings.speed = (Game.settings.speed || 1) >= 3 ? 1 : (Game.settings.speed || 1) + 1; Game.saveSettings(); this.speedBtn.innerHTML = `배속 ${Game.settings.speed}x`; }, { id: 'btn-ex-speed' });
+    side.appendChild(this.speedBtn);
+    this.autoBtn = btn('', 'small', () => { run.autoMode = !run.autoMode; this.refreshAuto(); Game.toast(run.autoMode ? '자동: 복도를 알아서 걷고 전투도 전략대로 해요' : '수동: ▶을 누르고 있거나 바닥을 탭해서 걸어요', 1400); }, { id: 'btn-ex-auto' });
+    side.appendChild(this.autoBtn);
     side.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(run), { id: 'btn-strategy' }));
-    side.appendChild(btn('🧪 회복약', 'small', () => usePotionFlow(run, () => this.buildHud()), { id: 'btn-potion' }));
+    side.appendChild(btn('🧪', 'small', () => usePotionFlow(run, () => this.buildHud()), { id: 'btn-potion' }));
     ui.appendChild(side);
+    // 걷기 버튼 (복도에서만): 누르고 있는 동안 걷는다
+    const walk = el('div', 'ex-walk');
+    const mkHold = (label, dir, id) => {
+      const b = btn(label, 'ex-walk-btn', () => {}, { id, sfx: 'none' });
+      const on = (e) => { e.preventDefault(); this.hold = dir; this.walkTarget = null; };
+      const off = () => { if (this.hold === dir) this.hold = 0; };
+      b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+      return b;
+    };
+    walk.appendChild(mkHold('◀', -1, 'btn-back')); walk.appendChild(mkHold('▶', 1, 'btn-fwd'));
+    this.walkBox = walk;
+    ui.appendChild(walk);
     this.act = el('div', 'ex-act hidden');
     ui.appendChild(this.act);
-    this.refreshWalk();
+    this.refreshAuto();
+    this.refreshWalkBox();
   },
-  refreshWalk() { if (this.walkBtn) this.walkBtn.innerHTML = this.moving ? '⏸ 멈춤' : '▶ 전진'; },
+  refreshAuto() { if (this.autoBtn) this.autoBtn.innerHTML = Game.run.autoMode ? '자동' : '수동'; this.autoBtn.classList.toggle('on', !!Game.run.autoMode); },
+  refreshWalkBox() { const inCorr = Game.run.dungeon.at.corr !== undefined; this.walkBox.classList.toggle('hidden', !inCorr || Game.run.autoMode); },
+  refreshRes() { const old = Game.ui.querySelector('.ex-top .res-bar'); if (old) old.replaceWith(resourceBar(Game.run)); },
 
-  party() {
-    const run = Game.run, room = run.room;
-    const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
-    return ids.map((id, i) => ({ id, x: room.x - i * 46, y: EXPLORE.LANES[i % 3] }));
+  // ------------------------------------------------------------ 방
+  arriveRoom(r, silent) {
+    const run = Game.run, fl = run.dungeon;
+    fl.at = { room: r.id };
+    r.visited = true;
+    this.walkTarget = null; this.hold = 0;
+    this.camX = 0;
+    if (!silent) { Sfx.play('door'); this.fade = 0.5; }
+    this.refreshWalkBox();
+    if (r.fight && !r.cleared) {
+      if (r.type === 'boss' && !bossOpen(fl)) return; // (지도에서 막지만 안전장치)
+      this.showAct(`${ROOM_KINDS[r.type].name}`, r.type === 'boss' ? '굴의 주인이 기다리고 있다.' : r.type === 'elite' || r.type === 'key' ? `${ELITE_AFFIXES[r.fight.affix].name} 정예가 지키고 있다.` : '적이 우글거린다.', []);
+      this.pending = { t: 0.9, fn: () => this.startRoomFight(r) };
+      return;
+    }
+    this.showRoomActions(r);
+  },
+  showRoomActions(r) {
+    const run = Game.run, fl = run.dungeon, acts = [];
+    const K = ROOM_KINDS[r.type];
+    let text = '';
+    if (r.type === 'start') text = fl.floor === 1 ? '굴 입구. 지도에서 이웃한 방을 탭하면 그쪽 복도로 간다.' : '계단을 내려왔다.';
+    if (r.type === 'combat' || r.type === 'elite') text = '조용해졌다. 지도에서 다음 방을 고르자.';
+    if (r.type === 'camp') { text = r.used ? '꺼져 가는 모닥불.' : '안전한 야영지. 쉬어 갈 수 있다.'; if (!r.used) acts.push(['야영하기', () => { r.used = true; this.hideAct(); Game.go('rest', { node: { stage: floorStage(fl.floor), row: r.id, type: 'rest' } }); }]); }
+    if (r.type === 'treasure') { text = r.used ? '빈 상자.' : '보물 상자가 놓여 있다.'; if (!r.used) acts.push(['상자 열기', () => this.openTreasure(r)]); }
+    if (r.type === 'stairs') { text = '아래로 이어지는 계단.'; acts.push([fl.floor + 1 === DUNGEON.BOSS_FLOOR ? '가장 깊은 곳으로' : `${fl.floor + 1}층으로 내려가기`, () => this.descend()]); }
+    if (r.type === 'lever') { text = r.used ? '내려간 레버.' : '녹슨 레버가 있다.'; if (!r.used) acts.push(['레버 내리기', () => { r.used = true; fl.have++; Sfx.play('door'); Game.toast(`레버를 내렸다 (${fl.have}/${BOSS_GIMMICKS.lever.need})${bossOpen(fl) ? ' — 어딘가에서 문이 열리는 소리가 난다' : ''}`, 2200); this.buildHud(); this.showRoomActions(r); }]); }
+    if (r.type === 'seal') { text = r.used ? '부서진 봉인석.' : '보랏빛 봉인석이 빛나고 있다.'; if (!r.used) acts.push(['봉인석 부수기', () => { r.used = true; fl.have++; Sfx.play('boom'); Game.toast(`봉인석을 부쉈다 (${fl.have}/${BOSS_GIMMICKS.seal.need})${bossOpen(fl) ? ' — 봉인이 풀렸다' : ''}`, 2200); this.buildHud(); this.showRoomActions(r); }]); }
+    if (r.type === 'key') text = '열쇠를 챙겼다.';
+    this.showAct(K.name, text, acts);
+  },
+  showAct(title, text, acts) {
+    this.act.innerHTML = '';
+    this.act.appendChild(el('div', 'ex-act-title', title));
+    if (text) this.act.appendChild(el('div', 'muted', text));
+    if (acts.length) { const row = el('div', 'btn-row'); acts.forEach(([label, fn], i) => row.appendChild(btn(label, 'primary', fn, { id: 'ex-act-' + i }))); this.act.appendChild(row); }
+    this.act.classList.remove('hidden');
+  },
+  hideAct() { this.act.classList.add('hidden'); },
+  openTreasure(r) {
+    const run = Game.run, fl = run.dungeon;
+    r.used = true;
+    const rng = makeRng(hashSeed(run.seed, 'treasure', fl.floor, r.id));
+    const gold = rng.int(30, 60) + fl.floor * 10;
+    run.gold += gold;
+    const got = [`골드 +${gold}`];
+    const p = Game.profile;
+    const v = rng();
+    if (v < 0.4) { const it = EQ.dropItem(rng, p, 'elite', run.tier, partyIds(run)); p.inv.push(it); run.loot.push({ kind: 'item', uid: it.uid }); got.push(`장비 ${it.grade} ${EQ.itemName(it)}`); }
+    else if (v < 0.7) { const pool = Object.keys(RELICS).filter((k) => !run.relics.includes(k)); if (pool.length) { const k = rng.pick(pool); run.relics.push(k); got.push(`유물 ${RELICS[k].name}`); } }
+    else { const s = rng.int(3, 6); p.stones += s; run.stonesGot += s; got.push(`강화석 +${s}`); }
+    if (rng() < 0.4) { run.potions++; got.push('회복약 +1'); }
+    saveProfile();
+    Sfx.play('coin');
+    Game.toast(got.join(' · '), 2600);
+    this.buildHud(); this.showRoomActions(r);
+  },
+  descend() {
+    const run = Game.run, fl = run.dungeon;
+    const next = fl.floor + 1;
+    run.dungeon = genFloor(run.seed, next);
+    run.pos = { stage: next, row: 0 };
+    run.torch = Math.min(CONST.TORCH_MAX, run.torch + 10);
+    Sfx.play('door');
+    Game.go('dungeon');
+    if (next === DUNGEON.BOSS_FLOOR) setTimeout(() => Game.toast(BOSS_GIMMICKS[run.dungeon.gimmick].text, 3600), 300);
+    else Game.toast(`${next}층`, 1200);
+  },
+  startRoomFight(r) {
+    const run = Game.run, fl = run.dungeon;
+    const st = r.type === 'boss' ? 5 : floorStage(fl.floor);
+    const node = { stage: st, row: r.id, type: r.fight.type, enc: r.type === 'boss' ? run.bossEnc : r.fight.enc, affix: r.fight.affix || null, dref: { room: r.id } };
+    const waves = encounterFor(node);
+    node.waves = waves;
+    Sfx.play('skill');
+    Game.go('battle', { node, explore: { fieldW: DUNGEON.FIELD_W, heroPos: this.partyAt(380).map((p) => ({ x: p.x, y: p.y })), enemySpawnX: 900, worldX: 0, theme: fl.floor } });
+  },
+
+  // ------------------------------------------------------------ 복도
+  goTo(target) {
+    const fl = Game.run.dungeon, here = fl.rooms[fl.at.room];
+    const n = floorNeighbors(fl, here.id).find((x) => x.room.id === target.id);
+    if (!n) return;
+    if (target.type === 'boss' && !bossOpen(fl)) { Game.toast(BOSS_GIMMICKS[fl.gimmick].text, 2400); Sfx.play('back'); return; }
+    fl.at = { corr: n.corr.id, from: here.id, to: target.id, x: 60 };
+    n.corr.walked = true;
+    this.hideAct(); this.fade = 0.4; this.camX = 0;
+    Sfx.play('door');
+    this.refreshWalkBox();
+  },
+  corridor() { const fl = Game.run.dungeon; return fl.at.corr !== undefined ? fl.corridors[fl.at.corr] : null; },
+
+  partyAt(x0) {
+    const run = Game.run;
+    return partyIds(run).filter((id) => !run.heroes[id].dead).map((id, i) => ({ id, x: x0 - i * 46, y: EXPLORE.LANES[i % 3] }));
   },
 
   update(dt) {
     this.t += dt;
-    const run = Game.run, room = run.room;
-    if (!room || Game.modalOpen) return;
+    const run = Game.run, fl = run.dungeon;
+    if (!fl || Game.modalOpen) return;
     for (let i = this.fx.length - 1; i >= 0; i--) { const f = this.fx[i]; f.t += dt; f.y -= 30 * dt; if (f.t > f.dur) this.fx.splice(i, 1); }
-    // 갈림길: 문 두 개 앞에서 멈추고, 탭한 문(또는 지점)으로 걸어가 문 앞에 닿으면 들어간다
-    const atFork = room.chosen < 0 && room.x >= room.forkX - 180;
-    if (atFork) {
-      if (!this.forkSeen) { this.forkSeen = true; this.moving = false; this.refreshWalk(); this.showForkGuide(); }
-      const sp = EXPLORE.SPEED * dt * ((Game.debug && Game.debug.simMult) || 1);
-      if (this.walkTarget !== null && this.walkTarget !== undefined) {
-        const d = this.walkTarget - room.x;
-        room.x += Math.sign(d) * Math.min(Math.abs(d), sp);
-        this.faceLeft = d < 0;
-        if (Math.abs(d) < 1) this.walkTarget = null;
-      }
-      for (const i of [0, 1]) if (Math.abs(room.x - doorX(room, i)) < 8 && this.doorPick === i) { this.enterDoor(i); break; }
-      this.camX += ((doorX(room, 0) + doorX(room, 1)) / 2 - 480 - this.camX) * Math.min(1, dt * 4);
-      return;
-    }
-    const next = roomTrack(room).filter((it) => !it.done).sort((a, b) => a.x - b.x)[0];
-    let limit = room.chosen < 0 ? room.forkX - 180 : room.exitX;
+    if (this.fade > 0) this.fade -= dt;
+    if (this.pending) { this.pending.t -= dt; if (this.pending.t <= 0) { const f = this.pending.fn; this.pending = null; f(); return; } }
+    const c = this.corridor();
+    if (!c) { if (run.autoMode) this.autoRoom(dt); return; }
+    const at = fl.at, track = corridorTrack(c, at.from);
+    const sp = EXPLORE.SPEED * (Game.settings.speed || 1) * ((Game.debug && Game.debug.simMult) || 1) * dt;
+    // 다음 것: 적은 보이는 거리에서 전투, 함정·보급은 밟으면
+    const next = track.find((p) => !p.it.done && p.x > at.x - 30);
+    let limit = c.len - 40;
     if (next) {
-      if (next.ambush && !next.revealed) { // 숨은 적: 가까이 가면 알아챌지 판정, 못 알아채면 바로 옆에서 기습
-        if (room.x >= next.x - 700 && next.spotted === undefined) {
-          const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
-          const r = makeRng(hashSeed(run.seed, 'ambush', room.stage, room.row, next.id));
-          next.spotted = r() < 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.25 : 0);
-          if (next.spotted) { next.revealed = true; this.fx.push({ x: next.x, y: 260, text: '숨어 있는 적을 발견했다!', t: 0, dur: 2 }); }
-        }
-        if (!next.revealed && room.x >= next.x - 170) { this.startFight(next, true); return; }
-      } else if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
-        if (room.x >= next.x - EXPLORE.SPOT_DIST) { this.startFight(next); return; }
-      } else if (next.kind === 'chest') {
-        if (room.x >= next.x - 20) this.openChest(next);
-      } else if (next.kind === 'trap') {
-        if (room.x >= next.x - 20) this.springTrap(next);
-      } else {
-        limit = Math.min(limit, next.x - EXPLORE.STOP_DIST);
-        if (room.x >= next.x - EXPLORE.STOP_DIST - 1) this.showAct(next); else this.hideAct();
-      }
+      const it = next.it;
+      if (it.kind === 'fight' || it.kind === 'elite') {
+        if (at.x >= next.x - EXPLORE.SPOT) { this.startCorridorFight(c, next); return; }
+      } else if (at.x >= next.x - 10) this.stepOn(c, next);
     }
-    if (this.moving) room.x = Math.min(limit, room.x + EXPLORE.SPEED * dt * ((Game.debug && Game.debug.simMult) || 1));
-    // 횃불은 걸을수록 닳는다 (한 칸마다)
-    const tile = Math.floor((room.x - EXPLORE.START_X) / TILE);
-    if (tile > (room.tileSeen || 0)) { room.tileSeen = tile; run.torch = Math.max(0, run.torch - CONST.TORCH_PER_TILE); this.refreshRes(); }
-    if (room.chosen >= 0 && room.x >= room.exitX - 1 && !roomTrack(room).some((it) => !it.done)) { this.leaveRoom(); return; }
-    this.camX += (Math.max(0, room.x - EXPLORE.CAM_LEAD) - this.camX) * Math.min(1, dt * 4);
+    let dir = 0;
+    if (run.autoMode) dir = 1;
+    else if (this.hold) dir = this.hold;
+    else if (this.walkTarget !== null) { const d = this.walkTarget - at.x; dir = Math.abs(d) < 4 ? 0 : Math.sign(d); if (!dir) this.walkTarget = null; }
+    this.moving = dir !== 0; this.faceLeft = dir < 0;
+    if (dir) at.x = clamp(at.x + dir * sp, -40, limit + 41);
+    // 횃불: 복도를 걸을 때만 닳는다
+    if (dir > 0) { this.torchAcc = (this.torchAcc || 0) + sp; if (this.torchAcc >= 900) { this.torchAcc -= 900; run.torch = Math.max(0, run.torch - CONST.TORCH_PER_TILE); this.refreshRes(); } }
+    if (at.x > limit) { this.arriveRoom(fl.rooms[at.to]); return; }
+    if (at.x < -30) { this.arriveRoom(fl.rooms[at.from]); return; } // 되돌아감
+    this.camX += (clamp(at.x - EXPLORE.CAM_LEAD, 0, Math.max(0, c.len - 960)) - this.camX) * Math.min(1, dt * 4);
   },
 
-  showAct(it) {
-    if (this.prompt === it.id) return;
-    this.prompt = it.id;
-    const L = EXPLORE_LABEL[it.kind];
-    this.act.innerHTML = '';
-    this.act.appendChild(el('div', 'ex-act-title', L.name));
-    const row = el('div', 'btn-row');
-    row.appendChild(btn('지나가기', 'ghost', () => { it.done = true; this.hideAct(); }, { id: 'ex-skip', sfx: 'back' }));
-    row.appendChild(btn(L.act, 'primary', () => this.enterPoi(it), { id: 'ex-go' }));
-    this.act.appendChild(row);
-    this.act.classList.remove('hidden');
-  },
-  hideAct() { if (this.prompt !== null) { this.prompt = null; this.act.classList.add('hidden'); } },
-
-  enterPoi(it) {
-    const run = Game.run, room = run.room;
+  stepOn(c, p) {
+    const run = Game.run, fl = run.dungeon, it = p.it;
     it.done = true;
-    this.hideAct();
-    const node = { stage: room.stage, row: room.row, type: it.kind, event: it.event, sub: it.id };
-    Sfx.play('door');
-    Game.go(it.kind, { node });
-  },
-
-  openChest(it) {
-    const run = Game.run, room = run.room;
-    it.done = true;
-    const rng = makeRng(hashSeed(run.seed, 'chest', room.stage, room.row, it.id));
-    const gold = rng.int(12, 30) + room.stage * 4;
-    run.gold += gold;
-    let text = `골드 +${gold}`;
-    if (rng() < 0.4) { const s = 1 + rng.int(0, 2); Game.profile.stones += s; text += ` · 강화석 +${s}`; saveProfile(); }
-    if (rng() < 0.2) { run.potions++; text += ' · 회복약 +1'; }
-    Sfx.play('coin');
-    this.fx.push({ x: it.x, y: 300, text, t: 0, dur: 1.8 });
+    const rng = makeRng(hashSeed(run.seed, 'corr', fl.floor, c.id, it.id));
+    let text;
+    if (it.kind === 'trap') {
+      const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
+      const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0);
+      if (rng() < spot) { text = '함정을 알아채고 피했다'; Sfx.play('click'); }
+      else { for (const id of ids) { const h = run.heroes[id]; h.hp = Math.max(1, Math.round(h.hp - h.maxHp * 0.1)); } text = '함정! 파티 HP -10%'; Sfx.play('hit'); }
+    } else {
+      const v = rng();
+      if (v < 0.45) { const g = rng.int(10, 25) + fl.floor * 3; run.gold += g; text = `골드 +${g}`; }
+      else if (v < 0.65) { run.potions++; text = '회복약 +1'; }
+      else if (v < 0.85) { run.food++; text = '식량 +1'; }
+      else { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 25); text = '횃불 +25'; }
+      Sfx.play('coin');
+    }
+    this.fx.push({ x: p.x, y: 300, text, t: 0, dur: 1.8 });
     this.buildHud();
   },
 
-  // 함정: 일부는 알아채고 피한다 (원딜·서포터가 있으면 더 잘 본다). 못 피하면 파티 HP -10%, 횃불 -5
-  springTrap(it) {
-    const run = Game.run, room = run.room;
-    it.done = true;
-    const rng = makeRng(hashSeed(run.seed, 'trap', room.stage, room.row, it.id));
-    const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
-    const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0);
-    let text;
-    if (rng() < spot) { text = '함정을 알아채고 피했다'; Sfx.play('click'); }
-    else {
-      for (const id of ids) { const h = run.heroes[id]; h.hp = Math.max(1, Math.round(h.hp - h.maxHp * 0.1)); }
-      run.torch = Math.max(0, run.torch - 5);
-      text = '함정! 파티 HP -10%'; Sfx.play('hit');
-      this.buildHud();
+  startCorridorFight(c, p) {
+    const run = Game.run, fl = run.dungeon, it = p.it;
+    const worldX = Math.round(p.x - 1000); // 전장 0의 복도 좌표: 적은 전장 1000 부근, 파티는 걷던 자리
+    const heroPos = this.partyAt(fl.at.x).map((q) => ({ x: clamp(q.x - worldX, CONST.FIELD_X0 + 10, DUNGEON.FIELD_W - 60), y: q.y }));
+    let type = it.kind === 'elite' ? 'elite' : 'battle';
+    let affix = it.affix || null;
+    if (type === 'battle' && run.torch <= 0) { // 횃불이 꺼지면 어둠 속 습격
+      const r = makeRng(hashSeed(run.seed, 'dark', fl.floor, c.id, it.id));
+      if (r() < CONST.TORCH_DARK_ELITE_CHANCE) { type = 'elite'; affix = 'fury'; Game.toast('어둠 속에서 정예가 습격했다!', 2000); }
     }
-    this.fx.push({ x: it.x, y: 300, text, t: 0, dur: 1.8 });
-  },
-  refreshRes() { const old = Game.ui.querySelector('.ex-top .res-bar'); if (old) old.replaceWith(resourceBar(Game.run)); },
-
-  showForkGuide() {
-    this.act.innerHTML = '';
-    this.act.appendChild(el('div', 'ex-act-title', '갈림길'));
-    this.act.appendChild(el('div', 'muted', '문이 두 개 있다. 문을 탭하면 그 문으로, ▶ 전진을 누르면 가까운 문으로 들어간다.'));
-    this.act.classList.remove('hidden');
-  },
-  // 탭: 갈림길에서는 그 지점(문을 탭하면 그 문)으로 걸어간다
-  pointerDown(p) {
-    const room = Game.run.room;
-    if (!room || room.chosen >= 0 || room.x < room.forkX - 180 || Game.modalOpen) return;
-    const wx = p.x + this.camX;
-    const pick = [0, 1].find((i) => Math.abs(wx - doorX(room, i)) < 70 && p.y < 420);
-    if (pick !== undefined) this.walkToDoor(pick);
-    else { this.doorPick = null; this.walkTarget = clamp(wx, room.forkX - 180, doorX(room, 1) + 40); }
-  },
-  walkToDoor(i) { const room = Game.run.room; this.doorPick = i; this.walkTarget = doorX(room, i); Sfx.play('click'); },
-  enterDoor(i) {
-    const room = Game.run.room;
-    room.chosen = i;
-    room.x = doorX(room, 1) + 80; // 문을 지나 그 길로
-    this.camX = Math.max(0, room.x - EXPLORE.CAM_LEAD);
-    this.walkTarget = null; this.doorPick = null; this.forkSeen = false;
-    this.act.classList.add('hidden'); this.prompt = null;
-    this.moving = true; this.refreshWalk();
-    this.fade = 0.6;
-    Sfx.play('door');
-    Game.toast(`${room.branches[i].side}로 들어섰다.`, 1200);
-  },
-
-  startFight(it, surprise) {
-    const run = Game.run, room = run.room;
-    const worldX = Math.round(it.x - 1250);
-    const heroPos = this.party().map((p) => ({ x: clamp(p.x - worldX, CONST.FIELD_X0 + 10, EXPLORE.FIELD_W - 60), y: p.y }));
-    let type = it.kind;
-    if (type === 'fight' && run.torch <= 0) { // 횃불이 꺼지면 어둠 속 습격 (정예로 바뀔 수 있다)
-      const r = makeRng(hashSeed(run.seed, 'dark', room.stage, room.row, it.id));
-      if (r() < CONST.TORCH_DARK_ELITE_CHANCE && ENCOUNTERS.elite[room.stage]) { type = 'elite'; Game.toast('어둠 속에서 정예가 습격했다!', 2000); }
-    }
-    const node = { stage: room.stage, row: room.row, type: type === 'fight' ? 'battle' : type, enc: it.enc, sub: it.id, exploreId: it.id, affix: type === 'elite' ? (it.affix || 'iron') : null };
+    const node = { stage: floorStage(fl.floor), row: c.id, type, enc: it.enc, affix, small: type === 'battle', named: it.named || null, dref: { corr: c.id, item: it.id, pos: p.x } };
+    node.waves = type === 'battle' ? corridorWaves(fl, it) : encounterFor(node);
     Sfx.play('skill');
-    Game.go('battle', { node, explore: { fieldW: EXPLORE.FIELD_W, heroPos, enemySpawnX: 1100, worldX, theme: room.theme, surprise: !!surprise } });
+    Game.go('battle', { node, explore: { fieldW: DUNGEON.FIELD_W, heroPos, enemySpawnX: 850, worldX, theme: fl.floor } });
   },
 
-  leaveRoom() {
-    const run = Game.run;
-    run.room = null;
-    Sfx.play('door');
-    Game.go('map');
+  // 자동 모드: 방에서 할 일을 하고, 다음 방을 고른다 (계단·열린 보스 방 → 가까운 안 가 본 방)
+  autoRoom(dt) {
+    const fl = Game.run.dungeon, here = fl.rooms[fl.at.room];
+    if (here.fight && !here.cleared) return;
+    this.autoT = (this.autoT || 0) + dt * (Game.settings.speed || 1) * ((Game.debug && Game.debug.simMult) || 1);
+    if (this.autoT < 1.4) return;
+    this.autoT = 0;
+    if ((here.type === 'treasure' || here.type === 'lever' || here.type === 'seal') && !here.used) { const b = document.getElementById('ex-act-0'); if (b) { b.click(); return; } }
+    if (here.type === 'stairs') { this.descend(); return; }
+    const step = dungeonNextStep(fl);
+    if (step !== null) this.goTo(fl.rooms[step]);
   },
 
+  // ------------------------------------------------------------ 입력
+  pointerDown(p) {
+    const run = Game.run, fl = run.dungeon;
+    // 지도 탭: 이웃 방으로 출발 (방 안에서, 전투가 끝난 뒤)
+    const r = this.mapHit(p);
+    if (r) {
+      if (fl.at.room === undefined) { Game.toast('복도를 다 지난 뒤에 고를 수 있어요', 1200); return; }
+      const here = fl.rooms[fl.at.room];
+      if (here.fight && !here.cleared) return;
+      if (r.id === here.id) return;
+      if (!floorNeighbors(fl, here.id).some((n) => n.room.id === r.id)) { Game.toast('이웃한 방으로만 갈 수 있어요', 1100); Sfx.play('back'); return; }
+      this.goTo(r);
+      return;
+    }
+    // 복도에서 바닥 탭 = 그 지점까지 걷기 (수동)
+    if (fl.at.corr !== undefined && !run.autoMode && p.y > 250) this.walkTarget = clamp(p.x + this.camX, -40, this.corridor().len);
+  },
+  mapHit(p) {
+    const fl = Game.run.dungeon, B = MAP_BOX;
+    if (p.x < B.x || p.x > B.x + B.w || p.y < B.y || p.y > B.y + B.h) return null;
+    for (const r of fl.rooms) {
+      if (!roomSeen(fl, r)) continue;
+      const cx = B.x + 6 + r.gx * B.cw + B.cw / 2, cy = B.y + 24 + r.gy * B.ch + B.ch / 2;
+      if (Math.abs(p.x - cx) < 22 && Math.abs(p.y - cy) < 16) return r;
+    }
+    return null;
+  },
+
+  // ------------------------------------------------------------ 그리기
   render(ctx) {
-    const run = Game.run, room = run.room, t = this.t;
-    if (!room) return;
+    const run = Game.run, fl = run.dungeon, t = this.t;
+    if (!fl) return;
+    const c = this.corridor();
     const cam = Math.round(this.camX);
-    drawCorridor(ctx, cam, t, room.theme);
+    drawCorridor(ctx, cam + (c ? c.id * 3000 : 50000 + fl.at.room * 3000), t, fl.floor);
     ctx.save(); ctx.translate(-cam, 0);
-    // 갈림길 표지판
-    if (room.chosen < 0) for (const i of [0, 1]) drawForkDoor(ctx, doorX(room, i), t, room.branches[i], this.doorPick === i);
-    // 들어온 문 · 출구
-    drawExitDoor(ctx, EXPLORE.START_X - 140, t);
-    drawExitDoor(ctx, room.exitX + 60, t);
-    const objs = [];
-    for (const it of roomTrack(room)) if (!it.done) objs.push({ y: 380, draw: () => drawPoi(ctx, it, t) });
-    for (const p of this.party()) objs.push({ y: p.y, draw: () => {
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
-      const walking = (this.moving || (this.walkTarget !== null && this.walkTarget !== undefined)) && !Game.modalOpen;
-      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft && this.walkTarget != null, phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
-    } });
-    objs.sort((a, b) => a.y - b.y).forEach((o) => o.draw());
+    if (c) {
+      drawExitDoor(ctx, -60, t); drawExitDoor(ctx, c.len + 30, t);
+      for (const p of corridorTrack(c, fl.at.from)) if (!p.it.done) drawPoi(ctx, p.it, p.x, t, fl);
+      this.drawParty(ctx, this.partyAt(fl.at.x), t);
+    } else {
+      const r = fl.rooms[fl.at.room];
+      drawRoomInterior(ctx, r, fl, t);
+      this.drawParty(ctx, this.partyAt(380), t);
+    }
     ctx.textAlign = 'center';
-    for (const f of this.fx) { ctx.globalAlpha = 1 - f.t / f.dur; ctx.font = '800 18px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#1a0f08'; ctx.strokeText(f.text, f.x, f.y); ctx.fillStyle = '#ffd34a'; ctx.fillText(f.text, f.x, f.y); }
+    for (const f of this.fx) { ctx.globalAlpha = Math.max(0, 1 - f.t / f.dur); ctx.font = '800 18px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#1a0f08'; ctx.strokeText(f.text, f.x, f.y); ctx.fillStyle = '#ffd34a'; ctx.fillText(f.text, f.x, f.y); }
     ctx.globalAlpha = 1;
     ctx.restore();
-    // 횃불이 약하면 시야가 어두워진다
     const dark = run.torch <= 0 ? 0.55 : run.torch < 30 ? 0.3 : 0.1;
     const g = ctx.createRadialGradient(EXPLORE.CAM_LEAD + 120, 330, 120, EXPLORE.CAM_LEAD + 120, 330, 620);
     g.addColorStop(0, 'rgba(8,6,14,0)'); g.addColorStop(1, `rgba(8,6,14,${dark + 0.35})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, 960, 540);
-    drawCorridorMap(ctx, room, t);
-    if (this.fade > 0) { this.fade -= 1 / 60; ctx.fillStyle = `rgba(0,0,0,${Math.min(1, this.fade * 1.6)})`; ctx.fillRect(0, 0, 960, 540); }
+    drawDungeonMap(ctx, fl, t);
+    if (this.fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, this.fade * 2)})`; ctx.fillRect(0, 0, 960, 540); }
+  },
+  drawParty(ctx, list, t) {
+    const walking = this.moving && !Game.modalOpen;
+    for (const p of list.slice().sort((a, b) => a.y - b.y)) {
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
+      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft && walking, phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
+    }
   },
 };
 
-// ---------------------------------------------------------------- 그림 (탐험·조우 전투 공용)
+// 자동 길찾기: 지금 방에서 목표까지의 다음 방 (가 본 방·이웃 방만 안다)
+function dungeonNextStep(fl) {
+  const start = fl.at.room;
+  const passable = (r) => roomSeen(fl, r) && !(r.type === 'boss' && !bossOpen(fl));
+  const prev = {}; const seen = { [start]: true }; const q = [start]; const order = [];
+  while (q.length) { const c = q.shift(); order.push(c); for (const n of floorNeighbors(fl, c)) if (!seen[n.room.id] && passable(n.room) && (fl.rooms[c].visited)) { seen[n.room.id] = true; prev[n.room.id] = c; q.push(n.room.id); } }
+  const goal = order.find((id) => id !== start && fl.rooms[id].visited && (fl.rooms[id].type === 'stairs' || (fl.rooms[id].type === 'boss' && bossOpen(fl))))
+    ?? order.find((id) => id !== start && fl.rooms[id].type === 'boss' && bossOpen(fl))
+    ?? order.find((id) => !fl.rooms[id].visited);
+  if (goal === undefined) return null;
+  let s = goal; while (prev[s] !== start && prev[s] !== undefined) s = prev[s];
+  return prev[s] === start ? s : null;
+}
+
+// ---------------------------------------------------------------- 던전 지도 (오른쪽 위)
+function drawDungeonMap(ctx, fl, t) {
+  const B = MAP_BOX;
+  ctx.fillStyle = 'rgba(14,10,22,0.78)'; ctx.fillRect(B.x, B.y, B.w, B.h);
+  ctx.strokeStyle = 'rgba(255,230,170,0.25)'; ctx.lineWidth = 1.5; ctx.strokeRect(B.x, B.y, B.w, B.h);
+  ctx.fillStyle = '#ffe9a0'; ctx.font = '800 12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(fl.floor === DUNGEON.BOSS_FLOOR ? '지도 · 가장 깊은 곳' : `지도 · ${fl.floor}층`, B.x + 8, B.y + 16);
+  const pos = (r) => ({ x: B.x + 6 + r.gx * B.cw + B.cw / 2, y: B.y + 24 + r.gy * B.ch + B.ch / 2 });
+  // 복도
+  for (const c of fl.corridors) {
+    const a = fl.rooms[c.a], b = fl.rooms[c.b];
+    if (!(roomSeen(fl, a) && roomSeen(fl, b)) || !(a.visited || b.visited)) continue;
+    const pa = pos(a), pb = pos(b);
+    ctx.strokeStyle = c.walked ? '#c8a060' : 'rgba(160,140,200,0.4)'; ctx.lineWidth = c.walked ? 5 : 3; ctx.setLineDash(c.walked ? [] : [4, 4]);
+    ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke(); ctx.setLineDash([]);
+  }
+  // 지금 복도 위치
+  if (fl.at.corr !== undefined) {
+    const c = fl.corridors[fl.at.corr], a = pos(fl.rooms[fl.at.from]), b = pos(fl.rooms[fl.at.to]), k = clamp(fl.at.x / c.len, 0, 1);
+    ctx.fillStyle = '#ffd34a'; ctx.beginPath(); ctx.arc(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, 5 + Math.sin(t * 6), 0, 7); ctx.fill();
+  }
+  // 방
+  const here = fl.at.room !== undefined ? fl.rooms[fl.at.room] : null;
+  const near = here ? floorNeighbors(fl, here.id).map((n) => n.room.id) : [];
+  for (const r of fl.rooms) {
+    if (!roomSeen(fl, r)) continue;
+    const p = pos(r), K = ROOM_KINDS[r.type];
+    const known = r.visited || r.type === 'boss';
+    ctx.fillStyle = r.visited ? '#4a3a2a' : '#241c30';
+    ctx.fillRect(p.x - 20, p.y - 14, 40, 28);
+    ctx.strokeStyle = here === r ? '#ffd34a' : near.includes(r.id) && (!here.fight || here.cleared) ? `rgba(140,220,255,${0.6 + Math.sin(t * 4) * 0.3})` : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = here === r || near.includes(r.id) ? 2.5 : 1.5; ctx.strokeRect(p.x - 20, p.y - 14, 40, 28);
+    ctx.textAlign = 'center'; ctx.font = '800 15px sans-serif';
+    ctx.fillStyle = known ? (r.cleared && r.fight ? 'rgba(240,224,192,0.5)' : K.color) : 'rgba(160,140,200,0.6)';
+    ctx.fillText(known ? K.icon : '?', p.x, p.y + 5);
+    if (r.type === 'boss' && !bossOpen(fl)) { ctx.fillStyle = '#ffd34a'; ctx.font = '700 10px sans-serif'; ctx.fillText('🔒', p.x + 14, p.y - 6); }
+  }
+}
+
+// 방 안: 방 종류에 맞는 물건, 적이 있으면 적 무리
+function drawRoomInterior(ctx, r, fl, t) {
+  const x = 760, y = 380;
+  drawExitDoor(ctx, 60, t);
+  if (r.fight && !r.cleared) {
+    const node = { type: r.fight.type, stage: r.type === 'boss' ? 5 : floorStage(fl.floor), enc: r.type === 'boss' ? Game.run.bossEnc : r.fight.enc };
+    drawPoi(ctx, { kind: 'fight', waves: encounterFor(node) }, x, t, fl);
+    return;
+  }
+  if (r.type === 'camp') drawPoi(ctx, { kind: 'rest' }, x, t, fl);
+  if (r.type === 'treasure' && !r.used) drawPoi(ctx, { kind: 'chest' }, x, t, fl);
+  if (r.type === 'stairs') { ctx.fillStyle = '#140f1c'; ctx.fillRect(x - 60, y - 40, 120, 44); for (let i = 0; i < 4; i++) { ctx.fillStyle = `rgba(120,100,150,${0.6 - i * 0.12})`; ctx.fillRect(x - 56 + i * 8, y - 36 + i * 9, 112 - i * 16, 6); } }
+  if (r.type === 'lever') { ctx.fillStyle = '#5a5060'; ctx.fillRect(x - 14, y - 70, 28, 70); ctx.save(); ctx.translate(x, y - 64); ctx.rotate(r.used ? 0.9 : -0.9); ctx.fillStyle = '#8a6a4a'; ctx.fillRect(-3, -40, 6, 40); ctx.fillStyle = '#d04a3a'; ctx.beginPath(); ctx.arc(0, -42, 7, 0, 7); ctx.fill(); ctx.restore(); }
+  if (r.type === 'seal') { const s = r.used ? 0.2 : 0.7 + Math.sin(t * 3) * 0.2; ctx.fillStyle = r.used ? '#3a3040' : '#5a3a7a'; ctx.beginPath(); ctx.moveTo(x, y - 110); ctx.lineTo(x + 26, y); ctx.lineTo(x - 26, y); ctx.fill(); const g = ctx.createRadialGradient(x, y - 50, 4, x, y - 50, 90); g.addColorStop(0, `rgba(180,120,255,${s})`); g.addColorStop(1, 'rgba(180,120,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 90, y - 140, 180, 180); }
+  if (r.type === 'boss' && r.cleared) { /* 비어 있음 */ }
+}
+
+// 길 위의 것 (적 무리·상자·함정·보급·모닥불)
+function drawPoi(ctx, it, x, t, fl) {
+  const y = 380;
+  if (it.kind === 'fight' || it.kind === 'elite') {
+    const waves = it.waves || (it.kind === 'elite' ? encounterFor({ type: 'elite', stage: floorStage(fl.floor), enc: it.enc }) : corridorWaves(fl, it));
+    waves[0].forEach((id, k) => {
+      const ey = EXPLORE.LANES[k % 3] + (k >= 3 ? 12 : 0), ex = x + (k % 2) * 40 + ENEMIES[id].size * 20 + Math.floor(k / 3) * 60;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(ex, ey + 2, 24 * ENEMIES[id].size, 7, 0, 0, Math.PI * 2); ctx.fill();
+      drawSprite(ctx, ENEMIES[id].sprite, ex, ey, { scale: CONST.SPRITE_SCALE * (ENEMIES[id].abilities.includes('boss') ? 1.15 : 1), flip: true, t, phase: k });
+    });
+    if (it.named) { ctx.textAlign = 'center'; ctx.font = '800 14px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#1a0f08'; ctx.strokeText(`「${it.named}」`, x + 30, 220); ctx.fillStyle = '#ff9a6a'; ctx.fillText(`「${it.named}」`, x + 30, 220); }
+    return;
+  }
+  if (it.kind === 'trap') {
+    ctx.fillStyle = 'rgba(120,90,60,0.8)'; ctx.fillRect(x - 26, y - 2, 52, 8); ctx.fillStyle = 'rgba(200,60,50,0.6)'; for (let i = -2; i <= 2; i++) ctx.fillRect(x + i * 10 - 1, y - 8, 3, 6);
+    return;
+  }
+  if (it.kind === 'supply') {
+    ctx.fillStyle = '#6a4a2a'; ctx.fillRect(x - 14, y - 18, 28, 18); ctx.fillStyle = '#9a7a4a'; ctx.fillRect(x - 16, y - 22, 32, 6);
+    const s = 0.5 + Math.sin(t * 5) * 0.5; ctx.fillStyle = `rgba(255,230,140,${s})`; ctx.fillRect(x + 10, y - 30 - s * 4, 3, 3);
+    return;
+  }
+  if (it.kind === 'chest') {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 34, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7a4a24'; ctx.fillRect(x - 30, y - 34, 60, 36); ctx.fillStyle = '#9a6232'; ctx.fillRect(x - 30, y - 44, 60, 12);
+    ctx.fillStyle = '#ffd34a'; ctx.fillRect(x - 5, y - 28, 10, 10);
+    const s = 0.5 + Math.sin(t * 5) * 0.5; ctx.fillStyle = `rgba(255,230,140,${s})`; ctx.fillRect(x + 20, y - 56 - s * 4, 4, 4);
+    return;
+  }
+  if (it.kind === 'rest') {
+    ctx.fillStyle = '#5e3a20'; ctx.fillRect(x - 18, y - 6, 36, 8);
+    const fh = 18 + Math.sin(t * 12) * 4;
+    ctx.fillStyle = '#ff9a2a'; ctx.beginPath(); ctx.moveTo(x - 12, y - 4); ctx.quadraticCurveTo(x, y - 4 - fh * 2, x + 12, y - 4); ctx.fill();
+    ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.moveTo(x - 6, y - 4); ctx.quadraticCurveTo(x, y - 4 - fh, x + 6, y - 4); ctx.fill();
+    const g = ctx.createRadialGradient(x, y - 20, 4, x, y - 20, 140); g.addColorStop(0, 'rgba(255,170,80,0.35)'); g.addColorStop(1, 'rgba(255,170,80,0)'); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 160, 280, 200);
+  }
+}
+
+// ---------------------------------------------------------------- 배경 (탐험·조우 전투 공용)
 // 숲속 굴 복도: 먼 벽(느린 시차) · 기둥과 나무뿌리 · 횃불 · 바닥. camX는 탐험 세계 좌표
 function drawCorridor(ctx, camX, t, theme) {
   const W = 960, top = CONST.FIELD_Y0 - 30;
@@ -6040,99 +6081,6 @@ function drawCorridor(ctx, camX, t, theme) {
   ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, top, W, 3);
 }
 
-// 복도 지도 (다키스트 던전처럼): 지나온 칸만 드러나고, 갈림길에서 두 갈래로 나뉜다. 화면 위쪽 가운데
-const MAP_ICON = { fight: '⚔', elite: '☠', boss: '♛', chest: '◆', event: '?', trap: '!', shop: '$', rest: '♨', tree: '♣' };
-function drawCorridorMap(ctx, room, t) {
-  if (!room.tiles) return;
-  const A = room.tiles.filter((x) => x.seg === 'A'), B = [0, 1].map((b) => room.tiles.filter((x) => x.seg === b)), T = room.tiles.filter((x) => x.seg === 'T');
-  const s = 15, g = 3, cols = A.length + B[0].length + T.length + 1;
-  const w = cols * (s + g), x0 = 480 - w / 2, y = 132;
-  ctx.fillStyle = 'rgba(14,10,22,0.7)'; ctx.fillRect(x0 - 8, y - 22, w + 16, 44);
-  const cur = room.x;
-  const done = (id) => { const it = roomTrack(room).concat(...room.branches.map((b) => b.items)).find((i) => i.id === id); return it && it.done; };
-  const cell = (tile, cx, cy, open) => {
-    const here = cur >= tile.x0 && cur < tile.x0 + TILE && open;
-    const seen = open && cur >= tile.x0;
-    ctx.fillStyle = seen ? (here ? '#7a5a34' : '#4a3a2a') : '#241c30';
-    ctx.fillRect(cx, cy, s, s);
-    if (here) { ctx.strokeStyle = '#ffd34a'; ctx.lineWidth = 2; ctx.strokeRect(cx - 1, cy - 1, s + 2, s + 2); }
-    ctx.font = '700 10px sans-serif'; ctx.textAlign = 'center';
-    if (seen && tile.kind) { ctx.fillStyle = done(tile.item) ? 'rgba(240,224,192,0.45)' : '#ffe9a0'; ctx.fillText(MAP_ICON[tile.kind] || '·', cx + s / 2, cy + s - 4); }
-    else if (!seen) { ctx.fillStyle = 'rgba(160,140,200,0.35)'; ctx.fillText('?', cx + s / 2, cy + s - 4); }
-  };
-  let cx = x0;
-  for (const tl of A) { cell(tl, cx, y - s / 2, true); cx += s + g; }
-  // 갈림길 표시
-  ctx.fillStyle = '#c8b0ff'; ctx.font = '800 11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('⑂', cx + s / 2, y + 4); cx += s + g;
-  const bx = cx;
-  for (const b of [0, 1]) { let x = bx; for (const tl of B[b]) { cell(tl, x, y - s / 2 + (b === 0 ? -10 : 10), room.chosen === b); x += s + g; } }
-  cx = bx + B[0].length * (s + g);
-  for (const tl of T) { cell(tl, cx, y - s / 2, room.chosen >= 0); cx += s + g; }
-  ctx.fillStyle = '#f0e0c0'; ctx.font = '700 10px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('출구', cx + 2, y + 4);
-}
-
-function drawPoi(ctx, it, t) {
-  const x = it.x, y = 380;
-  if (it.kind === 'fight' || it.kind === 'elite' || it.kind === 'boss') {
-    if (it.ambush && !it.revealed) return; // 숨은 적은 보이지 않는다
-    const waves = encounterFor({ type: it.kind === 'fight' ? 'battle' : it.kind, stage: Game.run.room.stage, enc: it.enc });
-    waves[0].forEach((id, k) => {
-      const ey = EXPLORE.LANES[k % 3] + (k >= 3 ? 12 : 0), ex = x + (k % 2) * 40 + ENEMIES[id].size * 20;
-      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(ex, ey + 2, 24 * ENEMIES[id].size, 7, 0, 0, Math.PI * 2); ctx.fill();
-      drawSprite(ctx, ENEMIES[id].sprite, ex, ey, { scale: CONST.SPRITE_SCALE * (ENEMIES[id].abilities.includes('boss') ? 1.15 : 1), flip: true, t, phase: k });
-    });
-    return;
-  }
-  if (it.kind === 'trap') { // 바닥의 눌림판 (가까이 가야 보인다)
-    const near = Game.run.room.x > it.x - 500;
-    if (near) { ctx.fillStyle = 'rgba(120,90,60,0.8)'; ctx.fillRect(x - 26, y - 2, 52, 8); ctx.fillStyle = 'rgba(200,60,50,0.6)'; for (let i = -2; i <= 2; i++) ctx.fillRect(x + i * 10 - 1, y - 8, 3, 6); }
-    return;
-  }
-  if (it.kind === 'chest') {
-    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#7a4a24'; ctx.fillRect(x - 22, y - 26, 44, 28); ctx.fillStyle = '#9a6232'; ctx.fillRect(x - 22, y - 34, 44, 10);
-    ctx.fillStyle = '#ffd34a'; ctx.fillRect(x - 4, y - 22, 8, 8);
-    const s = 0.5 + Math.sin(t * 5) * 0.5; ctx.fillStyle = `rgba(255,230,140,${s})`; ctx.fillRect(x + 14, y - 44 - s * 4, 3, 3);
-    return;
-  }
-  if (it.kind === 'shop') { drawSprite(ctx, 'guide', x, y, { scale: 2.6, t }); ctx.fillStyle = '#7a5a34'; ctx.fillRect(x + 30, y - 30, 50, 30); ctx.fillStyle = '#ffd34a'; ctx.beginPath(); ctx.arc(x + 40, y - 70, 8 + Math.sin(t * 6), 0, 7); ctx.fill(); return; }
-  if (it.kind === 'rest') {
-    ctx.fillStyle = '#5e3a20'; ctx.fillRect(x - 18, y - 6, 36, 8);
-    const fh = 18 + Math.sin(t * 12) * 4;
-    ctx.fillStyle = '#ff9a2a'; ctx.beginPath(); ctx.moveTo(x - 12, y - 4); ctx.quadraticCurveTo(x, y - 4 - fh * 2, x + 12, y - 4); ctx.fill();
-    ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.moveTo(x - 6, y - 4); ctx.quadraticCurveTo(x, y - 4 - fh, x + 6, y - 4); ctx.fill();
-    const g = ctx.createRadialGradient(x, y - 20, 4, x, y - 20, 140); g.addColorStop(0, 'rgba(255,170,80,0.35)'); g.addColorStop(1, 'rgba(255,170,80,0)'); ctx.fillStyle = g; ctx.fillRect(x - 140, y - 160, 280, 200);
-    return;
-  }
-  if (it.kind === 'tree') {
-    ctx.fillStyle = '#4a3020'; ctx.fillRect(x - 14, y - 150, 28, 150);
-    ctx.fillStyle = '#3c6a34'; for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.arc(x + Math.cos(i) * 40, y - 170 + Math.sin(i * 2) * 24, 40, 0, 7); ctx.fill(); }
-    ctx.fillStyle = `rgba(255,120,90,${0.6 + Math.sin(t * 3) * 0.3})`; ctx.beginPath(); ctx.arc(x + 20, y - 150, 6, 0, 7); ctx.fill();
-    return;
-  }
-  if (it.kind === 'event') {
-    const s = 1 + Math.sin(t * 3) * 0.1;
-    const g = ctx.createRadialGradient(x, y - 40, 2, x, y - 40, 60 * s); g.addColorStop(0, 'rgba(180,140,255,0.55)'); g.addColorStop(1, 'rgba(180,140,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 70, y - 110, 140, 140);
-    ctx.fillStyle = '#5a4a6a'; ctx.fillRect(x - 16, y - 30, 32, 30); ctx.fillStyle = '#c8b0ff'; ctx.font = '900 26px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('?', x, y - 38 - Math.sin(t * 4) * 4);
-  }
-}
-function drawForkDoor(ctx, x, t, br, picked) {
-  const y = 330;
-  ctx.fillStyle = '#140f1c'; ctx.beginPath(); ctx.moveTo(x - 42, y + 10); ctx.lineTo(x - 42, y - 110); ctx.arc(x, y - 110, 42, Math.PI, 0); ctx.lineTo(x + 42, y + 10); ctx.closePath(); ctx.fill();
-  ctx.strokeStyle = picked ? '#ffd34a' : '#5a4e78'; ctx.lineWidth = 7; ctx.stroke();
-  const g = ctx.createLinearGradient(x, y - 150, x, y + 10); g.addColorStop(0, 'rgba(255,230,170,0)'); g.addColorStop(1, `rgba(255,230,170,${0.12 + Math.sin(t * 2 + x) * 0.05})`);
-  ctx.fillStyle = g; ctx.fill();
-  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 70, y - 172, 140, 40);
-  ctx.textAlign = 'center'; ctx.fillStyle = '#ffe9a0'; ctx.font = '800 14px sans-serif'; ctx.fillText(br.side.replace(' 길', ' 문'), x, y - 156);
-  ctx.fillStyle = '#f0e0c0'; ctx.font = '600 11px sans-serif'; ctx.fillText(br.hint, x, y - 140);
-  if (picked) { ctx.fillStyle = '#ffd34a'; ctx.beginPath(); const by = y - 178 + Math.sin(t * 6) * 4; ctx.moveTo(x - 8, by - 10); ctx.lineTo(x + 8, by - 10); ctx.lineTo(x, by); ctx.fill(); }
-}
-function drawSignpost(ctx, x, t) {
-  const y = 380;
-  ctx.fillStyle = '#5e3a20'; ctx.fillRect(x - 4, y - 90, 8, 90);
-  ctx.fillStyle = '#8a5a30'; ctx.fillRect(x - 40, y - 90, 70, 18); ctx.fillRect(x - 30, y - 64, 70, 18);
-  ctx.fillStyle = '#f0e0c0'; ctx.font = '800 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('↗', x - 5, y - 76); ctx.fillText('↘', x + 5, y - 50);
-}
 function drawExitDoor(ctx, x, t) {
   const y = 330;
   ctx.fillStyle = '#1a1424'; ctx.fillRect(x - 40, y - 150, 80, 160);
@@ -6873,7 +6821,7 @@ function saveProfile() { EQ.saveProfile(Game.profile); }
 // 원정 중 영웅 최대 HP를 장비에 맞춰 다시 계산 (HP 비율 유지, 던전 입장 전이면 가득)
 function refreshRunLoadout(run) {
   if (!run) return;
-  const fresh = run.path.length === 0;
+  const fresh = !run.dungeon;
   for (const id of HERO_ORDER) {
     const h = run.heroes[id];
     const lo = EQ.heroLoadout(Game.profile, id);
@@ -7176,13 +7124,13 @@ function grantBattleLoot(run, node) {
   const p = Game.profile;
   const rng = makeRng(hashSeed(run.seed, 'loot', node.stage, node.row, run.stats.battles));
   const src = node.type === 'boss' ? 'boss' : node.type === 'elite' ? 'elite' : 'battle';
-  const stones = EQ.DB.stoneReward[src];
+  const stones = node.small ? 1 : EQ.DB.stoneReward[src];
   p.stones += stones; run.stonesGot += stones;
   const got = [];
   if (src !== 'battle') { const it = EQ.dropItem(rng, p, src, run.tier, partyIds(run)); p.inv.push(it); got.push({ kind: 'item', uid: it.uid }); }
   if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
   // 경험치: 출전한 캐릭터 모두 (쓰러진 캐릭터는 절반), 난이도가 높을수록 많이
-  const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0));
+  const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0)) * (node.small ? 0.5 : 1); // 복도의 작은 무리는 절반
   const exp = [];
   for (const id of partyIds(run)) { const r = GACHA.addExp(p, id, expBase * (run.heroes[id].dead ? CHAR_LV.deadMult : 1)); if (r) exp.push(r); }
   run.expGot = (run.expGot || 0) + Math.round(expBase);
@@ -7339,8 +7287,7 @@ function boot() {
   Game.profile = EQ.loadProfile();
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
-  Game.register('map', MapScene);
-  Game.register('explore', ExploreScene);
+  Game.register('dungeon', DungeonScene);
   Game.register('battle', BattleScene);
   Game.register('reward', RewardScene);
   Game.register('event', EventScene);
@@ -7399,7 +7346,7 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { Music, Sfx, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, generateMap, validStage, canMoveTo, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, MapScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 
 })();
