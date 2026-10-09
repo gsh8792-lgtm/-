@@ -67,7 +67,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .confirm-box { width: 460px; text-align: center; }
 .confirm-box p { line-height: 1.5; font-size: 16px; }
 .help-box { width: 820px; }
-.help-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 15px; line-height: 1.5; }
+.help-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 13.5px; line-height: 1.45; margin-bottom: 6px; }
 .help-cols h4 { margin: 4px 0; color: var(--blue); }
 .help-cols ul { margin: 0; padding-left: 18px; }
 .help-box > .btn { display: block; margin: 12px auto 0; min-width: 160px; }
