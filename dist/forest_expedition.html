@@ -250,11 +250,11 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 #ui > .res-bar { position: absolute; left: 12px; top: 10px; }
 #ui > .party-panel.compact { position: absolute; left: 12px; right: 12px; bottom: 8px; }
 
-.reward-box { left: 120px; right: 120px; top: 50px; text-align: center; }
+.reward-box { left: 120px; right: 120px; top: 18px; text-align: center; }
 .reward-gold { font-size: 20px; font-weight: 800; color: var(--gold); }
 .reward-sub { margin: 8px 0; color: var(--muted); font-size: 15px; }
 .reward-cards { display: flex; gap: 12px; justify-content: center; }
-.rcard { width: 200px; min-height: 196px; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: linear-gradient(#3a3058, #251e38); color: var(--text); font-family: var(--font); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 4px 0 #120e1c; }
+.rcard { width: 200px; min-height: 150px; padding: 10px; border-radius: 14px; border: 2px solid var(--line); background: linear-gradient(#3a3058, #251e38); color: var(--text); font-family: var(--font); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; box-shadow: 0 4px 0 #120e1c; }
 .rcard.sel { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold), 0 4px 0 #120e1c; transform: translateY(-4px); }
 .rc-kind { font-size: 12px; color: var(--muted); font-weight: 700; }
 .rc-icon { font-size: 40px; height: 54px; line-height: 54px; color: var(--gold); }
@@ -5956,7 +5956,11 @@ const RewardScene = {
     if (run.lastLoot) {
       const L = run.lastLoot;
       box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
-      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>` : ''}`).join(' · ')));
+      if (L.exp && L.exp.length) { // 경험치는 한 줄, 새로 배운 필살기는 따로 한 줄
+        box.appendChild(el('div', 'reward-exp', `경험치 +${L.exp[0].exp} · ` + L.exp.map((r) => `${HEROES[r.id].name}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}`).join(' · ')));
+        const learned = L.exp.filter((r) => r.learned.length);
+        if (learned.length) box.appendChild(el('div', 'reward-exp', learned.map((r) => `<b class="learn">${HEROES[r.id].name} 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>`).join(' · ')));
+      }
       run.lastLoot = null;
     }
     if (params.goldOnly) {

@@ -119,7 +119,11 @@ const RewardScene = {
     if (run.lastLoot) {
       const L = run.lastLoot;
       box.appendChild(el('div', 'reward-loot', `💎 강화석 +${L.stones}${L.got.length ? ' · 획득 ' + lootHtml(L.got) : ''}`));
-      if (L.exp && L.exp.length) box.appendChild(el('div', 'reward-exp', L.exp.map((r) => `${HEROES[r.id].name} 경험치 +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}${r.learned.length ? ` <b class="learn">필살기 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>` : ''}`).join(' · ')));
+      if (L.exp && L.exp.length) { // 경험치는 한 줄, 새로 배운 필살기는 따로 한 줄
+        box.appendChild(el('div', 'reward-exp', `경험치 +${L.exp[0].exp} · ` + L.exp.map((r) => `${HEROES[r.id].name}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}`).join(' · ')));
+        const learned = L.exp.filter((r) => r.learned.length);
+        if (learned.length) box.appendChild(el('div', 'reward-exp', learned.map((r) => `<b class="learn">${HEROES[r.id].name} 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>`).join(' · ')));
+      }
       run.lastLoot = null;
     }
     if (params.goldOnly) {

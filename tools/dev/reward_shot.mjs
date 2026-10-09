@@ -1,0 +1,10 @@
+import { chromium } from 'playwright';
+import path from 'path';
+const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(300);
+await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, explore: 1 }; G.scenes.title.start(5); const r = G.run;
+  r.lastLoot = { stones: 4, got: [{ kind: 'ticket', n: 5 }], exp: r.party.map((id) => ({ id, exp: 30, from: 9, to: 10, learned: ['B'] })) };
+  G.go('reward', { node: { stage: 2, row: 0, type: 'elite' } }); });
+await p.waitForTimeout(400); await p.screenshot({ path: 'test-output/reward_exp.png' });
+const r = await p.evaluate(() => { const b = document.querySelector('#btn-reward-confirm').getBoundingClientRect(); const pp = document.querySelector('.party-panel'); return { btn: [b.top, b.bottom], panel: pp ? pp.getBoundingClientRect().top : null }; });
+console.log(JSON.stringify(r)); await b.close();
