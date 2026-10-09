@@ -669,6 +669,10 @@ Object.assign(SPRITE_VARIANTS, {
   mistStag: { base: 'ogreChief', filter: 'grayscale(0.7) brightness(1.2) hue-rotate(180deg)', swap: {} },
   swampTurtle: { base: 'ogreChief', filter: 'hue-rotate(40deg) saturate(0.7) brightness(0.9)', swap: {} },
   thornBud: { base: 'goblinHorn', filter: 'hue-rotate(250deg) saturate(1.4)', swap: {} },
+  goblinArcher: { base: 'goblin', filter: 'hue-rotate(35deg) saturate(0.8) brightness(1.05)', swap: {} },
+  goblinShaman: { base: 'goblinHorn', filter: 'hue-rotate(200deg) saturate(1.2)', swap: {} },
+  orcShield: { base: 'orc', filter: 'grayscale(0.6) brightness(1.1) hue-rotate(160deg)', swap: {} },
+  goblinBomber: { base: 'goblin', filter: 'hue-rotate(-70deg) saturate(1.5)', swap: {} },
 });
 for (const name in SPRITE_VARIANTS) {
   const v = SPRITE_VARIANTS[name], b = ART[v.base];

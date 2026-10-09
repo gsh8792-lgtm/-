@@ -26,6 +26,7 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
+      eliteAffix: node.affix || null, surprise: !!(ex && ex.surprise),
     });
     this.camX = this.camTarget(); // 카메라 (전장 좌표, 화면 폭 960)
     this.acc = 0;
@@ -48,7 +49,7 @@ const BattleScene = {
     this.buildHud();
     this.consumeEvents();
     if (node.type === 'boss') Music.play('boss');
-    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? (node.affix ? `정예: ${ELITE_AFFIXES[node.affix].name}` : '정예 전투!') : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
   },
@@ -508,6 +509,10 @@ const BattleScene = {
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'affix': this.popup(e.unit.x, this.unitTop(e.unit) - 22, e.name + '!', '#ff9a6a', 18, { label: true }); break;
+      case 'explode': this.smoke(e.unit.x, e.unit.y - 10, 1.6); this.shake = Math.max(this.shake, 8); Sfx.play('boom'); break;
+      case 'enemyHeal': this.popup(e.target.x, this.unitTop(e.target) - 18, '치유!', '#9cf0a8', 16, { label: true }); Sfx.play('heal'); break;
+      case 'surprise': this.banner = { text: '기습!', sub: '파티가 잠깐 굳었다', t: 0, dur: 1.4 }; Sfx.play('charge'); this.shake = Math.max(this.shake, 6); break;
       case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓누름!', '#ff9a6a', 17, { label: true }); break;
       case 'bossLeap': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '덮치기!', '#ff9a6a', 18, { label: true }); this.shake = Math.max(this.shake, 6); break;
       case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;

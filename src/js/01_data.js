@@ -212,6 +212,13 @@ const ENEMIES = {
                      { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 3.5 },
                      { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 4.0, enrage: true },
                    ] },
+  // ---- 역할을 요구하는 일반 몬스터
+  // 궁수: 멀리서 후열을 쏜다 (근딜이 파고들거나 탱커가 도발) / 주술사: 동료 치유 영창 (끊으면 막힘)
+  // 방패 오크: 정면 피해 -65% (등 뒤를 노리거나 범위 마법) / 폭탄 고블린: 다가와 짧게 영창 후 자폭 (피하거나 끊기)
+  goblin_archer: { name: '고블린 궁수', moveSpeed: 74, hp: 80, atk: 15, atkInterval: 1.7, def: 0, size: 1, reach: 200, sprite: 'goblinArcher', color: '#9ab050', gold: 5, abilities: [] },
+  goblin_shaman: { name: '고블린 주술사', moveSpeed: 64, hp: 120, atk: 10, atkInterval: 1.6, def: 0, size: 1, reach: 170, sprite: 'goblinShaman', color: '#9a6ad0', gold: 8, abilities: ['caller'], callEvery: 8, callCast: 2.0, callHeal: 0.3 },
+  orc_shield:    { name: '방패 오크', armor: 0.2, poise: 80, moveSpeed: 58, hp: 300, atk: 22, atkInterval: 1.9, def: 0.15, size: 1.25, sprite: 'orcShield', color: '#7a8a9a', gold: 12, abilities: [], frontGuard: 0.65 },
+  goblin_bomber: { name: '폭탄 고블린', moveSpeed: 104, hp: 70, atk: 20, atkInterval: 1.2, def: 0, size: 1, sprite: 'goblinBomber', color: '#d06a4a', gold: 6, abilities: ['charge'], chargeEvery: 1, chargeTime: 1.4, chargeMult: 3.2, chargeR: 70, chargeTrigger: 80, selfDestruct: true },
   // ---- 보스 로테이션 (그로기 역할 분담 검증용)
   thorn_queen:   { name: '가시덩굴 여왕', armor: 0.7, poise: 220, moveSpeed: 36, hp: 2300, atk: 30, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'thornQueen', color: '#6a9a4a', gold: 0, abilities: ['charge', 'boss', 'buds'], chargeEvery: 12, chargeTime: 3, chargeMult: 3.4, chargeR: 90, softEnrage: 150, budEvery: 13, budFirst: 6, budRegrow: 18, budCount: 3, calledArmor: 0.8, calledArmorDur: 10, calledHeal: 0.02 },
   thorn_bud:     { name: '가시 꽃봉오리', moveSpeed: 0, hp: 420, atk: 1, atkInterval: 99, def: 0.2, size: 1.2, sprite: 'thornBud', color: '#c86ab0', gold: 0, abilities: [], immobile: true, callEvery: 13, callCast: 2.6, callCount: 1, callUnit: 'goblin', interruptResist: 1 },
@@ -220,18 +227,27 @@ const ENEMIES = {
   swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
 };
 
+// 정예 변이: 정예 전투의 우두머리(가장 HP가 큰 적)에 하나가 붙는다 (HP +25%)
+const ELITE_AFFIXES = {
+  iron:  { name: '철갑의', desc: '방어 태세 강화 · 그로기 게이지 +30%' },
+  fury:  { name: '광폭한', desc: '처음부터 광폭 (공격 속도 증가)' },
+  regen: { name: '재생하는', desc: '매초 최대 HP 1.2% 회복' },
+  leech: { name: '흡혈의', desc: '준 피해의 30% 회복' },
+  swift: { name: '날쌘', desc: '이동 속도 +40% · 공격 간격 -20%' },
+};
 // 조우 테이블: 스테이지 → 웨이브 배열 목록 (하나를 시드로 선택)
 const ENCOUNTERS = {
   battle: {
-    1: [ [['goblin', 'goblin', 'goblin'], ['goblin', 'orc', 'goblin']], [['goblin', 'goblin_caller', 'goblin'], ['orc', 'goblin', 'goblin']], [['orc', 'goblin', 'goblin'], ['goblin', 'goblin', 'goblin', 'goblin']] ],
-    2: [ [['orc', 'goblin', 'goblin_caller'], ['orc', 'orc', 'goblin']], [['goblin', 'goblin', 'goblin', 'goblin'], ['ogre', 'goblin']], [['orc', 'goblin', 'goblin'], ['orc', 'goblin_caller', 'goblin']] ],
-    3: [ [['ogre', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']], [['orc', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin']], [['goblin', 'goblin', 'goblin_caller', 'goblin'], ['ogre', 'orc']] ],
-    4: [ [['ogre', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin_caller']], [['orc', 'orc', 'goblin', 'goblin'], ['ogre', 'orc']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']] ],
+    1: [ [['goblin', 'goblin', 'goblin'], ['goblin', 'orc', 'goblin']], [['goblin', 'goblin_caller', 'goblin'], ['orc', 'goblin', 'goblin']], [['goblin', 'goblin_archer', 'goblin'], ['goblin', 'goblin', 'goblin_archer']], [['goblin_bomber', 'goblin', 'goblin'], ['goblin', 'goblin_shaman', 'goblin']] ],
+    2: [ [['orc', 'goblin', 'goblin_caller'], ['orc', 'orc', 'goblin']], [['orc_shield', 'goblin_archer', 'goblin_archer'], ['orc', 'goblin', 'goblin']], [['goblin', 'goblin_shaman', 'orc'], ['goblin_bomber', 'goblin_bomber', 'goblin']], [['goblin', 'goblin', 'goblin', 'goblin'], ['ogre', 'goblin']] ],
+    3: [ [['ogre', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']], [['orc_shield', 'orc', 'goblin_shaman'], ['goblin_bomber', 'goblin_bomber', 'goblin_archer']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['ogre', 'goblin_shaman']], [['goblin', 'goblin', 'goblin_caller', 'goblin'], ['ogre', 'orc']] ],
+    4: [ [['ogre', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin_caller']], [['orc_shield', 'goblin_shaman', 'goblin_archer', 'goblin_archer'], ['ogre', 'orc_shield']], [['goblin_bomber', 'goblin_bomber', 'goblin_bomber'], ['ogre', 'goblin_shaman', 'goblin_archer']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']] ],
   },
   elite: {
-    2: [ [['goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin']] ],
-    3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']] ],
-    4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']] ],
+    1: [ [['goblin', 'goblin'], ['orc', 'goblin_shaman', 'goblin']] ],
+    2: [ [['goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['goblin_archer', 'goblin_archer'], ['orc_captain', 'goblin_shaman']] ],
+    3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['orc_shield', 'goblin_bomber', 'goblin_bomber'], ['orc_captain', 'goblin_shaman', 'goblin_archer']] ],
+    4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['orc_captain', 'ogre', 'goblin_shaman']] ],
   },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
   boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },

@@ -60,6 +60,7 @@ function genRoom(run, node, type) {
     const it = { id: ++uid, kind, x: at, done: false };
     if (kind === 'fight' || kind === 'elite' || kind === 'boss') it.enc = kind === 'boss' ? node.enc : rng.int(0, 99);
     if (kind === 'event') it.event = Object.keys(EVENTS)[rng.int(0, Object.keys(EVENTS).length - 1)];
+    if (kind === 'elite') it.affix = rng.pick(Object.keys(ELITE_AFFIXES));
     return it;
   };
   // 구간 하나: n칸, 핵심 내용은 무작위 칸에, 나머지 칸은 빈 길 또는 잡동사니. 첫 칸은 비워 둔다
@@ -72,6 +73,7 @@ function genRoom(run, node, type) {
     for (let i = 0; i < n; i++) {
       const kind = coreAt[i] || (i > 0 ? fillerKind(rng) : null);
       const it = kind ? mk(kind, x0 + i * TILE + TILE / 2) : null;
+      if (it && kind === 'fight' && !coreAt[i] && rng() < 0.4) it.ambush = true; // 길에서 만나는 적 일부는 숨어 있다가 덮친다
       if (it) its.push(it);
       tiles.push({ x0: x0 + i * TILE, seg, item: it ? it.id : 0, kind: kind || '' });
     }
@@ -178,7 +180,15 @@ const ExploreScene = {
     const next = roomTrack(room).filter((it) => !it.done).sort((a, b) => a.x - b.x)[0];
     let limit = room.chosen < 0 ? room.forkX - 180 : room.exitX;
     if (next) {
-      if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
+      if (next.ambush && !next.revealed) { // 숨은 적: 가까이 가면 알아챌지 판정, 못 알아채면 바로 옆에서 기습
+        if (room.x >= next.x - 700 && next.spotted === undefined) {
+          const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
+          const r = makeRng(hashSeed(run.seed, 'ambush', room.stage, room.row, next.id));
+          next.spotted = r() < 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.25 : 0);
+          if (next.spotted) { next.revealed = true; this.fx.push({ x: next.x, y: 260, text: '숨어 있는 적을 발견했다!', t: 0, dur: 2 }); }
+        }
+        if (!next.revealed && room.x >= next.x - 170) { this.startFight(next, true); return; }
+      } else if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
         if (room.x >= next.x - EXPLORE.SPOT_DIST) { this.startFight(next); return; }
       } else if (next.kind === 'chest') {
         if (room.x >= next.x - 20) this.openChest(next);
@@ -282,7 +292,7 @@ const ExploreScene = {
     Game.toast(`${room.branches[i].side}로 들어섰다.`, 1200);
   },
 
-  startFight(it) {
+  startFight(it, surprise) {
     const run = Game.run, room = run.room;
     const worldX = Math.round(it.x - 1250);
     const heroPos = this.party().map((p) => ({ x: clamp(p.x - worldX, CONST.FIELD_X0 + 10, EXPLORE.FIELD_W - 60), y: p.y }));
@@ -291,9 +301,9 @@ const ExploreScene = {
       const r = makeRng(hashSeed(run.seed, 'dark', room.stage, room.row, it.id));
       if (r() < CONST.TORCH_DARK_ELITE_CHANCE && ENCOUNTERS.elite[room.stage]) { type = 'elite'; Game.toast('어둠 속에서 정예가 습격했다!', 2000); }
     }
-    const node = { stage: room.stage, row: room.row, type: type === 'fight' ? 'battle' : type, enc: it.enc, sub: it.id, exploreId: it.id };
+    const node = { stage: room.stage, row: room.row, type: type === 'fight' ? 'battle' : type, enc: it.enc, sub: it.id, exploreId: it.id, affix: type === 'elite' ? (it.affix || 'iron') : null };
     Sfx.play('skill');
-    Game.go('battle', { node, explore: { fieldW: EXPLORE.FIELD_W, heroPos, enemySpawnX: 1100, worldX, theme: room.theme } });
+    Game.go('battle', { node, explore: { fieldW: EXPLORE.FIELD_W, heroPos, enemySpawnX: 1100, worldX, theme: room.theme, surprise: !!surprise } });
   },
 
   leaveRoom() {
@@ -418,6 +428,7 @@ function drawCorridorMap(ctx, room, t) {
 function drawPoi(ctx, it, t) {
   const x = it.x, y = 380;
   if (it.kind === 'fight' || it.kind === 'elite' || it.kind === 'boss') {
+    if (it.ambush && !it.revealed) return; // 숨은 적은 보이지 않는다
     const waves = encounterFor({ type: it.kind === 'fight' ? 'battle' : it.kind, stage: Game.run.room.stage, enc: it.enc });
     waves[0].forEach((id, k) => {
       const ey = EXPLORE.LANES[k % 3] + (k >= 3 ? 12 : 0), ex = x + (k % 2) * 40 + ENEMIES[id].size * 20;

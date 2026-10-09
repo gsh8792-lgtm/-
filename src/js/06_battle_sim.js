@@ -20,6 +20,8 @@ class BattleSim {
     this.heroSpawnX = opts.heroSpawnX !== undefined ? opts.heroSpawnX : CONST.HERO_SPAWN_X;
     this.enemySpawnX = opts.enemySpawnX !== undefined ? opts.enemySpawnX : CONST.ENEMY_SPAWN_X;
     this.heroPos = opts.heroPos || null; // 탐험에서 이어지는 전투: 걷던 자리 그대로 시작
+    this.eliteAffix = opts.eliteAffix || null; // 정예 변이 (ELITE_AFFIXES 키)
+    this.surprise = !!opts.surprise;          // 기습: 파티가 잠깐 굳는다
     this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
@@ -44,6 +46,7 @@ class BattleSim {
     this.poiseLog = {}; this.breakLog = [];
     opts.heroes.forEach((h, i) => this.heroes.push(this._makeHero(h, i, opts.heroes.length)));
     this._spawnWave(0, true);
+    if (this.surprise) { this.introT = 0.2; for (const h of this.heroes) { h.actLock = 1.6; h.castLock = 1.6; h.atkTimer = 1.6; } this.events.push({ type: 'surprise' }); }
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
     for (const h of this.aliveHeroes()) { const pv = this.passive(h, 'first_breath'); if (pv) h.ult = Math.min(100, h.ult + pv); }
   }
@@ -85,7 +88,7 @@ class BattleSim {
     return {
       uid: this.uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
       hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval,
-      defPct: def.def, size: def.size, melee: true, reach: 0, speed: def.moveSpeed || 60,
+      defPct: def.def, size: def.size, melee: !def.reach, reach: def.reach || 0, speed: def.moveSpeed || 60,
       x, y, tx: x, ty: y, face: -1, moving: false,
       atkTimer: 0.6 + this.rng() * 1.0, target: null, retarget: 0,
       statuses: {}, alive: true,
@@ -108,6 +111,21 @@ class BattleSim {
       this.enemies.push(this._makeEnemy(id, x, y + (this.rng() - 0.5) * 10));
     });
     this.events.push({ type: 'wave', index: i, total: this.waves.length });
+    if (this.eliteAffix && !this.affixDone) { // 정예 변이: 지금까지 나온 적 중 가장 큰 적에게
+      const boss = this.enemies.filter((e) => e.alive).sort((a, b) => b.maxHp - a.maxHp)[0];
+      if (boss && (i === this.waves.length - 1 || boss.maxHp >= 600)) { this.affixDone = true; this._applyAffix(boss, this.eliteAffix); }
+    }
+  }
+  _applyAffix(u, key) {
+    const A = ELITE_AFFIXES[key]; if (!A) return;
+    u.name = A.name + ' ' + u.name; u.affix = key;
+    u.maxHp = Math.round(u.maxHp * 1.25); u.hp = u.maxHp;
+    if (key === 'iron') { u.armor = Math.min(0.8, (u.armor || 0) + 0.2); u.poiseMax = Math.round(u.poiseMax * 1.3); u.poise = u.poiseMax; u.poiseBase = u.poiseMax; }
+    if (key === 'fury') { u.enraged = true; u.statuses.enrage = { t: Infinity }; }
+    if (key === 'regen') u.statuses.regen = { t: Infinity, value: 0.012 };
+    if (key === 'leech') u.statuses.lifesteal = { t: Infinity, value: 0.3 };
+    if (key === 'swift') { u.speed *= 1.4; u.atkInterval *= 0.8; }
+    this.events.push({ type: 'affix', unit: u, name: A.name });
   }
 
   _summon(ids, by) {
@@ -399,7 +417,7 @@ class BattleSim {
     if (d.abilities.includes('charge')) {
       u.chargeCd -= dt;
       const tgt = u.target && u.target.alive ? u.target : this.nearest(u, this.aliveHeroes());
-      if (u.chargeCd <= 0 && tgt && this.dist(u, tgt) < 260) {
+      if (u.chargeCd <= 0 && tgt && this.dist(u, tgt) < (d.chargeTrigger || 260)) {
         // 원형 위험 범위: 시작 순간의 대상 위치 (피하려면 범위 밖으로 이동)
         u.charge = { t: u.chargeTime, total: u.chargeTime, cx: tgt.x, cy: tgt.y, r: u.chargeR, mult: u.chargeMult };
         u.face = tgt.x >= u.x ? 1 : -1;
@@ -460,6 +478,7 @@ class BattleSim {
       if (h.def.traits.includes('cautious')) mult *= 0.5;
       this._damage(u, h, this._atkOf(u) * mult, { charge: true, noCrit: true });
     }
+    if (u.def.selfDestruct && u.alive) { this.events.push({ type: 'explode', unit: u }); this._damage(null, u, 1e7, { noCrit: true }); } // 자폭
   }
 
   _basicAttack(u, tgt) {
@@ -537,6 +556,7 @@ class BattleSim {
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
     if (src && src.statuses && src.statuses.weaken) dmg *= 1 - src.statuses.weaken.value;
     if (src && !src.melee && src.side === 'hero' && tgt.def.frontRangedDmg && (src.x - tgt.x) * tgt.face > 0) dmg *= tgt.def.frontRangedDmg; // 사슴왕 안개: 정면 원거리 피해 감소
+    if (src && src.side === 'hero' && tgt.def.frontGuard && !info.dot && (src.x - tgt.x) * tgt.face > 0) dmg *= 1 - tgt.def.frontGuard; // 방패: 정면 피해 감소
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
@@ -633,6 +653,11 @@ class BattleSim {
   // 끊지 못한 호출: 소환 + 방어 태세 강화
   _callComplete(u) {
     const d = u.def;
+    if (d.callHeal) { // 주술사: 가장 다친 동료 치유
+      const tgt = this.aliveEnemies().reduce((a, b) => (!a || this.hpPct(b) < this.hpPct(a) ? b : a), null);
+      if (tgt) { this._heal(null, tgt, tgt.maxHp * d.callHeal, true); this.events.push({ type: 'enemyHeal', unit: u, target: tgt }); }
+      return;
+    }
     this._summon(new Array(d.callCount || 1).fill(d.callUnit || 'goblin'), u.callHost || u);
     if (CONST.BREAK_V2) { const host = u.callHost || u; if (host.def.calledHeal && host.alive) this._heal(null, host, host.maxHp * host.def.calledHeal, true); if (host.poiseMax) { host.armorBoost = host.def.calledArmorDur || CONST.UNBLOCKED_CALL_DUR; host.armorBoostV = host.def.calledArmor || CONST.UNBLOCKED_CALL_ARMOR; this.events.push({ type: 'armorUp', unit: host }); } }
   }

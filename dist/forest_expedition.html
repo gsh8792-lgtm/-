@@ -773,6 +773,13 @@ const ENEMIES = {
                      { at: 0.66, name: '2페이즈: 대지 강타', summon: ['goblin', 'goblin_caller'], chargeR: 170, chargeTime: 3.2, chargeEvery: 10, chargeMult: 3.5 },
                      { at: 0.33, name: '3페이즈: 분노', summon: ['goblin', 'goblin'], chargeTime: 2.4, chargeEvery: 8, chargeMult: 4.0, enrage: true },
                    ] },
+  // ---- 역할을 요구하는 일반 몬스터
+  // 궁수: 멀리서 후열을 쏜다 (근딜이 파고들거나 탱커가 도발) / 주술사: 동료 치유 영창 (끊으면 막힘)
+  // 방패 오크: 정면 피해 -65% (등 뒤를 노리거나 범위 마법) / 폭탄 고블린: 다가와 짧게 영창 후 자폭 (피하거나 끊기)
+  goblin_archer: { name: '고블린 궁수', moveSpeed: 74, hp: 80, atk: 15, atkInterval: 1.7, def: 0, size: 1, reach: 200, sprite: 'goblinArcher', color: '#9ab050', gold: 5, abilities: [] },
+  goblin_shaman: { name: '고블린 주술사', moveSpeed: 64, hp: 120, atk: 10, atkInterval: 1.6, def: 0, size: 1, reach: 170, sprite: 'goblinShaman', color: '#9a6ad0', gold: 8, abilities: ['caller'], callEvery: 8, callCast: 2.0, callHeal: 0.3 },
+  orc_shield:    { name: '방패 오크', armor: 0.2, poise: 80, moveSpeed: 58, hp: 300, atk: 22, atkInterval: 1.9, def: 0.15, size: 1.25, sprite: 'orcShield', color: '#7a8a9a', gold: 12, abilities: [], frontGuard: 0.65 },
+  goblin_bomber: { name: '폭탄 고블린', moveSpeed: 104, hp: 70, atk: 20, atkInterval: 1.2, def: 0, size: 1, sprite: 'goblinBomber', color: '#d06a4a', gold: 6, abilities: ['charge'], chargeEvery: 1, chargeTime: 1.4, chargeMult: 3.2, chargeR: 70, chargeTrigger: 80, selfDestruct: true },
   // ---- 보스 로테이션 (그로기 역할 분담 검증용)
   thorn_queen:   { name: '가시덩굴 여왕', armor: 0.7, poise: 220, moveSpeed: 36, hp: 2300, atk: 30, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'thornQueen', color: '#6a9a4a', gold: 0, abilities: ['charge', 'boss', 'buds'], chargeEvery: 12, chargeTime: 3, chargeMult: 3.4, chargeR: 90, softEnrage: 150, budEvery: 13, budFirst: 6, budRegrow: 18, budCount: 3, calledArmor: 0.8, calledArmorDur: 10, calledHeal: 0.02 },
   thorn_bud:     { name: '가시 꽃봉오리', moveSpeed: 0, hp: 420, atk: 1, atkInterval: 99, def: 0.2, size: 1.2, sprite: 'thornBud', color: '#c86ab0', gold: 0, abilities: [], immobile: true, callEvery: 13, callCast: 2.6, callCount: 1, callUnit: 'goblin', interruptResist: 1 },
@@ -781,18 +788,27 @@ const ENEMIES = {
   swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
 };
 
+// 정예 변이: 정예 전투의 우두머리(가장 HP가 큰 적)에 하나가 붙는다 (HP +25%)
+const ELITE_AFFIXES = {
+  iron:  { name: '철갑의', desc: '방어 태세 강화 · 그로기 게이지 +30%' },
+  fury:  { name: '광폭한', desc: '처음부터 광폭 (공격 속도 증가)' },
+  regen: { name: '재생하는', desc: '매초 최대 HP 1.2% 회복' },
+  leech: { name: '흡혈의', desc: '준 피해의 30% 회복' },
+  swift: { name: '날쌘', desc: '이동 속도 +40% · 공격 간격 -20%' },
+};
 // 조우 테이블: 스테이지 → 웨이브 배열 목록 (하나를 시드로 선택)
 const ENCOUNTERS = {
   battle: {
-    1: [ [['goblin', 'goblin', 'goblin'], ['goblin', 'orc', 'goblin']], [['goblin', 'goblin_caller', 'goblin'], ['orc', 'goblin', 'goblin']], [['orc', 'goblin', 'goblin'], ['goblin', 'goblin', 'goblin', 'goblin']] ],
-    2: [ [['orc', 'goblin', 'goblin_caller'], ['orc', 'orc', 'goblin']], [['goblin', 'goblin', 'goblin', 'goblin'], ['ogre', 'goblin']], [['orc', 'goblin', 'goblin'], ['orc', 'goblin_caller', 'goblin']] ],
-    3: [ [['ogre', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']], [['orc', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin']], [['goblin', 'goblin', 'goblin_caller', 'goblin'], ['ogre', 'orc']] ],
-    4: [ [['ogre', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin_caller']], [['orc', 'orc', 'goblin', 'goblin'], ['ogre', 'orc']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']] ],
+    1: [ [['goblin', 'goblin', 'goblin'], ['goblin', 'orc', 'goblin']], [['goblin', 'goblin_caller', 'goblin'], ['orc', 'goblin', 'goblin']], [['goblin', 'goblin_archer', 'goblin'], ['goblin', 'goblin', 'goblin_archer']], [['goblin_bomber', 'goblin', 'goblin'], ['goblin', 'goblin_shaman', 'goblin']] ],
+    2: [ [['orc', 'goblin', 'goblin_caller'], ['orc', 'orc', 'goblin']], [['orc_shield', 'goblin_archer', 'goblin_archer'], ['orc', 'goblin', 'goblin']], [['goblin', 'goblin_shaman', 'orc'], ['goblin_bomber', 'goblin_bomber', 'goblin']], [['goblin', 'goblin', 'goblin', 'goblin'], ['ogre', 'goblin']] ],
+    3: [ [['ogre', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']], [['orc_shield', 'orc', 'goblin_shaman'], ['goblin_bomber', 'goblin_bomber', 'goblin_archer']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['ogre', 'goblin_shaman']], [['goblin', 'goblin', 'goblin_caller', 'goblin'], ['ogre', 'orc']] ],
+    4: [ [['ogre', 'orc', 'goblin'], ['ogre', 'goblin', 'goblin_caller']], [['orc_shield', 'goblin_shaman', 'goblin_archer', 'goblin_archer'], ['ogre', 'orc_shield']], [['goblin_bomber', 'goblin_bomber', 'goblin_bomber'], ['ogre', 'goblin_shaman', 'goblin_archer']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc', 'goblin_caller']] ],
   },
   elite: {
-    2: [ [['goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin']] ],
-    3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']] ],
-    4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']] ],
+    1: [ [['goblin', 'goblin'], ['orc', 'goblin_shaman', 'goblin']] ],
+    2: [ [['goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['goblin_archer', 'goblin_archer'], ['orc_captain', 'goblin_shaman']] ],
+    3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['orc_shield', 'goblin_bomber', 'goblin_bomber'], ['orc_captain', 'goblin_shaman', 'goblin_archer']] ],
+    4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['orc_captain', 'ogre', 'goblin_shaman']] ],
   },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
   boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
@@ -1884,6 +1900,10 @@ Object.assign(SPRITE_VARIANTS, {
   mistStag: { base: 'ogreChief', filter: 'grayscale(0.7) brightness(1.2) hue-rotate(180deg)', swap: {} },
   swampTurtle: { base: 'ogreChief', filter: 'hue-rotate(40deg) saturate(0.7) brightness(0.9)', swap: {} },
   thornBud: { base: 'goblinHorn', filter: 'hue-rotate(250deg) saturate(1.4)', swap: {} },
+  goblinArcher: { base: 'goblin', filter: 'hue-rotate(35deg) saturate(0.8) brightness(1.05)', swap: {} },
+  goblinShaman: { base: 'goblinHorn', filter: 'hue-rotate(200deg) saturate(1.2)', swap: {} },
+  orcShield: { base: 'orc', filter: 'grayscale(0.6) brightness(1.1) hue-rotate(160deg)', swap: {} },
+  goblinBomber: { base: 'goblin', filter: 'hue-rotate(-70deg) saturate(1.5)', swap: {} },
 });
 for (const name in SPRITE_VARIANTS) {
   const v = SPRITE_VARIANTS[name], b = ART[v.base];
@@ -3048,6 +3068,8 @@ class BattleSim {
     this.heroSpawnX = opts.heroSpawnX !== undefined ? opts.heroSpawnX : CONST.HERO_SPAWN_X;
     this.enemySpawnX = opts.enemySpawnX !== undefined ? opts.enemySpawnX : CONST.ENEMY_SPAWN_X;
     this.heroPos = opts.heroPos || null; // 탐험에서 이어지는 전투: 걷던 자리 그대로 시작
+    this.eliteAffix = opts.eliteAffix || null; // 정예 변이 (ELITE_AFFIXES 키)
+    this.surprise = !!opts.surprise;          // 기습: 파티가 잠깐 굳는다
     this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
@@ -3072,6 +3094,7 @@ class BattleSim {
     this.poiseLog = {}; this.breakLog = [];
     opts.heroes.forEach((h, i) => this.heroes.push(this._makeHero(h, i, opts.heroes.length)));
     this._spawnWave(0, true);
+    if (this.surprise) { this.introT = 0.2; for (const h of this.heroes) { h.actLock = 1.6; h.castLock = 1.6; h.atkTimer = 1.6; } this.events.push({ type: 'surprise' }); }
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
     for (const h of this.aliveHeroes()) { const pv = this.passive(h, 'first_breath'); if (pv) h.ult = Math.min(100, h.ult + pv); }
   }
@@ -3113,7 +3136,7 @@ class BattleSim {
     return {
       uid: this.uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
       hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval,
-      defPct: def.def, size: def.size, melee: true, reach: 0, speed: def.moveSpeed || 60,
+      defPct: def.def, size: def.size, melee: !def.reach, reach: def.reach || 0, speed: def.moveSpeed || 60,
       x, y, tx: x, ty: y, face: -1, moving: false,
       atkTimer: 0.6 + this.rng() * 1.0, target: null, retarget: 0,
       statuses: {}, alive: true,
@@ -3136,6 +3159,21 @@ class BattleSim {
       this.enemies.push(this._makeEnemy(id, x, y + (this.rng() - 0.5) * 10));
     });
     this.events.push({ type: 'wave', index: i, total: this.waves.length });
+    if (this.eliteAffix && !this.affixDone) { // 정예 변이: 지금까지 나온 적 중 가장 큰 적에게
+      const boss = this.enemies.filter((e) => e.alive).sort((a, b) => b.maxHp - a.maxHp)[0];
+      if (boss && (i === this.waves.length - 1 || boss.maxHp >= 600)) { this.affixDone = true; this._applyAffix(boss, this.eliteAffix); }
+    }
+  }
+  _applyAffix(u, key) {
+    const A = ELITE_AFFIXES[key]; if (!A) return;
+    u.name = A.name + ' ' + u.name; u.affix = key;
+    u.maxHp = Math.round(u.maxHp * 1.25); u.hp = u.maxHp;
+    if (key === 'iron') { u.armor = Math.min(0.8, (u.armor || 0) + 0.2); u.poiseMax = Math.round(u.poiseMax * 1.3); u.poise = u.poiseMax; u.poiseBase = u.poiseMax; }
+    if (key === 'fury') { u.enraged = true; u.statuses.enrage = { t: Infinity }; }
+    if (key === 'regen') u.statuses.regen = { t: Infinity, value: 0.012 };
+    if (key === 'leech') u.statuses.lifesteal = { t: Infinity, value: 0.3 };
+    if (key === 'swift') { u.speed *= 1.4; u.atkInterval *= 0.8; }
+    this.events.push({ type: 'affix', unit: u, name: A.name });
   }
 
   _summon(ids, by) {
@@ -3427,7 +3465,7 @@ class BattleSim {
     if (d.abilities.includes('charge')) {
       u.chargeCd -= dt;
       const tgt = u.target && u.target.alive ? u.target : this.nearest(u, this.aliveHeroes());
-      if (u.chargeCd <= 0 && tgt && this.dist(u, tgt) < 260) {
+      if (u.chargeCd <= 0 && tgt && this.dist(u, tgt) < (d.chargeTrigger || 260)) {
         // 원형 위험 범위: 시작 순간의 대상 위치 (피하려면 범위 밖으로 이동)
         u.charge = { t: u.chargeTime, total: u.chargeTime, cx: tgt.x, cy: tgt.y, r: u.chargeR, mult: u.chargeMult };
         u.face = tgt.x >= u.x ? 1 : -1;
@@ -3488,6 +3526,7 @@ class BattleSim {
       if (h.def.traits.includes('cautious')) mult *= 0.5;
       this._damage(u, h, this._atkOf(u) * mult, { charge: true, noCrit: true });
     }
+    if (u.def.selfDestruct && u.alive) { this.events.push({ type: 'explode', unit: u }); this._damage(null, u, 1e7, { noCrit: true }); } // 자폭
   }
 
   _basicAttack(u, tgt) {
@@ -3565,6 +3604,7 @@ class BattleSim {
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
     if (src && src.statuses && src.statuses.weaken) dmg *= 1 - src.statuses.weaken.value;
     if (src && !src.melee && src.side === 'hero' && tgt.def.frontRangedDmg && (src.x - tgt.x) * tgt.face > 0) dmg *= tgt.def.frontRangedDmg; // 사슴왕 안개: 정면 원거리 피해 감소
+    if (src && src.side === 'hero' && tgt.def.frontGuard && !info.dot && (src.x - tgt.x) * tgt.face > 0) dmg *= 1 - tgt.def.frontGuard; // 방패: 정면 피해 감소
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
@@ -3661,6 +3701,11 @@ class BattleSim {
   // 끊지 못한 호출: 소환 + 방어 태세 강화
   _callComplete(u) {
     const d = u.def;
+    if (d.callHeal) { // 주술사: 가장 다친 동료 치유
+      const tgt = this.aliveEnemies().reduce((a, b) => (!a || this.hpPct(b) < this.hpPct(a) ? b : a), null);
+      if (tgt) { this._heal(null, tgt, tgt.maxHp * d.callHeal, true); this.events.push({ type: 'enemyHeal', unit: u, target: tgt }); }
+      return;
+    }
     this._summon(new Array(d.callCount || 1).fill(d.callUnit || 'goblin'), u.callHost || u);
     if (CONST.BREAK_V2) { const host = u.callHost || u; if (host.def.calledHeal && host.alive) this._heal(null, host, host.maxHp * host.def.calledHeal, true); if (host.poiseMax) { host.armorBoost = host.def.calledArmorDur || CONST.UNBLOCKED_CALL_DUR; host.armorBoostV = host.def.calledArmor || CONST.UNBLOCKED_CALL_ARMOR; this.events.push({ type: 'armorUp', unit: host }); } }
   }
@@ -4062,6 +4107,7 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
+      eliteAffix: node.affix || null, surprise: !!(ex && ex.surprise),
     });
     this.camX = this.camTarget(); // 카메라 (전장 좌표, 화면 폭 960)
     this.acc = 0;
@@ -4084,7 +4130,7 @@ const BattleScene = {
     this.buildHud();
     this.consumeEvents();
     if (node.type === 'boss') Music.play('boss');
-    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? (node.affix ? `정예: ${ELITE_AFFIXES[node.affix].name}` : '정예 전투!') : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
   },
@@ -4544,6 +4590,10 @@ const BattleScene = {
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'affix': this.popup(e.unit.x, this.unitTop(e.unit) - 22, e.name + '!', '#ff9a6a', 18, { label: true }); break;
+      case 'explode': this.smoke(e.unit.x, e.unit.y - 10, 1.6); this.shake = Math.max(this.shake, 8); Sfx.play('boom'); break;
+      case 'enemyHeal': this.popup(e.target.x, this.unitTop(e.target) - 18, '치유!', '#9cf0a8', 16, { label: true }); Sfx.play('heal'); break;
+      case 'surprise': this.banner = { text: '기습!', sub: '파티가 잠깐 굳었다', t: 0, dur: 1.4 }; Sfx.play('charge'); this.shake = Math.max(this.shake, 6); break;
       case 'crushWarn': if (!Game.settings.seenHints.crush) Game.hint('crush'); this.popup(e.unit.x, this.unitTop(e.unit) - 18, '짓누름!', '#ff9a6a', 17, { label: true }); break;
       case 'bossLeap': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '덮치기!', '#ff9a6a', 18, { label: true }); this.shake = Math.max(this.shake, 6); break;
       case 'armorUp': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '방어 강화!', '#cfe6ff', 18, { label: true }); break;
@@ -5656,6 +5706,7 @@ function genRoom(run, node, type) {
     const it = { id: ++uid, kind, x: at, done: false };
     if (kind === 'fight' || kind === 'elite' || kind === 'boss') it.enc = kind === 'boss' ? node.enc : rng.int(0, 99);
     if (kind === 'event') it.event = Object.keys(EVENTS)[rng.int(0, Object.keys(EVENTS).length - 1)];
+    if (kind === 'elite') it.affix = rng.pick(Object.keys(ELITE_AFFIXES));
     return it;
   };
   // 구간 하나: n칸, 핵심 내용은 무작위 칸에, 나머지 칸은 빈 길 또는 잡동사니. 첫 칸은 비워 둔다
@@ -5668,6 +5719,7 @@ function genRoom(run, node, type) {
     for (let i = 0; i < n; i++) {
       const kind = coreAt[i] || (i > 0 ? fillerKind(rng) : null);
       const it = kind ? mk(kind, x0 + i * TILE + TILE / 2) : null;
+      if (it && kind === 'fight' && !coreAt[i] && rng() < 0.4) it.ambush = true; // 길에서 만나는 적 일부는 숨어 있다가 덮친다
       if (it) its.push(it);
       tiles.push({ x0: x0 + i * TILE, seg, item: it ? it.id : 0, kind: kind || '' });
     }
@@ -5774,7 +5826,15 @@ const ExploreScene = {
     const next = roomTrack(room).filter((it) => !it.done).sort((a, b) => a.x - b.x)[0];
     let limit = room.chosen < 0 ? room.forkX - 180 : room.exitX;
     if (next) {
-      if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
+      if (next.ambush && !next.revealed) { // 숨은 적: 가까이 가면 알아챌지 판정, 못 알아채면 바로 옆에서 기습
+        if (room.x >= next.x - 700 && next.spotted === undefined) {
+          const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
+          const r = makeRng(hashSeed(run.seed, 'ambush', room.stage, room.row, next.id));
+          next.spotted = r() < 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.25 : 0);
+          if (next.spotted) { next.revealed = true; this.fx.push({ x: next.x, y: 260, text: '숨어 있는 적을 발견했다!', t: 0, dur: 2 }); }
+        }
+        if (!next.revealed && room.x >= next.x - 170) { this.startFight(next, true); return; }
+      } else if (next.kind === 'fight' || next.kind === 'elite' || next.kind === 'boss') {
         if (room.x >= next.x - EXPLORE.SPOT_DIST) { this.startFight(next); return; }
       } else if (next.kind === 'chest') {
         if (room.x >= next.x - 20) this.openChest(next);
@@ -5878,7 +5938,7 @@ const ExploreScene = {
     Game.toast(`${room.branches[i].side}로 들어섰다.`, 1200);
   },
 
-  startFight(it) {
+  startFight(it, surprise) {
     const run = Game.run, room = run.room;
     const worldX = Math.round(it.x - 1250);
     const heroPos = this.party().map((p) => ({ x: clamp(p.x - worldX, CONST.FIELD_X0 + 10, EXPLORE.FIELD_W - 60), y: p.y }));
@@ -5887,9 +5947,9 @@ const ExploreScene = {
       const r = makeRng(hashSeed(run.seed, 'dark', room.stage, room.row, it.id));
       if (r() < CONST.TORCH_DARK_ELITE_CHANCE && ENCOUNTERS.elite[room.stage]) { type = 'elite'; Game.toast('어둠 속에서 정예가 습격했다!', 2000); }
     }
-    const node = { stage: room.stage, row: room.row, type: type === 'fight' ? 'battle' : type, enc: it.enc, sub: it.id, exploreId: it.id };
+    const node = { stage: room.stage, row: room.row, type: type === 'fight' ? 'battle' : type, enc: it.enc, sub: it.id, exploreId: it.id, affix: type === 'elite' ? (it.affix || 'iron') : null };
     Sfx.play('skill');
-    Game.go('battle', { node, explore: { fieldW: EXPLORE.FIELD_W, heroPos, enemySpawnX: 1100, worldX, theme: room.theme } });
+    Game.go('battle', { node, explore: { fieldW: EXPLORE.FIELD_W, heroPos, enemySpawnX: 1100, worldX, theme: room.theme, surprise: !!surprise } });
   },
 
   leaveRoom() {
@@ -6014,6 +6074,7 @@ function drawCorridorMap(ctx, room, t) {
 function drawPoi(ctx, it, t) {
   const x = it.x, y = 380;
   if (it.kind === 'fight' || it.kind === 'elite' || it.kind === 'boss') {
+    if (it.ambush && !it.revealed) return; // 숨은 적은 보이지 않는다
     const waves = encounterFor({ type: it.kind === 'fight' ? 'battle' : it.kind, stage: Game.run.room.stage, enc: it.enc });
     waves[0].forEach((id, k) => {
       const ey = EXPLORE.LANES[k % 3] + (k >= 3 ? 12 : 0), ex = x + (k % 2) * 40 + ENEMIES[id].size * 20;

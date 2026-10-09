@@ -3,8 +3,8 @@
 const fs = require('fs'), vm = require('vm');
 const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={genRoom,roomTrack,ROOM_PLANS,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { genRoom, roomTrack, ROOM_PLANS, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={ELITE_AFFIXES,genRoom,roomTrack,ROOM_PLANS,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { ELITE_AFFIXES, genRoom, roomTrack, ROOM_PLANS, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 const typeCount = {};
 for (let seed = 1; seed <= 1000; seed++) {
@@ -327,6 +327,35 @@ if (sa !== sb) fail++;
     if (minX < sim.X0 - 1 || maxX > sim.X1 + 1) errs.push(`out of field ${minX}..${maxX}`);
     if (sim.outcome !== 'win') errs.push('wide battle outcome ' + sim.outcome); }
   console.log('explore:', errs.length ? 'FAIL ' + [...new Set(errs)].join(' | ') : 'OK', `(rooms deterministic, forks, ${avg.toFixed(2)} fights/room, wide battle)`);
+  if (errs.length) fail++;
+}
+// 새 몬스터 (궁수·주술사·방패 오크·폭탄 고블린) · 정예 변이 · 기습
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = (waves, opts) => { const sim = new BattleSim(Object.assign({ seed: 21, stage: 2, waves, strategy: st0, autoMode: false, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: 9999, maxHp: 9999, upgrades: {} })) }, opts || {})); return sim; };
+  const steps = (sim, sec) => { for (let i = 0; i < sec * 60; i++) sim.step(1 / 60); };
+  // 궁수: 원거리, 사거리 밖에서 쏜다
+  { const sim = mk([['goblin_archer']]); const a = sim.enemies[0]; if (a.melee || a.reach !== 200) errs.push('archer not ranged'); let shot = false; for (let i = 0; i < 60 * 8 && !shot; i++) { sim.step(1 / 60); shot = sim.events.some((e) => e.type === 'projectile' && e.from === a); sim.events.length = 0; } if (!shot) errs.push('archer never shot'); }
+  // 주술사: 영창이 끝나면 다친 동료 치유, 끊으면 치유 없음
+  { const sim = mk([['goblin_shaman', 'orc']]); steps(sim, 2); const [sh, orc] = sim.enemies; orc.hp = orc.maxHp * 0.3; sh.callCd = 0; let healed = false;
+    for (let i = 0; i < 60 * 4 && !healed; i++) { sim.step(1 / 60); healed = sim.events.some((e) => e.type === 'enemyHeal'); sim.events.length = 0; } if (!healed || !(orc.hp > orc.maxHp * 0.5)) errs.push('shaman heal');
+    orc.hp = orc.maxHp * 0.3; sh.callCd = 0; sim.step(1 / 60); if (!sh.call) errs.push('shaman no cast'); else { sim._interrupt(sim.heroes[1], sh, 1); const hp = orc.hp; steps(sim, 3); if (orc.hp > hp + 1) errs.push('interrupted heal still healed'); } }
+  // 방패 오크: 정면 피해 -65%, 등 뒤는 그대로
+  { const sim = mk([['orc_shield']]); steps(sim, 0.5); const o = sim.enemies[0], h = sim.heroes[1]; o.face = -1; sim.rng = () => 0.5;
+    h.x = o.x - 50; let hp = o.hp; sim._damage(h, o, 100, { noCrit: true }); const front = hp - o.hp; h.x = o.x + 50; hp = o.hp; sim._damage(h, o, 100, { noCrit: true }); const back = hp - o.hp;
+    if (!(front < back * 0.45)) errs.push(`shield front/back ${front}/${back}`); }
+  // 폭탄 고블린: 다가와 영창 후 자폭 (본인 사망), 끊으면 자폭 안 함
+  { const sim = mk([['goblin_bomber']]); let boom = false; for (let i = 0; i < 60 * 15 && !boom; i++) { sim.step(1 / 60); boom = sim.events.some((e) => e.type === 'explode'); sim.events.length = 0; }
+    if (!boom || sim.enemies[0].alive) errs.push('bomber did not explode'); }
+  { const sim = mk([['goblin_bomber']]); let cast = false; for (let i = 0; i < 60 * 15 && !cast; i++) { sim.step(1 / 60); cast = !!sim.enemies[0].charge; }
+    if (!cast) errs.push('bomber no fuse'); else { sim._interrupt(sim.heroes[0], sim.enemies[0], 1); if (sim.enemies[0].charge) errs.push('bomber fuse not cancelled'); } }
+  // 정예 변이: 가장 큰 적에게 붙고 HP +25%
+  for (const key of Object.keys(ELITE_AFFIXES)) { const sim = mk(encounterFor({ type: 'elite', stage: 2, enc: 0 }), { eliteAffix: key }); const w = sim.waves.length; for (let i = 0; i < 60 * 60 && !sim.enemies.some((e) => e.affix); i++) { sim.step(1 / 60); if (sim.waveIndex === 0 && sim.time > 1) for (const e of sim.enemies) if (!e.affix) e.hp = 0, e.alive = false; }
+    const a = sim.enemies.find((e) => e.affix); if (!a || a.affix !== key || !a.name.startsWith(ELITE_AFFIXES[key].name)) errs.push('affix ' + key); }
+  // 기습: 파티가 잠깐 굳는다
+  { const sim = mk([['goblin', 'goblin']], { surprise: true }); if (!sim.heroes.every((h) => h.actLock >= 1.5)) errs.push('surprise lock'); }
+  console.log('new enemies:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(archer, shaman heal/cancel, shield front, bomber, elite affixes, ambush)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);
