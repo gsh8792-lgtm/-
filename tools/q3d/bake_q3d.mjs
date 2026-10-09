@@ -40,9 +40,10 @@ const out = await p.evaluate(async ([shots, FH, TOON_F]) => {
   const load = (src) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = src; });
   const ims = []; for (const s of shots) { s.ims = []; for (const d of s.row) { const im = await load(d); s.ims.push(im); ims.push(im); } }
   const W = ims[0].width, H = ims[0].height, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d', { willReadFrequently: true });
-  let x0 = W, y0 = H, x1 = 0, y1 = 0;
-  for (const im of ims) { x.clearRect(0, 0, W, H); x.drawImage(im, 0, 0); const a = x.getImageData(0, 0, W, H).data;
-    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) if (a[(yy * W + xx) * 4 + 3] > 8) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; } }
+  let x0 = W, y0 = H, x1 = 0, y1 = 0, foot = 0;
+  ims.forEach((im, idx) => { x.clearRect(0, 0, W, H); x.drawImage(im, 0, 0); const a = x.getImageData(0, 0, W, H).data;
+    for (let yy = 0; yy < H; yy++) for (let xx = 0; xx < W; xx++) if (a[(yy * W + xx) * 4 + 3] > 8) { if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy; if (idx === 0 && yy > foot) foot = yy; } });
+  // 바닥 = 대기 첫 프레임의 발끝 (쓰러짐처럼 아래로 내려가는 자세 때문에 서 있는 발이 뜨지 않게)
   // 발 = 아래 경계. 좌우는 몸 중심(전체 폭 중앙)이 프레임 중앙에 오게
   const cx = W / 2, half = Math.max(cx - x0, x1 - cx) + 4, top = y0 - 4, bot = y1 + 2;
   const k = FH / (bot - top), fw = Math.ceil(half * 2 * k), fh = FH;
@@ -59,7 +60,7 @@ const out = await p.evaluate(async ([shots, FH, TOON_F]) => {
     for (let a = 0; a < 8; a++) sx.drawImage(ink, ox + Math.cos(a * Math.PI / 4) * L, oy + Math.sin(a * Math.PI / 4) * L);
     sx.drawImage(fr, ox, oy);
   }));
-  return { src: sh.toDataURL('image/webp', 0.86), fw, fh, anims: Object.fromEntries(shots.map((s, r) => [s.key, { row: r, n: s.n, fps: +s.fps.toFixed(2), loop: s.loop, hold: s.hold }])) };
+  return { src: sh.toDataURL('image/webp', 0.86), fw, fh, footY: Math.round((foot + 1 - top) * k), anims: Object.fromEntries(shots.map((s, r) => [s.key, { row: r, n: s.n, fps: +s.fps.toFixed(2), loop: s.loop, hold: s.hold }])) };
 }, [shots.map(({ key, n, fps, row, loop, hold }) => ({ key, n, fps, row, loop, hold })), FH, STYLE === 'unity' ? 'none' : TOON ? 'saturate(1.1)' : 'saturate(1.3) contrast(1.08) brightness(0.97)']);
 await b.close(); server.close();
 const file = path.join(root, 'src/js/02b_sprite_sheets.js');

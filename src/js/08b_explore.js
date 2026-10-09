@@ -206,7 +206,7 @@ const DungeonScene = {
     this.moving = dir !== 0; this.faceLeft = dir < 0;
     if (dir) at.x = clamp(at.x + dir * sp, -40, limit + 41);
     // 횃불: 복도를 걸을 때만 닳는다
-    if (dir > 0) { this.torchAcc = (this.torchAcc || 0) + sp; if (this.torchAcc >= 900) { this.torchAcc -= 900; run.torch = Math.max(0, run.torch - CONST.TORCH_PER_TILE); this.refreshRes(); } }
+    if (dir > 0) { this.torchAcc = (this.torchAcc || 0) + sp; if (this.torchAcc >= 900) { this.torchAcc -= 900; run.torch = Math.max(0, run.torch - CONST.TORCH_PER_TILE); if (run.torch < 30 && run.torchPacks > 0) { run.torchPacks--; run.torch = Math.min(CONST.TORCH_MAX, run.torch + 40); Game.toast('횃불 묶음에 불을 붙였다 (+40)', 1200); } this.refreshRes(); } }
     if (at.x > limit) { this.arriveRoom(fl.rooms[at.to]); return; }
     if (at.x < -30) { this.arriveRoom(fl.rooms[at.from]); return; } // 되돌아감
     this.camX += (clamp(at.x - EXPLORE.CAM_LEAD, 0, Math.max(0, c.len - 960)) - this.camX) * Math.min(1, dt * 4);
@@ -220,7 +220,8 @@ const DungeonScene = {
     if (it.kind === 'trap') {
       const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
       const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0);
-      if (rng() < spot) { text = '함정을 알아채고 피했다'; Sfx.play('click'); }
+      if (run.trapKits > 0) { run.trapKits--; const g = 10 + fl.floor * 4; run.gold += g; text = `함정 해제 도구로 해제! 부품 골드 +${g}`; Sfx.play('coin'); }
+      else if (rng() < spot) { text = '함정을 알아채고 피했다'; Sfx.play('click'); }
       else { for (const id of ids) { const h = run.heroes[id]; h.hp = Math.max(1, Math.round(h.hp - h.maxHp * 0.1)); } text = '함정! 파티 HP -10%'; Sfx.play('hit'); }
     } else {
       const v = rng();

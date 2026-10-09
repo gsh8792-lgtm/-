@@ -79,6 +79,8 @@ const BattleScene = {
     const right = el('div', 'b-right');
     this.potionBtn = btn(`🧪 ${run.potions}`, 'b-potion small', () => this.startPotion(), { id: 'btn-bpotion' });
     right.appendChild(this.potionBtn);
+    this.bigBtn = btn(`💖 ${run.bigPotions || 0}`, 'b-potion small' + (run.bigPotions ? '' : ' hidden'), () => this.startPotion('big'), { id: 'btn-bpotion-big' });
+    right.appendChild(this.bigBtn);
     this.speedBtn = btn(`${this.speed}x`, 'b-speed small', () => { this.speed = this.speed >= 3 ? 1 : this.speed + 1; Game.settings.speed = this.speed; Game.saveSettings(); this.speedBtn.innerHTML = `${this.speed}x`; this.speedBtn.classList.toggle('on', this.speed > 1); }, { id: 'btn-speed' });
     this.speedBtn.classList.toggle('on', this.speed > 1);
     right.appendChild(this.speedBtn);
@@ -304,19 +306,20 @@ const BattleScene = {
   },
 
   // ------------------------------------------------------------ 회복약 (초상화/아군 탭)
-  startPotion() {
+  startPotion(kind) {
     if (this.sim.outcome) return;
-    if (this.run.potions <= 0) { Game.toast('회복약이 없어요', 900); return; }
+    this.potionKind = kind === 'big' ? 'big' : 'normal';
+    if (this.potionKind === 'big' ? !(this.run.bigPotions > 0) : this.run.potions <= 0) { Game.toast('물약이 없어요', 900); return; }
     this.potionPick = true;
-    this.tmsg.innerHTML = '회복약을 누구에게 쓸까요?';
+    this.tmsg.innerHTML = this.potionKind === 'big' ? '상급 회복약을 누구에게 쓸까요? (HP 100% + 해로운 효과 해제)' : '회복약을 누구에게 쓸까요?';
     this.tmsg.classList.remove('hidden');
     Game.ui.classList.add('potion-pick');
   },
   endPotion() { this.potionPick = false; this.tmsg.classList.add('hidden'); Game.ui.classList.remove('potion-pick'); },
   usePotionOn(h) {
     if (!h.alive) return;
-    this.run.potions--;
-    this.sim._heal(null, h, h.maxHp * REWARD.potionHealPct);
+    if (this.potionKind === 'big') { this.run.bigPotions--; this.sim._heal(null, h, h.maxHp); for (const k of HARMFUL_STATUS) delete h.statuses[k]; }
+    else { this.run.potions--; this.sim._heal(null, h, h.maxHp * REWARD.potionHealPct); }
     Sfx.play('heal');
     this.endPotion();
   },
@@ -642,6 +645,7 @@ const BattleScene = {
     this.stageLabel.textContent = `${this.run.dungeon ? `${this.run.dungeon.floor}층` : `방 ${this.node.stage}`} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
+    this.bigBtn.innerHTML = `💖 ${this.run.bigPotions || 0}`; this.bigBtn.classList.toggle('hidden', !(this.run.bigPotions > 0));
     // 위험 경고
     if (this.danger) {
       this.warn.classList.remove('hidden');

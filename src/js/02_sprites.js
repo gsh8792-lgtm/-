@@ -673,6 +673,7 @@ Object.assign(SPRITE_VARIANTS, {
   goblinShaman: { base: 'goblinHorn', filter: 'hue-rotate(200deg) saturate(1.2)', swap: {} },
   orcShield: { base: 'orc', filter: 'grayscale(0.6) brightness(1.1) hue-rotate(160deg)', swap: {} },
   goblinBomber: { base: 'goblin', filter: 'hue-rotate(-70deg) saturate(1.5)', swap: {} },
+  merchant: { base: 'guide', filter: 'hue-rotate(150deg) saturate(1.4)', swap: {} }, // 마을 잡화점 상인 (임시: 길잡이 색 바꿈)
 });
 for (const name in SPRITE_VARIANTS) {
   const v = SPRITE_VARIANTS[name], b = ART[v.base];
@@ -769,7 +770,8 @@ function drawSprite(ctx, name, x, y, opt) {
       if (opt.squash) ctx.scale(1, opt.squash);
       const tintF = opt.tint === 'white' ? 'brightness(2.4) saturate(0)' : opt.tint === 'dark' ? 'brightness(0)' : opt.tint === 'red' && opt.tintAlpha ? `sepia(1) saturate(4) hue-rotate(-30deg) opacity(${1 - opt.tintAlpha * 0.5})` : '';
       if (tintF) ctx.filter = tintF;
-      ctx.drawImage(img, f * sheet.fw, an.row * sheet.fh, sheet.fw, sheet.fh, -w / 2, -h, w, h);
+      const fy = sheet.footY ? sheet.footY / sheet.fh : 1; // 발끝 = 프레임 안의 바닥 위치
+      ctx.drawImage(img, f * sheet.fw, an.row * sheet.fh, sheet.fw, sheet.fh, -w / 2, -h * fy, w, h);
       ctx.restore(); return;
     }
   }

@@ -377,6 +377,32 @@ async function playRun(p, seed, opts) {
   await p.close();
 }
 
+// ---------------------------------------------------------------- 마을 잡화점 상인
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, battle: 1, dungeon: 1 }; G.scenes.title.start(66); G.profile.gold = 1000; const F = G.scene; F.interact(F.interactables().find((i) => i.key === 'merchant')); });
+  await p.waitForTimeout(300);
+  ok('마을 상인: 창 열림', await vis(p, '.merchant-box'));
+  await p.click('#mc-buy-potion'); await p.click('#mc-buy-bigPotion'); await p.click('#mc-buy-feather');
+  ok('마을 상인: 부활의 깃털 한도 1', await p.locator('#mc-buy-feather').isDisabled());
+  await p.click('#mc-tab-tools'); await p.click('#mc-buy-trapKit'); await p.click('#mc-buy-food');
+  await p.click('#mc-tab-gear'); const inv0 = await p.evaluate(() => window.GAME.Game.profile.inv.length);
+  await p.locator('.merchant-box .btn.buy').first().click();
+  const st = await p.evaluate(() => { const G = window.GAME.Game, r = G.run; return { pot: r.potions, big: r.bigPotions, fe: r.feathers, kit: r.trapKits, food: r.food, gold: G.profile.gold, inv: G.profile.inv.length }; });
+  ok('마을 상인: 물약·도구는 가방, 장비는 보관함, 마을 골드 차감', st.pot === 2 && st.big === 1 && st.fe === 1 && st.kit === 1 && st.inv === inv0 + 1 && st.gold === 1000 - 30 - 75 - 160 - 40 - 25 - 60, JSON.stringify(st));
+  await p.click('#mc-close');
+  // 상급 회복약은 전투에서 버튼이 따로 생긴다
+  await p.evaluate(() => { const G = window.GAME.Game; G.go('battle', { node: { stage: 1, row: 0, type: 'battle', waves: [['goblin']] } }); });
+  await p.waitForTimeout(400);
+  ok('전투: 상급 회복약 버튼', await vis(p, '#btn-bpotion-big'));
+  // 부활의 깃털: 쓰러진 동료를 일으킨다
+  await p.evaluate(() => { const G = window.GAME.Game, r = G.run; r.heroes.danbi.dead = true; r.heroes.danbi.hp = 0; G.go('field'); window.GAME.usePotionFlow(r, null, 'feather'); });
+  await p.waitForTimeout(200);
+  await p.locator('.pick-box .pcard[data-hero="danbi"]').click();
+  ok('부활의 깃털: 쓰러진 동료 부활', await p.evaluate(() => { const r = window.GAME.Game.run; return !r.heroes.danbi.dead && r.heroes.danbi.hp > 0 && r.feathers === 0; }));
+  await p.close();
+}
+
 // ---------------------------------------------------------------- 사냥터 (방치 사냥)
 {
   const p = await newPage();

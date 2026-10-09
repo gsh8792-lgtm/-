@@ -24,7 +24,7 @@ function partyPanel(run, opts) {
     card.appendChild(info);
     const ups = Object.values(h.upgrades).reduce((a, u) => a + u.power + u.cd, 0);
     if (ups) card.appendChild(el('div', 'pup', '★' + ups));
-    if (opts.onSelect && !h.dead) {
+    if (opts.onSelect && (!h.dead || opts.allowDead)) {
       card.classList.add('selectable');
       card.addEventListener('click', () => { Sfx.play('click'); opts.onSelect(id); });
     }
@@ -38,6 +38,10 @@ function resourceBar(run) {
   r.appendChild(el('div', 'res gold', `<i>●</i>${run.gold}`));
   r.appendChild(el('div', 'res food', `<i>🍞</i>${run.food}`));
   r.appendChild(el('div', 'res potion', `<i>🧪</i>${run.potions}`));
+  if (run.bigPotions) r.appendChild(el('div', 'res potion', `<i>💖</i>${run.bigPotions}`));
+  if (run.feathers) r.appendChild(el('div', 'res potion', `<i>🪶</i>${run.feathers}`));
+  if (run.trapKits) r.appendChild(el('div', 'res potion', `<i>🧰</i>${run.trapKits}`));
+  if (run.torchPacks) r.appendChild(el('div', 'res potion', `<i>🔦</i>${run.torchPacks}`));
   const torch = el('div', 'res torch' + (run.torch <= 0 ? ' dark' : run.torch <= 40 ? ' low' : ''), `<i>🔥</i>`);
   torch.appendChild(bar(run.torch / CONST.TORCH_MAX, 'torch'));
   r.appendChild(torch);
@@ -55,18 +59,26 @@ function resourceBar(run) {
 }
 
 // 회복약 사용 (지도/휴식에서)
-function usePotionFlow(run, onDone) {
-  if (run.potions <= 0) { Game.toast('회복약이 없어요'); return; }
+function usePotionFlow(run, onDone, kind) {
+  const kinds = [['potion', '🧪 회복약', run.potions], ['bigPotion', '💖 상급', run.bigPotions || 0], ['feather', '🪶 부활 깃털', run.feathers || 0]].filter((k) => k[2] > 0);
+  if (!kinds.length) { Game.toast('물약이 없어요'); return; }
+  kind = kinds.some((k) => k[0] === kind) ? kind : kinds[0][0];
   const box = el('div', 'pick-box');
-  box.appendChild(el('div', 'modal-title', '회복약을 누구에게 쓸까요?'));
-  box.appendChild(partyPanel(run, { onSelect: (id) => {
+  box.appendChild(el('div', 'modal-title', kind === 'feather' ? '누구를 일으킬까요?' : '누구에게 쓸까요?'));
+  if (kinds.length > 1) { const tabs = el('div', 'mc-tabs'); for (const [k, label, n] of kinds) tabs.appendChild(btn(`${label} ${n}`, 'small' + (k === kind ? ' on' : ''), () => { Game.closeModal(); usePotionFlow(run, onDone, k); }, { id: 'pot-kind-' + k })); box.appendChild(tabs); }
+  box.appendChild(partyPanel(run, { allowDead: kind === 'feather', onSelect: (id) => {
     const h = run.heroes[id];
-    if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요'); return; }
-    run.potions--;
-    h.hp = Math.min(h.maxHp, h.hp + h.maxHp * REWARD.potionHealPct);
+    if (kind === 'feather') {
+      if (!h.dead) { Game.toast('쓰러진 동료에게만 쓸 수 있어요'); return; }
+      run.feathers--; h.dead = false; h.hp = Math.round(h.maxHp * 0.4);
+    } else {
+      if (h.dead) { Game.toast('쓰러진 동료는 부활의 깃털로만 일으킬 수 있어요'); return; }
+      if (h.hp >= h.maxHp) { Game.toast('이미 HP가 가득해요'); return; }
+      if (kind === 'bigPotion') { run.bigPotions--; h.hp = h.maxHp; } else { run.potions--; h.hp = Math.min(h.maxHp, h.hp + h.maxHp * REWARD.potionHealPct); }
+    }
     Sfx.play('heal');
     Game.closeModal();
-    Game.toast(`${HEROES[id].name} HP 회복!`);
+    Game.toast(kind === 'feather' ? `${HEROES[id].name}이(가) 다시 일어났다!` : `${HEROES[id].name} HP 회복!`);
     if (onDone) onDone();
   } }));
   box.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back' }));

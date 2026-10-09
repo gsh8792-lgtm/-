@@ -11,7 +11,8 @@ const FIELD = {
   smith: { x: 430, y: 540 },
   storage: { x: 930, y: 610 },
   altar: { x: 1130, y: 560 },
-  huntExit: { x: 190, y: 925 },     // 남서쪽 길 끝 → 사냥터 (던전 입구와 반대 방향)
+  huntExit: { x: 190, y: 925 },
+  merchant: { x: 548, y: 712 },     // 잡화점 상인 (광장 남서쪽)
 };
 
 const FieldScene = {
@@ -40,7 +41,7 @@ const FieldScene = {
     for (let i = 0; i < 90; i++) this.flowers.push({ x: rng() * FIELD.W, y: rng() * FIELD.H, c: ['#ffd34a', '#f4a7a0', '#e8e8ff', '#c89af0'][Math.floor(rng() * 4)], p: rng() * 6 });
     this.obstacles = FIELD.trees.map(([x, y, s]) => ({ x, y, r: 26 * s }))
       .concat(FIELD.houses.map(([x, y]) => ({ x, y: y - 10, r: 70 })))
-      .concat([{ x: FIELD.well.x, y: FIELD.well.y, r: 34 }, { x: FIELD.smith.x + 34, y: FIELD.smith.y, r: 22 }, { x: FIELD.storage.x, y: FIELD.storage.y, r: 24 }, { x: FIELD.altar.x, y: FIELD.altar.y, r: 26 }]);
+      .concat([{ x: FIELD.merchant.x, y: FIELD.merchant.y - 12, r: 46 }, { x: FIELD.well.x, y: FIELD.well.y, r: 34 }, { x: FIELD.smith.x + 34, y: FIELD.smith.y, r: 22 }, { x: FIELD.storage.x, y: FIELD.storage.y, r: 24 }, { x: FIELD.altar.x, y: FIELD.altar.y, r: 26 }]);
     this.buildGround();
     const ui = Game.ui;
     const top = el('div', 'f-top');
@@ -84,6 +85,7 @@ const FieldScene = {
       { key: 'storage', x: FIELD.storage.x, y: FIELD.storage.y, label: '장비' },
       { key: 'altar', x: FIELD.altar.x, y: FIELD.altar.y, label: '소환' },
       { key: 'hunt', x: FIELD.huntExit.x, y: FIELD.huntExit.y, label: '사냥터로' },
+      { key: 'merchant', x: FIELD.merchant.x, y: FIELD.merchant.y, label: '거래' },
     ];
   },
 
@@ -113,6 +115,8 @@ const FieldScene = {
       openGacha(() => this.refreshRes());
     } else if (it.key === 'storage') {
       openInventory({ onClose: () => this.refreshRes() });
+    } else if (it.key === 'merchant') {
+      openMerchant(() => this.refreshRes());
     } else if (it.key === 'hunt') {
       Sfx.play('door'); refreshRunLoadout(run); Game.go('hunt', { field: 'meadow' });
     } else if (it.key === 'guide') {
@@ -342,6 +346,13 @@ const FieldScene = {
     objs.push({ y: FIELD.smith.y, draw: () => this.drawSmith(ctx, FIELD.smith.x, FIELD.smith.y, t, L) });
     objs.push({ y: FIELD.storage.y, draw: () => this.drawStorage(ctx, FIELD.storage.x, FIELD.storage.y) });
     objs.push({ y: FIELD.altar.y, draw: () => this.drawAltar(ctx, FIELD.altar.x, FIELD.altar.y, t) });
+    objs.push({ y: FIELD.merchant.y, draw: () => { const M = FIELD.merchant;
+      ctx.fillStyle = '#6a4428'; ctx.fillRect(M.x - 56, M.y - 26, 112, 26); ctx.fillStyle = '#8a5a34'; ctx.fillRect(M.x - 56, M.y - 30, 112, 6);
+      for (let i = 0; i < 4; i++) { ctx.fillStyle = ['#e0524a', '#5aa0e0', '#9cf0a8', '#ffd34a'][i]; ctx.beginPath(); ctx.arc(M.x - 38 + i * 24, M.y - 36, 6, 0, 7); ctx.fill(); }
+      ctx.fillStyle = '#c84a3a'; ctx.beginPath(); ctx.moveTo(M.x - 66, M.y - 92); ctx.lineTo(M.x + 66, M.y - 92); ctx.lineTo(M.x + 58, M.y - 70); ctx.lineTo(M.x - 58, M.y - 70); ctx.fill();
+      ctx.fillStyle = '#f0e0c0'; for (let i = 0; i < 6; i++) ctx.fillRect(M.x - 58 + i * 22, M.y - 92, 11, 22);
+      ctx.fillStyle = '#5a3a20'; ctx.fillRect(M.x - 58, M.y - 70, 5, 44); ctx.fillRect(M.x + 53, M.y - 70, 5, 44);
+      this.shadow(ctx, M.x + 34, M.y - 4, 14); drawSprite(ctx, 'merchant', M.x + 34, M.y - 4, { scale: 2, t, flip: L.x < M.x, blinking: (t % 3.7) < 0.12 }); } });
     objs.push({ y: FIELD.huntExit.y, draw: () => { const H = FIELD.huntExit; ctx.fillStyle = '#6a4a2a'; ctx.fillRect(H.x + 40, H.y - 56, 7, 56); ctx.fillStyle = '#a07a4a'; ctx.fillRect(H.x + 4, H.y - 66, 80, 22); ctx.strokeStyle = '#4a3018'; ctx.lineWidth = 2; ctx.strokeRect(H.x + 4, H.y - 66, 80, 22); ctx.fillStyle = '#fff4d8'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('사냥터 ▼', H.x + 44, H.y - 50); } });
     objs.push({ y: FIELD.guide.y, draw: () => { this.shadow(ctx, FIELD.guide.x, FIELD.guide.y, 16); drawSprite(ctx, 'guide', FIELD.guide.x, FIELD.guide.y, { scale: 2, t, flip: L.x < FIELD.guide.x, blinking: (t % 4) < 0.12 }); } });
     this.followers.forEach((f) => {
@@ -358,7 +369,7 @@ const FieldScene = {
       if (it.key === 'chest' && run.gotSupply) continue;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', hunt: `${HUNT_FIELDS.meadow.name} (Lv ${HUNT_FIELDS.meadow.level})` }[it.key];
+      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', merchant: '잡화점', hunt: `${HUNT_FIELDS.meadow.name} (Lv ${HUNT_FIELDS.meadow.level})` }[it.key];
       const ly = it.key === 'portal' ? it.y - 150 : it.y - 62;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(label, it.x, ly + bob); ctx.fillText(label, it.x, ly + bob);
       if (it.key !== 'portal') { ctx.fillText('▼', it.x, ly + 14 + bob); }
