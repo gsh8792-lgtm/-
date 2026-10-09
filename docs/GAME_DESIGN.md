@@ -415,6 +415,11 @@ PvP는 하지 않는다 (실시간 3인 밸런스·네트워크 비용, 기믹 �
 
 - 안개 사슴왕(v0.38 조정): `huntsBackline: 'phase2'` — 2페이즈부터 후열 사냥. armor 0.7, frontRangedDmg 0.75, softEnrage 160. `tools/boss_compare.cjs`로 보스 5종 비교.
 
+## 7-6j. 업적 (v0.40, 구현됨, `src/js/09f_achieve.js`)
+- `ACHIEVEMENTS[i] = { id, name, desc, prog(p) → [현재, 목표], reward: { tickets, gold, stones } }`. 저장 `profile.ach = { done, c }`.
+- 카운터: 보스 처치(종류별)·맹세 수·무사 귀환(`achBossWin`, 보스 승리 때) · 연계(전투 이벤트) · 후퇴 · 사냥터 정예.
+- 검사(`achCheck`)는 마을 진입·결과 화면·사냥터 정예 처치 때. 보상은 한 번만.
+
 ## 7-7. 첫 난이도(견습) 조정
 
 권장 캐릭터 레벨 1·**3**·12·22·32·40·50·60·70, 견습 적 배율 1.26 → **1.12**. 막 첫 클리어한 파티(Lv 3~4, UC+0)로 견습 전투 승률: 기믹을 잘 쓰면 74%(보스 58%), 대충 하면 63%(보스 51%) — `ENH=0 node tools/equip_balance.cjs --nosim --t1`.
