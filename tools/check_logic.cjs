@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -392,6 +392,34 @@ if (sa !== sb) fail++;
   // 보스 일반 스킬: 일정 시간 안에 한 번은 쓴다
   for (const key of Object.keys(BOSS_KITS)) { const sim = mk(key, true); let used = false; run(sim, 25, () => (used = used || sim.events.some((e) => e.type === 'bossSkill'), sim.events.length = 0, used)); if (!used) errs.push('skill ' + key); }
   console.log('boss kits:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(4 wipes cast/hit, stopped by good control, auto reacts late, boss skills)');
+  if (errs.length) fail++;
+}
+// 사냥터: 등급표(합 1, 높은 등급 극악), 방치 사냥 10분 (처치·정예·드랍 슬롯·경계·결정성)
+{
+  const errs = [];
+  for (const lv of [1, 5, 15, 35, 70]) {
+    const tb = huntGradeTable(lv, false), sum = tb.reduce((a, [, p]) => a + p, 0), b = Math.min(7, Math.floor(lv / 10));
+    if (Math.abs(sum - 1) > 1e-9) errs.push('table sum ' + lv);
+    for (let i = b + 1; i < tb.length; i++) if (!(tb[i][1] < tb[i - 1][1])) errs.push(`table not decreasing ${lv}/${i}`);
+    if (b + 2 < tb.length && tb[b + 2][1] > 0.005) errs.push(`two grades up too common ${lv}: ${tb[b + 2][1]}`);
+    const te = huntGradeTable(lv, true); if (b + 1 < te.length && !(te[b + 1][1] > tb[b + 1][1])) errs.push('elite tail not better ' + lv);
+  }
+  if (huntExpMult(HUNT_FIELDS.meadow, 5) !== 1 || !(huntExpMult(HUNT_FIELDS.meadow, 20) < 0.5)) errs.push('overlevel exp');
+  const run10 = (seed) => {
+    const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].lv = 5;
+    const sim = new HuntSim({ field: HUNT_FIELDS.meadow, seed, heroes: ['tobi', 'danbi', 'bori'].map((id) => huntHeroFrom(p, id)) });
+    for (let i = 0; i < 10 * 60 * 30; i++) { sim.step(1 / 30); sim.events.length = 0; }
+    return sim;
+  };
+  const a = run10(3), b2 = run10(3), F = HUNT_FIELDS.meadow;
+  if (JSON.stringify(a.stats) !== JSON.stringify(b2.stats)) errs.push('nondeterministic');
+  const k = a.stats.kills;
+  if (k.trash + k.normal < 30) errs.push('too few kills ' + JSON.stringify(k));
+  if (k.elite < 1) errs.push('no elite killed in 10 min');
+  if (a.mobs.filter((m) => m.alive && m.cls === 'elite').length > 1) errs.push('more than one elite');
+  if (a.stats.drops.some((d) => !HUNT.ACC_SLOTS.includes(d.slot))) errs.push('non-accessory drop');
+  if (a.heroes.concat(a.mobs).some((u) => !(u.x >= 0 && u.x <= F.W && u.y >= 0 && u.y <= F.H) || !isFinite(u.hp))) errs.push('out of bounds / NaN');
+  console.log('hunt field:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(grade tables, 10 min idle: kills ${k.trash}/${k.normal}/${k.elite}, exp ${Math.round(a.stats.exp)}, drops ${a.stats.drops.length})`);
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

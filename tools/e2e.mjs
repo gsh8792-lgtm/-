@@ -377,6 +377,33 @@ async function playRun(p, seed, opts) {
   await p.close();
 }
 
+// ---------------------------------------------------------------- 사냥터 (방치 사냥)
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, hunt: 1 }; G.scenes.title.start(55); });
+  await p.waitForTimeout(200);
+  const gold0 = await p.evaluate(() => window.GAME.Game.profile.gold);
+  await p.click('#btn-hunt');
+  await p.waitForFunction(() => window.GAME.Game.sceneName === 'hunt', null, { timeout: 30000 }).catch(() => {});
+  ok('마을 남서쪽 출구 → 사냥터', (await scene(p)) === 'hunt');
+  await clickIf(p, '#btn-hunt-speed');
+  ok('사냥터: 배속 버튼', (await p.locator('#btn-hunt-speed').innerText()).includes('2x'));
+  await p.evaluate(() => { window.GAME.Game.debug.simMult = 12; });
+  await p.waitForTimeout(6000);
+  await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; });
+  const st = await p.evaluate(() => { const S = window.GAME.Game.scene; return { kills: S.sim.stats.kills, gold: window.GAME.Game.profile.gold, log: document.querySelector('#hunt-log').innerText }; });
+  const kills = st.kills.trash + st.kills.normal + st.kills.elite;
+  ok('사냥터: 자동 사냥으로 몹 처치 · 골드 반영', kills >= 5 && st.gold > gold0, `처치 ${kills}, 골드 ${gold0}→${st.gold}`);
+  ok('사냥터: 사냥 기록 표시', st.log.includes('처치'));
+  await p.click('#btn-hunt-auto');
+  ok('사냥터: 자동 사냥 끄기', (await p.locator('#btn-hunt-auto').innerText()).includes('끔'));
+  await p.click('#btn-hunt-auto');
+  await p.screenshot({ path: `${OUT}/hunt.png` });
+  await p.click('#btn-hunt-back');
+  ok('사냥터 → 마을 복귀', (await scene(p)) === 'field');
+  await p.close();
+}
+
 // ---------------------------------------------------------------- 캐릭터 소환·돌파·필살기 선택
 {
   const p = await newPage();

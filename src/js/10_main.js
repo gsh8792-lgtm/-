@@ -8,6 +8,7 @@ function boot() {
   Game.profile = EQ.loadProfile();
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
+  Game.register('hunt', HuntScene);
   Game.register('dungeon', DungeonScene);
   Game.register('battle', BattleScene);
   Game.register('reward', RewardScene);

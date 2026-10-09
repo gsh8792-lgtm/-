@@ -11,13 +11,15 @@ const FIELD = {
   smith: { x: 430, y: 540 },
   storage: { x: 930, y: 610 },
   altar: { x: 1130, y: 560 },
+  huntExit: { x: 190, y: 925 },     // 남서쪽 길 끝 → 사냥터 (던전 입구와 반대 방향)
 };
 
 const FieldScene = {
-  enter() {
+  enter(params) {
     const run = Game.run;
     this.t = 0;
-    this.leader = { x: FIELD.start.x, y: FIELD.start.y, flip: false, moving: false };
+    const st = params && params.from === 'hunt' ? { x: FIELD.huntExit.x + 90, y: FIELD.huntExit.y - 70 } : FIELD.start;
+    this.leader = { x: st.x, y: st.y, flip: false, moving: false };
     this.trail = [];
     for (let i = 0; i < 200; i++) this.trail.push({ x: this.leader.x - i * 1.5, y: this.leader.y + i * 0.5 });
     this.rebuildParty();
@@ -45,6 +47,7 @@ const FieldScene = {
     top.appendChild(el('div', 'f-title', '🌲 숲속 마을'));
     const r = el('div', 'f-right');
     r.appendChild(btn('던전 입구로 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
+    r.appendChild(btn('🌾 사냥터', 'small', () => this.autoMove('hunt'), { id: 'btn-hunt' }));
     r.appendChild(btn('✨ 소환', 'small', () => openGacha(() => this.refreshRes()), { id: 'btn-gacha' }));
     r.appendChild(btn('🧑 캐릭터', 'small', () => openRoster({ onClose: () => this.refreshRes() }), { id: 'btn-roster' }));
     r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
@@ -80,6 +83,7 @@ const FieldScene = {
       { key: 'smith', x: FIELD.smith.x, y: FIELD.smith.y, label: '강화' },
       { key: 'storage', x: FIELD.storage.x, y: FIELD.storage.y, label: '장비' },
       { key: 'altar', x: FIELD.altar.x, y: FIELD.altar.y, label: '소환' },
+      { key: 'hunt', x: FIELD.huntExit.x, y: FIELD.huntExit.y, label: '사냥터로' },
     ];
   },
 
@@ -109,6 +113,8 @@ const FieldScene = {
       openGacha(() => this.refreshRes());
     } else if (it.key === 'storage') {
       openInventory({ onClose: () => this.refreshRes() });
+    } else if (it.key === 'hunt') {
+      Sfx.play('door'); refreshRunLoadout(run); Game.go('hunt', { field: 'meadow' });
     } else if (it.key === 'guide') {
       this.openGuide(0);
     } else if (it.key === 'portal') {
@@ -336,6 +342,7 @@ const FieldScene = {
     objs.push({ y: FIELD.smith.y, draw: () => this.drawSmith(ctx, FIELD.smith.x, FIELD.smith.y, t, L) });
     objs.push({ y: FIELD.storage.y, draw: () => this.drawStorage(ctx, FIELD.storage.x, FIELD.storage.y) });
     objs.push({ y: FIELD.altar.y, draw: () => this.drawAltar(ctx, FIELD.altar.x, FIELD.altar.y, t) });
+    objs.push({ y: FIELD.huntExit.y, draw: () => { const H = FIELD.huntExit; ctx.fillStyle = '#6a4a2a'; ctx.fillRect(H.x + 40, H.y - 56, 7, 56); ctx.fillStyle = '#a07a4a'; ctx.fillRect(H.x + 4, H.y - 66, 80, 22); ctx.strokeStyle = '#4a3018'; ctx.lineWidth = 2; ctx.strokeRect(H.x + 4, H.y - 66, 80, 22); ctx.fillStyle = '#fff4d8'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('사냥터 ▼', H.x + 44, H.y - 50); } });
     objs.push({ y: FIELD.guide.y, draw: () => { this.shadow(ctx, FIELD.guide.x, FIELD.guide.y, 16); drawSprite(ctx, 'guide', FIELD.guide.x, FIELD.guide.y, { scale: 2, t, flip: L.x < FIELD.guide.x, blinking: (t % 4) < 0.12 }); } });
     this.followers.forEach((f) => {
       const h = HEROES[f.id];
@@ -351,7 +358,7 @@ const FieldScene = {
       if (it.key === 'chest' && run.gotSupply) continue;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단' }[it.key];
+      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', hunt: `${HUNT_FIELDS.meadow.name} (Lv ${HUNT_FIELDS.meadow.level})` }[it.key];
       const ly = it.key === 'portal' ? it.y - 150 : it.y - 62;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(label, it.x, ly + bob); ctx.fillText(label, it.x, ly + bob);
       if (it.key !== 'portal') { ctx.fillText('▼', it.x, ly + 14 + bob); }

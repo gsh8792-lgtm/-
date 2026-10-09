@@ -169,7 +169,7 @@ const Music = {
   },
   // 장면 → 곡
   forScene(name) {
-    const map = { title: 'village', field: 'village', map: 'explore', explore: 'explore', event: 'explore', shop: 'village', rest: 'village', tree: 'explore', reward: 'explore', battle: 'battle' };
+    const map = { title: 'village', field: 'village', map: 'explore', explore: 'explore', event: 'explore', shop: 'village', rest: 'village', tree: 'explore', reward: 'explore', battle: 'battle', hunt: 'explore' };
     if (map[name]) this.play(map[name]);
     else if (name === 'result') this.stop();
   },

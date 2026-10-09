@@ -1,0 +1,22 @@
+// 사냥터 화면 확인: node tools/dev/hunt_shot.mjs
+import { chromium } from 'playwright';
+import path from 'path';
+const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(300);
+await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, hunt: 1 }; G.scenes.title.start(5); });
+await p.waitForTimeout(300);
+await p.click('#btn-hunt');
+await p.waitForFunction(() => window.GAME.Game.sceneName === 'hunt', null, { timeout: 30000 });
+await p.screenshot({ path: 'test-output/hunt_enter.png' });
+await p.evaluate(() => { window.GAME.Game.debug.simMult = 6; });
+await p.waitForTimeout(9000);
+await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; });
+await p.waitForTimeout(400);
+await p.screenshot({ path: 'test-output/hunt_fight.png' });
+const st = await p.evaluate(() => { const s = window.GAME.Game.scene.sim; return { t: Math.round(s.time), kills: s.stats.kills, gold: s.stats.gold, items: s.stats.drops.length }; });
+console.log(JSON.stringify(st));
+await p.click('#btn-hunt-back'); await p.waitForTimeout(300);
+console.log('back to', await p.evaluate(() => window.GAME.Game.sceneName));
+await p.screenshot({ path: 'test-output/hunt_back_village.png' });
+console.log('errors', errs); await b.close();
