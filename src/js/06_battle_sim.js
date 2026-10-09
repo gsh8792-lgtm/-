@@ -224,7 +224,7 @@ class BattleSim {
       return false;
     }
     // 적 차지(원형 강공격): 자동은 피하지 않는다 (끊기는 전략, 피하기는 손으로) — 측정용 컨트롤 흉내만 피한다
-    if (this.smartAuto) for (const e of this.enemies) if (e.alive && e.charge && e.charge.r && u.role !== 'tank' && this.distXY(u, e.charge.cx, e.charge.cy) <= e.charge.r + 12) {
+    if (this.smartAuto) for (const e of this.enemies) if (e.alive && e.charge && e.charge.r && e.charge.t < 1.4 && u.role !== 'tank' && this.distXY(u, e.charge.cx, e.charge.cy) <= e.charge.r + 12) {
       const dir = u.x >= e.charge.cx ? 1 : -1; u.tx = clamp(e.charge.cx + dir * (e.charge.r + 40), this.X0, this.X1); u.ty = u.y; return true;
     }
     for (const z of this.zones) if ((z.kind === 'impact' || z.kind === 'pool') && R(z) && this.distXY(u, z.x, z.y) <= z.r + 12) {
