@@ -228,6 +228,7 @@ const DungeonScene = {
     it.done = true;
     const rng = makeRng(hashSeed(run.seed, 'corr', fl.floor, c.id, it.id));
     let text;
+    if (it.kind === 'curio') { this.openCurio(c, p); return; }
     if (it.kind === 'trap') {
       const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
       const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0);
@@ -244,6 +245,46 @@ const DungeonScene = {
     }
     this.fx.push({ x: p.x, y: 300, text, t: 0, dur: 1.8 });
     this.buildHud();
+  },
+
+  // 호기심 물건: 선택지 (자동 모드면 안전한 쪽을 알아서 고른다)
+  openCurio(c, p) {
+    const run = Game.run, fl = run.dungeon, it = p.it, C = CURIOS[it.curio];
+    const rng = makeRng(hashSeed(run.seed, 'curio', fl.floor, c.id, it.id));
+    const alive = partyIds(run).filter((id) => !run.heroes[id].dead), H = (id) => run.heroes[id];
+    const hurtAll = (k) => { for (const id of alive) H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * k)); };
+    const healAll = (k) => { for (const id of alive) H(id).hp = Math.min(H(id).maxHp, Math.round(H(id).hp + H(id).maxHp * k)); };
+    const g = 20 + fl.floor * 10;
+    const opts = {
+      chest: [
+        ...(run.trapKits > 0 ? [['🧰 함정 해제 도구로 연다', () => { run.trapKits--; run.gold += g * 2; const s = 2 + fl.floor; Game.profile.stones += s; run.stonesGot += s; return `안전하게 열었다. 골드 +${g * 2} · 강화석 +${s}`; }]] : []),
+        ['그냥 연다 (위험)', () => rng() < 0.55 ? (run.gold += g * 2, `골드 +${g * 2}`) : (hurtAll(0.15), '바늘 함정! 파티 HP -15%')],
+        ['지나간다', () => '상자를 두고 지나갔다'],
+      ],
+      altar: [
+        ['피를 바친다 (가장 튼튼한 동료 HP -25%)', () => { const id = alive.slice().sort((a, b) => H(b).hp - H(a).hp)[0]; if (id) H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * 0.25)); run.fruit = { bonus: 0.15, battles: 3 }; return `${HEROES[id].name}의 피를 바쳤다. 다음 3번의 전투에서 공격력 +15%`; }],
+        ['기도한다', () => rng() < 0.6 ? (healAll(0.15), '따뜻한 빛. 파티 HP +15%') : '아무 일도 일어나지 않았다'],
+        ['지나간다', () => '제단을 지나쳤다'],
+      ],
+      corpse: [
+        ['가방을 뒤진다', () => { const v = rng(); if (v < 0.35) { run.potions++; return '회복약 +1'; } if (v < 0.6) { run.food++; return '식량 +1'; } if (v < 0.8) { run.gold += g; return `골드 +${g}`; } hurtAll(0.1); return '독침! 파티 HP -10%'; }],
+        ['묻어 준다', () => { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 20); return '마음이 조금 가벼워졌다. 횃불 +20'; }],
+      ],
+      spring: [
+        ['물을 마신다', () => rng() < 0.65 ? (healAll(0.25), '상쾌하다! 파티 HP +25%') : (hurtAll(0.12), '썩은 물이었다. 파티 HP -12%')],
+        ['횃불을 적셔 둔다', () => { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 30); return '횃불 +30'; }],
+        ['지나간다', () => '샘을 지나쳤다'],
+      ],
+    }[it.curio];
+    const finish = (fn) => { Game.closeModal(); it.done = true; const text = fn(); Sfx.play('coin'); this.fx.push({ x: p.x, y: 300, text, t: 0, dur: 2.2 }); Game.toast(`${C.icon} ${text}`, 2000); this.buildHud(); };
+    if (run.autoMode) { const safe = opts.find((o) => o[0].startsWith('🧰')) || opts[opts.length - 1]; finish(safe[1]); return; } // 자동: 위험 없는 쪽
+    const box = el('div', 'confirm-box');
+    box.appendChild(el('div', 'modal-title', `${C.icon} ${C.name}`));
+    box.appendChild(el('p', '', C.text));
+    const row = el('div', 'btn-col');
+    opts.forEach(([label, fn], i) => row.appendChild(btn(label, i === 0 ? 'primary' : '', () => finish(fn), { id: 'curio-' + i })));
+    box.appendChild(row);
+    Game.modal(box, { dim: true });
   },
 
   startCorridorFight(c, p) {
@@ -440,6 +481,13 @@ function drawPoi(ctx, it, x, t, fl) {
   }
   if (it.kind === 'trap') {
     ctx.fillStyle = 'rgba(120,90,60,0.8)'; ctx.fillRect(x - 26, y - 2, 52, 8); ctx.fillStyle = 'rgba(200,60,50,0.6)'; for (let i = -2; i <= 2; i++) ctx.fillRect(x + i * 10 - 1, y - 8, 3, 6);
+    return;
+  }
+  if (it.kind === 'curio') { // 호기심 물건: 아이콘 + 이름, 살짝 빛남
+    const C = CURIOS[it.curio], s = 0.5 + Math.sin(t * 3) * 0.5;
+    const g = ctx.createRadialGradient(x, y - 20, 4, x, y - 20, 60); g.addColorStop(0, `rgba(200,180,255,${0.25 + s * 0.15})`); g.addColorStop(1, 'rgba(200,180,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 60, y - 80, 120, 110);
+    ctx.font = '40px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(C.icon, x, y);
+    ctx.font = '800 13px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#140c1e'; ctx.strokeText(C.name, x, y - 46); ctx.fillStyle = '#e8d8ff'; ctx.fillText(C.name, x, y - 46);
     return;
   }
   if (it.kind === 'supply') {

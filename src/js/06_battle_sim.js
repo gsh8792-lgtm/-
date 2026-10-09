@@ -210,7 +210,7 @@ class BattleSim {
       }
       if (z.kind === 'pool') {
         z.acc += dt;
-        if (z.acc >= 0.5) { z.acc -= 0.5; for (const h of this.aliveHeroes()) if (this.distXY(h, z.x, z.y) <= z.r) this._damage(z.src, h, z.dps * 0.5, { noCrit: true, dot: 'poison' }); }
+        if (z.acc >= 0.5) { z.acc -= 0.5; for (const h of this.aliveHeroes()) if (this.distXY(h, z.x, z.y) <= z.r) { this._damage(z.src, h, z.dps * 0.5, { noCrit: true, dot: 'poison' }); if (z.slow) h.statuses.slow = { t: 1, value: 0.45 }; } }
       }
       if (z.t <= 0 && z.kind !== 'safe') this.zones.splice(i, 1);
     }
@@ -518,6 +518,12 @@ class BattleSim {
         if (ph.summon) this._summon(ph.summon, u);
       }
     }
+    // 트롤: 화상·출혈이 없으면 빠르게 재생한다 (정답: 불·출혈로 재생을 막고 몰아친다)
+    if (d.regen && u.hp < u.maxHp) { if (u.statuses.burn || u.statuses.bleed || u.statuses.poison) { if (!u.regenOff) { u.regenOff = true; this.events.push({ type: 'regenStop', unit: u }); } } else { u.regenOff = false; u.hp = Math.min(u.maxHp, u.hp + u.maxHp * d.regen * dt); } }
+    // 덫사냥꾼: 주기적으로 영웅 발밑에 끈끈이 덫(초록 웅덩이)을 던진다 (정답: 덫에서 빼내거나 먼저 잡는다)
+    if (d.trapEvery && !stunned) { u.trapCd = (u.trapCd === undefined ? d.trapEvery * 0.6 : u.trapCd) - dt; if (u.trapCd <= 0) { u.trapCd = d.trapEvery; const hs = this.aliveHeroes(); if (hs.length) { const v = hs.filter((h) => !h.melee)[0] || hs[0]; this.zones.push({ kind: 'pool', x: v.x, y: v.y, r: 70, t: 6, total: 6, dps: this._atkOf(u) * 0.5, src: u, acc: 0, name: '끈끈이 덫', slow: true }); this.events.push({ type: 'bossSkill', unit: u, name: '끈끈이 덫', target: v }); } } }
+    // 광전사: 멀리 있는 약한 영웅에게 도약 (예고 1초) — 정답: 기절로 끊거나 대상을 탱커 쪽으로 빼낸다
+    if (d.leapEvery && !stunned && !u.charge) { u.leapCd = (u.leapCd === undefined ? 4 : u.leapCd) - dt; const t = u.target; if (u.leapCd <= 0 && t && t.alive && this.dist(u, t) > 160) { u.leapCd = d.leapEvery; u.charge = { t: 1.0, total: 1.0, cx: t.x, cy: t.y, r: 60, mult: d.leapMult || 2.2, leap: true }; this.events.push({ type: 'chargeStart', unit: u, leap: true }); } }
     if (u.kit && u.x <= this.W && this._bossKit(u, dt, stunned)) return;
     if (u.charge) {
       if (stunned && !d.stunNoCancel) this._cancelCast(u, (u.statuses.stun || {}).src);
@@ -583,6 +589,7 @@ class BattleSim {
       u.unblocked++;
       if (u.unblocked >= CONST.UNBLOCKED_ENRAGE_FROM) { u.enrageStacks++; this.events.push({ type: 'enrageStack', unit: u, n: u.enrageStacks }); }
     }
+    if (c.leap) { u.x = clamp(c.cx + (u.x > c.cx ? 30 : -30), this.X0, this.X1); u.y = c.cy; } // 광전사 도약 착지
     const inZone = this.aliveHeroes().filter((h) => this.inChargeZone(h, c));
     // 탱커 막기: 도발(①) 또는 철벽(③)으로 '버티는 중'인 탱커만 동료 피해를 대신 받아낸다 (타이밍 기믹)
     const tank = inZone.find((h) => h.role === 'tank' && h.statuses.guard);
@@ -593,7 +600,7 @@ class BattleSim {
       if (tank && h !== tank) k *= 0.4;
       if (h === tank) k *= 0.6;
       if (h.def.traits.includes('cautious')) k *= 0.5;
-      const floor = h.maxHp * (u.size > 1 || u.def.abilities.includes('boss') ? CONST.TELEGRAPH_PCT.big : CONST.TELEGRAPH_PCT.small); // 예고 공격은 맞으면 크게 아프다
+      const floor = h.maxHp * ((u.size > 1.3 || u.def.abilities.includes('boss')) && !c.leap ? CONST.TELEGRAPH_PCT.big : CONST.TELEGRAPH_PCT.small); // 예고 공격은 맞으면 크게 아프다
       this._damage(u, h, Math.max(this._atkOf(u) * c.mult, floor) * k, { charge: true, noCrit: true });
     }
     if (u.def.selfDestruct && u.alive) { this.events.push({ type: 'explode', unit: u }); this._damage(null, u, 1e7, { noCrit: true }); } // 자폭

@@ -675,6 +675,9 @@ Object.assign(SPRITE_VARIANTS, {
   goblinBomber: { base: 'goblin', filter: 'hue-rotate(-70deg) saturate(1.5)', swap: {} },
   goblinStalker: { base: 'goblin', filter: 'hue-rotate(220deg) saturate(1.6) brightness(0.8)', swap: {} }, // 도발 무시 · 가장 약한 아군을 노린다
   orcHunter: { base: 'orc', filter: 'hue-rotate(-50deg) saturate(1.3) brightness(1.05)', swap: {} },          // 도발 무시 · 서포터를 노린다 (원거리)
+  caveTroll: { base: 'ogre', filter: 'hue-rotate(70deg) saturate(0.55) brightness(0.85)', swap: {} },
+  orcBerserker: { base: 'orc', filter: 'hue-rotate(-35deg) saturate(1.9) brightness(1.05)', swap: {} },
+  goblinTrapper: { base: 'goblinHorn', filter: 'hue-rotate(110deg) saturate(0.85)', swap: {} },
   knightElin: { base: 'knight', swap: {} }, // 반격의 기사: 그림은 시트(02b), 이 항목은 크기 기준용
   merchant: { base: 'guide', filter: 'hue-rotate(150deg) saturate(1.4)', swap: {} }, // 마을 잡화점 상인 (임시: 길잡이 색 바꿈)
 });

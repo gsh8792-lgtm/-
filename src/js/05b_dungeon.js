@@ -36,6 +36,13 @@ const BOSS_GIMMICKS = {
   lever: { name: '레버', need: 2, kind: 'lever', text: '보스 방 문이 굳게 닫혀 있다. 층 어딘가의 레버 2개를 모두 내려야 한다.' },
   seal:  { name: '봉인석', need: 3, kind: 'seal', text: '보스 방에 봉인이 걸려 있다. 봉인석 3개를 지키는 적을 쓰러뜨리고 부숴야 한다.' },
 };
+// 복도의 호기심 물건 (다키스트 던전처럼): 고르는 대로 보상이나 대가가 따른다
+const CURIOS = {
+  chest:  { name: '낡은 보물 상자', icon: '🧰', text: '자물쇠가 녹슨 상자. 바늘 함정이 걸려 있을지도 모른다.' },
+  altar:  { name: '이끼 낀 제단', icon: '🗿', text: '오래된 신의 제단. 무언가를 바치라는 듯 붉은 얼룩이 있다.' },
+  corpse: { name: '쓰러진 모험가', icon: '💀', text: '먼저 이 굴에 들어온 누군가. 가방이 아직 매달려 있다.' },
+  spring: { name: '희미하게 빛나는 샘', icon: '💧', text: '맑은 물이 고여 있다. 하지만 바닥에 뼈가 보인다.' },
+};
 // 복도의 네임드 정예 이름
 const NAMED_ELITES = ['붉은 송곳니', '외눈 바르크', '뼈 수집가 그롬', '늪의 우그', '쇠사슬 크락', '피 묻은 도끼', '굴 지기 모르그'];
 
@@ -107,7 +114,7 @@ function genFloor(seed, floor) {
     const pNamed = floor >= 2 ? DUNGEON.NAMED[0] + floor * DUNGEON.NAMED[1] : 0;
     if (v < pNamed) items.push({ id: ++uid, kind: 'elite', x, enc: rng.int(0, 99), affix: rng.pick(Object.keys(ELITE_AFFIXES)), named: rng.pick(NAMED_ELITES), done: false });
     else if (v < pNamed + DUNGEON.CORR_FIGHT) items.push({ id: ++uid, kind: 'fight', x, small: true, enc: rng.int(0, 99), done: false });
-    else items.push({ id: ++uid, kind: rng() < 0.55 ? 'trap' : 'supply', x, done: false });
+    else { const w = rng(); items.push(w < 0.4 ? { id: ++uid, kind: 'trap', x, done: false } : w < 0.65 ? { id: ++uid, kind: 'supply', x, done: false } : { id: ++uid, kind: 'curio', curio: rng.pick(Object.keys(CURIOS)), x, done: false }); }
     items.sort((p, q2) => p.x - q2.x);
     fl.corridors.push({ id: i, a, b, len: L, items, walked: false });
   });

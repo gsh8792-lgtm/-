@@ -522,6 +522,7 @@ const BattleScene = {
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'regenStop': this.popup(e.unit.x, this.unitTop(e.unit) - 16, '재생 멈춤!', '#ffb07a', 16, { label: true }); break;
       case 'reflect': this.popup(e.target.x, this.unitTop(e.target) - 6, `반사 ${e.v}`, '#9cd8ff', 14); this.spark(e.target.x, e.target.y - 30, 4, '#bfe8ff'); break;
       case 'counter': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '반격!', '#bfe8ff', 18, { label: true }); this.spark(e.target.x, e.target.y - 30, 8, '#bfe8ff'); Sfx.play('hit'); this.shake = Math.max(this.shake, 3); break;
       case 'vengeance': if (e.v > 5) this.popup(e.unit.x, this.unitTop(e.unit) - 34, `응징 +${e.v}`, '#ffb0ff', 18, { label: true }); break;

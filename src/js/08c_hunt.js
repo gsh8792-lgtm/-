@@ -17,7 +17,7 @@ const HuntScene = {
     // 화면 위 버튼
     const ui = Game.ui;
     const top = el('div', 'f-top');
-    top.appendChild(el('div', 'f-title', `🌾 ${this.field.name} <small>Lv ${this.field.level}</small>`));
+    top.appendChild(el('div', 'f-title', `${this.field.theme === 'dark' ? '🌲' : '🌾'} ${this.field.name} <small>Lv ${this.field.level}</small>`));
     const r = el('div', 'f-right');
     r.appendChild(btn('◀ 마을로', 'small', () => this.leave(), { id: 'btn-hunt-back' }));
     this.autoBtn = btn('', 'small', () => { this.sim.autoHunt = !this.sim.autoHunt; Game.settings.huntAuto = this.sim.autoHunt; Game.saveSettings(); this.refreshBtns(); }, { id: 'btn-hunt-auto' });
@@ -139,8 +139,9 @@ const HuntScene = {
     const F = this.field, cv = document.createElement('canvas');
     cv.width = F.W; cv.height = F.H;
     const g = cv.getContext('2d'), rng = makeRng(hashSeed('hunt-ground', F.id));
-    g.fillStyle = '#5a9a4a'; g.fillRect(0, 0, F.W, F.H);
-    for (let i = 0; i < 1400; i++) { g.fillStyle = ['#5fa04e', '#548f44', '#68aa56', '#4e8a40', '#76b25e'][Math.floor(rng() * 5)]; g.beginPath(); g.ellipse(rng() * F.W, rng() * F.H, 20 + rng() * 70, 10 + rng() * 34, 0, 0, Math.PI * 2); g.fill(); }
+    const dark = F.theme === 'dark', pal = dark ? ['#2f4a3a', '#2a4234', '#35523f', '#26392e', '#3b5a44'] : ['#5fa04e', '#548f44', '#68aa56', '#4e8a40', '#76b25e'];
+    g.fillStyle = dark ? '#2c4636' : '#5a9a4a'; g.fillRect(0, 0, F.W, F.H);
+    for (let i = 0; i < 1400; i++) { g.fillStyle = pal[Math.floor(rng() * 5)]; g.beginPath(); g.ellipse(rng() * F.W, rng() * F.H, 20 + rng() * 70, 10 + rng() * 34, 0, 0, Math.PI * 2); g.fill(); }
     // 마른 풀밭 띠
     for (let i = 0; i < 9; i++) { g.fillStyle = 'rgba(200,180,90,0.22)'; g.beginPath(); g.ellipse(rng() * F.W, rng() * F.H, 160 + rng() * 260, 60 + rng() * 120, rng(), 0, Math.PI * 2); g.fill(); }
     // 흙길: 입구에서 들판 가운데로 갈라진다
@@ -170,6 +171,7 @@ const HuntScene = {
     }
     this.flowers = [];
     for (let i = 0; i < 260; i++) this.flowers.push({ x: rng() * F.W, y: rng() * F.H, c: ['#ffd34a', '#f4a7a0', '#e8e8ff', '#c89af0'][Math.floor(rng() * 4)], p: rng() * 6 });
+    if (dark) { this.trees = this.trees.concat(Array.from({ length: 40 }, () => [200 + rng() * (F.W - 400), 200 + rng() * (F.H - 360), 0.9 + rng() * 0.6])).filter(([x, y]) => Math.hypot(x - F.entry.x, y - F.entry.y) > 200); }
     // 미니맵 바탕
     const mm = document.createElement('canvas'); mm.width = 168; mm.height = Math.round(168 * F.H / F.W);
     mm.getContext('2d').drawImage(cv, 0, 0, mm.width, mm.height); this.miniCv = mm;
@@ -207,6 +209,7 @@ const HuntScene = {
       }
     }
     ctx.restore();
+    if (F.theme === 'dark') { const vg = ctx.createRadialGradient(480, 270, 180, 480, 270, 600); vg.addColorStop(0, 'rgba(0,10,20,0)'); vg.addColorStop(1, 'rgba(0,10,20,0.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, 960, 540); }
     // 화면 고정 UI: 배너 · 파티 HP · 미니맵 · 정예 타이머
     if (this.banner) {
       const b = this.banner, a = Math.min(1, b.t * 4, (b.dur - b.t) * 3);

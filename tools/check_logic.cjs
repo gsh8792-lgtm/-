@@ -23,7 +23,7 @@ let fail = 0;
     if (floor < DUNGEON.BOSS_FLOOR && cnt('stairs') !== 1) errs.push('stairs');
     if (floor === DUNGEON.BOSS_FLOOR) { const G = BOSS_GIMMICKS[f.gimmick]; if (cnt('boss') !== 1 || cnt(G.kind) !== G.need) errs.push(`boss floor ${f.gimmick} ${cnt(G.kind)}`); if (bossOpen(f)) errs.push('boss open at start'); }
     for (const c of f.corridors) {
-      const fights = c.items.filter((x) => x.kind === 'fight' || x.kind === 'elite').length, extras = c.items.filter((x) => x.kind === 'trap' || x.kind === 'supply').length;
+      const fights = c.items.filter((x) => x.kind === 'fight' || x.kind === 'elite').length, extras = c.items.filter((x) => x.kind === 'trap' || x.kind === 'supply' || x.kind === 'curio').length;
       if (c.items.length !== 1 || fights + extras !== 1) errs.push(`corridor ${fights}/${extras}`);
       for (const it of c.items) if ((it.kind === 'fight' && !corridorWaves(f, it)[0].length) || it.x <= 0 || it.x >= c.len) errs.push('corridor item');
       const tr = corridorTrack(c, c.b); if (tr.some((p, i) => i && p.x < tr[i - 1].x)) errs.push('track order');

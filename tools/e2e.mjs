@@ -413,7 +413,7 @@ async function playRun(p, seed, opts) {
   await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, hunt: 1 }; G.scenes.title.start(55); });
   await p.waitForTimeout(200);
   const gold0 = await p.evaluate(() => window.GAME.Game.profile.gold);
-  await p.click('#btn-hunt');
+  await p.click('#btn-hunt'); await p.waitForSelector('#hunt-go-meadow', { timeout: 20000 }); await p.click('#hunt-go-meadow');
   await p.waitForFunction(() => window.GAME.Game.sceneName === 'hunt', null, { timeout: 30000 }).catch(() => {});
   ok('마을 남서쪽 출구 → 사냥터', (await scene(p)) === 'hunt');
   await clickIf(p, '#btn-hunt-speed');

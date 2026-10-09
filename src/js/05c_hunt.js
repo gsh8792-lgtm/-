@@ -14,6 +14,15 @@ const HUNT_FIELDS = {
     respawn: 7,                       // 잡혀 비면 이 간격(초)으로 한 마리씩 다시 나온다
     safeR: 320,                       // 입구 주변은 몹이 생기지 않는다
   },
+  shade: {
+    id: 'shade', name: '그늘 숲', level: 15, theme: 'dark',
+    W: 2800, H: 1720,
+    entry: { x: 2660, y: 190 },
+    trash: { count: 14, kinds: ['goblin_stalker', 'goblin_trapper', 'goblin_archer'] },
+    normal: { count: 9, kinds: ['orc_berserker', 'orc_hunter', 'orc_shield'] },
+    elite: { every: 100, first: 50, kinds: ['cave_troll'] },
+    respawn: 7, safeR: 320,
+  },
 };
 
 const HUNT = {

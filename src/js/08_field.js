@@ -118,7 +118,18 @@ const FieldScene = {
     } else if (it.key === 'merchant') {
       openMerchant(() => this.refreshRes());
     } else if (it.key === 'hunt') {
-      Sfx.play('door'); refreshRunLoadout(run); Game.go('hunt', { field: 'meadow' });
+      const box = el('div', 'confirm-box');
+      box.appendChild(el('div', 'modal-title', '어느 사냥터로 갈까요?'));
+      const ids = partyIds(run), lv = Math.round(ids.reduce((a, id) => a + EQ.charLevel(Game.profile, id), 0) / Math.max(1, ids.length));
+      box.appendChild(el('p', '', `파티 평균 캐릭터 Lv ${lv}`));
+      const col = el('div', 'btn-col');
+      for (const f of Object.values(HUNT_FIELDS)) {
+        const tb = huntGradeTable(f.level, false).filter(([, p]) => p >= 0.001).map(([g, p]) => `${g} ${(p * 100).toFixed(p < 0.01 ? 1 : 0)}%`).join(' · ');
+        col.appendChild(btn(`${f.name} <small>Lv ${f.level}${lv < f.level - 5 ? ' · <b class="warn">위험</b>' : ''} · 장신구 ${tb}</small>`, f.level <= lv + 5 ? 'primary' : '', () => { Game.closeModal(); Sfx.play('door'); refreshRunLoadout(run); Game.go('hunt', { field: f.id }); }, { id: 'hunt-go-' + f.id }));
+      }
+      col.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'hunt-cancel' }));
+      box.appendChild(col);
+      Game.modal(box, { dim: true, closeOnBg: true });
     } else if (it.key === 'guide') {
       this.openGuide(0);
     } else if (it.key === 'portal') {
@@ -369,7 +380,7 @@ const FieldScene = {
       if (it.key === 'chest' && run.gotSupply) continue;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', merchant: '잡화점', hunt: `${HUNT_FIELDS.meadow.name} (Lv ${HUNT_FIELDS.meadow.level})` }[it.key];
+      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', merchant: '잡화점', hunt: `사냥터 (Lv ${Object.values(HUNT_FIELDS).map((f) => f.level).join('·')})` }[it.key];
       const ly = it.key === 'portal' ? it.y - 150 : it.y - 62;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(label, it.x, ly + bob); ctx.fillText(label, it.x, ly + bob);
       if (it.key !== 'portal') { ctx.fillText('▼', it.x, ly + 14 + bob); }

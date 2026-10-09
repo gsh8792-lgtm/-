@@ -220,6 +220,9 @@ const ENEMIES = {
   // 방패 오크: 정면 피해 -65% (등 뒤를 노리거나 범위 마법) / 폭탄 고블린: 다가와 짧게 영창 후 자폭 (피하거나 끊기)
   goblin_stalker: { name: '고블린 암살자', moveSpeed: 120, hp: 115, atk: 18, atkInterval: 1.0, def: 0, size: 1, sprite: 'goblinStalker', color: '#6a4a8a', gold: 8, abilities: [], ignoreTaunt: true, hunter: 'weakest' },
   orc_hunter:    { name: '오크 사냥꾼', moveSpeed: 62, hp: 180, atk: 24, atkInterval: 2.0, def: 0.05, size: 1.1, reach: 230, sprite: 'orcHunter', color: '#8a6a3a', gold: 12, abilities: [], ignoreTaunt: true, hunter: 'support' },
+  cave_troll:    { name: '동굴 트롤', armor: 0.3, poise: 100, moveSpeed: 50, hp: 560, atk: 34, atkInterval: 2.0, def: 0.1, size: 1.45, sprite: 'caveTroll', color: '#6a8a6a', gold: 22, abilities: ['enrage'], enrageAt: 0.3, enrageSpeed: 0.6, regen: 0.035 }, // 화상·출혈·중독이 없으면 초당 3.5% 재생
+  orc_berserker: { name: '오크 광전사', moveSpeed: 96, hp: 270, atk: 30, atkInterval: 1.5, def: 0.05, size: 1.2, sprite: 'orcBerserker', color: '#b04a3a', gold: 14, abilities: ['enrage'], enrageAt: 0.5, enrageSpeed: 0.7, ignoreTaunt: true, hunter: 'weakest', leapEvery: 9, leapMult: 2.0 }, // 멀리 있는 약한 영웅에게 도약
+  goblin_trapper: { name: '고블린 덫사냥꾼', moveSpeed: 70, hp: 110, atk: 14, atkInterval: 1.8, def: 0, size: 1, reach: 190, sprite: 'goblinTrapper', color: '#7a9a4a', gold: 7, abilities: [], trapEvery: 8 }, // 후열 발밑에 끈끈이 덫(둔화+독)
   goblin_archer: { name: '고블린 궁수', moveSpeed: 74, hp: 80, atk: 15, atkInterval: 1.7, def: 0, size: 1, reach: 200, sprite: 'goblinArcher', color: '#9ab050', gold: 5, abilities: [] },
   goblin_shaman: { name: '고블린 주술사', moveSpeed: 64, hp: 120, atk: 10, atkInterval: 1.6, def: 0, size: 1, reach: 170, sprite: 'goblinShaman', color: '#9a6ad0', gold: 8, abilities: ['caller'], callEvery: 8, callCast: 2.0, callHeal: 0.3 },
   orc_shield:    { name: '방패 오크', armor: 0.2, poise: 80, moveSpeed: 58, hp: 300, atk: 22, atkInterval: 1.9, def: 0.15, size: 1.25, sprite: 'orcShield', color: '#7a8a9a', gold: 12, abilities: [], frontGuard: 0.65 },
@@ -264,8 +267,8 @@ const ENCOUNTERS = {
   battle: {
     1: [ [['goblin', 'goblin', 'goblin_archer'], ['orc', 'goblin_shaman', 'goblin']], [['goblin', 'goblin_bomber', 'goblin'], ['orc_shield', 'goblin_archer', 'goblin_archer']], [['goblin', 'goblin', 'goblin_caller'], ['goblin_stalker', 'orc', 'goblin']], [['goblin', 'goblin', 'goblin'], ['orc', 'goblin_archer', 'goblin_shaman']] ],
     2: [ [['orc_shield', 'goblin_archer', 'goblin_shaman'], ['goblin_stalker', 'goblin_stalker', 'goblin']], [['orc', 'goblin', 'goblin_caller'], ['orc_hunter', 'orc_shield', 'goblin_shaman']], [['goblin_bomber', 'goblin_bomber', 'goblin'], ['ogre', 'goblin_archer', 'goblin_stalker']], [['goblin', 'goblin', 'goblin_stalker'], ['orc', 'orc_hunter', 'goblin_shaman']] ],
-    3: [ [['goblin', 'goblin', 'goblin_archer'], ['orc_shield', 'goblin_shaman', 'goblin_stalker'], ['ogre', 'orc_hunter']], [['goblin_bomber', 'goblin_bomber', 'goblin'], ['orc', 'orc_hunter', 'goblin_caller'], ['orc_shield', 'goblin_stalker', 'goblin_stalker']], [['orc', 'goblin', 'goblin_archer'], ['goblin_stalker', 'goblin_stalker', 'goblin_shaman'], ['ogre', 'orc_shield']], [['orc_shield', 'goblin_archer', 'goblin_archer'], ['orc', 'goblin_bomber', 'goblin_bomber'], ['orc_hunter', 'orc_hunter', 'goblin_shaman']] ],
-    4: [ [['orc', 'orc', 'goblin_archer'], ['orc_shield', 'orc_hunter', 'goblin_shaman'], ['ogre', 'goblin_stalker', 'goblin_stalker']], [['goblin_bomber', 'goblin_bomber', 'goblin_bomber'], ['ogre', 'goblin_shaman', 'orc_hunter'], ['orc_shield', 'orc_shield', 'goblin_stalker']], [['orc_shield', 'goblin_archer', 'goblin_archer', 'goblin_caller'], ['goblin_stalker', 'goblin_stalker', 'orc'], ['ogre', 'orc_hunter', 'goblin_shaman']], [['ogre', 'goblin', 'goblin', 'goblin'], ['orc', 'orc_hunter', 'goblin_caller'], ['orc_shield', 'goblin_stalker', 'goblin_shaman']] ],
+    3: [ [['goblin', 'goblin', 'goblin_archer'], ['orc_shield', 'goblin_shaman', 'goblin_stalker'], ['ogre', 'orc_hunter']], [['goblin_bomber', 'goblin_bomber', 'goblin'], ['orc', 'orc_hunter', 'goblin_caller'], ['orc_shield', 'goblin_stalker', 'goblin_stalker']], [['orc', 'goblin_trapper', 'goblin_archer'], ['goblin_stalker', 'orc_berserker', 'goblin_shaman'], ['cave_troll', 'orc_shield']], [['orc_shield', 'goblin_archer', 'goblin_archer'], ['orc', 'goblin_bomber', 'goblin_bomber'], ['orc_hunter', 'orc_hunter', 'goblin_shaman']] ],
+    4: [ [['orc', 'orc', 'goblin_archer'], ['orc_shield', 'orc_hunter', 'goblin_shaman'], ['ogre', 'goblin_stalker', 'goblin_stalker']], [['goblin_bomber', 'goblin_bomber', 'goblin_bomber'], ['ogre', 'goblin_shaman', 'orc_hunter'], ['orc_shield', 'orc_shield', 'goblin_stalker']], [['orc_shield', 'goblin_archer', 'goblin_archer', 'goblin_caller'], ['goblin_stalker', 'goblin_stalker', 'orc'], ['ogre', 'orc_hunter', 'goblin_shaman']], [['cave_troll', 'goblin', 'goblin', 'goblin_trapper'], ['orc_berserker', 'orc_hunter', 'goblin_caller'], ['orc_shield', 'goblin_stalker', 'goblin_shaman']] ],
   },
   elite: {
     1: [ [['goblin', 'goblin'], ['orc', 'goblin_shaman', 'goblin']] ],
@@ -276,9 +279,9 @@ const ENCOUNTERS = {
   // 복도의 작은 적 무리 (웨이브 1개)
   small: {
     1: [['goblin', 'goblin', 'goblin'], ['goblin', 'goblin_archer', 'goblin'], ['goblin_bomber', 'goblin', 'goblin'], ['goblin_stalker', 'goblin']],
-    2: [['goblin', 'goblin', 'goblin_archer', 'goblin_shaman'], ['orc', 'goblin', 'goblin_stalker'], ['orc_hunter', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin']],
-    3: [['orc', 'goblin_archer', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin_stalker'], ['orc', 'goblin_shaman', 'goblin_archer']],
-    4: [['orc', 'orc', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin_archer'], ['ogre', 'goblin_stalker'], ['goblin_bomber', 'goblin_bomber', 'orc_hunter']],
+    2: [['goblin', 'goblin', 'goblin_archer', 'goblin_shaman'], ['orc', 'goblin', 'goblin_stalker'], ['orc_hunter', 'goblin', 'goblin'], ['goblin_trapper', 'goblin_bomber', 'goblin']],
+    3: [['orc', 'goblin_archer', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin'], ['orc_berserker', 'goblin', 'goblin'], ['cave_troll', 'goblin_shaman']],
+    4: [['orc', 'orc_berserker', 'goblin_stalker'], ['orc_shield', 'orc_hunter', 'goblin_trapper'], ['cave_troll', 'goblin_stalker'], ['goblin_bomber', 'goblin_bomber', 'orc_hunter']],
   },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
   boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },

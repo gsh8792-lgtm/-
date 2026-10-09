@@ -6,7 +6,7 @@ const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console',
 await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(300);
 await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, hunt: 1 }; G.scenes.title.start(5); });
 await p.waitForTimeout(300);
-await p.click('#btn-hunt');
+await p.click('#btn-hunt'); await p.waitForSelector('#hunt-go-meadow', { timeout: 20000 }); await p.click('#hunt-go-meadow');
 await p.waitForFunction(() => window.GAME.Game.sceneName === 'hunt', null, { timeout: 30000 });
 await p.screenshot({ path: 'test-output/hunt_enter.png' });
 await p.evaluate(() => { window.GAME.Game.debug.simMult = 6; });
