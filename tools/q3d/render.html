@@ -61,7 +61,8 @@ let headBone = null; root.traverse((o) => { if (o.isBone && o.name === 'Head') h
 window.SHOT = (clip, t, yawDeg, pitchDeg, head) => {
   if (clip !== '__pose') mixer.stopAllAction();
   if (clip && clip !== '__pose') { const a = mixer.clipAction(gltf.animations.find((x) => x.name === clip)); a.reset().play(); mixer.setTime(t); }
-  if (headBone) { headBone.scale.setScalar(head || 1); root.updateMatrixWorld(true); } // 치비 비율: 머리 뼈 확대
+  if (headBone && !SHAPE) { headBone.scale.setScalar(head || 1); } // 머리 배율 (shape가 없을 때)
+  root.updateMatrixWorld(true);
   const h = size.y * 0.66, yaw = yawDeg * Math.PI / 180, pitch = pitchDeg * Math.PI / 180;
   cam.left = -h; cam.right = h; cam.top = h; cam.bottom = -h; cam.updateProjectionMatrix();
   const d = 10; cam.position.set(ctr.x + Math.sin(yaw) * Math.cos(pitch) * d, ctr.y + Math.sin(pitch) * d, ctr.z + Math.cos(yaw) * Math.cos(pitch) * d);
@@ -75,9 +76,13 @@ const bones = {}; root.traverse((o) => { if (o.isBone) { bones[o.name] = o; o.us
 window.BONES = Object.keys(bones);
 window.HIPINFO = () => { const h = bones.Hips, v = new THREE.Vector3(); h.getWorldScale(v); return { pos: h.position.toArray(), worldScale: v.toArray() }; };
 const D = Math.PI / 180, _q = new THREE.Quaternion(), _e = new THREE.Euler();
+// 비율 바꾸기 (?shape=chibi): 뼈 배율 { 뼈: [x, y(뼈 길이 방향), z] } — 치비 시험용
+const SHAPES = { chibi: { Head: [1.85, 1.85, 1.85], Neck: [1, 0.6, 1], Chest: [0.82, 0.8, 0.82], Spine: [1, 0.8, 1], 'UpperLeg.L': [1.05, 0.62, 1.05], 'UpperLeg.R': [1.05, 0.62, 1.05], 'UpperArm.L': [1, 0.78, 1], 'UpperArm.R': [1, 0.78, 1] } };
+const SHAPE = SHAPES[new URLSearchParams(location.search).get('shape')] || null;
 window.POSE = (p, off) => {
   mixer.stopAllAction();
-  for (const n in bones) { bones[n].quaternion.copy(bones[n].userData.rest); bones[n].position.copy(bones[n].userData.restPos); }
+  for (const n in bones) { bones[n].quaternion.copy(bones[n].userData.rest); bones[n].position.copy(bones[n].userData.restPos); bones[n].scale.set(1, 1, 1); }
+  if (SHAPE) for (const n in SHAPE) { const b = bones[n] || bones[n.replace(/\./g, '')]; if (b) b.scale.set(...SHAPE[n]); }
   for (const n in p) { const b = bones[n] || bones[n.replace(/\./g, '')]; if (!b) continue; /* three.js는 이름의 '.'을 지운다 */ const r = p[n]; _e.set(r[0] * D, r[1] * D, r[2] * D, 'XYZ'); _q.setFromEuler(_e); b.quaternion.copy(b.userData.rest).multiply(_q); }
   if (off && bones.Hips) { bones.Hips.position.y += (off.y || 0); bones.Hips.position.x += (off.x || 0); bones.Hips.position.z += (off.z || 0); }
 };

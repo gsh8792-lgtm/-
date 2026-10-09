@@ -1,5 +1,5 @@
 // Q3D/GLB 캐릭터 → 게임용 동작 프레임 시트 (2D로 미리 굽기)
-// node tools/q3d/bake_q3d.mjs <glb> <spriteName> [yaw=-40] [frameH=240] [head=1 (머리 배율, 치비는 1.5)] [unity|toon|pbr]
+// node tools/q3d/bake_q3d.mjs <glb> <spriteName> [yaw=-40] [frameH=240] [head=1 (머리 배율, 치비는 1.5)] [unity|toon|pbr] [shape: chibi]
 // 결과: src/js/02b_sprite_sheets.js (SPRITE_SHEETS[spriteName] = webp 데이터 + 동작별 줄)
 import { chromium } from 'playwright';
 import http from 'http';
@@ -7,7 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { MOTIONS, motionFrame } from './motions.mjs';
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
-const [glb, name, yawArg, fhArg, headArg, styleArg] = process.argv.slice(2);
+const [glb, name, yawArg, fhArg, headArg, styleArg, shapeArg] = process.argv.slice(2);
 const STYLE = styleArg || 'unity'; // unity: SWI Unity 검수본과 같은 툰 셰이딩(기본) · toon: 3단 명암+포스터화 · pbr: 실사 음영
 const TOON = STYLE === 'toon';
 if (!glb || !name) { console.log('usage: node tools/q3d/bake_q3d.mjs <glb> <spriteName> [yaw] [frameH]'); process.exit(1); }
@@ -25,7 +25,7 @@ const port = server.address().port;
 const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const p = await b.newPage();
 p.on('pageerror', (e) => console.log('pageerror', e.message)); p.on('console', (m) => { if (m.type() === 'error' || /ERROR|error/.test(m.text())) console.log('console', m.text().slice(0, 600)); });
-await p.goto(`http://localhost:${port}/tools/q3d/render.html?glb=/model.glb&toon=${TOON ? 1 : 0}&style=${STYLE}`);
+await p.goto(`http://localhost:${port}/tools/q3d/render.html?glb=/model.glb&toon=${TOON ? 1 : 0}&style=${STYLE}${shapeArg ? '&shape=' + shapeArg : ''}`);
 await p.waitForFunction(() => window.READY, null, { timeout: 180000 });
 const clips = Object.fromEntries((await p.evaluate(() => window.INFO.clips)));
 const shots = [];
