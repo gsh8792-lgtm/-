@@ -269,7 +269,7 @@ class BattleSim {
     if (this.focus && !this.focus.alive) { this.focus = null; this.events.push({ type: 'focusClear' }); }
     const intro = this.introT > 0;
     if (intro) this.introT -= dt;
-    for (const u of this.heroes) if (u.alive) { if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
+    for (const u of this.heroes) if (u.alive) { if (u.recentTaken) u.recentTaken *= Math.exp(-dt / 6); if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
     for (const u of this.enemies) if (u.alive) { if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
     if (!intro) this._tickZones(dt);
     this._move(dt);
@@ -697,7 +697,13 @@ class BattleSim {
       if (sh.value <= 0) delete tgt.statuses.shield;
       if (dmg <= 0) { this.events.push({ type: 'hit', target: tgt, src, amount: 0, shielded: true }); return 0; }
     }
-    if (tgt.statuses.reflect && info.basic && src && src.side === 'enemy' && src.alive && src.melee) { const back = dmg * tgt.statuses.reflect.value; this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) this._damage(tgt, src, back, { noCrit: true, reflect: true }); } }); } // 가시 반격
+    const rf = tgt.statuses.reflect;
+    if (rf && src && src.side === 'enemy' && src.alive && !info.reflect && !info.dot && !info.trueDmg && (rf.all || (info.basic && src.melee))) { const back = dmg * rf.value; this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) { this._damage(tgt, src, back, { noCrit: true, reflect: true }); this.events.push({ type: 'reflect', unit: tgt, target: src, v: Math.round(back) }); } } }); } // 반사 (all: 원거리·차지까지)
+    if (tgt.side === 'hero' && tgt.def.traits.includes('counter') && src && src.side === 'enemy' && src.alive && info.basic && !info.reflect) { // 특성 반격: 근접 평타 30% 되돌림 + 막기 중엔 25% 확률로 즉시 반격 베기
+      if (src.melee) this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) this._damage(tgt, src, dmg * 0.3, { noCrit: true, reflect: true }); } });
+      if (tgt.statuses.guard && this.rng() < 0.25 && tgt.alive) this.delayed.push({ t: 0.15, fn: () => { if (src.alive && tgt.alive) { this._damage(tgt, src, this._atkOf(tgt) * 1.4, { noCrit: true, reflect: true, poise: 8 }); this.events.push({ type: 'counter', unit: tgt, target: src }); tgt.anim.lunge = 0.22; tgt.anim.lungeX = (src.x - tgt.x) * 0.3; } } });
+    }
+    if (tgt.side === 'hero') tgt.recentTaken = (tgt.recentTaken || 0) + dmg; // 응징 계열: 최근에 받은 피해
     tgt.hp -= dmg;
     tgt.anim.hurt = 0.18;
     if (src && src.statuses && src.statuses.lifesteal && src.alive) this._heal(src, src, dmg * src.statuses.lifesteal.value, true);
@@ -825,6 +831,7 @@ class BattleSim {
     const s = { t: dur, src };
     if (eff.dps) s.dps = this._atkOf(src) * eff.dps * (1 + (sm.dotdmg || 0));
     if (eff.value) s.value = eff.value;
+    if (eff.all) s.all = true;
     const prev = tgt.statuses[eff.status];
     if (prev && prev.dps && s.dps) s.dps = Math.max(prev.dps, s.dps);
     if (prev) s.acc = prev.acc;
@@ -918,7 +925,9 @@ class BattleSim {
     else if (spec.x !== undefined) h.face = spec.x >= h.x ? 1 : -1;
     this.events.push({ type: 'cast', unit: h, skill: sk, slot, spec, delay: fxDelay });
     const applyEffects = (tgt) => { for (const e of sk.effects) if (!e.to) this._applyStatus(h, tgt, e); };
-    const hit = (e) => this._skillHit(h, sk, e, atk * sk.power * dmul);
+    const veng = sk.vengeance ? (h.recentTaken || 0) * sk.vengeance : 0; // 응징: 최근 6초간 받은 피해를 되돌려 준다
+    if (veng) this.events.push({ type: 'vengeance', unit: h, v: Math.round(veng) });
+    const hit = (e) => this._skillHit(h, sk, e, atk * sk.power * dmul + veng * pmul);
     const healAmt = (a) => (atk * (sk.heal || 0) + a.maxHp * (sk.healPct || 0)) * pmul;
     const support = (a) => { // 아군 대상 공통: 보호막·해제
       if (sk.shieldPct) a.statuses.shield = { t: 8, value: a.maxHp * sk.shieldPct * pmul };

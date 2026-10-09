@@ -675,6 +675,7 @@ Object.assign(SPRITE_VARIANTS, {
   goblinBomber: { base: 'goblin', filter: 'hue-rotate(-70deg) saturate(1.5)', swap: {} },
   goblinStalker: { base: 'goblin', filter: 'hue-rotate(220deg) saturate(1.6) brightness(0.8)', swap: {} }, // 도발 무시 · 가장 약한 아군을 노린다
   orcHunter: { base: 'orc', filter: 'hue-rotate(-50deg) saturate(1.3) brightness(1.05)', swap: {} },          // 도발 무시 · 서포터를 노린다 (원거리)
+  knightElin: { base: 'knight', swap: {} }, // 반격의 기사: 그림은 시트(02b), 이 항목은 크기 기준용
   merchant: { base: 'guide', filter: 'hue-rotate(150deg) saturate(1.4)', swap: {} }, // 마을 잡화점 상인 (임시: 길잡이 색 바꿈)
 });
 for (const name in SPRITE_VARIANTS) {
@@ -801,7 +802,7 @@ function drawSprite(ctx, name, x, y, opt) {
 // 3D 시트 사용 여부: SPRITE_SHEETS에 있고, 설정에서 켰을 때 (Game.settings.q3d)
 function spriteSheetFor(name) {
   const s = typeof SPRITE_SHEETS !== 'undefined' && SPRITE_SHEETS[name];
-  return s && typeof Game !== 'undefined' && Game.settings && Game.settings.q3d ? s : null;
+  return s && (s.always || (typeof Game !== 'undefined' && Game.settings && Game.settings.q3d)) ? s : null;
 }
 function sheetImage(sheet) { let img = _imgCache[sheet.src]; if (!img) { img = _imgCache[sheet.src] = new Image(); img.src = sheet.src; } return img; }
 
@@ -816,8 +817,8 @@ function drawPortrait(canvas, name, opts) {
       c.clearRect(0, 0, canvas.width, canvas.height); c.save();
       if (opts && opts.dead) c.filter = 'grayscale(1) brightness(0.55)';
       if (opts && opts.flip) { c.translate(canvas.width, 0); c.scale(-1, 1); }
-      const sw = sheet.fw * 0.5, sh = sheet.fh * 0.25, s = Math.min(canvas.width / sw, canvas.height / sh);
-      c.drawImage(img, sheet.fw * 0.53 - sw / 2, 0, sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s);
+      const P = sheet.portrait || { x: 0.53 - 0.25, y: 0, w: 0.5, h: 0.25 }, sw = sheet.fw * P.w, sh = sheet.fh * P.h, s = Math.min(canvas.width / sw, canvas.height / sh);
+      c.drawImage(img, sheet.fw * P.x, sheet.fh * P.y, sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s);
       c.restore();
     };
     if (img.complete && img.naturalWidth) draw(); else img.addEventListener('load', draw, { once: true });

@@ -43,6 +43,16 @@ const CHARACTERS = [
       C: { name: '고목의 수호', target: 'party', fx: 'tree', effects: [{ status: 'inspire', dur: 6, value: 0.3, to: 'party' }, { status: 'vuln', dur: 6, to: 'self' }], desc: '6초간 파티 공격력 +30%. 대신 토비가 6초간 취약.',
         v: { name: '천년 고목', effects: [{ status: 'inspire', dur: 7, value: 0.4, to: 'party' }], desc: '7초간 파티 공격력 +40%. 토비 취약 없음.' } },
     } },
+  { id: 'elin', name: '엘린', role: 'tank', title: '반격의 기사', sprite: 'knightElin', trait: 'counter', gift: true, stat: { hp: 1.05, atk: 1.2 },
+    desc: '맞을수록 강해지는 반격 탱커. 받은 피해를 되돌리고, 쌓인 분노를 응징의 일격으로 터뜨린다.',
+    ults: {
+      A: { name: '반격의 맹세', target: 'self', fx: 'wall', effects: [{ status: 'reflect', dur: 6, value: 0.8, all: true, to: 'self' }, { status: 'guard', dur: 6, value: 0.35, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }], desc: '6초간 받은 모든 피해의 80%를 되돌림(원거리·차지 포함) + 받는 피해 -35% + 도발.',
+        v: { name: '거울 성채', effects: [{ status: 'reflect', dur: 8, value: 1.2, all: true, to: 'self' }, { status: 'guard', dur: 8, value: 0.45, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }], desc: '8초간 받은 모든 피해의 120%를 되돌림 + 받는 피해 -45% + 도발.' } },
+      B: { name: '칼날 방벽', target: 'party', fx: 'wall', shieldPct: 0.15, effects: [{ status: 'reflect', dur: 6, value: 0.45, to: 'party' }], desc: '파티 전원 최대 HP 15% 보호막 + 6초간 근접 평타 피해 45% 반사. 사냥꾼에게 물린 후열을 지킨다.',
+        v: { name: '서리 칼날 방벽', shieldPct: 0.2, effects: [{ status: 'reflect', dur: 7, value: 0.6, all: true, to: 'party' }], desc: '파티 전원 20% 보호막 + 7초간 모든 피해 60% 반사.' } },
+      C: { name: '응징의 일섬', target: 'self_area', areaR: 115, fx: 'spin', power: 1.6, vengeance: 0.8, poise: 50, effects: [{ status: 'stun', dur: 1 }], desc: '주변 적을 베어 낸다. 최근 6초간 받은 피해의 80%를 더한다 + 1초 기절 + 그로기 감소.',
+        v: { name: '심판의 폭풍', areaR: 140, power: 2.0, vengeance: 1.2, poise: 70, effects: [{ status: 'stun', dur: 1.5 }], desc: '넓은 범위 강타. 최근 6초간 받은 피해의 120% 추가 + 1.5초 기절.' } },
+    } },
   { id: 'leon', name: '레온', role: 'tank', title: '성기사', sprite: 'knight_b', trait: 'gentle', stat: { hp: 0.95, atk: 1.1 },
     desc: '방어와 회복을 겸하는 탱커. 적을 내리칠수록 파티가 회복된다.',
     ults: {

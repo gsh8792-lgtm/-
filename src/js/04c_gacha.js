@@ -15,6 +15,7 @@ const GACHA = {
       p.tickets = (p.tickets || 0) + GACHA.START_TICKETS;
     }
     if (p.tickets === undefined) p.tickets = 0;
+    for (const c of CHARACTERS) if (c.gift && !p.chars[c.id]) p.chars[c.id] = GACHA.newChar(); // 선물 캐릭터 (새 버전에서 추가된 캐릭터를 바로 써 볼 수 있게)
     for (const id in p.chars) { const st = p.chars[id]; if (!st.lv) { st.lv = 1; st.exp = 0; } }
     for (const id of HERO_ORDER) if (!p.equip[id]) { p.equip[id] = {}; for (const s of EQ.SLOTS) p.equip[id][s] = null; }
     return p;

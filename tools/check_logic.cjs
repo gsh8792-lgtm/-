@@ -132,8 +132,8 @@ if (sa !== sb) fail++;
     heroes: ids.map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {}, ultDef: ult && ult[id] ? ultDefFor(id, ult[id], 5) : null })) });
   const run = (sim, sec) => { for (let i = 0; i < Math.round(sec * 60); i++) sim.step(1 / 60); };
   const ready = (sim) => { run(sim, 1.2); sim.autoMode = false; for (const h of sim.heroes) { h.ult = 100; h.castLock = 0; h.actLock = 0; } };
-  if (CHARACTERS.length !== 15) errs.push('character count');
-  for (const role of ['tank', 'melee', 'ranged', 'mage', 'support']) if (CHARACTERS.filter((c) => c.role === role).length !== 3) errs.push('3 per class: ' + role);
+  if (CHARACTERS.length < 16) errs.push('character count');
+  for (const role of ['tank', 'melee', 'ranged', 'mage', 'support']) if (CHARACTERS.filter((c) => c.role === role).length < 3) errs.push('3+ per class: ' + role);
   // 90개 전부 시전
   for (const c of CHARACTERS) for (const k of ['A', 'A2', 'B', 'B2', 'C', 'C2']) {
     const sim = mk([c.id, 'tobi'], null, { [c.id]: k }); ready(sim);
@@ -166,10 +166,10 @@ if (sa !== sb) fail++;
     if (!(Math.abs(d.cds.s1 - 2) < 0.01 && Math.abs(d.cds.s2 - 5) < 0.01)) errs.push(`cdReduce ${d.cds.s1} ${d.cds.s2}`); if (!(d.ult >= 15)) errs.push('ultGive'); }
   // 소환: 소환권 소모, 신규/돌파/초과 처리, 돌파에 따른 변주 해금
   { const p = GACHA.ensure(EQ.newProfile()); const r = makeRng(1);
-    if (GACHA.ownedIds(p).length !== 5 || p.tickets !== GACHA.START_TICKETS) errs.push('starter chars/tickets');
+    if (GACHA.ownedIds(p).length !== 5 + CHARACTERS.filter((c) => c.gift).length || p.tickets !== GACHA.START_TICKETS) errs.push('starter chars/tickets');
     p.tickets = 200; const res = GACHA.pull(p, r, 200);
     if (res.length !== 200 || p.tickets !== 0) errs.push('pull count');
-    if (GACHA.ownedIds(p).length !== 15) errs.push('not all owned after 200 pulls');
+    if (GACHA.ownedIds(p).length !== CHARACTERS.length) errs.push('not all owned after 200 pulls');
     if (!res.some((x) => x.overflow)) errs.push('no overflow after max breakthrough');
     if (GACHA.pull(p, r, 1) !== null) errs.push('pull without tickets');
     if (ultChoices('kai', 0).length !== 3 || ultChoices('kai', 5).length !== 6) errs.push('variant unlocks');
@@ -420,6 +420,21 @@ if (sa !== sb) fail++;
   if (a.stats.drops.some((d) => !HUNT.ACC_SLOTS.includes(d.slot))) errs.push('non-accessory drop');
   if (a.heroes.concat(a.mobs).some((u) => !(u.x >= 0 && u.x <= F.W && u.y >= 0 && u.y <= F.H) || !isFinite(u.hp))) errs.push('out of bounds / NaN');
   console.log('hunt field:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(grade tables, 10 min idle: kills ${k.trash}/${k.normal}/${k.elite}, exp ${Math.round(a.stats.exp)}, drops ${a.stats.drops.length})`);
+  if (errs.length) fail++;
+}
+// 반격의 기사 엘린: 특성 반격(근접 평타 30% 되돌림), 반사 all(원거리까지), 응징(최근 받은 피해 추가)
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = (waves) => new BattleSim({ seed: 5, stage: 2, waves, strategy: st0, autoMode: false, partySize: 3, heroes: ['elin', 'danbi', 'bori'].map((id) => ({ id, hp: 3000, maxHp: 3000, upgrades: {}, ultDef: id === 'elin' ? ultDefFor('elin', 'A', 0) : null })) });
+  { const sim = mk([['orc']]); for (let i = 0; i < 90; i++) sim.step(1 / 60); const e = sim.enemies[0], h = sim.heroes[0], hp0 = e.hp; sim._damage(e, h, 100, { basic: true, noCrit: true }); for (let i = 0; i < 10; i++) sim.step(1 / 60); if (!(hp0 - e.hp >= 12)) errs.push('trait counter ' + (hp0 - e.hp)); }
+  { const sim = mk([['goblin_archer']]); for (let i = 0; i < 90; i++) sim.step(1 / 60); const e = sim.enemies[0], h = sim.heroes[0]; h.ult = 100; sim.cast(h, 'ult', {}); const hp0 = e.hp; sim._damage(e, h, 100, { noCrit: true }); for (let i = 0; i < 10; i++) sim.step(1 / 60); if (!(hp0 - e.hp > 20)) errs.push('reflect all ranged ' + (hp0 - e.hp)); }
+  { const a = mk([['ogre']]), b = mk([['ogre']]); for (const s of [a, b]) for (let i = 0; i < 90; i++) s.step(1 / 60);
+    a.heroes[0].recentTaken = 600; const sk = SKILLS.elin_ult_C, ea = a.enemies[0], eb = b.enemies[0]; ea.x = eb.x = a.heroes[0].x + 40; ea.y = eb.y = a.heroes[0].y;
+    a.heroes[0].ultDef = b.heroes[0].ultDef = sk; a.heroes[0].ult = b.heroes[0].ult = 100; const ha = ea.hp, hb = eb.hp;
+    a.cast(a.heroes[0], 'ult', {}); b.cast(b.heroes[0], 'ult', {}); for (let i = 0; i < 30; i++) { a.step(1 / 60); b.step(1 / 60); }
+    if (!(ha - ea.hp > (hb - eb.hp) + 200)) errs.push(`vengeance ${ha - ea.hp} vs ${hb - eb.hp}`); }
+  console.log('counter knight:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(trait counter, reflect-all ult, vengeance)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);
