@@ -13,7 +13,8 @@ const CONST = {
   REST_HEAL_PCT: 0.40,               // 식량 소모 휴식 회복량
   REST_HUNGRY_HEAL_PCT: 0.10,        // 식량 없이 휴식
   TORCH_MAX: 100,
-  TORCH_PER_MOVE: 20,
+  TORCH_PER_MOVE: 6,                  // 방을 옮길 때
+  TORCH_PER_TILE: 1.2,                // 방 안에서 한 칸(900px) 걸을 때마다
   TORCH_REST_GAIN: 40,
   TORCH_DARK_ELITE_CHANCE: 0.35,     // 횃불 0일 때 일반 전투가 정예로 변할 확률
   TORCH_DARK_CRIT_PENALTY: 0.10,
