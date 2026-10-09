@@ -15,6 +15,6 @@ mspd,이동 속도,True,0.5
 dotdmg,지속 피해,True,
 ccdur,기절·도발 지속,True,
 breakdmg,그로기 피해,True,
-s1pow,① 스킬 위력,True,
-s2pow,② 스킬 위력,True,
+s1pow,① 갑옷 스킬 위력,True,
+s2pow,② 무기 스킬 위력,True,
 vsbroken,그로기 적 피해,True,

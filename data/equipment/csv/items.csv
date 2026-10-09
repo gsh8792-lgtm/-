@@ -1,41 +1,41 @@
 ﻿Id,Name,Slot,Class,Main1Stat,Main1Base,Main2Stat,Main2Base,InnateKey,InnateText,InnateBase,InnateUnit,InnateSkill
 tank_weapon_1,수호자의 메이스,weapon,tank,atk,2.2,dr,0.006,s2_break,② 방패 강타 그로기 피해 +{v}%,15.0,%,s2
-tank_weapon_2,맹세의 장검,weapon,tank,atk,2.2,dr,0.006,s1_guard,① 도발 중 받는 피해 감소 +{v}%p,3.0,%p,s1
+tank_weapon_2,맹세의 장검,weapon,tank,atk,2.2,dr,0.006,s1_guard,② 돌진 베기 적중 후 3초간 받는 피해 감소 +{v}%p,3.0,%p,s2
 tank_weapon_3,성채의 철퇴,weapon,tank,atk,2.2,dr,0.006,basic_stun_chance,평타 적중 시 {v}% 확률로 0.6초 기절,3.0,%,
 tank_armor_1,성벽 판금갑,armor,tank,hp,52.0,dr,0.006,charge_dr,차지 공격 피해 -{v}%,6.0,%,
-tank_armor_2,맹세의 사슬갑,armor,tank,hp,52.0,dr,0.006,s1_taunt_dur,① 도발 지속 +{v}초,0.3,초,s1
-tank_armor_3,가시 갑옷,armor,tank,hp,52.0,dr,0.006,thorns,받은 근접 피해의 {v}% 반사,5.0,%,
+tank_armor_2,맹세의 사슬갑,armor,tank,hp,52.0,dr,0.006,s1_taunt_dur,① 맹세의 외침 도발 지속 +{v}초,0.3,초,s1
+tank_armor_3,가시 갑옷,armor,tank,hp,52.0,dr,0.006,thorns,받은 근접 피해의 {v}% 되돌림,5.0,%,
 tank_medal_1,불굴의 소울 메달,medal,tank,dr,0.012,s1pow,0.1,,,,,
 tank_medal_2,수호성의 소울 메달,medal,tank,dr,0.012,s2pow,0.1,,,,,
-melee_weapon_1,바람의 쌍검,weapon,melee,atk,4.0,critdmg,0.03,s1_bleed,① 급소 베기 출혈 피해 +{v}%,10.0,%,s1
+melee_weapon_1,바람의 쌍검,weapon,melee,atk,4.0,critdmg,0.03,s1_bleed,출혈 피해 +{v}%,10.0,%,
 melee_weapon_2,파쇄자의 대검,weapon,melee,atk,4.0,critdmg,0.03,vs_broken,그로기 적에게 피해 +{v}%,8.0,%,
-melee_weapon_3,그림자 단검,weapon,melee,atk,4.0,critdmg,0.03,s2_area,② 회전 베기 범위 +{v}%,5.0,%,s2
+melee_weapon_3,그림자 단검,weapon,melee,atk,4.0,critdmg,0.03,s2_area,② 그림자 연격 위력 +{v}%,5.0,%,s2
 melee_armor_1,사냥꾼의 가죽갑,armor,melee,hp,30.0,aspd,0.02,kill_aspd,적 처치 시 2초간 공격 속도 +{v}%,10.0,%,
-melee_armor_2,검무사의 경갑,armor,melee,hp,30.0,aspd,0.02,s2_cd,② 회전 베기 쿨타임 -{v}%,4.0,%,s2
-melee_armor_3,핏빛 망토,armor,melee,hp,30.0,aspd,0.02,vs_bleed,출혈 걸린 적에게 피해 +{v}%,5.0,%,
+melee_armor_2,검무사의 경갑,armor,melee,hp,30.0,aspd,0.02,s2_cd,① 발목 베기 쿨타임 -{v}%,4.0,%,s1
+melee_armor_3,핏빛 망토,armor,melee,hp,30.0,aspd,0.02,vs_bleed,출혈 중인 적에게 피해 +{v}%,5.0,%,
 melee_medal_1,검귀의 소울 메달,medal,melee,critdmg,0.06,s1pow,0.1,,,,,
 melee_medal_2,투지의 소울 메달,medal,melee,critdmg,0.06,s2pow,0.1,,,,,
-ranged_weapon_1,매의 장궁,weapon,ranged,atk,3.6,crit,0.008,s1_vuln_dur,① 관통 사격 취약 지속 +{v}초,0.5,초,s1
-ranged_weapon_2,폭풍의 연궁,weapon,ranged,atk,3.6,crit,0.008,double_shot,평타 {v}% 확률로 2연사,6.0,%,
-ranged_weapon_3,은빛 석궁,weapon,ranged,atk,3.6,crit,0.008,ult_power,③ 집중 사격 위력 +{v}%,8.0,%,ult
-ranged_armor_1,숲지기 가죽갑,armor,ranged,hp,26.0,mspd,0.025,s2_area,② 화살비 범위 +{v}%,5.0,%,s2
-ranged_armor_2,그림자 망토,armor,ranged,hp,26.0,mspd,0.025,near_dr,적이 70px 안에 있으면 받는 피해 -{v}%,6.0,%,
+ranged_weapon_1,매의 장궁,weapon,ranged,atk,3.6,crit,0.008,s1_vuln_dur,취약 지속 +{v}초,0.5,초,
+ranged_weapon_2,폭풍의 연궁,weapon,ranged,atk,3.6,crit,0.008,double_shot,평타가 {v}% 확률로 2연사,6.0,%,
+ranged_weapon_3,은빛 석궁,weapon,ranged,atk,3.6,crit,0.008,ult_power,② 저격 위력 +{v}%,8.0,%,s2
+ranged_armor_1,숲지기 가죽갑,armor,ranged,hp,26.0,mspd,0.025,s2_area,① 관통 사격 위력 +{v}%,5.0,%,s1
+ranged_armor_2,그림자 망토,armor,ranged,hp,26.0,mspd,0.025,near_dr,가까이 붙은 적이 있으면 받는 피해 -{v}%,6.0,%,
 ranged_armor_3,추적자의 조끼,armor,ranged,hp,26.0,mspd,0.025,counter_ult,차지·호출을 끊으면 필살기 게이지 +{v},6.0,,
 ranged_medal_1,명사수의 소울 메달,medal,ranged,crit,0.016,s1pow,0.1,,,,,
 ranged_medal_2,바람의 소울 메달,medal,ranged,crit,0.016,s2pow,0.1,,,,,
-mage_weapon_1,별빛 지팡이,weapon,mage,atk,4.4,skilldmg,0.02,s1_burn,① 별빛 탄 화상 피해 +{v}%,10.0,%,s1
-mage_weapon_2,유성의 홀,weapon,mage,atk,4.4,skilldmg,0.02,s2_area,② 유성우 범위 +{v}%,6.0,%,s2
-mage_weapon_3,금단의 마도서,weapon,mage,atk,4.4,skilldmg,0.02,ult_vs_broken,③ 대마법이 그로기 적에게 위력 +{v}%,12.0,%,ult
+mage_weapon_1,별빛 지팡이,weapon,mage,atk,4.4,skilldmg,0.02,s1_burn,화상 피해 +{v}%,10.0,%,
+mage_weapon_2,유성의 홀,weapon,mage,atk,4.4,skilldmg,0.02,s2_area,② 번개 사슬 위력 +{v}%,6.0,%,s2
+mage_weapon_3,금단의 마도서,weapon,mage,atk,4.4,skilldmg,0.02,ult_vs_broken,③ 필살기가 그로기 적에게 주는 피해 +{v}%,12.0,%,ult
 mage_armor_1,현자의 로브,armor,mage,hp,24.0,cdr,0.01,cdr_extra,쿨타임 감소 +{v}%,1.5,%,
 mage_armor_2,불꽃 망토,armor,mage,hp,24.0,cdr,0.01,burn_dur,화상 지속 +{v}초,0.4,초,
 mage_armor_3,마력 장막 로브,armor,mage,hp,24.0,cdr,0.01,start_shield,전투 시작 시 최대 HP {v}% 보호막,6.0,%,
 mage_medal_1,대마도사의 소울 메달,medal,mage,skilldmg,0.04,s1pow,0.1,,,,,
 mage_medal_2,별의 소울 메달,medal,mage,skilldmg,0.04,s2pow,0.1,,,,,
-support_weapon_1,생명의 지팡이,weapon,support,atk,1.6,heal,0.025,s1_heal,① 치유 회복량 +{v}%,8.0,%,s1
-support_weapon_2,빛의 홀,weapon,support,atk,1.6,heal,0.025,s2_area,② 광역 치유 범위 +{v}%,6.0,%,s2
-support_weapon_3,정화의 성구,weapon,support,atk,1.6,heal,0.025,heal_dr,치유받은 아군 3초간 받는 피해 -{v}%,5.0,%,
-support_armor_1,순백의 사제복,armor,support,hp,28.0,ultgain,0.025,party_healrecv,파티 회복 받는 양 +{v}%,3.0,%,
-support_armor_2,수호의 성의,armor,support,hp,28.0,ultgain,0.025,ult_dur,③ 생명의 나무 지속 +{v}초,0.5,초,ult
+support_weapon_1,생명의 지팡이,weapon,support,atk,1.6,heal,0.025,s1_heal,② 광역 치유 회복량 +{v}%,8.0,%,s2
+support_weapon_2,빛의 홀,weapon,support,atk,1.6,heal,0.025,s2_area,② 빛의 심판 위력 +{v}%,6.0,%,s2
+support_weapon_3,정화의 성구,weapon,support,atk,1.6,heal,0.025,heal_dr,회복받은 아군은 3초간 받는 피해 -{v}%,5.0,%,
+support_armor_1,순백의 사제복,armor,support,hp,28.0,ultgain,0.025,party_healrecv,파티가 받는 회복량 +{v}%,3.0,%,
+support_armor_2,수호의 성의,armor,support,hp,28.0,ultgain,0.025,ult_dur,① 수호의 기도 공명 지속 +{v}초,0.5,초,s1
 support_armor_3,기도의 숄,armor,support,hp,28.0,ultgain,0.025,start_heal,전투 시작 시 파티 HP {v}% 회복,3.0,%,
 support_medal_1,성녀의 소울 메달,medal,support,heal,0.05,s1pow,0.1,,,,,
 support_medal_2,다정함의 소울 메달,medal,support,heal,0.05,s2pow,0.1,,,,,

@@ -13,16 +13,16 @@ const EQ = (() => {
   const SLOT_NAME = {}; DB.slots.forEach((s) => { SLOT_NAME[s.key] = s.name; });
   // 게임 내에서 효과가 구현된 스킬 보너스 (L·E). 직업 전용 스킬 보너스는 스킬 풀 개편 때 추가
   const SKILL_BONUS = [
-    { key: 's1pow', text: '① 스킬 위력 +{v}', L: 0.10, E: 0.12 },
-    { key: 's2pow', text: '② 스킬 위력 +{v}', L: 0.10, E: 0.12 },
+    { key: 's1pow', text: '① 갑옷 스킬 위력 +{v}', L: 0.10, E: 0.12 },
+    { key: 's2pow', text: '② 무기 스킬 위력 +{v}', L: 0.10, E: 0.12 },
     { key: 'ultpow', text: '③ 필살기 위력 +{v}', L: 0.10, E: 0.12 },
-    { key: 's1cd', text: '① 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
-    { key: 's2cd', text: '② 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
+    { key: 's1cd', text: '① 갑옷 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
+    { key: 's2cd', text: '② 무기 스킬 쿨타임 -{v}', L: 0.07, E: 0.08 },
     { key: 'ultgain', text: '필살기 충전 +{v}', L: 0.08, E: 0.09 },
   ];
   const SB = {}; SKILL_BONUS.forEach((b) => { SB[b.key] = b; });
   const GEM_SKILL = { s1_power: 's1pow', s2_power: 's2pow', ult_power: 'ultpow' };
-  const EXTRA_STAT_NAME = { s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultpow: '필살기 위력', s1cd: '① 쿨타임', s2cd: '② 쿨타임', nonbroken: '그로기 아닌 적 피해' };
+  const EXTRA_STAT_NAME = { s1pow: '① 갑옷 스킬 위력', s2pow: '② 무기 스킬 위력', ultpow: '③ 필살기 위력', s1cd: '① 갑옷 스킬 쿨타임', s2cd: '② 무기 스킬 쿨타임', nonbroken: '그로기가 아닌 적에게 피해' };
 
   const heroClass = (heroId) => HEROES[heroId].role;
   const classInfo = (cls) => DB.classes.find((c) => c.key === cls);

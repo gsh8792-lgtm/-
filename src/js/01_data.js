@@ -19,7 +19,7 @@ const CONST = {
   TORCH_DARK_CRIT_PENALTY: 0.10,
   BASE_CRIT: 0.10,
   CRIT_MULT: 1.6,
-  ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 궁극기 게이지(%)
+  ULT_GAIN_DEAL: 0.055,              // 가한 피해 1당 필살기 게이지(%)
   ULT_GAIN_TAKE: 0.09,               // 받은 피해 1당
   ULT_GAIN_TIME: 1.6,                // 초당
   // 짓누름: 보스 평타가 같은 대상에 쌓이는 압박 (탱커가 아니면 오래 못 버팀)
@@ -89,18 +89,18 @@ const STAGE_SCALE = [1.0, 1.15, 1.3, 1.5, 1.5];
 
 // ---------------------------------------------------------------- 상태이상
 const STATUS = {
-  crush:  { name: '짓누름', short: '짓', color: '#b0603a', desc: '보스 평타에 맞을 때마다 쌓인다. 쌓일수록 보스 평타 피해 증가. 탱커는 거의 영향이 없다.' },
-  stun:   { name: '기절', short: '기', color: '#ffd34a', desc: '행동 불가. 차지 공격을 캔슬한다.' },
-  bleed:  { name: '출혈', short: '출', color: '#e0524a', desc: '초당 지속 피해.' },
+  crush:  { name: '짓누름', short: '짓', color: '#b0603a', desc: '보스 평타에 맞을 때마다 쌓임. 쌓일수록 보스 평타 피해 증가. 탱커는 거의 영향 없음.' },
+  stun:   { name: '기절', short: '기', color: '#ffd34a', desc: '행동 불가. 차지·호출의 끊기 칸을 한 번에 채움.' },
+  bleed:  { name: '출혈', short: '출', color: '#e0524a', desc: '매초 피해.' },
   burn:   { name: '화상', short: '화', color: '#ff8a2a', desc: '지속 피해 + 받는 회복량 -50%.' },
-  taunt:  { name: '도발', short: '도', color: '#c86af0', desc: '도발한 자를 강제로 공격한다.' },
+  taunt:  { name: '도발', short: '도', color: '#c86af0', desc: '도발한 대상만 공격.' },
   vuln:   { name: '취약', short: '취', color: '#f07ab0', desc: '받는 피해 +25%.' },
   guard:  { name: '철벽', short: '철', color: '#7ab8f0', desc: '받는 피해 감소.' },
-  regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '초당 회복.' },
+  regen:  { name: '재생', short: '재', color: '#6fd88a', desc: '매초 HP 회복.' },
   enrage: { name: '광폭', short: '광', color: '#ff4a3a', desc: '공격 속도 증가.' },
-  fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매: 공격력 증가.' },
+  fruit:  { name: '열매', short: '열', color: '#ff9ad0', desc: '고목의 열매. 공격력 증가.' },
   resonance: { name: '공명', short: '공', color: '#ffe680', desc: '주는 그로기 피해 증가.' },
-  invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '피해를 받지 않는다.' },
+  invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '받는 피해 없음.' },
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
 };
 
@@ -121,7 +121,7 @@ const PARTY_ENEMY_SCALE = { 1: 0.45, 2: 0.72, 3: 1.0 };
 const TRAITS = {
   brave:    { name: '용감함', desc: 'HP가 낮을수록 공격력 증가 (최대 +40%).' },
   cautious: { name: '신중함', desc: '차지 공격 피해 -50%. 화상 지속 +1초.' },
-  sturdy:   { name: '든든함', desc: '차지 공격 피해 -40%. 범위 안에 있으면 동료가 받는 차지 피해 -60%.' },
+  sturdy:   { name: '든든함', desc: '차지 공격 피해 -40%. 같은 차지 범위 안 동료의 피해 -60%.' },
   keen:     { name: '예리함', desc: '치명타 확률 +10%.' },
   gentle:   { name: '다정함', desc: '주는 회복량 +15%.' },
 };
@@ -131,45 +131,45 @@ const TRAITS = {
 // target: enemy(단일) | ally(단일 아군) | area_enemy | area_ally(지점 원형) | self_area(시전자 주변) | self | party | all_enemies
 // power: 공격력 배율. areaR: 원형 범위 반지름(논리 px). hint: ② 추천 조건(SKILL_HINTS). fx: 연출 키
 const SKILLS = {
-  tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적이 토비를 공격. 이때 차지를 받아내면 동료 피해 -60%.' },
-  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '대상을 2초 기절. 차지 캔슬.' },
+  tobi_s1:  { name: '도발',       target: 'self',      cd: 9,  power: 0,   effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.2, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적 도발 + 받는 피해 -20%. 차지를 받아내면 동료 피해 -60%.' },
+  tobi_s2:  { name: '방패 강타',  target: 'enemy',     cd: 11, hint: 'enemyCharging',  power: 1.3, effects: [{ status: 'stun', dur: 2 }], fx: 'bash', desc: '강타 + 2초 기절 (끊기 칸 전부).' },
   tobi_ult: { name: '철벽',       target: 'party',     cd: 0,  power: 0,   effects: [{ status: 'guard', dur: 7, value: 0.45, to: 'party' }], fx: 'wall', desc: '7초간 파티 받는 피해 -45%.' },
 
-  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 출혈. 끊기 ●● (정면에서는 ●).' },
-  danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '근거리 범위 베기.' },
-  danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 강한 출혈.' },
+  danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 5초 출혈. 끊기 ●● (정면 ●).' },
+  danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '주변 적 모두 베기.' },
+  danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 6초 강한 출혈.' },
 
-  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '취약 부여. 끊기 ●●, 흔들림 +3초.' },
-  byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정 범위 화살비.' },
-  byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '단일 대상 초강력 사격.' },
+  byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '5초 취약. 끊기 ●●, 흔들림 +3초.' },
+  byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정한 범위에 화살비.' },
+  byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '적 1명에게 초강력 사격 + 6초 취약.' },
 
-  soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '화상 부여.' },
-  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우. 범위 안 모든 적 끊기 ●.' },
-  soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해.' },
+  soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '마법탄 + 5초 화상.' },
+  soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우 + 3초 화상. 범위 안 모든 적 끊기 ●.' },
+  soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해 + 5초 화상.' },
 
   bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 5초간 그로기 피해 +30%.' },
-  bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 내 아군 회복.' },
-  bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (초당 최대HP 4.5%).' },
+  bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 안 아군 회복.' },
+  bori_ult: { name: '생명의 나무', target: 'party',    cd: 0,  heal: 0,   effects: [{ status: 'regen', dur: 8, value: 0.045, to: 'party' }], fx: 'tree', desc: '8초간 파티 지속 회복 (매초 최대 HP 4.5%).' },
 };
 
 // ---------------------------------------------------------------- ② 상황 스킬 추천 조건
 const SKILL_HINTS = {
-  enemyCharging: { name: '적이 차지/호출 중', urgent: true },   // "지금!" (위험 대응)
+  enemyCharging: { name: '적이 차지·호출 중', urgent: true },   // "지금!" (위험 대응)
   nearEnemies:   { name: '주변에 적 2마리 이상' },
-  cluster:       { name: '적 3마리가 뭉쳐 있음' },
+  cluster:       { name: '적 3마리 이상 뭉침' },
   alliesHurt:    { name: '아군 2명 이상 HP 70% 이하' },
 };
 
 // ---------------------------------------------------------------- 작전 명령 (파티 전체)
 const ORDERS = {
   charge:  { name: '돌격', desc: '모두 앞으로. 원거리도 가까이 붙어 화력 집중.' },
-  hold:    { name: '대형', desc: '탱커가 앞, 원거리·서포터는 뒤에서 거리 유지.' },
-  retreat: { name: '후퇴', desc: '왼쪽으로 물러남. 차지 범위 회피용. 사거리 안 적만 공격.' },
+  hold:    { name: '대형', desc: '탱커는 앞, 원거리·서포터는 뒤에서 거리 유지.' },
+  retreat: { name: '후퇴', desc: '뒤로 물러남. 차지 피하기용. 사거리 안 적만 공격.' },
 };
 
 // ---------------------------------------------------------------- 자동 전략 (스킬별: 자동 여부 · 조건 · 대상)
 const AI_CONDITIONS = {
-  always:       { name: '쿨 될 때마다',   param: null },
+  always:       { name: '쿨타임마다',     param: null },
   hint:         { name: '추천 상황일 때', param: null },
   allyHpBelow:  { name: '아군 HP ≤ X%',   param: [30, 50, 60, 70, 80] },
   enemyHpBelow: { name: '적 HP ≤ X%',     param: [20, 30, 50, 70] },
@@ -180,7 +180,7 @@ const AI_CONDITIONS = {
   smartInterrupt:{ name: '끊기 타이밍 고려', param: null },
   auto:         { name: '필살기에 맞게 자동', param: null }, // 부활·회복·그로기 만들기·무방비 수확을 필살기 종류로 판단 // 다음 차지·호출 전에 쿨이 돌아오면 사용, 아니면 끊기용으로 아낌 // 차지/호출하는 적이 살아 있으면 그 순간까지 아낌   // 큰 적이 그로기일 때 (큰 적이 없으면 바로)
 };
-const AI_SKILL_SLOTS = { s1: '① 기본', s2: '② 상황', ult: '③ 필살기' };
+const AI_SKILL_SLOTS = { s1: '① 갑옷 스킬', s2: '② 무기 스킬', ult: '③ 필살기' };
 const AI_TARGET_RULES = {
   focus:      { name: '집중 대상 우선' },
   nearest:    { name: '가장 가까운 적' },
@@ -238,23 +238,23 @@ const ENCOUNTERS = {
 
 // ---------------------------------------------------------------- 지도 노드
 const NODE_TYPES = {
-  battle: { name: '일반 전투', short: '전', color: '#5a4f8a', weight: 40, combat: true,  desc: '적 무리와 전투. 보상 3택1.' },
-  elite:  { name: '정예',      short: '정', color: '#b2453f', weight: 16, combat: true,  desc: '오크 대장과 호위. 큰 보상.' },
+  battle: { name: '일반 전투', short: '전', color: '#5a4f8a', weight: 40, combat: true,  desc: '적 무리와 전투. 보상 3개 중 1개 선택.' },
+  elite:  { name: '정예',      short: '정', color: '#b2453f', weight: 16, combat: true,  desc: '오크 대장과 호위대. 큰 보상.' },
   event:  { name: '이벤트',    short: '?',  color: '#2f8a8a', weight: 18, combat: false, desc: '무슨 일이 일어날지 모른다.' },
   shop:   { name: '상점',      short: '상', color: '#c8a03a', weight: 10, combat: false, maxPerStage: 1, desc: '던전 상인. 골드로 보급품 구매.' },
-  rest:   { name: '휴식',      short: '휴', color: '#3f9a5a', weight: 10, combat: false, maxPerStage: 1, desc: '캠프. 식량을 써서 회복.' },
+  rest:   { name: '휴식',      short: '휴', color: '#3f9a5a', weight: 10, combat: false, maxPerStage: 1, desc: '모닥불. 식량을 먹고 회복.' },
   tree:   { name: '고목',      short: '수', color: '#7a4a2a', weight: 7,  combat: false, desc: '피의 거래. HP를 바쳐 열매를 얻는다.' },
-  boss:   { name: '보스',      short: '보', color: '#9a2a2a', weight: 0,  combat: true,  desc: '오우거 대족장.' },
+  boss:   { name: '보스',      short: '보', color: '#9a2a2a', weight: 0,  combat: true,  desc: '굴의 주인. 원정의 마지막 방.' },
 };
 
 // ---------------------------------------------------------------- 유물 (패시브)
 const RELICS = {
-  acorn:    { name: '따뜻한 빵', icon: '🥖', price: 70, desc: '전투 시작 시 아군 HP 10% 회복.' },
+  acorn:    { name: '따뜻한 빵', icon: '🥖', price: 70, desc: '전투 시작 시 파티 HP 10% 회복.' },
   whetstone:{ name: '날카로운 숫돌', icon: '🗡', price: 75, desc: '출혈 피해 +50%.' },
   ember:    { name: '불씨 깃털',     icon: '🔥', price: 75, desc: '화상 피해 +30%, 지속 +2초.' },
   bark:     { name: '단단한 나무껍질', icon: '🛡', price: 80, desc: '탱커가 받는 피해 -15%.' },
   clover:   { name: '행운의 클로버', icon: '🍀', price: 80, desc: '치명타 확률 +10%.' },
-  stardust: { name: '별가루 주머니', icon: '✨', price: 85, desc: '필살기 게이지 충전 +30%.' },
+  stardust: { name: '별가루 주머니', icon: '✨', price: 85, desc: '필살기 충전 +30%.' },
 };
 
 // ---------------------------------------------------------------- 보상/상점
@@ -266,7 +266,7 @@ const REWARD = {
 };
 const SHOP_ITEMS = {
   potion: { name: '회복약', price: 30, desc: '아군 1명 HP 50% 회복.' },
-  food:   { name: '식량',   price: 25, desc: '휴식 때 소모. HP 40% 회복.' },
+  food:   { name: '식량',   price: 25, desc: '휴식 때 먹으면 HP 40% 회복.' },
   torch:  { name: '횃불',   price: 20, desc: '횃불 게이지 +40.' },
 };
 
@@ -275,19 +275,19 @@ const SHOP_ITEMS = {
 const EVENTS = {
   cart: {
     title: '부러진 수레', art: 'cart',
-    text: '바퀴가 부러진 보급 수레가 길을 막고 있다. 짐칸 안쪽에서 무언가 반짝인다… 바닥의 흙이 묘하게 새로 덮여 있다.',
+    text: '바퀴가 부러진 보급 수레가 길을 막고 있다. 짐칸 안쪽에서 무언가 반짝인다. 그런데 주변 흙이 묘하게 새로 덮여 있다.',
     choices: [
-      { label: '짐칸을 뒤진다', hint: '보급품? 혹은 함정', outcome: 'cart_search' },
-      { label: '토비가 먼저 밟아본다', hint: '탱커가 함정을 대신 맞음', outcome: 'cart_tank', require: 'tobi' },
-      { label: '지나간다', hint: '', outcome: 'leave' },
+      { label: '짐칸을 뒤진다', hint: '보급품일까, 함정일까', outcome: 'cart_search' },
+      { label: '토비가 먼저 밟아 본다', hint: '함정은 탱커가 대신 맞는다', outcome: 'cart_tank', require: 'tobi' },
+      { label: '그냥 지나간다', hint: '', outcome: 'leave' },
     ],
   },
   well: {
     title: '속삭이는 우물', art: 'well',
-    text: '이끼 낀 우물 바닥에서 누군가 이름을 부르는 것 같다. "동전 하나면… 소원 하나…"',
+    text: '이끼 낀 우물 바닥에서 누군가 이름을 부르는 듯하다. "동전 하나면… 소원 하나…"',
     choices: [
       { label: '동전을 던진다 (20골드)', hint: '소원을 빈다', outcome: 'well_coin', cost: { gold: 20 } },
-      { label: '물을 길어 마신다', hint: '시원할까, 차가울까', outcome: 'well_drink' },
+      { label: '물을 길어 마신다', hint: '시원할까, 서늘할까', outcome: 'well_drink' },
       { label: '귀를 막고 지나간다', hint: '', outcome: 'leave' },
     ],
   },
@@ -296,16 +296,16 @@ const EVENTS = {
     text: '보따리를 멘 고블린이 히죽 웃는다. "반짝이, 반짝이 있어! 금화 주면 줌. 싸움은 싫어, 아니 좋아?"',
     choices: [
       { label: '거래한다 (45골드)', hint: '무작위 유물', outcome: 'gm_trade', cost: { gold: 45 } },
-      { label: '보따리를 뺏는다', hint: '전투 발생, 이기면 골드', outcome: 'gm_fight' },
+      { label: '보따리를 뺏는다', hint: '전투! 이기면 골드', outcome: 'gm_fight' },
       { label: '무시한다', hint: '', outcome: 'leave' },
     ],
   },
   wounded: {
     title: '길 잃은 부상병', art: 'wounded',
-    text: '다친 다람쥐 정찰병이 벽에 기대 앉아 있다. "배가… 너무 고파요. 아니면 상처라도…"',
+    text: '다친 다람쥐 정찰병이 벽에 기대앉아 있다. "배가… 너무 고파요. 상처도 욱신거리고요…"',
     choices: [
       { label: '식량을 나눠준다 (식량 1)', hint: '보답이 있을지도', outcome: 'wd_food', cost: { food: 1 } },
-      { label: '보리가 치료해준다', hint: '보리 HP 20% 소모', outcome: 'wd_heal', require: 'bori' },
+      { label: '보리가 치료해 준다', hint: '보리 HP 20% 소모', outcome: 'wd_heal', require: 'bori' },
       { label: '지나친다', hint: '', outcome: 'leave' },
     ],
   },
@@ -322,8 +322,8 @@ const HINTS = {
   field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방으로 갈 수 있어요. 방에 무엇이 있는지는 들어가 봐야 알아요.',
   explore: '파티가 앞으로 걸어가요. 적 무리를 만나면 그 자리에서 전투가 시작되고, 갈림길에서는 길을 골라요. 멈춤 버튼으로 언제든 멈출 수 있어요.',
-  battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌면 그 자리로 이동하거나 놓은 적을 공격해요.',
-  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 맞춰야 해요. 같은 직업은 한 번만 쳐요.`,
-  crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 데려가거나, 장비로 레벨을 올려 버티세요.',
-  charge: '붉은 원 안에 강한 공격이 떨어져요. 방패 강타로 끊거나 원 밖으로 피하세요.',
+  battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌어다 놓으면 그 자리로 이동하거나, 놓은 곳의 적을 공격해요.',
+  break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 힘을 모아야 해요. 같은 직업은 한 번만 인정돼요.`,
+  crush:  '보스 평타에 맞을수록 [짓누름]이 쌓여 점점 아파져요. 탱커는 거의 영향이 없어요. 탱커가 도발로 보스를 끌어가거나, 장비로 레벨을 올려 버텨 보세요.',
+  charge: '붉은 원 안에 강한 공격이 떨어져요. 탱커의 기절로 끊거나 원 밖으로 피하세요.',
 };

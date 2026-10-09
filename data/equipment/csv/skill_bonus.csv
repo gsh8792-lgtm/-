@@ -1,37 +1,37 @@
 ﻿Class,Key,Text,ValueL,ValueE,Unit
 tank,s1_power,① 도발 중 받는 피해 감소 +{v}%p,4,5,%p
-tank,s1_cd,① 도발 쿨타임 -{v}%,10,12,%
-tank,s2_power,② 방패 강타 위력 +{v}%,15,17,%
-tank,s2_cd,② 방패 강타 쿨타임 -{v}%,10,12,%
-tank,ult_power,③ 철벽 피해 감소 +{v}%p,5,6,%p
-tank,ult_dur,③ 철벽 지속 +{v}초,1.0,1.1,초
-melee,s1_power,① 급소 베기 위력 +{v}%,15,17,%
-melee,s1_cd,① 급소 베기 쿨타임 -{v}%,10,12,%
-melee,s2_power,② 회전 베기 위력 +{v}%,15,17,%
-melee,s2_cd,② 회전 베기 쿨타임 -{v}%,10,12,%
-melee,ult_power,③ 난도질 위력 +{v}%,15,17,%
-melee,ult_hits,③ 난도질 타수 +{v},1,2,회
-ranged,s1_power,① 관통 사격 위력 +{v}%,15,17,%
-ranged,s1_cd,① 관통 사격 쿨타임 -{v}%,10,12,%
-ranged,s2_power,② 화살비 위력 +{v}%,15,17,%
-ranged,s2_cd,② 화살비 쿨타임 -{v}%,10,12,%
-ranged,ult_power,③ 집중 사격 위력 +{v}%,15,17,%
+tank,s1_cd,① 갑옷 스킬 쿨타임 -{v}%,10,12,%
+tank,s2_power,② 무기 스킬 위력 +{v}%,15,17,%
+tank,s2_cd,② 무기 스킬 쿨타임 -{v}%,10,12,%
+tank,ult_power,③ 필살기 효과 +{v}%p,5,6,%p
+tank,ult_dur,③ 필살기 지속 +{v}초,1.0,1.1,초
+melee,s1_power,① 갑옷 스킬 위력 +{v}%,15,17,%
+melee,s1_cd,① 갑옷 스킬 쿨타임 -{v}%,10,12,%
+melee,s2_power,② 무기 스킬 위력 +{v}%,15,17,%
+melee,s2_cd,② 무기 스킬 쿨타임 -{v}%,10,12,%
+melee,ult_power,③ 필살기 위력 +{v}%,15,17,%
+melee,ult_hits,③ 필살기 타수 +{v},1,2,회
+ranged,s1_power,① 갑옷 스킬 위력 +{v}%,15,17,%
+ranged,s1_cd,① 갑옷 스킬 쿨타임 -{v}%,10,12,%
+ranged,s2_power,② 무기 스킬 위력 +{v}%,15,17,%
+ranged,s2_cd,② 무기 스킬 쿨타임 -{v}%,10,12,%
+ranged,ult_power,③ 필살기 위력 +{v}%,15,17,%
 ranged,ult_gain,③ 필살기 충전 +{v}%,12,14,%
-mage,s1_power,① 별빛 탄 위력 +{v}%,15,17,%
-mage,s1_cd,① 별빛 탄 쿨타임 -{v}%,10,12,%
-mage,s2_power,② 유성우 위력 +{v}%,15,17,%
-mage,s2_cd,② 유성우 쿨타임 -{v}%,10,12,%
-mage,ult_power,③ 대마법 위력 +{v}%,15,17,%
+mage,s1_power,① 갑옷 스킬 위력 +{v}%,15,17,%
+mage,s1_cd,① 갑옷 스킬 쿨타임 -{v}%,10,12,%
+mage,s2_power,② 무기 스킬 위력 +{v}%,15,17,%
+mage,s2_cd,② 무기 스킬 쿨타임 -{v}%,10,12,%
+mage,ult_power,③ 필살기 위력 +{v}%,15,17,%
 mage,ult_gain,③ 필살기 충전 +{v}%,12,14,%
-support,s1_power,① 치유 회복량 +{v}%,15,17,%
-support,s1_cd,① 치유 쿨타임 -{v}%,10,12,%
-support,s2_power,② 광역 치유 회복량 +{v}%,15,17,%
-support,s2_cd,② 광역 치유 쿨타임 -{v}%,10,12,%
-support,ult_power,③ 생명의 나무 회복량 +{v}%,15,17,%
-support,ult_dur,③ 생명의 나무 지속 +{v}초,1.0,1.1,초
-common,s1_power,① 기본 스킬 위력·회복 +{v}%,10,12,%
-common,s2_power,② 상황 스킬 위력·회복 +{v}%,10,12,%
+support,s1_power,① 갑옷 스킬 위력·회복 +{v}%,15,17,%
+support,s1_cd,① 갑옷 스킬 쿨타임 -{v}%,10,12,%
+support,s2_power,② 무기 스킬 위력·회복 +{v}%,15,17,%
+support,s2_cd,② 무기 스킬 쿨타임 -{v}%,10,12,%
+support,ult_power,③ 필살기 위력·회복 +{v}%,15,17,%
+support,ult_dur,③ 필살기 지속 +{v}초,1.0,1.1,초
+common,s1_power,① 갑옷 스킬 위력·회복 +{v}%,10,12,%
+common,s2_power,② 무기 스킬 위력·회복 +{v}%,10,12,%
 common,ult_power,③ 필살기 위력·회복 +{v}%,10,12,%
-common,s1_cd,① 기본 스킬 쿨타임 -{v}%,7,8,%
-common,s2_cd,② 상황 스킬 쿨타임 -{v}%,7,8,%
+common,s1_cd,① 갑옷 스킬 쿨타임 -{v}%,7,8,%
+common,s2_cd,② 무기 스킬 쿨타임 -{v}%,7,8,%
 common,ult_gain,③ 필살기 충전 +{v}%,8,9,%
