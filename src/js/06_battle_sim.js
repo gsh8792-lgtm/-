@@ -835,7 +835,7 @@ class BattleSim {
     let dur = eff.dur;
     const sm = (src && src.mods) || {};
     if ((eff.status === 'stun' || eff.status === 'taunt') && sm.ccdur) dur *= 1 + sm.ccdur;
-    if (eff.status === 'taunt') { if (tgt.def && tgt.def.ignoreTaunt) return; dur *= CONST.TAUNT_SCALE; }
+    if (eff.status === 'taunt') { if (tgt.def && tgt.def.ignoreTaunt && !eff.force) return; dur *= CONST.TAUNT_SCALE; }
     if (eff.status === 'burn') { if (this.relics.has('ember')) dur += 2; if (src && src.def.traits && src.def.traits.includes('cautious')) dur += 1; }
     const s = { t: dur, src };
     if (eff.dps) s.dps = this._atkOf(src) * eff.dps * (1 + (sm.dotdmg || 0));
@@ -945,8 +945,8 @@ class BattleSim {
     switch (sk.target) {
       case 'enemy': {
         const tgt = spec.unit;
-        if (h.melee) { // 근접 스킬은 대상에게 순간 돌진
-          const side = h.x <= tgt.x ? -1 : 1;
+        if (h.melee && !sk.ranged) { // 근접 스킬은 대상에게 순간 돌진 (behind: 등 뒤로 — 후방 끊기)
+          const side = sk.behind ? -(tgt.face || -1) : h.x <= tgt.x ? -1 : 1;
           const r = this.attackRange(h, tgt) * 0.7;
           if (this.dist(h, tgt) > r + 10) { h.x = tgt.x + side * r; h.y = tgt.y; this.events.push({ type: 'dash', unit: h }); }
           h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.5; h.anim.lungeY = 0;

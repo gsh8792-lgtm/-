@@ -43,6 +43,28 @@ Object.assign(SKILLS, {
   gs_support_s2_c: { name: '정화의 빛', target: 'party', cd: 12, healPct: 0.08, cleanse: true, effects: [], fx: 'aoeheal', desc: '파티 전원 최대 HP 8% 회복 + 해로운 효과 해제.', ai: { cond: 'allyHpBelow', param: 70, target: 'lowestAlly' } },
 });
 
+// ---------------- v0.34: 직업별 네 번째 장비 라인 (무기·갑옷) → 새 스킬 10종
+Object.assign(SKILLS, {
+  gs_tank_s1_d: { name: '반격 자세', target: 'self', cd: 10, power: 0, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.3, to: 'self' }, { status: 'reflect', dur: 3, value: 0.5, all: true, to: 'self' }], fx: 'taunt', desc: '3초간 도발 + 받는 피해 -30% + 받은 모든 피해(원거리 포함) 50% 반사.', ai: { cond: 'saveForCharge', target: 'nearest' } },
+  gs_tank_s2_d: { name: '방패 투척', target: 'enemy', ranged: true, cd: 10, hint: 'enemyCharging', power: 1.2, effects: [{ status: 'stun', dur: 1.0 }, { status: 'taunt', dur: 3, force: true }], fx: 'bash', desc: '멀리 있는 적에게 방패를 던져 1초 기절(끊기 칸 전부) + 그 적을 3초 도발 (도발 무시 적도 끌어온다) — 후열을 노리는 사냥꾼 대응.', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  gs_melee_s1_d: { name: '그림자 걸음', target: 'enemy', behind: true, cd: 6, power: 1.3, interrupt: 2, effects: [{ status: 'vuln', dur: 3 }], fx: 'slash', desc: '적의 등 뒤로 순간 이동해 베기 + 3초 취약. 끊기 ●● (등 뒤라 정면 감소 없음).', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_melee_s2_d: { name: '회오리 베기', target: 'self_area', cd: 9, power: 0.8, hits: 3, areaR: 85, effects: [{ status: 'bleed', dur: 4, dps: 0.3 }], fx: 'spin', desc: '주변 적을 3번 베고 4초 출혈. 무리를 상대할 때.', ai: { cond: 'hint', target: 'nearest' }, hint: 'cluster' },
+  gs_ranged_s1_d: { name: '덫 화살', target: 'area_enemy', cd: 6, power: 0.9, areaR: 60, interrupt: 2, effects: [{ status: 'slow', dur: 3, value: 0.6 }], fx: 'pierce', desc: '좁은 범위 3초 큰 둔화(-60%). 범위 안 적 끊기 ●●. 달려드는 암살자·광전사를 묶는다.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_ranged_s2_d: { name: '폭발 화살', target: 'area_enemy', cd: 10, power: 1.6, areaR: 80, effects: [{ status: 'burn', dur: 4, dps: 0.35 }], fx: 'nova', desc: '범위 폭발 + 4초 화상 (트롤 재생 차단).', ai: { cond: 'hint', target: 'nearest' }, hint: 'cluster' },
+  gs_mage_s1_d: { name: '서리 갑옷', target: 'ally', cd: 9, power: 0, shieldPct: 0.22, effects: [{ status: 'reflect', dur: 5, value: 0.4 }], fx: 'heal', desc: '아군 1명에게 최대 HP 22% 보호막 + 5초간 근접 평타 40% 반사. 물린 후열에게.', ai: { cond: 'allyHpBelow', param: 70, target: 'lowestAlly' } },
+  gs_mage_s2_d: { name: '운석 낙하', target: 'area_enemy', cd: 14, hint: 'cluster', delay: 1.2, power: 3.0, areaR: 100, interrupt: 1, effects: [{ status: 'stun', dur: 1 }], fx: 'meteor', desc: '1.2초 영창 후 큰 범위 강타 + 1초 기절. 범위 안 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_support_s1_d: { name: '공명의 노래', target: 'party', cd: 10, healPct: 0.06, effects: [{ status: 'resonance', dur: 4, value: 0.25, to: 'party' }], fx: 'aoeheal', desc: '파티 HP 6% 회복 + 4초간 파티 전원 그로기 피해 +25%. 그로기 타이밍에.', ai: { cond: 'breakWindow', target: 'lowestAlly' } },
+  gs_support_s2_d: { name: '약화의 낙인', target: 'enemy', cd: 9, power: 1.0, effects: [{ status: 'weaken', dur: 6, value: 0.35 }], fx: 'starbolt', desc: '적 1명 6초간 주는 피해 -35%. 보스·광전사에게.', ai: { cond: 'always', target: 'focus' } },
+});
+// 장비 라인 4: 주 능력치는 1번 라인과 같고 고유 효과 대신 스킬이 특징
+(function addGearLine4() {
+  const names = { tank: ['반격자의 판금갑', '투척 방패'], melee: ['그림자 망토', '회오리 쌍검'], ranged: ['덫사냥꾼의 조끼', '화약 장궁'], mage: ['서리 로브', '유성 지팡이'], support: ['노래하는 성의', '낙인의 홀'] };
+  for (const cls in names) for (const [i, slot] of [[0, 'armor'], [1, 'weapon']]) {
+    const base = EQUIP_DB.items.find((it) => it.cls === cls && it.slot === slot && it.line === 1);
+    if (!EQUIP_DB.items.some((it) => it.id === `${cls}_${slot}_4`)) EQUIP_DB.items.push(Object.assign({}, base, { id: `${cls}_${slot}_4`, name: names[cls][i], line: 4, innate: null }));
+  }
+})();
+
 // 장비 종류(EQUIP_DB 아이템 id) → 스킬
 const GEAR_SKILLS = {
   tank_armor_1: 'tobi_s1', tank_armor_2: 'gs_tank_s1_b', tank_armor_3: 'gs_tank_s1_c',
@@ -55,6 +77,9 @@ const GEAR_SKILLS = {
   mage_weapon_1: 'soldam_s2', mage_weapon_2: 'gs_mage_s2_b', mage_weapon_3: 'gs_mage_s2_c',
   support_armor_1: 'bori_s1', support_armor_2: 'gs_support_s1_b', support_armor_3: 'gs_support_s1_c',
   support_weapon_1: 'bori_s2', support_weapon_2: 'gs_support_s2_b', support_weapon_3: 'gs_support_s2_c',
+  tank_armor_4: 'gs_tank_s1_d', tank_weapon_4: 'gs_tank_s2_d', melee_armor_4: 'gs_melee_s1_d', melee_weapon_4: 'gs_melee_s2_d',
+  ranged_armor_4: 'gs_ranged_s1_d', ranged_weapon_4: 'gs_ranged_s2_d', mage_armor_4: 'gs_mage_s1_d', mage_weapon_4: 'gs_mage_s2_d',
+  support_armor_4: 'gs_support_s1_d', support_weapon_4: 'gs_support_s2_d',
 };
 // 기본 스킬의 자동 전략도 같은 형식으로 (스킬을 다시 기본으로 바꿨을 때 되돌릴 값)
 for (const id of ['tobi', 'danbi', 'byeolbi', 'soldam', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
@@ -63,5 +88,5 @@ for (const id of ['tobi', 'danbi', 'byeolbi', 'soldam', 'bori']) for (const [slo
 }
 // 직업 → 슬롯별 스킬 목록 (도감·설명용)
 function gearSkillPool(cls) {
-  return { s1: [1, 2, 3].map((n) => GEAR_SKILLS[`${cls}_armor_${n}`]), s2: [1, 2, 3].map((n) => GEAR_SKILLS[`${cls}_weapon_${n}`]) };
+  return { s1: [1, 2, 3, 4].map((n) => GEAR_SKILLS[`${cls}_armor_${n}`]), s2: [1, 2, 3, 4].map((n) => GEAR_SKILLS[`${cls}_weapon_${n}`]) };
 }

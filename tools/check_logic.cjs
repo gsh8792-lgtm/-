@@ -264,7 +264,7 @@ if (sa !== sb) fail++;
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
   const ids = Object.keys(GEAR_SKILLS);
-  if (ids.length !== 30 || new Set(Object.values(GEAR_SKILLS)).size !== 30) errs.push('30 distinct gear skills');
+  if (ids.length !== 40 || new Set(Object.values(GEAR_SKILLS)).size !== 40) errs.push('40 distinct gear skills');
   // 직업별 그로기 역할: 어떤 조합이든 끊기/기절/공명 수단이 남는다
   const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance') };
   const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor' };
@@ -302,7 +302,7 @@ if (sa !== sb) fail++;
     if (!(GACHA.ultFor(p, 'danbi').power > SKILLS.danbi_ult_B.power)) errs.push('mastery');
     if (ultChoices('danbi', 0, 70).length !== 3 || ultChoices('danbi', 5, 70).length !== 6) errs.push('variants need bt');
     if (EQ.heroLevel(p, 'danbi') !== 70) errs.push('combat level'); }
-  console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(30 skills cast, roles kept, rank, AI, reflect, char level/ults)');
+  console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(40 skills cast, roles kept, rank, AI, reflect, char level/ults)');
   if (errs.length) fail++;
 }
 // 자동 길찾기: 자동 모드로 계속 가면 1~5층 계단과 보스 방에 닿는다 (방은 다 깬 것으로 가정, 기믹은 방에 들르면 채움)
