@@ -1,0 +1,14 @@
+import { chromium } from 'playwright';
+import path from 'path';
+const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] }); const p = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(300);
+const st = () => p.evaluate(() => ({ scene: window.GAME.Game.sceneName, track: window.GAME.Music.track, ctx: window.GAME.Sfx.ctx && window.GAME.Sfx.ctx.state, gain: window.GAME.Music.gain && +window.GAME.Music.gain.gain.value.toFixed(3) }));
+await p.click('#btn-start'); await p.waitForTimeout(1500); console.log(JSON.stringify(await st()));
+await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, explore: 1, break: 1, charge: 1 }; G.go('map'); }); await p.waitForTimeout(1500); console.log(JSON.stringify(await st()));
+await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 1, row: 0, type: 'battle', enc: 0 } })); await p.waitForTimeout(1500); console.log(JSON.stringify(await st()));
+await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 5, row: 0, type: 'boss', enc: 0 } })); await p.waitForTimeout(1500); console.log(JSON.stringify(await st()));
+const t0 = await p.evaluate(() => performance.now()); await p.waitForTimeout(3000);
+console.log('fps-ish', await p.evaluate(() => window.GAME.Game.fps || null));
+await p.evaluate(() => window.GAME.Music.setEnabled(false)); await p.waitForTimeout(300); console.log('off', JSON.stringify(await st()));
+console.log('errors', errs); await b.close();

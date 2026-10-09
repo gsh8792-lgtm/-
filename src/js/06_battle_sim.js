@@ -31,6 +31,9 @@ class BattleSim {
     this.torchDark = !!opts.torchDark;
     this.strategy = opts.strategy || {};
     this.autoMode = opts.autoMode !== undefined ? opts.autoMode : true;
+    // 자동 단계 (게임): 0 수동 / 1 반자동(② 무기 스킬만 직접) / 2 완전 자동. 없으면 전략의 스킬별 켜짐 설정을 따른다 (검증 도구)
+    this.autoLevel = opts.autoLevel !== undefined ? opts.autoLevel : null;
+    if (this.autoLevel !== null) this.autoMode = this.autoLevel > 0;
     this.order = 'hold';          // 작전: charge | hold | retreat
     this.focus = null;            // 집중 공격 대상 (적 유닛)
     this.time = 0;
@@ -976,6 +979,10 @@ class BattleSim {
     }
   }
 
+  slotAuto(slot, c) {
+    if (this.autoLevel === null) return !!(c && c.auto);
+    return this.autoLevel === 2 || (this.autoLevel === 1 && slot !== 's2');
+  }
   // 전략 ON: 스킬별 설정(자동 여부 · 조건 · 대상)대로 시전
   _heroAI() {
     for (const h of this.heroes) {
@@ -983,7 +990,7 @@ class BattleSim {
       const st = this.strategy[h.key] || AI_PRESETS[h.key];
       for (const slot of ['s2', 'ult', 's1']) {
         const c = this.aiConfig(h, slot, st[slot]);
-        if (!c || !c.auto || !this.canCast(h, slot) || !this.checkCond(h, slot, c)) continue;
+        if (!c || !this.slotAuto(slot, c) || !this.canCast(h, slot) || !this.checkCond(h, slot, c)) continue;
         const spec = this.resolveTarget(h, slot, c.target);
         // 위치 명령으로 자리를 지키는 근접 캐릭터는 자동 스킬로 돌진해 자리를 이탈하지 않는다
         if (spec && spec.unit && h.melee && h.cmd && h.cmd.type === 'move' && this.skillDef(h, slot).target === 'enemy' && this.dist(h, spec.unit) > this.attackRange(h, spec.unit) + 10) continue;

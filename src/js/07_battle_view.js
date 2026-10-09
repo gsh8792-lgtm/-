@@ -21,7 +21,7 @@ const BattleScene = {
     this.sim = new BattleSim({
       seed: hashSeed(run.seed, 'battle', node.stage, node.row, node.type),
       stage: node.stage, waves, heroes,
-      relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, partySize: run.party.length,
+      relics: run.relics, strategy: run.strategy, autoLevel: run.autoLevel !== undefined ? run.autoLevel : (run.autoMode ? 1 : 0), partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
@@ -47,6 +47,7 @@ const BattleScene = {
     for (let i = 0; i < 26; i++) this.dust.push({ x: Math.random() * 960, y: 60 + Math.random() * 300, s: 0.5 + Math.random() * 1.5, p: Math.random() * 6 });
     this.buildHud();
     this.consumeEvents();
+    if (node.type === 'boss') Music.play('boss');
     this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? '정예 전투!' : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
@@ -77,17 +78,18 @@ const BattleScene = {
     const right = el('div', 'b-right');
     this.potionBtn = btn(`🧪 ${run.potions}`, 'b-potion small', () => this.startPotion(), { id: 'btn-bpotion' });
     right.appendChild(this.potionBtn);
-    this.speedBtn = btn(`${this.speed}x`, 'b-speed small', () => { this.speed = this.speed === 1 ? 2 : 1; Game.settings.speed = this.speed; Game.saveSettings(); this.speedBtn.innerHTML = `${this.speed}x`; this.speedBtn.classList.toggle('on', this.speed === 2); }, { id: 'btn-speed' });
-    this.speedBtn.classList.toggle('on', this.speed === 2);
+    this.speedBtn = btn(`${this.speed}x`, 'b-speed small', () => { this.speed = this.speed >= 3 ? 1 : this.speed + 1; Game.settings.speed = this.speed; Game.saveSettings(); this.speedBtn.innerHTML = `${this.speed}x`; this.speedBtn.classList.toggle('on', this.speed > 1); }, { id: 'btn-speed' });
+    this.speedBtn.classList.toggle('on', this.speed > 1);
     right.appendChild(this.speedBtn);
-    const seg = el('div', 'seg');
-    this.autoBtn = btn('자동', 'seg-btn', () => this.setAuto(true), { id: 'btn-auto' });
-    this.manualBtn = btn('수동', 'seg-btn', () => this.setAuto(false), { id: 'btn-manual' });
-    seg.appendChild(this.autoBtn); seg.appendChild(this.manualBtn);
+    const seg = el('div', 'seg seg3');
+    this.manualBtn = btn('수동', 'seg-btn', () => this.setAuto(0), { id: 'btn-manual' });
+    this.semiBtn = btn('반자동', 'seg-btn', () => this.setAuto(1), { id: 'btn-semi' });
+    this.autoBtn = btn('자동', 'seg-btn', () => this.setAuto(2), { id: 'btn-auto' });
+    seg.appendChild(this.manualBtn); seg.appendChild(this.semiBtn); seg.appendChild(this.autoBtn);
     right.appendChild(seg);
     top.appendChild(right);
     ui.appendChild(top);
-    this.setAuto(run.autoMode, true);
+    this.setAuto(this.sim.autoLevel, true);
 
     this.chipsWrap = el('div', 'b-chips');
     this.chipsWrap.appendChild(el('div', 'chips-label', '적'));
@@ -143,12 +145,15 @@ const BattleScene = {
     ui.appendChild(hud);
   },
 
-  setAuto(on, silent) {
-    this.run.autoMode = on;
-    this.sim.autoMode = on;
-    this.autoBtn.classList.toggle('on', on);
-    this.manualBtn.classList.toggle('on', !on);
-    if (!silent) Game.toast(on ? '자동 전투' : '수동 전투', 900);
+  // 0 수동 / 1 반자동(② 무기 스킬은 직접) / 2 자동(①②③ 모두)
+  setAuto(level, silent) {
+    if (level === true) level = 2; if (level === false) level = 0;
+    this.run.autoLevel = level; this.run.autoMode = level > 0;
+    this.sim.autoLevel = level; this.sim.autoMode = level > 0;
+    this.manualBtn.classList.toggle('on', level === 0);
+    this.semiBtn.classList.toggle('on', level === 1);
+    this.autoBtn.classList.toggle('on', level === 2);
+    if (!silent) Game.toast(['수동: 스킬을 직접 써요', '반자동: ② 무기 스킬만 직접 써요', '자동: 모든 스킬을 알아서 써요'][level], 1100);
   },
 
   setOrder(k, silent) {
@@ -380,6 +385,7 @@ const BattleScene = {
     row.appendChild(btn('계속 ▶', 'primary', () => { Game.closeModal(); this.paused = false; }, { id: 'pause-resume' }));
     row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(this.run, () => { this.sim.strategy = this.run.strategy; this.openPause(); }), { id: 'pause-strategy' }));
     row.appendChild(btn(`효과음: ${Game.settings.sound ? '켬' : '끔'}`, '', (e) => { Game.settings.sound = !Game.settings.sound; Sfx.enabled = Game.settings.sound; Game.saveSettings(); e.target.innerHTML = `효과음: ${Game.settings.sound ? '켬' : '끔'}`; }, { id: 'pause-sound' }));
+    row.appendChild(btn(`음악: ${Game.settings.music !== false ? '켬' : '끔'}`, '', (e) => { Game.settings.music = Game.settings.music === false; Music.setEnabled(Game.settings.music); Game.saveSettings(); e.target.innerHTML = `음악: ${Game.settings.music ? '켬' : '끔'}`; }, { id: 'pause-music' }));
     row.appendChild(btn('원정 포기', 'danger', () => this.confirmGiveUp(), { id: 'pause-giveup' }));
     box.appendChild(row);
     Game.modal(box, { dim: true });
@@ -689,7 +695,7 @@ const BattleScene = {
         if (cdEl.textContent !== txt) cdEl.textContent = txt;
         const ready = sim.canCast(h, slot);
         const hint = slot === 's2' ? sim.skillHint(h, slot) : '';
-        const auto = sim.autoMode && st[slot] && st[slot].auto;
+        const auto = sim.autoMode && st[slot] && sim.slotAuto(slot, st[slot]);
         let tag = '';
         const sk = sim.skillDef(h, slot);
         const dmgSkill = sk.power > 0 && sk.target !== 'self' && sk.target !== 'party';

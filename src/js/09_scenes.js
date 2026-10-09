@@ -20,6 +20,11 @@ const TitleScene = {
       this.soundBtn.innerHTML = `효과음: ${Game.settings.sound ? '켬' : '끔'}`;
     }, { id: 'btn-sound' });
     col.appendChild(this.soundBtn);
+    this.musicBtn = btn(`음악: ${Game.settings.music !== false ? '켬' : '끔'}`, '', () => {
+      Game.settings.music = Game.settings.music === false; Music.setEnabled(Game.settings.music); Game.saveSettings();
+      this.musicBtn.innerHTML = `음악: ${Game.settings.music ? '켬' : '끔'}`;
+    }, { id: 'btn-music' });
+    col.appendChild(this.musicBtn);
     box.appendChild(col);
     this.seedLabel = el('div', 'title-seed', `시드 ${this.seed}`);
     box.appendChild(this.seedLabel);
@@ -90,9 +95,9 @@ function openPreBattle(node) {
   const mode = el('div', 'pb-mode');
   mode.appendChild(el('span', '', '전투 방식'));
   const seg = el('div', 'seg');
-  const a = btn('자동', 'seg-btn' + (run.autoMode ? ' on' : ''), () => { run.autoMode = true; a.classList.add('on'); m.classList.remove('on'); }, { id: 'pb-auto' });
-  const m = btn('수동', 'seg-btn' + (!run.autoMode ? ' on' : ''), () => { run.autoMode = false; m.classList.add('on'); a.classList.remove('on'); }, { id: 'pb-manual' });
-  seg.appendChild(a); seg.appendChild(m);
+  const lv = run.autoLevel !== undefined ? run.autoLevel : 1;
+  const bs = ['수동', '반자동', '자동'].map((name, i) => btn(name, 'seg-btn' + (lv === i ? ' on' : ''), () => { run.autoLevel = i; run.autoMode = i > 0; bs.forEach((b, j) => b.classList.toggle('on', j === i)); }, { id: ['pb-manual', 'pb-semi', 'pb-auto'][i] }));
+  bs.forEach((b) => seg.appendChild(b));
   mode.appendChild(seg);
   box.appendChild(mode);
   const row = el('div', 'btn-row');

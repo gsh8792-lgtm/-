@@ -56,6 +56,7 @@ function newRun(seed) {
     gotSupply: false,
     stats: { kills: 0, battles: 0, nodes: 0, startTime: performance.now(), dealt: {}, healed: {}, deathsAt: {} },
     autoMode: true,
+    autoLevel: 1,           // 0 수동 / 1 반자동(② 직접) / 2 자동
     lastNode: null,
     result: null,
     tier: prof.tier || 0,   // 난이도 단계 (0 = 기본)
@@ -72,7 +73,7 @@ function partyAlive(run) { return partyIds(run).map((id) => run.heroes[id]).filt
 // ---------------------------------------------------------------- 게임 (장면 상태 머신)
 const Game = {
   run: null,
-  settings: { sound: true, speed: 1, seenHints: {} },
+  settings: { sound: true, music: true, speed: 1, seenHints: {} },
   scene: null, sceneName: '', scenes: {},
   canvas: null, ctx: null, ui: null, overlay: null,
   time: 0,
@@ -87,6 +88,7 @@ const Game = {
     this.ui.className = 'scene-' + name;
     this.sceneName = name;
     this.scene = this.scenes[name];
+    Music.forScene(name);
     if (this.scene.enter) this.scene.enter(params || {});
     document.body.dataset.scene = name;
   },
@@ -135,6 +137,7 @@ const Game = {
     const s = safeStorageGet('fe_settings', null);
     if (s) Object.assign(this.settings, s);
     Sfx.enabled = this.settings.sound;
+    Music.enabled = this.settings.music !== false;
   },
   saveSettings() { safeStorageSet('fe_settings', this.settings); },
 };

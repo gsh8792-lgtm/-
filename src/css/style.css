@@ -474,3 +474,5 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .fork-box .btn-col { margin-top: 10px; }
 .fork-box .choice small { display: block; color: var(--muted); font-weight: 400; }
 .map-node.t-unknown { font-size: 26px; }
+
+.seg3 .seg-btn { min-width: 58px; padding: 4px 8px; }
