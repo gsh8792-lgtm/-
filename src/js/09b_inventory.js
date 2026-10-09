@@ -20,7 +20,7 @@ function refreshRunLoadout(run) {
 // 장비 외형(무기 발광·갑옷 오라)은 캐릭터 에셋 확정 후 구현 — 구상은 docs/GAME_DESIGN.md 3-3
 
 // ---------------------------------------------------------------- 아이템 아이콘 (코드 드로잉, 임시 에셋)
-const WEAPON_SHAPE = { tank: 'mace', melee: 'sword', ranged: 'bow', mage: 'staff', support: 'holy' };
+const WEAPON_SHAPE = { tank: 'mace', melee: 'sword', rogue: 'sword', ranged: 'bow', mage: 'staff', support: 'holy' };
 function drawItemIcon(ctx, item, s) {
   const base = EQ.BASE[item.base], g = EQ.G[item.grade];
   const col = g.color;

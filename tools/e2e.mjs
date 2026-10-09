@@ -439,7 +439,7 @@ async function playRun(p, seed, opts) {
   const p = await newPage();
   await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.scenes.title.start(55); });
   await p.waitForTimeout(200);
-  ok('시작: 기본 캐릭터 5명 + 소환권 5장', await p.evaluate(() => { const P = window.GAME.Game.profile; return window.GAME.GACHA.ownedIds(P).length === 5 && P.tickets === 5; }));
+  ok('시작: 기본 캐릭터 5명 + 선물 캐릭터 + 소환권 5장', await p.evaluate(() => { const P = window.GAME.Game.profile, C = window.GAME.CHARACTERS; return window.GAME.GACHA.ownedIds(P).length === C.filter((c) => c.starter || c.gift).length && P.tickets === 5; }));
   await p.click('#btn-gacha'); await p.click('#gacha-5');
   ok('소환 5회 → 결과 5장 + 소환권 소모', (await p.locator('.gr-card').count()) === 5 && (await p.evaluate(() => window.GAME.Game.profile.tickets)) === 0);
   await p.screenshot({ path: `${OUT}/gacha.png` });

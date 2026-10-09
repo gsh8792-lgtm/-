@@ -30,6 +30,18 @@ const TALENTS = {
       T('m_s2', '파쇄 숙련', 's2pow', 0.04, 2), T('m_ult', '전투의 열기', 'ultgain', 0.03, 2),
       { id: 'm_cap2', name: '산산조각', tier: 3, max: 1, cap: true, desc: '적이 그로기가 되면 ② 쿨타임 30% 감소 + 그로기 적에게 피해 +15%', fx: [['vsbroken', 0.15]], passive: ['hunter_rain', 0.3] } ] },
   ],
+  rogue: [
+    { key: 'assassin', name: '암살자', desc: '숨어서 한 방', nodes: [
+      T('k_crit', '급소 감각', 'crit', 0.012, 0), T('k_ms', '그림자 발', 'mspd', 0.03, 0),
+      T('k_amb', '기습 연마', 'ambush', 0.1, 1), T('k_back', '등 뒤 노리기', 'backstab', 0.04, 1),
+      T('k_s1', '단검 숙련', 's1pow', 0.04, 2), T('k_atk', '날 세우기', 'atk_pct', 0.02, 2),
+      { id: 'k_cap1', name: '그림자 군주', tier: 3, max: 1, cap: true, desc: '전투 시작 시 은신 +2초(특성이 없어도 은신) + 기습 피해 +40%', fx: [['ambush', 0.4]], passive: ['shadow_open', 2] } ] },
+    { key: 'venom', name: '독술사', desc: '쌓고 터뜨린다', nodes: [
+      T('k_dot', '독 조합', 'dotdmg', 0.06, 0), T('k_hp', '내성', 'hp_pct', 0.03, 0),
+      T('k_cdr', '빠른 손', 'cdr', 0.012, 1), T('k_s2', '독 숙련', 's2pow', 0.04, 1),
+      T('k_ult', '독의 순환', 'ultgain', 0.03, 2), T('k_ultp', '독의 정수', 'ultpow', 0.03, 2),
+      { id: 'k_cap2', name: '맹독 심장', tier: 3, max: 1, cap: true, desc: '중독 최대 겹 +3 + 지속 피해 +25%', fx: [['dotdmg', 0.25], ['poisonstack', 3]] } ] },
+  ],
   ranged: [
     { key: 'sniper', name: '저격수', desc: '한 발의 무게', nodes: [
       T('r_cd', '정조준', 'critdmg', 0.05, 0), T('r_crit', '매의 눈', 'crit', 0.012, 0),
@@ -68,7 +80,7 @@ const TALENTS = {
   ],
 };
 // 노드 설명 문구 (랭크당)
-const TALENT_STAT_NAME = { hp_pct: '최대 HP', dr: '받는 피해 감소', ccdur: '기절·도발 지속', crushres: '짓누름 저항', s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultgain: '필살기 충전', ultpow: '필살기 위력', thorns: '근접 평타 반사', atk_pct: '공격력', counter: '반격 확률', breakdmg: '그로기 피해', crit: '치명타 확률', aspd: '공격 속도', critdmg: '치명타 피해', mspd: '이동 속도', vsbroken: '그로기 적 피해', skilldmg: '스킬 피해', cdr: '쿨타임 감소', dotdmg: '지속 피해', heal: '회복량' };
+const TALENT_STAT_NAME = { hp_pct: '최대 HP', dr: '받는 피해 감소', ccdur: '기절·도발 지속', crushres: '짓누름 저항', s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultgain: '필살기 충전', ultpow: '필살기 위력', thorns: '근접 평타 반사', atk_pct: '공격력', counter: '반격 확률', breakdmg: '그로기 피해', crit: '치명타 확률', aspd: '공격 속도', critdmg: '치명타 피해', mspd: '이동 속도', vsbroken: '그로기 적 피해', skilldmg: '스킬 피해', cdr: '쿨타임 감소', dotdmg: '지속 피해', heal: '회복량', ambush: '기습 피해', backstab: '등 뒤 평타 피해', poisonstack: '중독 최대 겹' };
 function talentPoints(p, id) { const lv = EQ.charLevel(p, id); return Math.max(0, lv - 1); }
 function talentState(p, id) { p.talents = p.talents || {}; return (p.talents[id] = p.talents[id] || {}); }
 function talentSpent(p, id) { const s = talentState(p, id); return Object.values(s).reduce((a, v) => a + v, 0); }

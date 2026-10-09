@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import path from 'path';
 const RUNS = +(process.argv[2] || 6), MULT = +(process.argv[3] || 16), SMART = process.argv[4] === 'smart'; // smart: 잘 컨트롤하는 플레이어 흉내
 const LV = +(process.env.LV || 5), GEAR = process.env.GEAR || 'uc', PREP = process.env.PREP !== '0'; // PREP: 상인에게서 물약 4 · 상급 1 · 식량 3 · 함정 도구 1을 사 가고, 던전에서 HP 40% 아래 동료에게 쓴다 // 준비된 파티: 캐릭터 레벨 LV + 상인 UC 무기·갑옷 (GEAR=none이면 맨몸)
-const PARTIES = [['tobi', 'danbi', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
+const PARTIES = process.env.PARTIES ? process.env.PARTIES.split(';').map((s) => s.split('+')) : [['tobi', 'danbi', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const p = await ctx.newPage();

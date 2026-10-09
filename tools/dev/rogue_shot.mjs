@@ -1,0 +1,20 @@
+// 도적 확인: node tools/dev/rogue_shot.mjs
+import { chromium } from 'playwright';
+import path from 'path';
+const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(300);
+await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, battle: 1, break: 1, charge: 1, crush: 1 }; G.scenes.title.start(9);
+  for (const id of ['ruka', 'nera']) G.profile.chars[id] = window.GAME.GACHA.newChar();
+  G.run.party = ['tobi', 'yeon', 'bori']; window.GAME.refreshRunLoadout(G.run);
+  G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_archer', 'goblin_shaman']] } }); });
+await p.waitForTimeout(2200); await p.screenshot({ path: 'test-output/rogue_battle.png' });
+await p.waitForTimeout(2500); await p.screenshot({ path: 'test-output/rogue_battle2.png' });
+await p.evaluate(() => { const S = window.GAME.Game.scene, h = S.sim.heroes[1]; h.ult = 100; S.sim.cast(h, 'ult', S.sim.resolveTarget(h, 'ult')); });
+await p.waitForTimeout(500); await p.screenshot({ path: 'test-output/rogue_ult.png' });
+await p.waitForTimeout(8000);
+const st = await p.evaluate(() => { const s = window.GAME.Game.scene.sim; return { t: Math.round(s.time), out: s.outcome, hp: s.heroes.map((h) => h.key + ':' + Math.round(h.hp)), dealt: s.heroes.map((h) => h.key + ':' + Math.round(h.stats.dealt)) }; });
+console.log(JSON.stringify(st));
+await p.evaluate(() => { const G = window.GAME.Game; G.go('field'); window.GAME.openRoster({}); }); await p.waitForTimeout(500); await p.screenshot({ path: 'test-output/rogue_roster.png' });
+await p.evaluate(() => { window.GAME.Game.closeModal(); const G = window.GAME.Game; G.profile.chars.yeon.lv = 30; window.GAME.openTalents('yeon'); }); await p.waitForTimeout(500); await p.screenshot({ path: 'test-output/rogue_talent.png' });
+console.log('errors', errs); await b.close();

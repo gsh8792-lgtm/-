@@ -65,6 +65,28 @@ Object.assign(SKILLS, {
   }
 })();
 
+// 도적 직업 (v0.35): 장비 DB에 직업·장비 라인을 덧붙인다 (근딜 장비를 바탕으로 이름만 바꿈)
+(function addRogueClass() {
+  const DB = EQUIP_DB;
+  if (DB.classes.some((c) => c.key === 'rogue')) return;
+  DB.classes.push({ key: 'rogue', hero: 'yeon', name: '도적', heroName: '연', baseAtk: 37, baseHp: 265, trait: 'crit', traitName: '치명타 확률' });
+  DB.classStat.rogue = Object.assign({}, DB.classStat.ranged);
+  DB.skillBonus.rogue = JSON.parse(JSON.stringify(DB.skillBonus.melee));
+  const names = { weapon: ['독 바른 단검', '쌍날 비수', '그림자 송곳', '맹독 쌍검'], armor: ['밤그림자 두건', '도둑의 가죽옷', '연막 망토', '독술사의 외투'], medal: ['그림자의 소울 메달', '맹독의 소울 메달'] };
+  for (const slot in names) names[slot].forEach((name, i) => {
+    const base = DB.items.find((it) => it.cls === 'melee' && it.slot === slot && it.line === (slot === 'medal' ? i + 1 : 1));
+    DB.items.push(Object.assign({}, base, { id: `rogue_${slot}_${i + 1}`, name, cls: 'rogue', line: i + 1, innate: null }));
+  });
+})();
+Object.assign(SKILLS, {
+  gs_rogue_s1_b: { name: '목 긋기', target: 'enemy', behind: true, cd: 6, power: 1.5, interrupt: 2, effects: [{ status: 'bleed', dur: 5, dps: 0.3 }, { status: 'vuln', dur: 3 }], fx: 'slash', desc: '등 뒤에서 베기 + 5초 출혈 + 3초 취약. 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_rogue_s1_c: { name: '독침 투척', target: 'enemy', ranged: true, cd: 4, power: 0.9, interrupt: 1, effects: [{ status: 'poison', dur: 8, dps: 0.2 }, { status: 'slow', dur: 3, value: 0.3 }], fx: 'pierce', desc: '멀리서 독침 — 중독 1겹 + 3초 둔화. 끊기 ●. 쿨이 짧아 독을 빨리 쌓는다.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_rogue_s1_d: { name: '맹독 찌르기', target: 'enemy', behind: true, cd: 7, power: 0.8, hits: 2, interrupt: 2, effects: [{ status: 'poison', dur: 8, dps: 0.2 }], fx: 'flurry', desc: '등 뒤에서 2연타 — 중독 2겹. 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_rogue_s2_b: { name: '독 폭탄', target: 'area_enemy', cd: 11, power: 0.9, areaR: 90, hint: 'cluster', effects: [{ status: 'poison', dur: 8, dps: 0.25 }], fx: 'poison', desc: '지점 범위 피해 + 모두 중독 1겹. 뭉친 적에게.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_rogue_s2_c: { name: '그림자 도약', target: 'enemy', behind: true, cd: 10, power: 1.6, effects: [{ status: 'stealth', dur: 3, to: 'self', after: true }], fx: 'slash', desc: '적 등 뒤로 도약해 베고 3초 은신 — 다음 공격은 기습.', ai: { cond: 'always', target: 'focus' } },
+  gs_rogue_s2_d: { name: '독 터뜨리기', target: 'enemy', cd: 12, power: 1.0, detonate: { status: 'poison', mult: 1.0 }, effects: [], fx: 'flurry', desc: '타격 + 대상의 중독을 한꺼번에 터뜨림(남은 독 피해 전부). 5겹일 때 최고.', ai: { cond: 'always', target: 'focus' } },
+});
+
 // 장비 종류(EQUIP_DB 아이템 id) → 스킬
 const GEAR_SKILLS = {
   tank_armor_1: 'tobi_s1', tank_armor_2: 'gs_tank_s1_b', tank_armor_3: 'gs_tank_s1_c',
@@ -80,9 +102,11 @@ const GEAR_SKILLS = {
   tank_armor_4: 'gs_tank_s1_d', tank_weapon_4: 'gs_tank_s2_d', melee_armor_4: 'gs_melee_s1_d', melee_weapon_4: 'gs_melee_s2_d',
   ranged_armor_4: 'gs_ranged_s1_d', ranged_weapon_4: 'gs_ranged_s2_d', mage_armor_4: 'gs_mage_s1_d', mage_weapon_4: 'gs_mage_s2_d',
   support_armor_4: 'gs_support_s1_d', support_weapon_4: 'gs_support_s2_d',
+  rogue_armor_1: 'yeon_s1', rogue_armor_2: 'gs_rogue_s1_b', rogue_armor_3: 'gs_rogue_s1_c', rogue_armor_4: 'gs_rogue_s1_d',
+  rogue_weapon_1: 'yeon_s2', rogue_weapon_2: 'gs_rogue_s2_b', rogue_weapon_3: 'gs_rogue_s2_c', rogue_weapon_4: 'gs_rogue_s2_d',
 };
 // 기본 스킬의 자동 전략도 같은 형식으로 (스킬을 다시 기본으로 바꿨을 때 되돌릴 값)
-for (const id of ['tobi', 'danbi', 'byeolbi', 'soldam', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
+for (const id of ['tobi', 'danbi', 'yeon', 'byeolbi', 'soldam', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
   const sk = SKILLS[HEROES[id].skills[i]], p = AI_PRESETS[id][slot];
   if (!sk.ai) sk.ai = { cond: p.cond, target: p.target, param: p.param };
 }

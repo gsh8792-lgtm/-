@@ -525,6 +525,7 @@ const BattleScene = {
       case 'regenStop': this.popup(e.unit.x, this.unitTop(e.unit) - 16, '재생 멈춤!', '#ffb07a', 16, { label: true }); break;
       case 'reflect': this.popup(e.target.x, this.unitTop(e.target) - 6, `반사 ${e.v}`, '#9cd8ff', 14); this.spark(e.target.x, e.target.y - 30, 4, '#bfe8ff'); break;
       case 'counter': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '반격!', '#bfe8ff', 18, { label: true }); this.spark(e.target.x, e.target.y - 30, 8, '#bfe8ff'); Sfx.play('hit'); this.shake = Math.max(this.shake, 3); break;
+      case 'ambush': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '기습!', '#d8b0ff', 20, { label: true }); this.spark(e.target.x, e.target.y - 30, 10, '#c8a0ff'); Sfx.play('hit'); break;
       case 'vengeance': if (e.v > 5) this.popup(e.unit.x, this.unitTop(e.unit) - 34, `응징 +${e.v}`, '#ffb0ff', 18, { label: true }); break;
       case 'wipeStart': this.banner = { text: e.name, sub: e.hint, t: 0, dur: 1.8 }; Sfx.play('phase'); this.shake = Math.max(this.shake, 6); this.slowmo = 0.6; break;
       case 'wipeStopped': this.popup(e.unit.x, this.unitTop(e.unit) - 30, `${e.name} 저지!`, '#9cf0ff', 24, { label: true }); Sfx.play('cancel'); break;
@@ -580,6 +581,9 @@ const BattleScene = {
         this.fx.push({ type: 'flash', t: 0, dur: 0.5, color: 'rgba(200,170,255,' });
         for (const en of this.sim.aliveEnemies()) for (let i = 0; i < 3; i++) this.fx.push({ type: 'meteor', tx: en.x + (Math.random() - 0.5) * 40, ty: en.y, t: -i * 0.08 - Math.random() * 0.1, dur: 0.4, big: true });
         break;
+      case 'smoke': this.fx.push({ type: 'zone', x: h.x, y: h.y, r: 70, t: 0, dur: 0.6, color: '120,110,150' }); this.sparkle(h.x, h.y - 30, '#b8b0d0', 12); break;
+      case 'poison': this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.9, color: '130,210,60' }); break;
+      case 'venom': for (const a of this.sim.aliveHeroes()) this.sparkle(a.x, a.y - 30, '#9ae060', 8); break;
       case 'heal': if (tu) this.sparkle(tu.x, tu.y - 30, '#9cf0a8', 14); break;
       case 'aoeheal': this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.7, color: '140,240,160' }); break;
       case 'taunt': this.fx.push({ type: 'zone', x: h.x, y: h.y, r: 70, t: 0, dur: 0.5, color: '200,106,240' }); this.popup(h.x, this.unitTop(h) - 30, '이리 와!', '#e0a0ff', 20); break;
@@ -934,6 +938,7 @@ const BattleScene = {
   },
 
   drawUnit(ctx, u, t, highlight) {
+    if (u.statuses && u.statuses.stealth && !u._ghost) { ctx.save(); ctx.globalAlpha = 0.38 + Math.sin(t * 4) * 0.06; this.drawUnit(ctx, Object.assign({}, u, { _ghost: true }), t, highlight); ctx.restore(); return; } // 은신: 반투명
     if (u.vanished) { ctx.save(); ctx.globalAlpha = 0.18 + Math.sin(t * 5) * 0.08; this.drawUnit(ctx, Object.assign({}, u, { vanished: false }), t, false); ctx.restore(); return; }
     const enemy = u.side === 'enemy';
     const sc = this.unitScale(u);

@@ -105,6 +105,8 @@ const STATUS = {
   resonance: { name: '공명', short: '공', color: '#ffe680', desc: '주는 그로기 피해 증가.' },
   invuln: { name: '무적', short: '무', color: '#fff6c0', desc: '받는 피해 없음.' },
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
+  stealth: { name: '은신', short: '은', color: '#8a7ab8', desc: '적이 노리지 않는다. 은신 중 첫 공격은 기습(피해 ×1.8, 반드시 치명타)이 되고 은신이 풀린다.' },
+  poison: { name: '중독', short: '독', color: '#7ac83a', desc: '매초 피해. 다시 걸면 최대 5겹까지 쌓인다. 받는 회복량 -30%.' },
 };
 
 // ---------------------------------------------------------------- 영웅
@@ -112,6 +114,7 @@ const STATUS = {
 const HEROES = {
   tobi:  { name: '토비',   species: '수호기사', role: 'tank',    roleName: '탱커',   hp: 520, atk: 22, atkInterval: 1.7, range: 'melee', reach: 0, moveSpeed: 72,  def: 0.15, order: 0, skills: ['tobi_s1', 'tobi_s2'], ult: 'tobi_ult', traits: ['sturdy'],           portraitColor: '#9a6232', accent: '#e98a80', sprite: 'knight' },
   danbi: { name: '단비',   species: '검사',     role: 'melee',   roleName: '근딜',   hp: 300, atk: 40, atkInterval: 1.35, range: 'melee', reach: 0, moveSpeed: 95, def: 0.05, order: 1, skills: ['danbi_s1', 'danbi_s2'], ult: 'danbi_ult', traits: ['brave'],          portraitColor: '#9a958f', accent: '#6fb08a', sprite: 'sword' },
+  yeon:  { name: '연',     species: '도적',     role: 'rogue',   roleName: '도적',   hp: 265, atk: 37, atkInterval: 1.1, range: 'melee', reach: 0, moveSpeed: 108, def: 0.04, order: 1, skills: ['yeon_s1', 'yeon_s2'], ult: 'yeon_ult', traits: ['shadow'],         portraitColor: '#7a8a6a', accent: '#8ad06a', sprite: 'rogue' },
   byeolbi: { name: '별비', species: '궁수',     role: 'ranged',  roleName: '원딜',   hp: 260, atk: 36, atkInterval: 1.5, range: 'ranged', reach: 220, moveSpeed: 78, def: 0.0, order: 2, skills: ['byeolbi_s1', 'byeolbi_s2'], ult: 'byeolbi_ult', traits: ['keen'],     portraitColor: '#a49c92', accent: '#e8a83a', sprite: 'archer' },
   soldam: { name: '솔담',  species: '마법사',   role: 'mage',    roleName: '매지션', hp: 240, atk: 44, atkInterval: 1.9, range: 'ranged', reach: 210, moveSpeed: 66, def: 0.0, order: 3, skills: ['soldam_s1', 'soldam_s2'], ult: 'soldam_ult', traits: ['cautious'],    portraitColor: '#8a5a34', accent: '#8cc3a0', sprite: 'mage' },
   bori:  { name: '보리',   species: '사제',     role: 'support', roleName: '서포터', hp: 280, atk: 16, atkInterval: 1.9, range: 'ranged', reach: 190, moveSpeed: 70, def: 0.0, order: 4, skills: ['bori_s1', 'bori_s2'], ult: 'bori_ult', traits: ['gentle'],           portraitColor: '#fff4e0', accent: '#8cc3a0', sprite: 'priest' },
@@ -127,6 +130,7 @@ const TRAITS = {
   sturdy:   { name: '든든함', desc: '차지 공격 피해 -40%. 같은 차지 범위 안 동료의 피해 -60%.' },
   keen:     { name: '예리함', desc: '치명타 확률 +10%.' },
   gentle:   { name: '다정함', desc: '주는 회복량 +15%.' },
+  shadow:   { name: '그림자', desc: '전투 시작 시 3초 은신. 적 등 뒤에서 치는 평타 피해 +20%.' },
   counter:  { name: '반격', desc: '받은 근접 평타 피해의 30%를 되돌린다. 막기(가드) 중에는 25% 확률로 즉시 반격 베기(공격력 ×1.4).' },
 };
 
@@ -142,6 +146,10 @@ const SKILLS = {
   danbi_s1: { name: '급소 베기',  target: 'enemy',     cd: 6,  power: 1.7, interrupt: 2, interruptBack: 0.5, effects: [{ status: 'bleed', dur: 5, dps: 0.35 }], fx: 'slash', desc: '강타 + 5초 출혈. 끊기 ●● (정면 ●).' },
   danbi_s2: { name: '회전 베기',  target: 'self_area', cd: 9, power: 1.3, areaR: 80, hint: 'nearEnemies', effects: [], fx: 'spin', desc: '주변 적 모두 베기.' },
   danbi_ult:{ name: '난도질',     target: 'enemy',     cd: 0,  power: 0.85, hits: 6, effects: [{ status: 'bleed', dur: 6, dps: 0.5 }], fx: 'flurry', desc: '6연속 베기 + 6초 강한 출혈.' },
+
+  yeon_s1:  { name: '독 단검',    target: 'enemy',     cd: 5,  power: 1.2, behind: true, interrupt: 2, effects: [{ status: 'poison', dur: 8, dps: 0.22 }], fx: 'slash', desc: '등 뒤로 돌아 찌르기 + 8초 중독(최대 5겹). 끊기 ●●.' },
+  yeon_s2:  { name: '연막',       target: 'self',      cd: 13, power: 0,   hint: 'selfThreat', effects: [{ status: 'stealth', dur: 4, to: 'self' }], fx: 'smoke', desc: '4초 은신 — 적이 노리던 대상을 잃는다. 은신 중 첫 공격은 기습(×1.8, 치명타).' },
+  yeon_ult: { name: '맹독 폭발',  target: 'enemy',     cd: 0,  power: 2.0, detonate: { status: 'poison', mult: 1.6 }, effects: [{ status: 'stealth', dur: 2, to: 'self', after: true }], fx: 'flurry', desc: '강타 + 대상의 중독을 한꺼번에 터뜨림(남은 독 피해 ×1.6). 그 뒤 2초 은신.' },
 
   byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '5초 취약. 끊기 ●●, 흔들림 +3초.' },
   byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정한 범위에 화살비.' },
@@ -197,6 +205,7 @@ const AI_TARGET_RULES = {
 const AI_PRESETS = {
   tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'smartInterrupt', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
   danbi:   { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
+  yeon:    { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'auto', target: 'focus' } },
   byeolbi: { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
   soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'nearest' } },
   bori:    { s1: { auto: true, cond: 'always', target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },

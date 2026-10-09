@@ -54,6 +54,7 @@ class BattleSim {
     if (this.surprise) { this.introT = 0.2; for (const h of this.heroes) { h.actLock = 1.6; h.castLock = 1.6; h.atkTimer = 1.6; } this.events.push({ type: 'surprise' }); }
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
     for (const h of this.aliveHeroes()) { const pv = this.passive(h, 'first_breath'); if (pv) h.ult = Math.min(100, h.ult + pv); }
+    for (const h of this.aliveHeroes()) if (h.def.traits.includes('shadow') || this.passive(h, 'shadow_open')) h.statuses.stealth = { t: (h.def.traits.includes('shadow') ? 3 : 0) + CONST.BATTLE_INTRO + (this.passive(h, 'shadow_open') || 0) }; // 도적: 전투 시작 은신
   }
 
   // 갑옷 패시브(전투 규칙형) 수치. 없으면 0
@@ -302,13 +303,14 @@ class BattleSim {
         else if (this.smartAuto && enemies.some((e) => e.def.hunter)) u.target = this.nearest(u, enemies.filter((e) => e.def.hunter)); // 잘하는 플레이: 후열 사냥꾼부터
         else if (!enemies.length) u.target = null;
         else if (u.role === 'ranged') { let b = enemies[0]; for (const e of enemies) if (this.hpPct(e) < this.hpPct(b)) b = e; u.target = b; }
+        else if (u.role === 'rogue') { const back = enemies.filter((e) => !e.melee || e.def.hunter); u.target = back.length ? back.reduce((a, e) => (e.hp < a.hp ? e : a)) : this.nearest(u, enemies); } // 도적: 후열(원거리·사냥꾼)부터 파고든다
         else u.target = this.nearest(u, enemies);
-        if (this.autoMode && (this.smartAuto || (u.role !== 'melee' && u.role !== 'tank'))) { const buds = enemies.filter((e) => e.key === 'wipe_bud'); if (buds.length) u.target = this.nearest(u, buds); } // 전멸기 꽃봉오리: 자동은 원거리만 (근접은 직접 집중 공격으로 돌려야)
+        if (this.autoMode && (this.smartAuto || (u.role !== 'melee' && u.role !== 'rogue' && u.role !== 'tank'))) { const buds = enemies.filter((e) => e.key === 'wipe_bud'); if (buds.length) u.target = this.nearest(u, buds); } // 전멸기 꽃봉오리: 자동은 원거리만 (근접은 직접 집중 공격으로 돌려야)
       }
       if (this.aiProfile === 'gimmick') {
         const br = enemies.find((e) => e.broken > 0);
         if (br) u.target = br;
-        const squishy = u.role !== 'tank' && (u.role !== 'melee' || this.hpPct(u) < 0.5);
+        const squishy = u.role !== 'tank' && ((u.role !== 'melee' && u.role !== 'rogue') || this.hpPct(u) < 0.5);
         if (squishy) for (const e of enemies) if (e.charge && this.inChargeZone(u, e.charge)) { // 위험 범위 밖으로
           u.tx = clamp(e.charge.cx - e.charge.r - 30, this.X0, this.X1); u.ty = u.y; return;
         }
@@ -338,6 +340,7 @@ class BattleSim {
         const r = this.attackRange(u, t) * 0.8;
         let side = u.x <= t.x ? -1 : 1;
         if (CONST.BREAK_V2 && t.poiseMax && u.role === 'melee' && t.face) side = -t.face; // 큰 적은 등 뒤에서 (후방 끊기)
+        if (u.role === 'rogue' && t.face) side = -t.face; // 도적은 언제나 등 뒤로
         u.tx = clamp(t.x + side * r, this.X0, this.X1); u.ty = t.y + ((u.uid % 3) - 1) * 10;
       } else {
         const keep = this.order === 'charge' ? u.reach * 0.6 : u.reach * 0.88;
@@ -356,8 +359,10 @@ class BattleSim {
       }
     } else {
       if (u.charge || u.call || u.def.immobile) { u.tx = u.x; u.ty = u.y; return; }
-      const heroes = this.aliveHeroes();
-      if (!heroes.length) return;
+      const all = this.aliveHeroes();
+      if (!all.length) return;
+      const seen = all.filter((h) => !h.statuses.stealth), heroes = seen.length ? seen : all; // 은신한 영웅은 노리지 않는다
+      if (u.target && u.target.statuses && u.target.statuses.stealth && seen.length) u.retarget = 0;
       if (u.statuses.taunt) { const tt = this.heroes.find((h) => h.uid === u.statuses.taunt.src.uid && h.alive); if (tt) { u.target = tt; u.retarget = CONST.TAUNT_LINGER; } } // 도발이 끝나도 잠시 탱커를 계속 노린다
       else if (u.retarget <= 0 || !u.target || !u.target.alive) {
         u.retarget = F.RETARGET_SEC * 2;
@@ -669,10 +674,17 @@ class BattleSim {
     if (tgt.vanished) return 0; // 안개 속 (전멸기 시전 중)
     info = info || {};
     let dmg = raw, crit = false;
+    const ambush = src && src.side === 'hero' && src.statuses.stealth && !info.dot && !info.reflect;
     if (!info.dot) {
       dmg *= 0.9 + this.rng() * 0.2;
-      if (!info.noCrit && src && this.rng() < this._critChance(src)) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
+      if (!info.noCrit && src && (ambush || this.rng() < this._critChance(src))) { crit = true; dmg *= CONST.CRIT_MULT + ((src.mods && src.mods.critdmg) || 0); }
     }
+    if (ambush) { // 기습: 은신 중 첫 공격
+      dmg *= 1.8 + ((src.mods && src.mods.ambush) || 0);
+      delete src.statuses.stealth;
+      this.events.push({ type: 'ambush', unit: src, target: tgt });
+    }
+    if (src && src.side === 'hero' && src.melee && info.basic && tgt.face && (src.x - tgt.x) * tgt.face < 0 && (src.def.traits.includes('shadow') || (src.mods && src.mods.backstab))) dmg *= (src.def.traits.includes('shadow') ? 1.2 : 1) + ((src.mods && src.mods.backstab) || 0); // 그림자: 등 뒤 평타
     if (tgt.wshield > 0 && src && src.side === 'hero') { // 전멸기 껍질: 방어를 거치기 전 피해로 깎는다 (순간 화력)
       const ab = Math.min(tgt.wshield, dmg); tgt.wshield -= ab; dmg -= ab;
       if (tgt.wshield <= 0) { tgt.wshield = 0; if (tgt.wipe && tgt.wipe.type === 'shield') this._wipeStopped(tgt); }
@@ -809,6 +821,7 @@ class BattleSim {
     let a = amount * (silent ? 1 : CONST.HEAL_MULT) * (1 + ((src && src.mods && src.mods.heal) || 0));
     if (src && src.def && src.def.traits && src.def.traits.includes('gentle')) a *= 1.15;
     if (tgt.statuses.burn) a *= 0.5;
+    if (tgt.statuses.poison) a *= 0.7;
     a = Math.round(Math.min(a, tgt.maxHp - tgt.hp));
     if (a <= 0) return 0;
     tgt.hp += a;
@@ -842,7 +855,11 @@ class BattleSim {
     if (eff.value) s.value = eff.value;
     if (eff.all) s.all = true;
     const prev = tgt.statuses[eff.status];
-    if (prev && prev.dps && s.dps) s.dps = Math.max(prev.dps, s.dps);
+    if (eff.status === 'poison' && s.dps) { // 중독: 겹마다 피해가 쌓인다 (최대 5겹, 시간은 새로)
+      s.unit = Math.max(s.dps, (prev && prev.unit) || 0);
+      s.n = Math.min(5 + ((sm.poisonstack) || 0), ((prev && prev.n) || 0) + 1);
+      s.dps = s.unit * s.n;
+    } else if (prev && prev.dps && s.dps) s.dps = Math.max(prev.dps, s.dps);
     if (prev) s.acc = prev.acc;
     tgt.statuses[eff.status] = s;
     this.events.push({ type: 'status', target: tgt, status: eff.status });
@@ -891,6 +908,12 @@ class BattleSim {
       case 'nearEnemies': return this.aliveEnemies().filter((e) => this.dist(h, e) <= sk.areaR + 10).length >= 2 ? 'hint' : '';
       case 'cluster': { const p = this.bestAreaPoint(sk.areaR, this.aliveEnemies()); return p && p.n >= 3 ? 'hint' : ''; }
       case 'alliesHurt': return this.aliveHeroes().filter((a) => this.hpPct(a) <= 0.7).length >= 2 ? 'hint' : '';
+      case 'selfThreat': { // 도적 연막: 나를 노리는 적이 둘 이상이거나 HP 55% 이하에서 노려질 때 / 내가 차지 범위 안
+        if (h.statuses.stealth) return '';
+        if (this.aliveEnemies().some((e) => e.charge && e.charge.r && this.inChargeZone(h, e.charge))) return 'now';
+        const on = this.aliveEnemies().filter((e) => e.target === h).length;
+        return on >= 2 || (on >= 1 && this.hpPct(h) <= 0.55) ? 'hint' : '';
+      }
       default: return '';
     }
   }
@@ -999,7 +1022,8 @@ class BattleSim {
     if (sk.cdReduce) for (const a of this.aliveHeroes()) if (a !== h) { a.cds.s1 = Math.max(0, a.cds.s1 - sk.cdReduce); a.cds.s2 = Math.max(0, a.cds.s2 - sk.cdReduce); }
     if (sk.ultGive) for (const a of this.aliveHeroes()) if (a !== h) this._gainUltRaw(a, sk.ultGive);
     for (const e of sk.effects) {
-      if (e.to === 'self') this._applyStatus(h, h, e);
+      if (e.to === 'self' && e.after) this.delayed.push({ t: fxDelay + (sk.hits || 1) * 0.13 + 0.1, fn: () => { if (h.alive) this._applyStatus(h, h, e); } }); // 타격 뒤에 (은신이 자기 공격에 풀리지 않게)
+      else if (e.to === 'self') this._applyStatus(h, h, e);
       else if (e.to === 'party') for (const a of this.aliveHeroes()) this._applyStatus(h, a, Object.assign({}, e, { value: e.value * (e.status === 'regen' ? pmul : 1) }));
       else if (e.to === 'all_enemies') for (const en of this.aliveEnemies()) this._applyStatus(h, en, e);
     }

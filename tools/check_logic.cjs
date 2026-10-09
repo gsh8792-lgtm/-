@@ -174,7 +174,7 @@ if (sa !== sb) fail++;
     if (GACHA.pull(p, r, 1) !== null) errs.push('pull without tickets');
     if (ultChoices('kai', 0).length !== 3 || ultChoices('kai', 5).length !== 6) errs.push('variant unlocks');
     if (!(ultDefFor('kai', 'A', 1).power > ultDefFor('kai', 'A', 0).power)) errs.push('bt1 boost'); }
-  console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(15 chars × 6 ultimates cast, mechanics, gacha)');
+  console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(19 chars × 6 ultimates cast, mechanics, gacha)');
   if (errs.length) fail++;
 }
 // 그로기 역할 분담 규칙 (흔들림 · 끊기 합산 · 점감 · 반복 그로기 · 보스 기믹)
@@ -264,14 +264,14 @@ if (sa !== sb) fail++;
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
   const ids = Object.keys(GEAR_SKILLS);
-  if (ids.length !== 40 || new Set(Object.values(GEAR_SKILLS)).size !== 40) errs.push('40 distinct gear skills');
+  if (ids.length !== 48 || new Set(Object.values(GEAR_SKILLS)).size !== 48) errs.push('48 distinct gear skills');
   // 직업별 그로기 역할: 어떤 조합이든 끊기/기절/공명 수단이 남는다
-  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance') };
-  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor' };
+  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance'), rogue: (sk) => sk.interrupt >= 1 };
+  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor', rogue: 'armor' };
   for (const cls in role) for (const n of [1, 2, 3]) { const sid = GEAR_SKILLS[`${cls}_${roleSlot[cls]}_${n}`]; if (!role[cls](SKILLS[sid])) errs.push('role lost ' + sid); }
   // 모든 장비 스킬이 실제로 시전되고 오류가 없다
   const mk = (id, skills, rank) => { const sim = new BattleSim({ seed: 11, stage: 5, waves: [['ogre_chief', 'goblin', 'goblin']], strategy: st0, autoMode: false, partySize: 3, heroes: [id, 'tobi', 'bori'].filter((x, i, a) => a.indexOf(x) === i).map((x) => ({ id: x, hp: 9999, maxHp: 9999, upgrades: {}, skills: x === id ? skills : null, skillRank: x === id ? rank : null })) }); for (let i = 0; i < 150; i++) sim.step(1 / 60); return sim; };
-  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi' };
+  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi', rogue: 'ruka' };
   for (const it of ids) {
     const [cls, kind] = it.split('_'); const slot = kind === 'armor' ? 's1' : 's2'; const hid = clsHero[cls];
     try {
@@ -302,7 +302,7 @@ if (sa !== sb) fail++;
     if (!(GACHA.ultFor(p, 'danbi').power > SKILLS.danbi_ult_B.power)) errs.push('mastery');
     if (ultChoices('danbi', 0, 70).length !== 3 || ultChoices('danbi', 5, 70).length !== 6) errs.push('variants need bt');
     if (EQ.heroLevel(p, 'danbi') !== 70) errs.push('combat level'); }
-  console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(40 skills cast, roles kept, rank, AI, reflect, char level/ults)');
+  console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(48 skills cast, roles kept, rank, AI, reflect, char level/ults)');
   if (errs.length) fail++;
 }
 // 자동 길찾기: 자동 모드로 계속 가면 1~5층 계단과 보스 방에 닿는다 (방은 다 깬 것으로 가정, 기믹은 방에 들르면 채움)
@@ -451,7 +451,31 @@ if (sa !== sb) fail++;
   for (let i = 0; i < 30; i++) talentAdd(p, 'tobi', 'avenger', 't_thorn');
   if (talentSpent(p, 'tobi') > talentPoints(p, 'tobi')) errs.push('overspent');
   talentReset(p, 'tobi'); if (talentSpent(p, 'tobi') !== 0) errs.push('reset');
-  console.log('talents:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(2 branches × 5 classes, points, tier locks, loadout)');
+  console.log('talents:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(2 branches × 6 classes, points, tier locks, loadout)');
+  if (errs.length) fail++;
+}
+// 도적 (v0.35): 시작 은신 · 은신 중 적이 노리지 않음 · 기습 · 중독 중첩 · 독 폭발 · 후열 노리기
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = (waves, ids) => new BattleSim({ seed: 7, stage: 2, waves, strategy: st0, autoMode: false, partySize: 3, heroes: (ids || ['yeon', 'tobi', 'bori']).map((id) => ({ id, hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null })) });
+  { const sim = mk([['orc', 'goblin_archer']]); const y = sim.heroes[0];
+    if (!y.statuses.stealth) errs.push('no opening stealth');
+    for (let i = 0; i < 60 * 3; i++) sim.step(1 / 60);
+    if (sim.enemies.some((e) => e.alive && e.target === y && !e.statuses.taunt && y.statuses.stealth)) errs.push('enemy targets stealthed rogue');
+    if (y.target && y.target.key !== 'goblin_archer' && sim.enemies.find((e) => e.key === 'goblin_archer').alive) errs.push('rogue not targeting backline ' + (y.target && y.target.key)); }
+  { const sim = mk([['ogre']]); for (let i = 0; i < 90; i++) sim.step(1 / 60); const y = sim.heroes[0], e = sim.enemies[0];
+    y.statuses.stealth = { t: 3 }; const h0 = e.hp; sim._damage(y, e, 100, { basic: true }); const amb = h0 - e.hp;
+    if (y.statuses.stealth) errs.push('stealth not consumed');
+    const h1 = e.hp; sim._damage(y, e, 100, { basic: true, noCrit: true }); if (!(amb > (h1 - e.hp) * 2)) errs.push(`ambush ${amb} vs ${h1 - e.hp}`);
+    for (let i = 0; i < 7; i++) sim._applyStatus(y, e, { status: 'poison', dur: 8, dps: 0.2 });
+    if (e.statuses.poison.n !== 5) errs.push('poison stacks ' + e.statuses.poison.n);
+    const ph = e.hp; y.ult = 100; y.ultDef = SKILLS.yeon_ult; y.castLock = 0; sim.cast(y, 'ult', { unit: e }); for (let i = 0; i < 40; i++) sim.step(1 / 60);
+    if (e.statuses.poison) errs.push('detonate left poison'); if (!(ph - e.hp > 250)) errs.push('detonate dmg ' + (ph - e.hp));
+    if (!y.statuses.stealth) errs.push('ult stealth after hit'); }
+  { const p = GACHA.ensure(EQ.newProfile()); if (!p.chars.yeon) errs.push('yeon not gifted'); if (TALENTS[HEROES.yeon.role].length !== 2) errs.push('rogue talents');
+    if (!EQ.DB.items.some((it) => it.cls === 'rogue' && it.slot === 'weapon' && it.line === 4)) errs.push('rogue gear'); }
+  console.log('rogue class:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(opening stealth, untargetable, ambush, poison 5 stacks, detonate, backline, gear/talents)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

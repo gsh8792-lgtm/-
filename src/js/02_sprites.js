@@ -85,7 +85,7 @@ function line(ctx, pts, color, w, cap) {
 }
 function curve(ctx, x0, y0, cx, cy, x1, y1, color, w) {
   ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(cx, cy, x1, y1);
-  ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke();
+  ctx.strokeStyle = SW(color); ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.stroke();
 }
 function rivets(ctx, pts, r) { for (let i = 0; i < pts.length; i += 2) { ctx.fillStyle = '#f0e6d0'; ctx.beginPath(); ctx.arc(pts[i], pts[i + 1], r || 0.9, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(40,20,10,0.5)'; ctx.beginPath(); ctx.arc(pts[i] + 0.4, pts[i + 1] + 0.4, (r || 0.9) * 0.5, 0, 7); ctx.fill(); } }
 function stitch(ctx, pts, color) { ctx.save(); ctx.setLineDash([1.6, 1.4]); line(ctx, pts, color || 'rgba(255,235,200,0.55)', 0.7); ctx.restore(); }
@@ -193,6 +193,16 @@ function humanFace(ctx, f, blink) {
   if (has('bandage')) { paint(ctx, poly([4, -69.5, 12, -71, 12.5, -68.2, 4.5, -66.8]), '#efe2c8', [4, -71, 12.5, -66.8], 'cloth', { lw: 0.6, ink: '#a08a6a' }); line(ctx, [6.8, -69.8, 7.1, -67.4], 'rgba(160,130,100,0.6)', 0.5); line(ctx, [9.8, -70.3, 10.1, -67.9], 'rgba(160,130,100,0.6)', 0.5); }
   // 입
   const my = chinY + (f.shape === 'long' ? 7.5 : 5.6);
+  if (has('mask')) { // 도적 복면: 코 아래를 천으로 가린다
+    const mc = f.mask || '#2a3a2e';
+    ctx.save(); ctx.beginPath(); shape(ctx); ctx.clip();
+    ctx.fillStyle = mc; ctx.fillRect(-24, -70, 52, 22);
+    ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.fillRect(-24, -70, 52, 1.8);
+    ctx.restore();
+    curve(ctx, -19, -69.5, 3, -71.5, 24, -70.5, DK(mc, 0.45), 1.1);
+    curve(ctx, 2, -64, 7, -62, 12, -64.5, DK(mc, 0.65), 0.8);
+    return;
+  }
   switch (f.mouth || 'smile') {
     case 'flat': line(ctx, [3.5, my, 9.5, my - 0.2], '#7a3a30', 1.1); break;
     case 'smirk': curve(ctx, 3, my + 0.2, 7, my + 0.6, 10.5, my - 1.4, '#7a3a30', 1.1); break;
@@ -297,8 +307,14 @@ const ART = {
       blob(ctx, 12, -54, 6.5, 5, '#8d96a3', 'metal');
       arm(ctx, 12, -52, 17, -40, '#e8dcc8', 'cloth', 3.8);
       shape(ctx, [14, -44, 21, -42, 20, -36, 13, -38], '#6e4a30', 'leather', { lw: 1 });
+      if (_FO && _FO.dagger) { // 도적: 짧은 단검
+        paint(ctx, poly([20, -40, 23.5, -43, 36, -72, 34, -76, 31, -71]), '#c3cad4', [20, -76, 36, -40], 'metal', { lw: 1.3 });
+        line(ctx, [22, -42.5, 33.5, -72], 'rgba(90,100,120,0.6)', 0.7);
+        if (_FO.dagger !== true) line(ctx, [23.5, -46, 33, -70], _FO.dagger, 1.4); // 독 바른 날
+      } else {
       paint(ctx, poly([20, -40, 23, -43, 47, -104, 45.5, -106, 43, -103]), '#c3cad4', [20, -106, 47, -40], 'metal', { lw: 1.3 });
       line(ctx, [22, -42.5, 44.5, -102], 'rgba(90,100,120,0.6)', 0.7);
+      }
       paint(ctx, poly([14, -42, 28, -47, 29, -44.5, 15, -39.5]), '#d8b048', [14, -47, 29, -39], 'gold', { lw: 0.9 });
       paint(ctx, poly([18, -38, 21, -39, 17.5, -30, 15, -31]), '#4a2e1c', [15, -39, 21, -30], 'leather', { lw: 0.8 });
       blob(ctx, 15.8, -29.5, 1.8, 1.8, '#d8b048', 'gold', { lw: 0.7 });
@@ -650,6 +666,12 @@ const SPRITE_VARIANTS = {
     swap: { '#9a4a2a': '#22222e', '#c03a36': '#3a3a52', '#a8383a': '#30304a', '#4a1414': '#141420', '#6e4a30': '#2e2a36', '#f3cba6': '#e8c0a0', '#3e7a5a': '#a03a5a' } },
   sword_c: { base: 'sword', build: { sx: 1.12, sy: 1.0, hs: 0.98 }, face: { shape: 'square', eye: 'big', brow: 'thick', mouth: 'smirk', extras: ['stubble'] },
     swap: { '#9a4a2a': '#d06a2a', '#c03a36': '#8a6a3a', '#a8383a': '#7a5a30', '#4a1414': '#3a2410', '#f3cba6': '#d8a07a', '#3e7a5a': '#7a5a3a' } },
+  rogue: { base: 'sword', build: { sx: 0.9, sy: 1.0, hs: 1.0 }, face: { shape: 'sharp', eye: 'sharp', brow: 'thin', mouth: 'smirk', extras: ['mask'], mask: '#2e4a32', dagger: 'rgba(140,220,80,0.8)' },
+    swap: { '#9a4a2a': '#2a2a30', '#c03a36': '#3e5a3a', '#a8383a': '#344e32', '#4a1414': '#142014', '#6e4a30': '#3a3428', '#3e7a5a': '#c8a030' } },
+  rogue_b: { base: 'sword', build: { sx: 0.88, sy: 1.06, hs: 0.96 }, face: { shape: 'long', eye: 'narrow', brow: 'angry', mouth: 'flat', extras: ['scar', 'mask'], mask: '#1e1a2a', dagger: true },
+    swap: { '#9a4a2a': '#d8d8e0', '#c03a36': '#2e2440', '#a8383a': '#281e38', '#4a1414': '#100a18', '#6e4a30': '#24202e', '#f3cba6': '#e8c8b0', '#3e7a5a': '#c03a5a' } },
+  rogue_c: { base: 'sword', build: { sx: 0.92, sy: 0.96, hs: 1.03 }, face: { shape: 'child', eye: 'sleepy', brow: 'thin', mouth: 'smirk', extras: ['mole'], dagger: 'rgba(170,110,230,0.8)' },
+    swap: { '#9a4a2a': '#5a3a7a', '#c03a36': '#3a7a6a', '#a8383a': '#2e6a5a', '#4a1414': '#0e2a24', '#6e4a30': '#2a3a34', '#3e7a5a': '#8ad03a' } },
   archer_b: { base: 'archer', build: { sx: 0.94, sy: 1.1, hs: 0.95 }, face: { shape: 'long', eye: 'narrow', brow: 'thin', mouth: 'flat', extras: [] },
     swap: { '#3e5a34': '#d8d4cc', '#4f6b3a': '#e8e4dc', '#6a4a18': '#8a8a9a', '#c8a050': '#e8eef8', '#5a8ab8': '#6a5ab8' } },
   archer_c: { base: 'archer', build: { sx: 0.96, sy: 0.98, hs: 1.02 }, face: { shape: 'child', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: [] },

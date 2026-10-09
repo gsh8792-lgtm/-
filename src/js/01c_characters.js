@@ -29,7 +29,7 @@ const BREAKTHROUGH = {
 };
 
 // 직업 기본(기존 5인)이 ①② 스킬과 기본 능력치의 기준
-const CLASS_BASE = { tank: 'tobi', melee: 'danbi', ranged: 'byeolbi', mage: 'soldam', support: 'bori' };
+const CLASS_BASE = { tank: 'tobi', melee: 'danbi', rogue: 'yeon', ranged: 'byeolbi', mage: 'soldam', support: 'bori' };
 
 // stat: 기준 대비 배율 { hp, atk, aspd(공격 간격 배율의 역수), ms }
 const CHARACTERS = [
@@ -102,6 +102,36 @@ const CHARACTERS = [
         v: { name: '멈추지 않는 주먹', hits: 9, desc: '9연타. 매 타격마다 그로기 게이지 감소.' } },
       C: { name: '거인 사냥', target: 'enemy', fx: 'slash', power: 2.0, brokenMult: 3.0, desc: '강력한 일격. 그로기 적에게 3배.',
         v: { name: '거신 처형', brokenMult: 3.5, effects: [{ status: 'inspire', dur: 4, value: 0.2, to: 'party' }], desc: '그로기 적에게 3.5배 + 4초간 파티 공격력 +20%.' } },
+    } },
+  // ---------------- 도적 (v0.35): 은신 · 기습 · 중독. 적 후열(원거리·사냥꾼)부터 파고든다
+  { id: 'yeon', name: '연', role: 'rogue', title: '독칼 도적', sprite: 'rogue', trait: 'shadow', gift: true,
+    desc: '독을 겹겹이 쌓고 한 번에 터뜨린다. 연막으로 몸을 숨겨 후열을 노린다.',
+    ults: {
+      A: { base: 'yeon_ult', v: { name: '맹독 연쇄', power: 2.4, detonate: { status: 'poison', mult: 2.1 }, desc: '강타 + 중독을 한꺼번에 터뜨림(남은 독 피해 ×2.1). 그 뒤 2초 은신.' } },
+      B: { name: '그림자 분신', target: 'self', fx: 'smoke', effects: [{ status: 'stealth', dur: 5, to: 'self' }, { status: 'inspire', dur: 6, value: 0.4, to: 'self' }], desc: '5초 은신 + 6초간 공격력 +40%. 은신 중 첫 공격은 기습.',
+        v: { name: '그림자 군무', effects: [{ status: 'stealth', dur: 6, to: 'self' }, { status: 'inspire', dur: 7, value: 0.5, to: 'self' }, { status: 'lifesteal', dur: 7, value: 0.2, to: 'self' }], desc: '6초 은신 + 7초간 공격력 +50%, 흡혈 20%.' } },
+      C: { name: '독무', target: 'self_area', areaR: 110, fx: 'spin', power: 0.6, hits: 3, effects: [{ status: 'poison', dur: 8, dps: 0.3 }], desc: '주변 적 3연타 + 중독 1겹.',
+        v: { name: '독의 춤', hits: 4, power: 0.7, effects: [{ status: 'poison', dur: 10, dps: 0.4 }], desc: '주변 적 4연타 + 강한 중독 1겹.' } },
+    } },
+  { id: 'ruka', name: '루카', role: 'rogue', title: '그림자 추적자', sprite: 'rogue_b', trait: 'keen', stat: { hp: 0.9, atk: 1.15, aspd: 1.05 },
+    desc: '적 등 뒤에 나타나 급소를 꿰뚫는다. 차지·호출 끊기의 달인.',
+    ults: {
+      A: { name: '급소 꿰기', target: 'enemy', behind: true, fx: 'slash', power: 2.4, interrupt: 3, effects: [{ status: 'stun', dur: 1.5 }], desc: '등 뒤에서 강타 + 1.5초 기절. 끊기 ●●●.',
+        v: { name: '심장 꿰기', power: 2.8, effects: [{ status: 'stun', dur: 2 }, { status: 'vuln', dur: 5 }], desc: '등 뒤에서 강타 + 2초 기절 + 5초 취약. 끊기 ●●●.' } },
+      B: { name: '그림자 습격', target: 'multi_enemy', fx: 'flurry', count: 3, power: 1.4, effects: [{ status: 'vuln', dur: 4 }], desc: 'HP 비율 낮은 적부터 3명 습격 + 4초 취약.',
+        v: { name: '그림자 폭풍', count: 4, power: 1.6, desc: 'HP 비율 낮은 적부터 4명 습격 + 4초 취약.' } },
+      C: { name: '암살', target: 'enemy', behind: true, fx: 'slash', power: 3.0, execute: { below: 0.35, mult: 2.2 }, effects: [{ status: 'stealth', dur: 3, to: 'self', after: true }], desc: '일격 — HP 35% 이하 적에게 2.2배. 그 뒤 3초 은신.',
+        v: { name: '완벽한 암살', execute: { below: 0.45, mult: 2.6 }, desc: '일격 — HP 45% 이하 적에게 2.6배. 그 뒤 3초 은신.' } },
+    } },
+  { id: 'nera', name: '네라', role: 'rogue', title: '독술사', sprite: 'rogue_c', trait: 'shadow', stat: { hp: 1.0, atk: 0.95, aspd: 1.1 },
+    desc: '독 안개로 무리를 한꺼번에 중독시키고, 쌓인 독을 연쇄로 터뜨린다.',
+    ults: {
+      A: { name: '역병 구름', target: 'area_enemy', areaR: 105, fx: 'poison', power: 0.8, hits: 3, effects: [{ status: 'poison', dur: 10, dps: 0.3 }], desc: '지점 범위 3연타 + 중독 1겹. 회복을 막는다.',
+        v: { name: '죽음의 역병', effects: [{ status: 'poison', dur: 10, dps: 0.42 }, { status: 'weaken', dur: 5, value: 0.25 }], desc: '지점 범위 3연타 + 강한 중독 + 5초간 주는 피해 -25%.' } },
+      B: { name: '독칼 나누기', target: 'party', fx: 'venom', effects: [{ status: 'inspire', dur: 6, value: 0.25, to: 'party' }], desc: '6초간 파티 공격력 +25%.',
+        v: { name: '맹독 축제', effects: [{ status: 'inspire', dur: 7, value: 0.3, to: 'party' }, { status: 'lifesteal', dur: 7, value: 0.12, to: 'party' }], desc: '7초간 파티 공격력 +30%, 흡혈 12%.' } },
+      C: { name: '연쇄 폭발', target: 'all_enemies', fx: 'nova', power: 0.8, detonate: { status: 'poison', mult: 1.4 }, desc: '모든 적 타격 + 각자의 중독을 터뜨림(×1.4).',
+        v: { name: '독의 심판', power: 1.0, detonate: { status: 'poison', mult: 1.9 }, desc: '모든 적 타격 + 각자의 중독을 터뜨림(×1.9).' } },
     } },
   // ---------------- 원딜
   { id: 'byeolbi', name: '별비', role: 'ranged', title: '명사수', sprite: 'archer', trait: 'keen', starter: true,
@@ -198,7 +228,7 @@ const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
 
 // HEROES / AI_PRESETS / HERO_ORDER / SKILLS 에 등록 (기존 5인은 그대로 두고 속성만 보강)
 (function registerCharacters() {
-  const order = ['tank', 'melee', 'ranged', 'mage', 'support'];
+  const order = ['tank', 'melee', 'rogue', 'ranged', 'mage', 'support'];
   HERO_ORDER.length = 0;
   for (const role of order) for (const c of CHARACTERS) if (c.role === role) HERO_ORDER.push(c.id);
   for (const c of CHARACTERS) {

@@ -511,3 +511,5 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .tc-node.can { box-shadow: 0 0 0 2px rgba(255,211,74,.5) inset; }
 .tc-node.cap { border-color: #c8a03a; }
 .tc-node.cap.on { background: #4a3a1a; }
+
+.talent-box .inv-head { flex-wrap: wrap; }
