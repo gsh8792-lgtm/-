@@ -50,7 +50,14 @@ for (let i = +(process.env.START || 0); i < RUNS; i++) { // START=3: 4번째 시
       if (PREP) await p.evaluate(() => { const r = window.GAME.Game.run; for (const id of r.party) { const h = r.heroes[id]; if (h.dead || h.hp > h.maxHp * 0.4) continue; if (r.bigPotions > 0) { r.bigPotions--; h.hp = h.maxHp; } else if (r.potions > 0) { r.potions--; h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.5); } } });
       await p.waitForTimeout(120); continue;
     }
-    if (sc === 'battle') { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle' || !!document.querySelector('#hint-ok'), null, { timeout: 180000 }); continue; }
+    if (sc === 'battle') {
+      try { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle' || !!document.querySelector('#hint-ok'), null, { timeout: +(process.env.BATTLE_TIMEOUT || 180000) }); }
+      catch (err) { // 끝나지 않는 전투: 상태를 남기고 멈춘다
+        console.log('STUCK', await p.evaluate(() => { const S = window.GAME.Game.scene, s = S.sim; return JSON.stringify({ t: Math.round(s.time), modal: window.GAME.Game.modalOpen, paused: S.paused, tac: S.tac, wave: s.waveIndex, waveTimer: s.waveTimer, outcome: s.outcome, heroes: s.heroes.map((h) => ({ k: h.key, hp: Math.round(h.hp), alive: h.alive, x: Math.round(h.x), y: Math.round(h.y), st: Object.keys(h.statuses), cmd: h.cmd && h.cmd.type, tgt: h.target && h.target.key })), enemies: s.enemies.map((e) => ({ k: e.key, hp: Math.round(e.hp), alive: e.alive, x: Math.round(e.x), y: Math.round(e.y), van: e.vanished, st: Object.keys(e.statuses), wipe: e.wipe && e.wipe.type })) }); }));
+        throw err;
+      }
+      continue;
+    }
     if (sc === 'reward') { if (await vis('#reward-0')) { await p.click('#reward-0'); await p.click('#btn-reward-confirm'); } else await p.click('#btn-continue'); continue; }
     if (sc === 'event') { const n = await p.locator('.event-choices .btn:not([disabled])').count(); if (n) await p.locator('.event-choices .btn:not([disabled])').first().click(); await clickIf('#btn-continue'); continue; }
     if (sc === 'shop') { await clickIf('#btn-continue'); continue; }
