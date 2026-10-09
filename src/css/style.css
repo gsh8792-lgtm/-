@@ -476,3 +476,9 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .map-node.t-unknown { font-size: 26px; }
 
 .seg3 .seg-btn { min-width: 58px; padding: 4px 8px; }
+/* 던전 (방 + 복도) */
+.map-title .goal { font-size: 13px; color: #8cd0ff; margin-left: 8px; font-weight: 700; }
+.ex-walk { position: absolute; left: 24px; bottom: 120px; display: flex; gap: 10px; }
+.ex-walk.hidden { display: none; }
+.ex-walk-btn { min-width: 76px; min-height: 76px; font-size: 30px; border-radius: 50%; touch-action: none; }
+.ex-actions .on { background: linear-gradient(#ffd96a, #e8a83a); color: #2b1d10; }

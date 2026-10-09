@@ -7,7 +7,7 @@ function saveProfile() { EQ.saveProfile(Game.profile); }
 // 원정 중 영웅 최대 HP를 장비에 맞춰 다시 계산 (HP 비율 유지, 던전 입장 전이면 가득)
 function refreshRunLoadout(run) {
   if (!run) return;
-  const fresh = run.path.length === 0;
+  const fresh = !run.dungeon;
   for (const id of HERO_ORDER) {
     const h = run.heroes[id];
     const lo = EQ.heroLoadout(Game.profile, id);
@@ -310,13 +310,13 @@ function grantBattleLoot(run, node) {
   const p = Game.profile;
   const rng = makeRng(hashSeed(run.seed, 'loot', node.stage, node.row, run.stats.battles));
   const src = node.type === 'boss' ? 'boss' : node.type === 'elite' ? 'elite' : 'battle';
-  const stones = EQ.DB.stoneReward[src];
+  const stones = node.small ? 1 : EQ.DB.stoneReward[src];
   p.stones += stones; run.stonesGot += stones;
   const got = [];
   if (src !== 'battle') { const it = EQ.dropItem(rng, p, src, run.tier, partyIds(run)); p.inv.push(it); got.push({ kind: 'item', uid: it.uid }); }
   if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
   // 경험치: 출전한 캐릭터 모두 (쓰러진 캐릭터는 절반), 난이도가 높을수록 많이
-  const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0));
+  const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0)) * (node.small ? 0.5 : 1); // 복도의 작은 무리는 절반
   const exp = [];
   for (const id of partyIds(run)) { const r = GACHA.addExp(p, id, expBase * (run.heroes[id].dead ? CHAR_LV.deadMult : 1)); if (r) exp.push(r); }
   run.expGot = (run.expGot || 0) + Math.round(expBase);

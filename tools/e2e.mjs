@@ -28,7 +28,7 @@ async function dismissHints(p) { for (let i = 0; i < 3; i++) if (!(await clickIf
 // ---------------------------------------------------------------- 1. 한 판 자동 진행 (정책: 전투 우선, HP 낮으면 휴식)
 async function playRun(p, seed, opts) {
   opts = opts || {};
-  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 10; G.scenes.title.start(s); for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
+  await p.evaluate((s) => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 16; G.scenes.title.start(s); G.settings.seenHints.dungeon = 1; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } }, seed);
   await p.waitForTimeout(200);
   if (opts.party) await p.evaluate((pt) => { window.GAME.Game.run.party = pt; window.GAME.Game.scene.rebuildParty(); }, opts.party);
   // 보급 상자 → 포털
@@ -40,33 +40,11 @@ async function playRun(p, seed, opts) {
   await p.click('#portal-yes');
   const log = [];
   const t0 = Date.now();
-  for (let step = 0; step < 600 && Date.now() - t0 < 420000; step++) {
+  for (let step = 0; step < 4000 && Date.now() - t0 < 600000; step++) {
     await dismissHints(p);
     const sc = await scene(p);
     if (sc === 'result') break;
-    if (sc === 'map') {
-      const choice = await p.evaluate((pref) => {
-        const G = window.GAME.Game, run = G.run;
-        const nodes = run.map.stages.flat().filter((n) => window.GAME.canMoveTo(run, n));
-        const hpPct = Object.values(run.heroes).filter((h) => run.party.includes(h.id) && !h.dead).reduce((a, h) => a + h.hp / h.maxHp, 0) / run.party.length;
-        const rank = (n) => (hpPct < 0.6 && n.type === 'rest' ? -10 : 0) + (pref[n.type] || 0);
-        nodes.sort((a, b) => rank(a) - rank(b));
-        return nodes[0] ? { stage: nodes[0].stage, row: nodes[0].row, type: nodes[0].type } : null;
-      }, opts.pref || { battle: 1, event: 2, shop: 3, rest: 2, tree: 4, elite: 5, boss: 0 });
-      if (!choice) break;
-      log.push(`${choice.stage}:${choice.type}`);
-      await p.click(`.map-node[data-stage="${choice.stage}"][data-row="${choice.row}"]`);
-      await p.click('#btn-node-go');
-      await p.waitForTimeout(150);
-      continue;
-    }
-    if (sc === 'explore') { // 방 안: 갈림길은 첫 번째 길, 상인·이벤트·모닥불·고목은 들어가 본다
-      const atFork = await p.evaluate(() => { const S = window.GAME.Game.scene, r = window.GAME.Game.run.room; if (r && r.chosen < 0 && r.x >= r.forkX - 180 && S.doorPick == null) { S.walkToDoor(0); return true; } return false; });
-      if (atFork) { log.push('갈림길'); continue; }
-      if (await clickIf(p, '#ex-go')) continue;
-      await p.waitForTimeout(150);
-      continue;
-    }
+    if (sc === 'dungeon') { await p.waitForTimeout(150); continue; } // 자동 모드: 알아서 걷고 다음 방을 고른다
     if (sc === 'battle') {
       try { await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle' || !!document.querySelector('#hint-ok'), null, { timeout: 120000 }); }
       catch (e) { console.log('STUCK', await p.evaluate(() => { const G = window.GAME.Game, S = G.scene, sim = S.sim; return JSON.stringify({ modal: G.modalOpen, ov: G.overlay.innerText.slice(0, 80), paused: S.paused, tg: !!S.targeting, t: sim.time, out: sim.outcome, end: S.endTimer, wave: sim.waveIndex, en: sim.enemies.filter((e) => e.alive).map((e) => [e.key, Math.round(e.hp), Math.round(e.x)]), he: sim.heroes.map((h) => [h.key, Math.round(h.hp)]), err: G.lastError }); })); throw e; }
@@ -85,7 +63,7 @@ async function playRun(p, seed, opts) {
     if (sc === 'tree') { await p.click('#tree-leave'); continue; }
     await p.waitForTimeout(200);
   }
-  const res = await p.evaluate(() => { const r = window.GAME.Game.run; return { result: r.result, stage: r.pos.stage, nodes: r.stats.nodes, battles: r.stats.battles, dead: Object.values(r.heroes).filter((h) => h.dead).map((h) => h.id), sec: Math.round((performance.now() - r.stats.startTime) / 1000) }; });
+  const res = await p.evaluate(() => { const r = window.GAME.Game.run; return { result: r.result, stage: r.dungeon ? r.dungeon.floor : r.pos.stage, nodes: r.stats.nodes, battles: r.stats.battles, dead: Object.values(r.heroes).filter((h) => h.dead).map((h) => h.id), sec: Math.round((performance.now() - r.stats.startTime) / 1000) }; });
   return Object.assign(res, { path: log.join(' → ') });
 }
 
@@ -94,14 +72,14 @@ async function playRun(p, seed, opts) {
   const p = await newPage();
   // 완주: 여러 시드
   let wins = 0;
-  for (const seed of [101, 202, 303, 404, 505]) {
+  for (const seed of [101, 202, 303]) {
     const r = await playRun(p, seed, { party: ['tobi', 'soldam', 'bori'] });
     report.runs.push(Object.assign({ seed, party: 'tobi+soldam+bori' }, r));
     console.log(`run seed=${seed}: ${r.result} stage=${r.stage} nodes=${r.nodes} battles=${r.battles} dead=[${r.dead}] path=${r.path}`);
     if (r.result === 'victory') wins++;
     if (seed === 101) await p.screenshot({ path: `${OUT}/run_result.png` });
   }
-  ok('5스테이지 완주 (보스 격파) 최소 1회', wins >= 1, `${wins}/5 시드 승리 (자동 전투 정책, 시뮬 10배속)`);
+  ok('던전 완주 (6층 보스 격파) 최소 1회', wins >= 1, `${wins}/3 시드 승리 (자동 모드, 시뮬 16배속)`);
   // 결과 화면 버튼
   await p.evaluate(() => { window.GAME.Game.run.result = 'victory'; window.GAME.Game.go('result'); });
   await p.click('#res-same'); ok('결과: 같은 시드로 다시 → 필드', (await scene(p)) === 'field');
@@ -115,9 +93,8 @@ async function playRun(p, seed, opts) {
 // 전멸 → 결과 화면 (실제 전투에서 HP 1로 시작)
 {
   const p = await newPage();
-  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; for (const k in r.strategy) for (const sl of ['s1', 's2', 'ult']) r.strategy[k][sl].auto = false; G.go('map'); });
-  await p.click('.map-node.reachable >> nth=0');
-  await p.click('#btn-node-go');
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1 }; G.debug.simMult = 6; G.scenes.title.start(777); const r = G.run; for (const id of r.party) r.heroes[id].hp = 1; for (const k in r.strategy) for (const sl of ['s1', 's2', 'ult']) r.strategy[k][sl].auto = false; });
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints.dungeon = 1; window.GAME.enterDungeon(G.run); G.run.autoMode = true; });
   await p.waitForTimeout(200);
   if ((await scene(p)) !== 'battle') await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 1, row: 0, type: 'battle', enc: 0 } }));
   await p.waitForFunction(() => window.GAME.Game.sceneName === 'result', null, { timeout: 60000 });
@@ -174,17 +151,22 @@ async function playRun(p, seed, opts) {
   await p.click('#portal-no');
   await p.click('#btn-interact'); await p.click('#portal-party'); await p.click('#ps-ok');
   await p.click('#portal-yes');
-  ok('포털 → 지도', (await scene(p)) === 'map'); await dismissHints(p);
-  // 지도
-  await p.click('#btn-help'); await p.click('#help-close');
+  ok('포털 → 던전 1층 입구', (await scene(p)) === 'dungeon' && await p.evaluate(() => window.GAME.Game.run.dungeon.floor === 1 && window.GAME.Game.run.dungeon.at.room === 0)); await dismissHints(p);
+  // 던전 화면
   await p.click('#btn-strategy'); await p.click('#strat-close');
-  await p.click('#btn-potion'); ok('지도: 회복약 대상 선택 창', await vis(p, '.pick-box')); await p.click('.pick-box .btn.ghost');
-  const locked = p.locator('.map-node.locked').first(); await locked.click();
-  ok('지도: 갈 수 없는 방 → 이동 버튼 없음', !(await vis(p, '#btn-node-go')));
-  await p.click('#btn-node-cancel');
-  await p.locator('.map-node.reachable').first().click(); ok('지도: 갈 수 있는 방 → 이동 버튼', await vis(p, '#btn-node-go'));
-  await p.screenshot({ path: `${OUT}/map.png` });
-  await p.click('#btn-node-cancel');
+  await p.click('#btn-potion'); ok('던전: 회복약 대상 선택 창', await vis(p, '.pick-box')); await p.click('.pick-box .btn.ghost');
+  await p.click('#btn-ex-speed'); ok('던전: 배속 2x', (await p.textContent('#btn-ex-speed')).includes('2x')); await p.click('#btn-ex-speed'); await p.click('#btn-ex-speed');
+  await p.evaluate(() => { window.GAME.Game.run.autoMode = true; window.GAME.Game.scene.refreshAuto(); });
+  await p.click('#btn-ex-auto'); ok('던전: 수동 전환', await p.evaluate(() => !window.GAME.Game.run.autoMode));
+  await p.screenshot({ path: `${OUT}/dungeon.png` });
+  // 지도에서 이웃 방 탭 → 복도, ▶ 누르고 있으면 걷는다
+  { const tap = await p.evaluate(() => { const fl = window.GAME.Game.run.dungeon; const n = window.GAME.floorNeighbors(fl, 0)[0].room; return { x: 600 + 6 + n.gx * 64 + 32, y: 112 + 24 + n.gy * 46 + 23 }; });
+    await p.mouse.click(bb.x + tap.x * k, bb.y + tap.y * k); await p.waitForTimeout(300);
+    ok('던전: 지도에서 이웃 방 탭 → 복도', await p.evaluate(() => window.GAME.Game.run.dungeon.at.corr !== undefined));
+    const x0 = await p.evaluate(() => window.GAME.Game.run.dungeon.at.x); await p.waitForTimeout(500);
+    ok('던전: 수동이면 가만히 있다', (await p.evaluate(() => window.GAME.Game.run.dungeon.at.x)) === x0);
+    await p.locator('#btn-fwd').hover(); await p.mouse.down(); await p.waitForTimeout(500); await p.mouse.up();
+    ok('던전: ▶ 누르고 있으면 걷는다', (await p.evaluate(() => window.GAME.Game.run.dungeon.at.x)) > x0); }
   // 전투 (직접 진입: 차지 오우거 포함 조우)
   await p.evaluate(() => { const G = window.GAME.Game; G.run.party = ['tobi', 'danbi', 'bori']; G.go('battle', { node: { stage: 3, row: 0, type: 'battle', waves: [['ogre', 'goblin_caller', 'goblin']] } }); });
   await dismissHints(p);
@@ -280,7 +262,7 @@ async function playRun(p, seed, opts) {
   await p.evaluate(() => { window.GAME.Game.debug.simMult = 1; });
   await p.screenshot({ path: `${OUT}/reward.png` });
   await p.click('#reward-1'); ok('보상: 카드 선택 → 확정 활성', !(await p.locator('#btn-reward-confirm').isDisabled()));
-  await p.click('#btn-reward-confirm'); ok('보상 확정 → 지도', (await scene(p)) === 'map');
+  await p.click('#btn-reward-confirm'); ok('보상 확정 → 던전', (await scene(p)) === 'dungeon');
   // 이벤트 4종 (모든 선택지)
   for (const ev of ['cart', 'well', 'goblin_merchant', 'wounded']) {
     const n = await p.evaluate((e) => window.GAME.EVENTS[e].choices.length, ev);
@@ -303,7 +285,7 @@ async function playRun(p, seed, opts) {
   ok('상점: 구매 (회복약/식량/횃불/유물)', (await p.evaluate(() => window.GAME.Game.run.gold)) < g0, `${g0} → ${await p.evaluate(() => window.GAME.Game.run.gold)}`);
   await p.click('#shop-usepotion'); await p.click('.pick-box .btn.ghost');
   await p.screenshot({ path: `${OUT}/shop.png` });
-  await p.click('#btn-continue'); ok('상점 → 지도', (await scene(p)) === 'map');
+  await p.click('#btn-continue'); ok('상점 → 던전', (await scene(p)) === 'dungeon');
   // 휴식
   await p.evaluate(() => { const G = window.GAME.Game; for (const id of G.run.party) G.run.heroes[id].dead = false, G.run.heroes[id].hp = Math.round(G.run.heroes[id].maxHp * 0.3); G.go('rest', {}); });
   const f0 = await p.evaluate(() => window.GAME.Game.run.food);
@@ -451,13 +433,13 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
     return { min, which };
   });
   const tBattle = await measure();
-  await p.evaluate(() => window.GAME.Game.go('map')); await p.waitForTimeout(200);
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints.dungeon = 1; window.GAME.enterDungeon(G.run); }); await p.waitForTimeout(200);
   const tMap = await measure();
   await p.evaluate(() => window.GAME.Game.go('field')); await p.waitForTimeout(200);
   const tField = await measure();
   await p.evaluate(() => window.GAME.Game.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin', 'goblin_caller']] } })); await p.waitForTimeout(1500);
   const minTouch = [tBattle, tMap, tField].reduce((a, b) => (b.min < a.min ? b : a));
-  if (vp.name !== 'portrait') ok(`모바일(${vp.name}): 터치 타겟 최소 ≥ 44px (전투·지도·필드)`, minTouch.min >= 43.5, `전투 ${tBattle.min.toFixed(1)} · 지도 ${tMap.min.toFixed(1)} · 필드 ${tField.min.toFixed(1)}px (최소: ${minTouch.which})`);
+  if (vp.name !== 'portrait') ok(`모바일(${vp.name}): 터치 타겟 최소 ≥ 44px (전투·던전·필드)`, minTouch.min >= 43.5, `전투 ${tBattle.min.toFixed(1)} · 던전 ${tMap.min.toFixed(1)} · 필드 ${tField.min.toFixed(1)}px (최소: ${minTouch.which})`);
   // 레터박스: 스테이지가 화면 안에 있음
   const fit = await p.evaluate(() => { const r = document.getElementById('stage').getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: innerWidth, h: innerHeight }; });
   ok(`해상도(${vp.name}): 16:9 레터박스 안에 맞음`, fit.l >= -1 && fit.t >= -1 && fit.r <= fit.w + 1 && fit.b <= fit.h + 1, JSON.stringify(fit));
@@ -465,8 +447,8 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   // fps (헤드리스 소프트웨어 렌더 기준)
   await p.waitForTimeout(2000);
   report.fps[vp.name] = await p.evaluate(() => Math.round(window.GAME.Game.fps));
-  await p.evaluate(() => { window.GAME.Game.go('map'); }); await p.waitForTimeout(300);
-  await p.screenshot({ path: `${OUT}/mobile_${vp.name}_map.png` });
+  await p.evaluate(() => { window.GAME.Game.go('dungeon'); }); await p.waitForTimeout(300);
+  await p.screenshot({ path: `${OUT}/mobile_${vp.name}_dungeon.png` });
   await p.close();
 }
 

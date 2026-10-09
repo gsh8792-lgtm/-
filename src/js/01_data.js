@@ -249,6 +249,13 @@ const ENCOUNTERS = {
     3: [ [['goblin', 'goblin_caller', 'goblin'], ['orc_captain', 'goblin', 'goblin']], [['orc_shield', 'goblin_bomber', 'goblin_bomber'], ['orc_captain', 'goblin_shaman', 'goblin_archer']] ],
     4: [ [['orc', 'goblin', 'goblin'], ['orc_captain', 'goblin', 'goblin_caller']], [['orc_shield', 'orc_shield', 'goblin_archer'], ['orc_captain', 'ogre', 'goblin_shaman']] ],
   },
+  // 복도의 작은 적 무리 (웨이브 1개, 금방 끝나는 전투)
+  small: {
+    1: [['goblin', 'goblin'], ['goblin', 'goblin_archer'], ['goblin_bomber', 'goblin'], ['goblin', 'goblin', 'goblin']],
+    2: [['goblin', 'goblin', 'goblin_archer'], ['orc', 'goblin'], ['goblin_shaman', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber']],
+    3: [['orc', 'goblin_archer', 'goblin'], ['orc_shield', 'goblin', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin'], ['orc', 'goblin_shaman']],
+    4: [['orc', 'orc', 'goblin'], ['orc_shield', 'goblin_archer', 'goblin_archer'], ['ogre', 'goblin'], ['goblin_bomber', 'goblin_bomber', 'goblin_shaman']],
+  },
   // 보스 4종: 보스마다 우대 직업이 다르다 (오우거=탱커, 여왕=매지션, 사슴왕=근딜, 거북=원딜·서포터)
   boss: { 5: [ [['ogre_chief', 'goblin', 'goblin']], [['thorn_queen', 'goblin']], [['mist_stag', 'goblin', 'goblin']], [['swamp_turtle', 'goblin', 'goblin']] ] },
 };
@@ -338,6 +345,7 @@ const TREE_DEALS = [
 const HINTS = {
   field:  '화면을 탭하거나 조이스틱으로 이동해요. 보급 상자를 챙긴 뒤 포털로 들어가세요.',
   map:    '같은 줄이나 바로 위·아래 줄의 다음 방으로 갈 수 있어요. 방에 무엇이 있는지는 들어가 봐야 알아요.',
+  dungeon: '던전은 방과 복도로 이어져 있어요. 오른쪽 위 지도에서 이웃한 방을 탭하면 그쪽 복도로 걸어가요. 층마다 계단을 찾아 내려가고, 가장 깊은 곳에서 보스 방을 열어 쓰러뜨리면 원정 성공이에요. 자동 모드면 알아서 걷고, 수동이면 ▶을 누르고 있어야 걸어요.',
   explore: '파티가 앞으로 걸어가요. 적 무리를 만나면 그 자리에서 전투가 시작되고, 갈림길에서는 길을 골라요. 멈춤 버튼으로 언제든 멈출 수 있어요.',
   battle: '스킬 버튼을 탭하면 바로 쓰고, 끌면 원하는 곳에 써요. 캐릭터를 끌어다 놓으면 그 자리로 이동하거나, 놓은 곳의 적을 공격해요.',
   break: `덩치 큰 적은 방어 태세라 피해가 잘 안 들어가요. 차지·호출 위에 뜨는 ○○○ 끊기 칸을 2초 안에 채우면 끊기고 [흔들림]! 흔들리는 동안 파란 게이지를 깎으면 그로기예요. 탱커의 기절은 혼자 다 채우고, 다른 직업은 둘이 힘을 모아야 해요. 같은 직업은 한 번만 인정돼요.`,

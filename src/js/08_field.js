@@ -120,7 +120,7 @@ const FieldScene = {
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); Game.go('map'); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }

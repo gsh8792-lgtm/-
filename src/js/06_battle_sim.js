@@ -21,6 +21,7 @@ class BattleSim {
     this.enemySpawnX = opts.enemySpawnX !== undefined ? opts.enemySpawnX : CONST.ENEMY_SPAWN_X;
     this.heroPos = opts.heroPos || null; // 탐험에서 이어지는 전투: 걷던 자리 그대로 시작
     this.eliteAffix = opts.eliteAffix || null; // 정예 변이 (ELITE_AFFIXES 키)
+    this.named = opts.named || null;           // 네임드 정예 이름
     this.surprise = !!opts.surprise;          // 기습: 파티가 잠깐 굳는다
     this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
@@ -118,7 +119,7 @@ class BattleSim {
   }
   _applyAffix(u, key) {
     const A = ELITE_AFFIXES[key]; if (!A) return;
-    u.name = A.name + ' ' + u.name; u.affix = key;
+    u.name = (this.named ? `「${this.named}」 ` : '') + A.name + ' ' + u.name; u.affix = key;
     u.maxHp = Math.round(u.maxHp * 1.25); u.hp = u.maxHp;
     if (key === 'iron') { u.armor = Math.min(0.8, (u.armor || 0) + 0.2); u.poiseMax = Math.round(u.poiseMax * 1.3); u.poise = u.poiseMax; u.poiseBase = u.poiseMax; }
     if (key === 'fury') { u.enraged = true; u.statuses.enrage = { t: Infinity }; }

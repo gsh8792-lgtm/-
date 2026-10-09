@@ -26,7 +26,7 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: { hp: ti.hp, atk: ti.atk },
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
-      eliteAffix: node.affix || null, surprise: !!(ex && ex.surprise),
+      eliteAffix: node.affix || null, named: node.named || null, surprise: !!(ex && ex.surprise),
     });
     this.camX = this.camTarget(); // 카메라 (전장 좌표, 화면 폭 960)
     this.acc = 0;
@@ -49,7 +49,7 @@ const BattleScene = {
     this.buildHud();
     this.consumeEvents();
     if (node.type === 'boss') Music.play('boss');
-    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? (node.affix ? `정예: ${ELITE_AFFIXES[node.affix].name}` : '정예 전투!') : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
+    this.banner = { text: node.type === 'boss' ? '보스: ' + ENEMIES[waves[0][0]].name : node.type === 'elite' ? (node.named ? `네임드: 「${node.named}」` : node.affix ? `정예: ${ELITE_AFFIXES[node.affix].name}` : '정예 전투!') : '전투 시작', sub: `웨이브 1/${waves.length}`, t: 0, dur: 1.6 };
     if (!Game.hint('battle') && this.sim.enemies.some((e) => e.poiseMax)) Game.hint('break');
     this.breakHintPending = !Game.settings.seenHints.break;
   },
@@ -612,11 +612,15 @@ const BattleScene = {
     if (run.fruit && run.fruit.battles > 0) { run.fruit.battles--; if (run.fruit.battles <= 0) run.fruit = null; }
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
-      if (this.explore && run.room && this.node.exploreId) { // 탐험으로 복귀: 쓰러뜨린 무리를 지나간 자리에서 이어서
-        const it = roomTrack(run.room).find((x) => x.id === this.node.exploreId);
-        if (it) { it.done = true; run.room.x = Math.max(run.room.x, it.x - 40); }
-      }
+      if (this.node.dref) dungeonBattleWon(run, this.node.dref); // 던전으로 복귀할 자리·방 정리
       if (this.node.type === 'boss') { run.result = 'victory'; Game.go('result'); }
+      else if (this.node.small) { // 복도의 작은 무리: 보상 화면 없이 골드만 챙기고 바로 이어서
+        const g = 6 + this.node.stage * 3 + Math.floor(Math.random() * 6); run.gold += g;
+        const L = run.lastLoot; run.lastLoot = null;
+        const lv = L && L.exp ? L.exp.filter((r) => r.to > r.from).map((r) => `${HEROES[r.id].name} Lv ${r.to}!`) : [];
+        Game.toast(`골드 +${g}` + (L && L.exp && L.exp[0] ? ` · 경험치 +${L.exp[0].exp}` : '') + (lv.length ? ' · ' + lv.join(' ') : ''), 1600);
+        backToRun();
+      }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
       else Game.go('reward', { node: this.node });
     } else {
@@ -629,7 +633,7 @@ const BattleScene = {
   // ------------------------------------------------------------ HUD 갱신
   updateHud() {
     const sim = this.sim;
-    this.stageLabel.textContent = `방 ${this.node.stage}/${CONST.STAGES} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
+    this.stageLabel.textContent = `${this.run.dungeon ? `${this.run.dungeon.floor}층` : `방 ${this.node.stage}`} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
     // 위험 경고

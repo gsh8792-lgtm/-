@@ -8,8 +8,7 @@ function boot() {
   Game.profile = EQ.loadProfile();
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
-  Game.register('map', MapScene);
-  Game.register('explore', ExploreScene);
+  Game.register('dungeon', DungeonScene);
   Game.register('battle', BattleScene);
   Game.register('reward', RewardScene);
   Game.register('event', EventScene);
@@ -68,5 +67,5 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { Music, Sfx, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, generateMap, validStage, canMoveTo, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, MapScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

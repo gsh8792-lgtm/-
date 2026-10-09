@@ -46,9 +46,9 @@ function newRun(seed) {
   for (const id in heroes) strategy[id] = JSON.parse(JSON.stringify(AI_PRESETS[id]));
   const run = {
     seed: seed >>> 0,
-    map: generateMap(seed),
-    pos: { stage: 0, row: 1 },
-    path: [],
+    dungeon: null,          // 지금 층 (genFloor) — 포털로 들어가면 1층
+    pos: { stage: 0, row: 0 }, // stage = 층 (결과 화면·사망 위치 표시용)
+    bossEnc: makeRng(hashSeed(seed, 'boss'))() * 4 | 0, // 원정마다 보스가 다르다
     gold: CONST.START_GOLD, food: CONST.START_FOOD, potions: 1, torch: CONST.TORCH_MAX,
     relics: [], heroes, strategy,
     party: DEFAULT_PARTY.slice(0, CONST.PARTY_SIZE), // 출전 멤버 (던전 입장 전까지 변경 가능)

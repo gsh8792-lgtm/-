@@ -1,28 +1,37 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '06_battle_sim.js', '08b_explore.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={ELITE_AFFIXES,genRoom,roomTrack,ROOM_PLANS,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,generateMap,validStage,canMoveTo,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { ELITE_AFFIXES, genRoom, roomTrack, ROOM_PLANS, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, generateMap, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
-const typeCount = {};
-for (let seed = 1; seed <= 1000; seed++) {
-  const m = generateMap(seed);
-  if (m.stages.length !== 5) { fail++; console.log('stages', seed); }
-  m.stages.forEach((st, i) => {
-    const s = i + 1, types = st.map((n) => n.type);
-    types.forEach((t) => (typeCount[t] = (typeCount[t] || 0) + 1));
-    const c = (t) => types.filter((x) => x === t).length;
-    const bad = (s <= 4 && st.length !== 3) || (s === 5 && (st.length !== 1 || types[0] !== 'boss'))
-      || (s === 1 && c('elite')) || !types.some((t) => NODE_TYPES[t].combat) || c('shop') > 1 || c('rest') > 1
-      || (s === 4 && c('rest') + c('tree') < 1);
-    if (bad) { fail++; console.log('constraint fail seed', seed, 'stage', s, types); }
-    for (const n of st) if (NODE_TYPES[n.type].combat && !encounterFor(n)) { fail++; console.log('no encounter', seed, s, n.type); }
-  });
-  if (JSON.stringify(generateMap(seed)) !== JSON.stringify(m)) { fail++; console.log('nondeterministic map', seed); }
+// 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
+{
+  const errs = []; const kinds = {};
+  for (let seed = 1; seed <= 1000; seed++) for (let floor = 1; floor <= DUNGEON.BOSS_FLOOR; floor++) {
+    const f = genFloor(seed, floor);
+    if (JSON.stringify(genFloor(seed, floor)) !== JSON.stringify(f)) errs.push('nondeterministic ' + seed);
+    const n = f.rooms.length; if (n < 5 || n > 7) errs.push('room count ' + n);
+    const cells = new Set(f.rooms.map((r) => r.gx + ',' + r.gy)); if (cells.size !== n) errs.push('overlap');
+    const seen = new Set([0]); const q = [0]; while (q.length) { const c = q.shift(); for (const nb of floorNeighbors(f, c)) if (!seen.has(nb.room.id)) { seen.add(nb.room.id); q.push(nb.room.id); } }
+    if (seen.size !== n) errs.push('disconnected ' + seed + '/' + floor);
+    const cnt = (t) => f.rooms.filter((r) => r.type === t).length;
+    for (const r of f.rooms) kinds[r.type] = (kinds[r.type] || 0) + 1;
+    if (f.rooms[0].type !== 'start') errs.push('start');
+    if (floor < DUNGEON.BOSS_FLOOR && cnt('stairs') !== 1) errs.push('stairs');
+    if (floor === DUNGEON.BOSS_FLOOR) { const G = BOSS_GIMMICKS[f.gimmick]; if (cnt('boss') !== 1 || cnt(G.kind) !== G.need) errs.push(`boss floor ${f.gimmick} ${cnt(G.kind)}`); if (bossOpen(f)) errs.push('boss open at start'); }
+    for (const c of f.corridors) {
+      const fights = c.items.filter((x) => x.kind === 'fight' || x.kind === 'elite').length, extras = c.items.filter((x) => x.kind === 'trap' || x.kind === 'supply').length;
+      if (fights < 2 || extras > 2) errs.push(`corridor ${fights}/${extras}`);
+      for (const it of c.items) if ((it.kind === 'fight' && !corridorWaves(f, it)[0].length) || it.x <= 0 || it.x >= c.len) errs.push('corridor item');
+      const tr = corridorTrack(c, c.b); if (tr.some((p, i) => i && p.x < tr[i - 1].x)) errs.push('track order');
+    }
+    for (const r of f.rooms) if (r.fight && r.type !== 'boss' && !encounterFor({ type: r.fight.type, stage: floorStage(floor), enc: r.fight.enc })) errs.push('room enc');
+  }
+  console.log('dungeon: 6000 floors checked,', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', JSON.stringify(kinds));
+  if (errs.length) fail++;
 }
-console.log('map: 1000 seeds checked, failures =', fail, 'type distribution =', JSON.stringify(typeCount));
 // 전투 결정성
 const strat = JSON.parse(JSON.stringify(AI_PRESETS));
 const mk = () => BattleSim.runHeadless({ seed: 4242, stage: 3, waves: ENCOUNTERS.battle[3][0], strategy: strat, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
@@ -295,38 +304,34 @@ if (sa !== sb) fail++;
   console.log('gear skills & growth:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 10).join(' | ') : 'OK', '(30 skills cast, roles kept, rank, AI, reflect, char level/ults)');
   if (errs.length) fail++;
 }
-// 방 안 탐험: 방 생성 (결정성·갈림길·전투 수) + 넓은 전장 전투
+// 자동 길찾기: 자동 모드로 계속 가면 1~5층 계단과 보스 방에 닿는다 (방은 다 깬 것으로 가정, 기믹은 방에 들르면 채움)
 {
   const errs = [];
-  const run = { seed: 4242 };
-  let fights = 0, rooms = 0;
-  for (const type of Object.keys(ROOM_PLANS)) for (let r = 0; r < 20; r++) {
-    const node = { stage: type === 'boss' ? 5 : 1 + (r % 4), row: r % 3, enc: 0 };
-    const a = genRoom(run, node, type), b = genRoom(run, node, type);
-    if (JSON.stringify(a) !== JSON.stringify(b)) errs.push('room not deterministic ' + type);
-    if (a.branches.length !== 2 || !a.branches.every((x) => x.items.length && x.hint)) errs.push('fork ' + type);
-    if (!(a.doors[0] >= 200 + 2000 && a.doors[1] - a.doors[0] >= 260 && a.doors[1] - a.doors[0] <= 520)) errs.push('door placement ' + a.doors);
-    if (a.items.some((i) => i.x > a.doors[0] - 100)) errs.push('item past doors');
-    for (const ch of [0, 1]) {
-      a.chosen = ch; const tr = roomTrack(a);
-      const xs = tr.map((i) => i.x); if (xs.some((x, i) => i && x <= xs[i - 1])) errs.push('track order ' + type);
-      if (tr.some((i) => i.x > a.exitX)) errs.push('item after exit ' + type);
-      if (type === 'boss' && tr[tr.length - 1].kind !== 'boss') errs.push('boss not last');
-      if (type !== 'boss') { fights += tr.filter((i) => i.kind === 'fight' || i.kind === 'elite').length; rooms++; }
+  for (let seed = 1; seed <= 200; seed++) for (let floor = 1; floor <= DUNGEON.BOSS_FLOOR; floor++) {
+    const f = genFloor(seed, floor); let steps = 0, done = false;
+    while (steps++ < 60) {
+      const here = f.rooms[f.at.room]; here.visited = true; here.cleared = true;
+      if (['key', 'lever', 'seal'].includes(here.type) && !here.used) { here.used = true; f.have++; }
+      if (here.type === 'stairs' || here.type === 'boss') { done = true; break; }
+      const nx = dungeonNextStep(f); if (nx === null) break;
+      f.at = { room: nx };
     }
+    if (!done) errs.push(`stuck seed ${seed} floor ${floor}`);
   }
-  { const xs = new Set(); for (let r = 0; r < 12; r++) xs.add(genRoom(run, { stage: 2, row: r % 3, enc: 0 }, 'battle').doors.join()); for (let r = 0; r < 12; r++) xs.add(genRoom({ seed: r }, { stage: 2, row: 0, enc: 0 }, 'battle').doors.join()); if (xs.size < 5) errs.push('doors not random'); }
-  const avg = fights / rooms; if (!(avg >= 0.8 && avg <= 2)) errs.push('fights per room ' + avg.toFixed(2));
-  // 넓은 전장: 화면 2배 폭에서 걷던 자리 그대로 시작, 적은 오른쪽, 전장 밖으로 나가지 않음
-  { const st = JSON.parse(JSON.stringify(AI_PRESETS)); const heroPos = [{ x: 740, y: 342 }, { x: 694, y: 372 }, { x: 648, y: 402 }];
-    const sim = new BattleSim({ seed: 3, stage: 2, waves: encounterFor({ type: 'battle', stage: 2, enc: 1 }), strategy: st, partySize: 3, fieldW: 1920, heroPos, enemySpawnX: 1100, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
-    if (Math.round(sim.heroes[0].x) !== 740) errs.push('heroPos');
-    if (!sim.enemies.every((e) => e.x > 1100)) errs.push('enemy spawn');
-    let minX = 1e9, maxX = -1e9;
-    while (!sim.outcome && sim.time < 120) { sim.step(1 / 60); for (const u of sim.heroes.concat(sim.enemies)) if (u.alive && !(u.side === 'enemy' && u.x > sim.W)) { minX = Math.min(minX, u.x); maxX = Math.max(maxX, u.x); } }
-    if (minX < sim.X0 - 1 || maxX > sim.X1 + 1) errs.push(`out of field ${minX}..${maxX}`);
-    if (sim.outcome !== 'win') errs.push('wide battle outcome ' + sim.outcome); }
-  console.log('explore:', errs.length ? 'FAIL ' + [...new Set(errs)].join(' | ') : 'OK', `(rooms deterministic, forks, ${avg.toFixed(2)} fights/room, wide battle)`);
+  console.log('dungeon autopilot:', errs.length ? 'FAIL ' + errs.slice(0, 5).join(' | ') : 'OK', '(200 seeds × 6 floors reach stairs / boss)');
+  if (errs.length) fail++;
+}
+// 넓은 전장: 고정 영역 1440에서 걷던 자리 그대로 시작, 적은 오른쪽, 영역 밖으로 나가지 않음
+{
+  const errs = [];
+  const st = JSON.parse(JSON.stringify(AI_PRESETS)); const heroPos = [{ x: 600, y: 342 }, { x: 554, y: 372 }, { x: 508, y: 402 }];
+  const sim = new BattleSim({ seed: 3, stage: 2, waves: encounterFor({ type: 'battle', stage: 2, enc: 1 }), strategy: st, partySize: 3, fieldW: 1440, heroPos, enemySpawnX: 850, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: HEROES[id].hp, maxHp: HEROES[id].hp, upgrades: {} })) });
+  if (Math.round(sim.heroes[0].x) !== 600) errs.push('heroPos');
+  let minX = 1e9, maxX = -1e9;
+  while (!sim.outcome && sim.time < 120) { sim.step(1 / 60); for (const u of sim.heroes.concat(sim.enemies)) if (u.alive && !(u.side === 'enemy' && u.x > sim.W)) { minX = Math.min(minX, u.x); maxX = Math.max(maxX, u.x); } }
+  if (minX < sim.X0 - 1 || maxX > sim.X1 + 1) errs.push(`out of field ${minX}..${maxX}`);
+  if (sim.outcome !== 'win') errs.push('wide battle outcome ' + sim.outcome);
+  console.log('fixed arena:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(1440 wide, start positions, bounds)');
   if (errs.length) fail++;
 }
 // 새 몬스터 (궁수·주술사·방패 오크·폭탄 고블린) · 정예 변이 · 기습
