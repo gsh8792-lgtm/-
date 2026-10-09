@@ -24,8 +24,8 @@ const ENCOUNTERS_MINE = {
   boss: { 5: [ [['shadow_king', 'goblin_stalker', 'goblin_archer']], [['swamp_turtle', 'cave_troll']], [['ogre_chief', 'orc_berserker']], [['mist_stag', 'goblin_stalker']], [['thorn_queen', 'orc_hunter']] ] },
 };
 const DUNGEON_SITES = {
-  cave: { name: '고블린 굴', desc: '굴의 주인을 찾아 6층까지.', enc: ENCOUNTERS, scale: { hp: 1, atk: 1 }, reward: 0, tint: null },
-  mine: { name: '버려진 광산', desc: '오크·트롤이 들끓는 깊은 광산. 적 체력 +25% · 공격 +15%, 보스에게 호위. 보상 +50%.', enc: ENCOUNTERS_MINE, scale: { hp: 1.25, atk: 1.15 }, reward: 0.5, tint: 'rgba(120,70,20,0.16)', unlock: (p) => (p.ach && p.ach.c && p.ach.c.boss > 0) || Object.values(p.clears || {}).some((n) => n > 0) },
+  cave: { name: '고블린 굴', desc: '굴의 주인을 찾아 6층까지', enc: ENCOUNTERS, scale: { hp: 1, atk: 1 }, reward: 0, tint: null },
+  mine: { name: '버려진 광산', desc: '적 체력 +25%·공격 +15% · 보스 호위 · 보상 +50%', enc: ENCOUNTERS_MINE, scale: { hp: 1.25, atk: 1.15 }, reward: 0.5, tint: 'rgba(130,75,20,0.22)', unlock: (p) => (p.ach && p.ach.c && p.ach.c.boss > 0) || Object.values(p.clears || {}).some((n) => n > 0) },
 };
 function siteOf(run) { return DUNGEON_SITES[(run && run.site) || 'cave'] || DUNGEON_SITES.cave; }
 // 지금 원정의 조우표 (전역 Game이 없으면 고블린 굴 — 로직 검증용)
