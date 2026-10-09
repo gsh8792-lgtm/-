@@ -38,6 +38,7 @@ for (let i = 0; i < RUNS; i++) {
     if (prep) Object.assign(Game.run, { potions: 4, bigPotions: 1, food: 3, trapKits: 1 });
   }, [party, LV, GEAR, PREP]);
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'chest')); });
+  if (process.env.SITE) await p.evaluate((site) => { const P = window.GAME.Game.profile; P.clears = Object.assign({ 0: 1 }, P.clears); P.site = site; }, process.env.SITE); // SITE=mine: 두 번째 던전
   await p.click('#btn-automove'); await p.waitForSelector('#portal-yes', { timeout: 20000 }); await p.click('#portal-yes');
   const t0 = Date.now();
   for (let step = 0; step < 6000 && Date.now() - t0 < 900000; step++) {

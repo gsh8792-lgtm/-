@@ -143,6 +143,6 @@ function corridorTrack(c, fromId) {
 function corridorWaves(fl, it) {
   const st = floorStage(fl.floor);
   if (it.kind === 'elite') return encounterFor({ type: 'elite', stage: st, enc: it.enc });
-  const t = ENCOUNTERS.small[st];
+  const t = (typeof siteEnc === 'function' ? siteEnc() : ENCOUNTERS).small[st];
   return [t[it.enc % t.length]];
 }

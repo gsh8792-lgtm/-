@@ -342,7 +342,7 @@ function settleRun(run) {
   const p = Game.profile;
   // 결과에 따라 가져가는 몫: 성공 전부 · 후퇴 골드 절반·경험치 75% · 실패 골드 25%·경험치 50%
   const share = RUN_SHARE[run.result] || RUN_SHARE.defeat;
-  const ob = 1 + oathReward(run); // 원정 맹세 보상
+  const ob = 1 + oathReward(run) + (run.dungeon || run.site ? siteOf(run).reward : 0); // 원정 맹세 + 장소(광산) 보상
   const gold = Math.round(run.gold * share.gold * ob);
   p.gold += gold;
   const exp = [];

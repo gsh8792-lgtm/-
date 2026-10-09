@@ -136,7 +136,9 @@ const FieldScene = {
       this.openGuide(0);
     } else if (it.key === 'portal') {
       const box = el('div', 'confirm-box');
-      box.appendChild(el('div', 'modal-title', '고블린 굴에 들어갈까요?'));
+      const P = Game.profile; if (!DUNGEON_SITES[P.site] || (DUNGEON_SITES[P.site].unlock && !DUNGEON_SITES[P.site].unlock(P))) P.site = 'cave';
+      box.appendChild(el('div', 'modal-title', `${DUNGEON_SITES[P.site].name}에 들어갈까요?`));
+      box.appendChild(this.sitePicker(() => this.interact(it)));
       box.appendChild(this.tierPicker(() => this.interact(it)));
       box.appendChild(this.oathPicker(() => this.interact(it)));
       box.appendChild(el('div', 'portal-party', partyIds(run).map((id) => `<span>${HEROES[id].name}<small>${HEROES[id].roleName}</small></span>`).join('')));
@@ -144,10 +146,23 @@ const FieldScene = {
       const row = el('div', 'btn-row');
       row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
       row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; run.oaths = (Game.profile.oaths || []).slice(); oathApplyStart(run); refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
+      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; run.site = Game.profile.site || 'cave'; run.oaths = (Game.profile.oaths || []).slice(); oathApplyStart(run); refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
       box.appendChild(row);
       Game.modal(box, { dim: true, closeOnBg: true });
     }
+  },
+
+  // 던전 장소: 고블린 굴 / 버려진 광산(보스 1회 처치 후)
+  sitePicker(onChange) {
+    const p = Game.profile;
+    const wrap = el('div', 'site-pick');
+    for (const k in DUNGEON_SITES) {
+      const s = DUNGEON_SITES[k], open = !s.unlock || s.unlock(p);
+      const b = btn(`${s.name}<small>${open ? s.desc : '🔒 보스를 한 번 쓰러뜨리면 열린다'}</small>`, 'site-btn' + ((p.site || 'cave') === k ? ' on' : ''), () => { if (!open) { Game.toast('보스를 한 번 쓰러뜨리면 열린다', 1400); return; } p.site = k; saveProfile(); onChange(); }, { id: 'site-' + k });
+      if (!open) b.classList.add('locked');
+      wrap.appendChild(b);
+    }
+    return wrap;
   },
 
   // 원정 맹세: 고를수록 어렵고, 가져가는 골드·경험치가 늘어난다

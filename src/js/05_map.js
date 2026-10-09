@@ -3,7 +3,8 @@
 // 노드 → 전투 웨이브
 function encounterFor(node) {
   if (node.waves) return node.waves; // 이벤트 등에서 직접 지정
-  const table = ENCOUNTERS[node.type === 'boss' ? 'boss' : node.type][node.stage] || ENCOUNTERS.battle[Math.min(4, node.stage)];
+  const E = typeof siteEnc === 'function' ? siteEnc() : ENCOUNTERS; // 던전 장소별 조우표 (05e_sites)
+  const table = E[node.type === 'boss' ? 'boss' : node.type][node.stage] || E.battle[Math.min(4, node.stage)];
   return table[node.enc % table.length];
 }
 

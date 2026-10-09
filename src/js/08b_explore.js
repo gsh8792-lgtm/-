@@ -47,7 +47,7 @@ const DungeonScene = {
     const top = el('div', 'map-top ex-top');
     const hdr = el('div', 'map-hdr');
     const goal = fl.floor === DUNGEON.BOSS_FLOOR ? (bossOpen(fl) ? '보스 방이 열렸다' : `${BOSS_GIMMICKS[fl.gimmick].name} ${fl.have}/${BOSS_GIMMICKS[fl.gimmick].need}`) : '계단을 찾아라';
-    hdr.appendChild(el('div', 'map-title', `고블린 굴 ${fl.floor === DUNGEON.BOSS_FLOOR ? '— 가장 깊은 곳' : `${fl.floor}층`} <small class="goal">${goal}</small>`));
+    hdr.appendChild(el('div', 'map-title', `${siteOf(run).name} ${fl.floor === DUNGEON.BOSS_FLOOR ? '— 가장 깊은 곳' : `${fl.floor}층`} <small class="goal">${goal}</small>`));
     hdr.appendChild(resourceBar(run));
     top.appendChild(hdr);
     top.appendChild(partyPanel(run, { compact: true }));
@@ -383,6 +383,7 @@ const DungeonScene = {
     const c = this.corridor();
     const cam = Math.round(this.camX);
     drawCorridor(ctx, cam + (c ? c.id * 3000 : 50000 + fl.at.room * 3000), t, fl.floor);
+    siteTint(ctx);
     ctx.save(); ctx.translate(-cam, 0);
     if (c) {
       drawExitDoor(ctx, -60, t); drawExitDoor(ctx, c.len + 30, t);

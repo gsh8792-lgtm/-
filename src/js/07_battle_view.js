@@ -24,7 +24,7 @@ const BattleScene = {
       relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, fullAuto: !!node.small, smartAuto: !!(Game.debug && Game.debug.smartAuto), partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
-      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp, atk: ti.atk * f * o.atk }; })(),
+      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }, sc = run.dungeon ? siteOf(run).scale : { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp * sc.hp, atk: ti.atk * f * o.atk * sc.atk }; })(),
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
       eliteAffix: node.affix || null, named: node.named || null, surprise: (!!(ex && ex.surprise) || !!run.ambushNext) && !(run.camp && run.camp.guard),
     });
@@ -778,6 +778,7 @@ const BattleScene = {
     if (this.shake > 0) ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
     if (this.explore) drawCorridor(ctx, this.explore.worldX + this.camX, t, this.explore.theme);
     else this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
+    if (this.explore) siteTint(ctx); // 광산: 흙빛 색조
     const cam = Math.round(this.camX);
     ctx.translate(-cam, 0);
     // 보스 장판: 터질 곳(붉게, 차오름) · 독 웅덩이(초록) · 피난처(밝은 청록, 전멸기)

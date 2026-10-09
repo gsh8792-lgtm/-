@@ -625,7 +625,7 @@ const ResultScene = {
     const lootLine = run.loot.length ? `획득 장비 ${lootHtml(run.loot)}` : '획득 장비 없음';
     box.appendChild(el('div', 'result-loot', `${lootLine}<br>💎 강화석 +${run.stonesGot} · 마을로 가져간 골드 ● ${settle ? settle.gold : run.gold}${oathReward(run) ? ` <small>(⚔ 맹세 ${oathList(run).map((k) => OATHS[k].icon).join('')} 보상 +${Math.round(oathReward(run) * 100)}%)</small>` : ''}${settle && settle.unlocked ? `<br><b class="ok">새 난이도 해금: ${settle.unlocked.name} (T${settle.unlocked.tier})</b>` : ''}`));
     if (settle && settle.exp.length) box.appendChild(el('div', 'reward-exp', '경험치 정산 · ' + settle.exp.map((r) => `${HEROES[r.id].name} +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}`).join(' · ') + settle.exp.filter((r) => r.learned.length).map((r) => ` · <b class="learn">${HEROES[r.id].name} 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>`).join('')));
-    box.appendChild(el('div', 'muted', `시드 ${run.seed} · 난이도 ${EQ.tierInfo(run.tier).name}`));
+    box.appendChild(el('div', 'muted', `${siteOf(run).name} · 시드 ${run.seed} · 난이도 ${EQ.tierInfo(run.tier).name}`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('타이틀', 'ghost', () => Game.go('title'), { id: 'res-title' }));
     row.appendChild(btn('같은 시드로 다시', '', () => { Game.run = newRun(run.seed); Game.go('field'); }, { id: 'res-same' }));

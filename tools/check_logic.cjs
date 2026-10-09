@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '06_battle_sim.js', '08b_explore.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {}, saveProfile: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -539,6 +539,16 @@ if (sa !== sb) fail++;
   if (!achCheck(p, true).some((a) => a.id === 'boss_all')) errs.push('boss_all');
   if (ACHIEVEMENTS.some((a) => !a.prog(p) || a.prog(p).length !== 2)) errs.push('prog');
   console.log('achievements:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(${ACHIEVEMENTS.length} achievements, boss/oath/flawless, rewards once)`);
+  if (errs.length) fail++;
+}
+// 두 번째 던전 (v0.44): 광산 조우표가 모두 유효한 적 · 층 1~4 · 보스 5종 · 해금 조건
+{
+  const errs = [];
+  for (const type of ['battle', 'elite', 'small']) for (const st of [1, 2, 3, 4]) { const t = ENCOUNTERS_MINE[type][st]; if (!t || !t.length) errs.push(`${type}${st} empty`); for (const w of t) for (const k of (type === 'small' ? w : w.flat())) if (!ENEMIES[k]) errs.push('unknown ' + k); }
+  if (ENCOUNTERS_MINE.boss[5].length !== 5) errs.push('boss pool');
+  for (const w of ENCOUNTERS_MINE.boss[5]) if (!ENEMIES[w[0][0]].abilities.includes('boss')) errs.push('boss first ' + w[0][0]);
+  const p = GACHA.ensure(EQ.newProfile()); if (DUNGEON_SITES.mine.unlock(p)) errs.push('mine open on fresh profile'); p.clears = { 0: 1 }; if (!DUNGEON_SITES.mine.unlock(p)) errs.push('mine not unlocked after clear');
+  console.log('second dungeon:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(mine encounters valid, boss pool, unlock)');
   if (errs.length) fail++;
 }
 process.exit(fail ? 1 : 0);

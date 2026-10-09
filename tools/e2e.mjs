@@ -537,8 +537,15 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'portal')); }); await p.waitForTimeout(200);
   await p.click('#oath-iron'); await p.waitForTimeout(100);
   ok('원정 맹세: 선택 → 보상 표시', (await p.locator('.oath-title').innerText()).includes('+25%'));
+  ok('던전 장소: 처음엔 광산 잠김 · 고블린 굴 선택', await vis(p, '#site-mine.locked') && await vis(p, '#site-cave.on'));
   await p.click('#portal-yes'); await p.waitForTimeout(300);
   ok('원정 맹세: 입장 시 원정에 적용', await p.evaluate(() => (window.GAME.Game.run.oaths || []).includes('iron') && window.GAME.Game.sceneName === 'dungeon'));
+  // 보스를 한 번 잡으면 광산이 열린다
+  await p.evaluate(() => { const G = window.GAME.Game; G.profile.clears = { 0: 1 }; G.profile.oaths = []; G.go('field'); }); await p.waitForTimeout(300);
+  await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'portal')); }); await p.waitForTimeout(200);
+  await p.click('#site-mine'); await p.waitForTimeout(150); await p.click('#portal-yes'); await p.waitForTimeout(400);
+  ok('두 번째 던전: 버려진 광산 입장', await p.evaluate(() => window.GAME.Game.run.site === 'mine' && window.GAME.Game.sceneName === 'dungeon' && document.querySelector('.map-title').textContent.includes('버려진 광산')));
+  await p.screenshot({ path: `${OUT}/mine.png` });
   await p.close();
 }
 
