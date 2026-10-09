@@ -13,23 +13,26 @@ const TitleScene = {
     box.appendChild(el('div', 'title-sub', '고블린 굴의 주인들'));
     const col = el('div', 'btn-col');
     col.appendChild(btn('원정 시작', 'primary big', () => this.start(this.seed), { id: 'btn-start' }));
-    col.appendChild(btn('시드 입력', '', () => this.seedDialog(), { id: 'btn-seed' }));
-    col.appendChild(btn('규칙 안내', '', () => showRulesHelp(), { id: 'btn-title-help' }));
+    const grid = el('div', 'title-grid'); // 보조 버튼은 2열
+    grid.appendChild(btn('시드 입력', '', () => this.seedDialog(), { id: 'btn-seed' }));
+    grid.appendChild(btn('규칙 안내', '', () => showRulesHelp(), { id: 'btn-title-help' }));
+    grid.appendChild(btn(`새 소식 <small>v${GAME_VERSION}</small>`, '', () => showNews(), { id: 'btn-news' }));
     this.soundBtn = btn(`효과음: ${Game.settings.sound ? '켬' : '끔'}`, '', () => {
       Game.settings.sound = !Game.settings.sound; Sfx.enabled = Game.settings.sound; Game.saveSettings();
       this.soundBtn.innerHTML = `효과음: ${Game.settings.sound ? '켬' : '끔'}`;
     }, { id: 'btn-sound' });
-    col.appendChild(this.soundBtn);
+    grid.appendChild(this.soundBtn);
     this.musicBtn = btn(`음악: ${Game.settings.music !== false ? '켬' : '끔'}`, '', () => {
       Game.settings.music = Game.settings.music === false; Music.setEnabled(Game.settings.music); Game.saveSettings();
       this.musicBtn.innerHTML = `음악: ${Game.settings.music ? '켬' : '끔'}`;
     }, { id: 'btn-music' });
-    col.appendChild(this.musicBtn);
+    grid.appendChild(this.musicBtn);
     if (typeof SPRITE_SHEETS !== 'undefined' && Object.keys(SPRITE_SHEETS).length) {
       const q = () => `3D 에셋(보리): ${Game.settings.q3d ? '켬' : '끔'}`;
       this.q3dBtn = btn(q(), '', () => { Game.settings.q3d = !Game.settings.q3d; Game.saveSettings(); this.q3dBtn.innerHTML = q(); }, { id: 'btn-q3d' });
-      col.appendChild(this.q3dBtn);
+      grid.appendChild(this.q3dBtn);
     }
+    col.appendChild(grid);
     box.appendChild(col);
     this.seedLabel = el('div', 'title-seed', `시드 ${this.seed}`);
     box.appendChild(this.seedLabel);

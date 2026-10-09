@@ -116,6 +116,7 @@ async function playRun(p, seed, opts) {
   ok('타이틀: 시드 입력 적용', (await p.textContent('.title-seed')).includes('12345'));
   await p.click('#btn-seed'); await p.click('#seed-cancel');
   await p.click('#btn-title-help'); ok('타이틀: 규칙 안내 열림', await vis(p, '.help-box')); await p.click('#help-close');
+  await p.click('#btn-news'); ok('타이틀: 새 소식', await vis(p, '.news-box') && (await p.locator('.news-item').count()) >= 5); await p.click('#news-close'); await p.waitForTimeout(150);
   await p.click('#btn-sound'); await p.click('#btn-sound');
   await p.click('#btn-start'); ok('타이틀 → 필드', (await scene(p)) === 'field');
   ok('필드: 첫 플레이 힌트 표시', await vis(p, '#hint-ok')); await p.click('#hint-ok');

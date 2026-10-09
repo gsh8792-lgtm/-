@@ -1,0 +1,22 @@
+// ===== 09g_news.js : 타이틀 「새 소식」 — 이번 버전들에서 달라진 것 (길게는 CHANGELOG.md) =====
+const GAME_VERSION = '0.41';
+const NEWS = [
+  { v: '0.41', t: '새 소식 · 사냥터 도감', b: '타이틀의 「새 소식」. 사냥터에서 처음 보는 적도 도감에 등록된다.' },
+  { v: '0.40', t: '🏆 업적 18개', b: '보스 토벌·무사 귀환·맹세·연계·도감·사냥터. 소환권·골드·강화석 보상. 마을 「📖 도감·업적」.' },
+  { v: '0.39', t: '새 캐릭터 4명', b: '화연(쌍검 무희) · 달래(화약 사수) · 은하(번개술사) · 나래(전쟁 북잡이). 소환으로 얻는다.' },
+  { v: '0.38', t: '보스 「고블린 그림자 왕」', b: '사라졌다가 가장 먼 영웅 곁에 나타나 벤다 — 예고 범위에서 끌어 빼내자. 안개 사슴왕도 덜 억울하게 조정.' },
+  { v: '0.37', t: '⚔ 원정 맹세', b: '고블린 굴 입구에서 스스로 난이도를 올리고 보상을 최대 +120%.' },
+  { v: '0.36', t: '📖 적 도감 · ⚡ 연계 효과', b: '적마다 "정답"이 있다. 화상×중독 = 독연 폭발, 둔화×기절 = 동결, 출혈×취약 = 상처 벌리기. 사냥터 「안개 늪」 Lv 25.' },
+  { v: '0.35', t: '새 직업 「도적」', b: '은신·기습·중독. 후열부터 노리고 함정을 해제한다. 연(선물) · 루카 · 네라.' },
+  { v: '0.32~34', t: '특성 트리 · 새 적 · 장비 스킬', b: '캐릭터 화면 🌿 특성. 트롤·광전사·덫사냥꾼, 복도의 호기심 물건, 사냥터 「그늘 숲」, 직업별 4번째 장비 라인.' },
+  { v: '0.30~31', t: '쫄깃한 전투 · 반격의 기사', b: '전술 정지(스페이스), 자동은 평타·①만, 후열 사냥꾼, 아픈 원정(후퇴·부상·정산). 엘린 선물.' },
+];
+function showNews() {
+  const box = el('div', 'help-box news-box');
+  box.appendChild(el('div', 'modal-title', `새 소식 <small>v${GAME_VERSION}</small>`));
+  const list = el('div', 'news-list');
+  for (const n of NEWS) list.appendChild(el('div', 'news-item', `<span class="news-v">v${n.v}</span><b>${n.t}</b><small>${n.b}</small>`));
+  box.appendChild(list);
+  box.appendChild(btn('닫기', 'primary', () => Game.closeModal(), { id: 'news-close', sfx: 'back' }));
+  Game.modal(box, { dim: true, closeOnBg: true });
+}

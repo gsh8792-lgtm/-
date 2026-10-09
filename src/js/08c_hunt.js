@@ -110,6 +110,7 @@ const HuntScene = {
       else if (e.type === 'wipe') { this.banner = { text: '파티 전멸', sub: '입구로 돌아가 다시 사냥한다', t: 0, dur: 2 }; Sfx.play('back'); }
       else if (e.type === 'eliteSpawn') { this.banner = { text: `정예 출현: 「${e.mob.name}」`, sub: ENEMIES[e.mob.key].name, t: 0, dur: 2.4, danger: true }; Sfx.play('phase'); }
       else if (e.type === 'kill') {
+        if (codexSee(p, e.mob.key)) Game.toast(`📖 새 적 ${ENEMIES[e.mob.key].name} 도감 등록 (+● ${codexReward(e.mob.key)})`, 2200); codexKill(p, e.mob.key);
         const ids = this.sim.heroes.map((h) => h.id);
         for (const id of ids) this.expAcc[id] = (this.expAcc[id] || 0) + e.exp;
         ss.exp += e.exp; ss.gold += e.gold; p.gold += e.gold;

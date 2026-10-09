@@ -241,7 +241,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .title-box { position: absolute; left: 0; right: 0; top: 30px; display: flex; flex-direction: column; align-items: center; }
 .title-logo { font-size: 56px; font-weight: 900; color: var(--gold); letter-spacing: 2px; text-shadow: 0 4px 0 #6a3a10, 0 8px 18px rgba(0,0,0,.7); }
 .title-sub { font-size: 18px; color: #e8d8f8; margin: 2px 0 14px; text-shadow: 0 2px 0 #000; }
-.title-box .btn-col { width: 260px; }
+.title-box .btn-col { width: 380px; }
 .title-box .btn-col .btn { min-height: 48px; }
 .title-seed { margin-top: 6px; font-size: 13px; color: var(--muted); }
 .title-foot { position: absolute; right: 10px; bottom: 6px; font-size: 12px; color: var(--muted); }
@@ -544,3 +544,12 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .ach-card:not(.done) .ach-icon { opacity: .5; }
 .ach-bar { height: 6px; background: rgba(0,0,0,.35); border-radius: 3px; overflow: hidden; margin: 2px 0; }
 .ach-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffd34a, #ff9a3a); }
+
+/* ---------- 새 소식 */
+.news-box { width: 760px; }
+.news-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 12px; max-height: 380px; overflow-y: auto; }
+.news-item { display: grid; grid-template-columns: 64px 1fr; column-gap: 10px; background: rgba(0,0,0,.2); border-radius: 10px; padding: 6px 10px; font-size: 14px; }
+.news-item small { grid-column: 2; color: #c8c0d8; font-size: 12px; line-height: 1.4; }
+.news-v { grid-row: span 2; color: #ffd34a; font-weight: 800; font-size: 13px; align-self: center; }
+.title-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.title-grid .btn { min-width: 0; font-size: 16px; }
