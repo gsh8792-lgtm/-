@@ -329,8 +329,9 @@ const DungeonScene = {
     r.used = true; run.food--;
     for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * CONST.REST_HEAL_PCT)); }
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + CONST.TORCH_REST_GAIN);
+    CAMP_ACTS.guard.fn(run); CAMP_ACTS.tales.fn(run); // 자동 야영 활동: 보초 + 옛 이야기
     Sfx.play('heal');
-    Game.toast(`야영: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}`, 1800);
+    Game.toast(`야영: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN} · 보초·옛 이야기`, 1800);
     this.buildHud(); this.showRoomActions(r);
   },
 

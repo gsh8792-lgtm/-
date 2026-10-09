@@ -297,6 +297,8 @@ async function playRun(p, seed, opts) {
   await p.click('#rest-food');
   const hp = await p.evaluate(() => { const r = window.GAME.Game.run; return r.party.map((id) => r.heroes[id].hp / r.heroes[id].maxHp); });
   ok('휴식: 식량 1 소모 + HP 40% 회복', (await p.evaluate(() => window.GAME.Game.run.food)) === f0 - 1 && hp.every((x) => Math.abs(x - 0.7) < 0.02), hp.map((x) => x.toFixed(2)).join(','));
+  await p.click('#camp-guard'); await p.click('#camp-tales');
+  ok('야영 활동: 둘 고르면 나머지 잠김 · 다음 전투 효과 예약', await p.evaluate(() => { const r = window.GAME.Game.run; return !!(r.camp && r.camp.guard && r.camp.ult === 35); }) && await p.locator('#camp-whet').isDisabled());
   await p.screenshot({ path: `${OUT}/rest.png` });
   await p.click('#rest-strategy'); await p.click('#strat-close');
   await p.click('#btn-continue');

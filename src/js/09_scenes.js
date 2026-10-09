@@ -423,10 +423,24 @@ const ShopScene = {
 };
 
 // ---------------------------------------------------------------- 휴식 (캠프)
+// 야영 활동 (다키스트 던전의 야영처럼): 쉬고 나서 둘을 고른다. 효과는 다음 전투(들)에 붙는다 — run.camp / run.fruit
+const CAMP_ACTS = {
+  guard: { icon: '🛡', name: '보초 세우기', desc: '다음 전투: 기습당하지 않음 + 시작 시 파티 보호막 (최대 HP 12%)', fn: (run) => { run.camp = Object.assign(run.camp || {}, { guard: 1 }); return '보초를 세웠다. 다음 전투는 단단히 시작한다.'; } },
+  whet: { icon: '🔪', name: '장비 손질', desc: '다음 3전투 공격력 +12%', fn: (run) => { run.fruit = { bonus: Math.max(0.12, (run.fruit && run.fruit.bonus) || 0), battles: Math.max(3, (run.fruit && run.fruit.battles) || 0) }; return '날을 세웠다. 3전투 동안 공격력 +12%.'; } },
+  tales: { icon: '📜', name: '옛 이야기', desc: '다음 전투 시작 시 필살기 게이지 +35', fn: (run) => { run.camp = Object.assign(run.camp || {}, { ult: 35 }); return '옛 영웅담에 가슴이 뜨거워졌다. 다음 전투 필살기 게이지 +35.'; } },
+  tend: { icon: '🩹', name: '상처 돌보기', desc: '부상 1단계 회복 (부상이 없으면 HP 10% 더)', fn: (run) => {
+    const hs = partyAlive(run), inj = hs.filter((h) => h.injured > 0).sort((a, b) => b.injured - a.injured)[0];
+    if (inj) { inj.injured--; refreshRunLoadout(run); return '붕대를 갈았다. 부상 하나가 나았다.'; }
+    for (const h of hs) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * 0.1); return '상처를 꼼꼼히 돌봤다. HP 10% 회복.'; } },
+  torch: { icon: '🔥', name: '횃불 손질', desc: '횃불 +40', fn: (run) => { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 40); return '횃불을 손질했다. 횃불 +40.'; } },
+};
+const CAMP_PICKS = 2;
+
 const RestScene = {
   enter() {
     this.t = 0;
     this.rested = false;
+    this.camped = [];
     this.build();
   },
   build() {
@@ -442,7 +456,21 @@ const RestScene = {
       col.appendChild(eat);
       col.appendChild(btn(`굶고 쉬기 <small>HP ${CONST.REST_HUNGRY_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN}</small>`, 'choice', () => this.rest(false), { id: 'rest-hungry' }));
       box.appendChild(col);
-    } else box.appendChild(el('div', 'event-result good', this.msg));
+    } else {
+      box.appendChild(el('div', 'event-result good', this.msg));
+      // 야영 활동: 둘을 고른다
+      const left = CAMP_PICKS - this.camped.length;
+      box.appendChild(el('div', 'camp-title', `🔥 야영 활동 <small>${left > 0 ? `${left}개 더 고를 수 있다` : '불가에서 할 일을 마쳤다'}</small>`));
+      const grid = el('div', 'camp-grid');
+      for (const k in CAMP_ACTS) {
+        const a = CAMP_ACTS[k], done = this.camped.includes(k);
+        const b = btn(`${a.icon} ${a.name}<small>${a.desc}</small>`, 'camp-btn' + (done ? ' on' : ''), () => { if (done || this.camped.length >= CAMP_PICKS) return; this.camped.push(k); this.campMsg = a.fn(run); Sfx.play('click'); this.build(); }, { id: 'camp-' + k });
+        if (!done && left <= 0) b.disabled = true;
+        grid.appendChild(b);
+      }
+      box.appendChild(grid);
+      if (this.campMsg) box.appendChild(el('div', 'muted', this.campMsg));
+    }
     const row = el('div', 'btn-row');
     row.appendChild(btn('⚙ 전략', '', () => openStrategyEditor(run), { id: 'rest-strategy' }));
     row.appendChild(btn('🎒 장비', '', () => openInventory({ onClose: () => this.build() }), { id: 'rest-inv' }));
