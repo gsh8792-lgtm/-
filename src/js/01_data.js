@@ -221,11 +221,26 @@ const ENEMIES = {
   goblin_bomber: { name: '폭탄 고블린', moveSpeed: 104, hp: 70, atk: 20, atkInterval: 1.2, def: 0, size: 1, sprite: 'goblinBomber', color: '#d06a4a', gold: 6, abilities: ['charge'], chargeEvery: 1, chargeTime: 1.4, chargeMult: 3.2, chargeR: 70, chargeTrigger: 80, selfDestruct: true },
   // ---- 보스 로테이션 (그로기 역할 분담 검증용)
   thorn_queen:   { name: '가시덩굴 여왕', armor: 0.7, poise: 220, moveSpeed: 36, hp: 2300, atk: 30, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'thornQueen', color: '#6a9a4a', gold: 0, abilities: ['charge', 'boss', 'buds'], chargeEvery: 12, chargeTime: 3, chargeMult: 3.4, chargeR: 90, softEnrage: 150, budEvery: 13, budFirst: 6, budRegrow: 18, budCount: 3, calledArmor: 0.8, calledArmorDur: 10, calledHeal: 0.02 },
+  wipe_bud:      { name: '독꽃 봉오리', moveSpeed: 0, hp: 120, atk: 1, atkInterval: 99, def: 0, size: 1.0, sprite: 'thornBud', color: '#e06ab0', gold: 0, abilities: [], immobile: true, fixedScale: true },
   thorn_bud:     { name: '가시 꽃봉오리', moveSpeed: 0, hp: 420, atk: 1, atkInterval: 99, def: 0.2, size: 1.2, sprite: 'thornBud', color: '#c86ab0', gold: 0, abilities: [], immobile: true, callEvery: 13, callCast: 2.6, callCount: 1, callUnit: 'goblin', interruptResist: 1 },
   mist_stag:     { name: '안개 사슴왕', armor: 0.8, poise: 220, moveSpeed: 52, hp: 3200, atk: 34, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'mistStag', color: '#a8b8c8', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 10, chargeTime: 2.8, chargeMult: 4.0, chargeR: 90, backOnly: 0.3, softEnrage: 120, huntsBackline: true, frontRangedDmg: 0.6,
                    phases: [{ at: 0.5, name: '2페이즈: 안개 장막', stunImmune: true, summon: ['goblin', 'goblin'] }] },
   swamp_turtle:  { name: '늪거북 장로', armor: 0.75, poise: 220, moveSpeed: 30, hp: 5600, atk: 38, fixedScale: true, atkInterval: 2.4, def: 0.2, size: 2.0, sprite: 'swampTurtle', color: '#5a7a4a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3.2, chargeMult: 3.8, chargeR: 100, poiseRegen: 20, regenHalfBelow: 0.5, markStopsRegen: true, stunMult: 0.4, stunNoCancel: true, softEnrage: 120 },
 };
+
+// 보스 패턴: 일반 스킬 1개 + 전멸기 1개 (HP 60%·25%에서 한 번씩, 이후 WIPE_EVERY초마다)
+// 전멸기 대응 — break: 시전 중 그로기로 끊기 / buds: 함께 피는 꽃봉오리 부수기(남은 수만큼 피해) / safe: 빛나는 원 안으로 / shield: 껍질 보호막 깨기
+const BOSS_KITS = {
+  ogre_chief:   { skill: { key: 'rock', name: '바위 던지기', every: 13, first: 8, tele: 1.6, r: 75, mult: 2.4, target: 'far' },
+                  wipe: { key: 'quake', name: '대지 분쇄', type: 'break', cast: 6, mult: 0.9, hint: '그로기로 끊어라!' } },
+  thorn_queen:  { skill: { key: 'root', name: '덩굴 속박', every: 15, first: 9, dur: 2.5 },
+                  wipe: { key: 'bloom', name: '꽃가루 만개', type: 'buds', cast: 9, per: 0.3, buds: 3, hint: '꽃봉오리를 부숴라!' } },
+  mist_stag:    { skill: { key: 'gore', name: '뿔 찌르기', every: 12, first: 7, tele: 1.5, r: 85, mult: 1.7, target: 'random' },
+                  wipe: { key: 'mist', name: '안개 폭풍', type: 'safe', cast: 6, mult: 0.9, safeR: 95, hint: '빛나는 원 안으로!' } },
+  swamp_turtle: { skill: { key: 'spit', name: '독침', every: 11, first: 6, r: 85, dur: 6, dps: 0.25, target: 'random' },
+                  wipe: { key: 'tide', name: '늪의 해일', type: 'shield', cast: 8, mult: 0.9, shield: 0.085, hint: '껍질을 깨라!' } },
+};
+const WIPE_AT = [0.6, 0.25], WIPE_EVERY = 70;
 
 // 정예 변이: 정예 전투의 우두머리(가장 HP가 큰 적)에 하나가 붙는다 (HP +25%)
 const ELITE_AFFIXES = {

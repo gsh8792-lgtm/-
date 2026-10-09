@@ -509,6 +509,12 @@ const BattleScene = {
       case 'shake': this.popup(e.unit.x, this.unitTop(e.unit) - 14, '흔들림!', '#ffb050', 20, { label: true }); break;
       case 'interrupt': Sfx.play('click'); break; // 진행은 머리 위 끊기 칸으로 표시
       case 'enrageStack': this.popup(e.unit.x, this.unitTop(e.unit) - 18, `격노 ${e.n}`, '#ff6a5a', 18, { label: true }); break;
+      case 'wipeStart': this.banner = { text: e.name, sub: e.hint, t: 0, dur: 1.8 }; Sfx.play('phase'); this.shake = Math.max(this.shake, 6); this.slowmo = 0.6; break;
+      case 'wipeStopped': this.popup(e.unit.x, this.unitTop(e.unit) - 30, `${e.name} 저지!`, '#9cf0ff', 24, { label: true }); Sfx.play('cancel'); break;
+      case 'wipeHit': this.fx.push({ type: 'flash', color: 'rgba(255,60,40,', t: 0, dur: 0.6 }); this.shake = Math.max(this.shake, 14); Sfx.play('boom'); this.banner = { text: e.name + '!', sub: `${e.n}명이 휩쓸렸다`, t: 0, dur: 1.4 }; break;
+      case 'bossSkill': this.popup(e.unit.x, this.unitTop(e.unit) - 18, e.name, '#ffb08a', 16, { label: true }); break;
+      case 'root': this.popup(e.unit.x, this.unitTop(e.unit) - 16, '속박!', '#9ad070', 16, { label: true }); break;
+      case 'zoneImpact': this.smoke(e.x, e.y - 6, 1.2); this.shake = Math.max(this.shake, 5); Sfx.play('boom'); break;
       case 'affix': this.popup(e.unit.x, this.unitTop(e.unit) - 22, e.name + '!', '#ff9a6a', 18, { label: true }); break;
       case 'explode': this.smoke(e.unit.x, e.unit.y - 10, 1.6); this.shake = Math.max(this.shake, 8); Sfx.play('boom'); break;
       case 'enemyHeal': this.popup(e.target.x, this.unitTop(e.target) - 18, '치유!', '#9cf0a8', 16, { label: true }); Sfx.play('heal'); break;
@@ -735,6 +741,25 @@ const BattleScene = {
     else this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
     const cam = Math.round(this.camX);
     ctx.translate(-cam, 0);
+    // 보스 장판: 터질 곳(붉게, 차오름) · 독 웅덩이(초록) · 피난처(밝은 청록, 전멸기)
+    for (const z of sim.zones) {
+      const ry = z.r / CONST.Y_WEIGHT;
+      if (z.kind === 'impact') {
+        const prog = 1 - z.t / z.total;
+        ctx.fillStyle = `rgba(230,60,40,${0.18 + prog * 0.25})`; this.floorEllipse(ctx, z.x, z.y, z.r, ry);
+        ctx.fillStyle = `rgba(255,90,60,${0.3 + prog * 0.3})`; this.floorEllipse(ctx, z.x, z.y, z.r * prog, ry * prog);
+        ctx.strokeStyle = 'rgba(255,140,110,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      } else if (z.kind === 'pool') {
+        ctx.fillStyle = `rgba(110,200,60,${0.28 + Math.sin(t * 4 + z.x) * 0.06})`; this.floorEllipse(ctx, z.x, z.y, z.r, ry);
+        ctx.strokeStyle = 'rgba(160,240,90,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      } else if (z.kind === 'safe') {
+        const pulse = 0.5 + Math.sin(t * 6) * 0.2;
+        const g = ctx.createRadialGradient(z.x, z.y - 60, 10, z.x, z.y - 60, 160); g.addColorStop(0, `rgba(160,255,240,${0.35 * pulse})`); g.addColorStop(1, 'rgba(160,255,240,0)');
+        ctx.fillStyle = g; ctx.fillRect(z.x - 170, z.y - 230, 340, 260);
+        ctx.fillStyle = `rgba(120,255,220,${0.22 + pulse * 0.15})`; this.floorEllipse(ctx, z.x, z.y, z.r, ry);
+        ctx.strokeStyle = 'rgba(200,255,245,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([10, 6]); ctx.lineDashOffset = -t * 40; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
     // 차지 위험 범위 (원형)
     for (const e of sim.enemies) {
       if (!e.alive || !e.charge) continue;
@@ -772,6 +797,7 @@ const BattleScene = {
     this.drawPopups(ctx);
     ctx.restore();
     if (sim.W > 960) this.drawOffscreen(ctx, cam, t);
+    this.drawWipe(ctx, t);
     for (const f of this.fx) if (f.type === 'flash') { ctx.fillStyle = f.color + (0.5 * (1 - f.t / f.dur)).toFixed(3) + ')'; ctx.fillRect(0, 0, 960, 540); }
     if (this.danger) {
       const a = 0.2 + Math.sin(t * 12) * 0.1;
@@ -804,6 +830,25 @@ const BattleScene = {
     this.drawBanner(ctx);
     this.drawCutin(ctx);
   },
+
+  // 전멸기 시전 막대: 이름 · 대응 방법 · 남은 시간 (+ 껍질 / 남은 꽃봉오리)
+  drawWipe(ctx, t) {
+    const b = this.sim.enemies.find((e) => e.alive && e.wipe);
+    if (!b) return;
+    const w = b.wipe, k = Math.max(0, w.t / w.total), x = 260, y = 176, W = 440;
+    ctx.fillStyle = `rgba(60,0,0,${0.75 + Math.sin(t * 10) * 0.1})`; ctx.fillRect(x - 6, y - 26, W + 12, 52);
+    ctx.fillStyle = '#3a1010'; ctx.fillRect(x, y + 6, W, 12);
+    ctx.fillStyle = k < 0.3 ? '#ff3a2a' : '#ff8a3a'; ctx.fillRect(x, y + 6, W * k, 12);
+    ctx.textAlign = 'center'; ctx.font = '900 18px sans-serif'; ctx.lineWidth = 4; ctx.strokeStyle = '#1a0606';
+    const title = `⚠ ${w.name} ${Math.max(0, w.t).toFixed(1)}초 — ${w.hint}`;
+    ctx.strokeText(title, 480, y - 4); ctx.fillStyle = '#ffe0c8'; ctx.fillText(title, 480, y - 4);
+    ctx.font = '800 12px sans-serif'; ctx.fillStyle = '#ffd0b0';
+    if (w.type === 'shield' && b.wshieldMax) ctx.fillText(`껍질 ${Math.ceil(b.wshield)} / ${b.wshieldMax}`, 480, y + 34);
+    if (w.type === 'buds') ctx.fillText(`남은 꽃봉오리 ${(w.buds || []).filter((x) => x.alive).length} (하나당 최대 HP ${Math.round(b.kit.wipe.per * 100)}% 피해)`, 480, y + 34);
+    if (w.type === 'break') ctx.fillText(`그로기 게이지 ${Math.round(b.poise / b.poiseMax * 100)}% 남음`, 480, y + 34);
+  },
+
+  floorEllipse(ctx, x, y, rx, ry) { ctx.beginPath(); ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2); ctx.fill(); },
 
   // 화면 밖 유닛 표시 (넓은 전장): 가장자리 화살표, 차지 중이면 붉게 깜빡
   drawOffscreen(ctx, cam, t) {
@@ -861,6 +906,7 @@ const BattleScene = {
   },
 
   drawUnit(ctx, u, t, highlight) {
+    if (u.vanished) { ctx.save(); ctx.globalAlpha = 0.18 + Math.sin(t * 5) * 0.08; this.drawUnit(ctx, Object.assign({}, u, { vanished: false }), t, false); ctx.restore(); return; }
     const enemy = u.side === 'enemy';
     const sc = this.unitScale(u);
     let x = u.x, y = u.y;
