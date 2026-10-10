@@ -8,6 +8,7 @@ function boot() {
   Game.profile = EQ.loadProfile();
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
+  Game.register('world', WorldScene);
   Game.register('hunt', HuntScene);
   Game.register('dungeon', DungeonScene);
   Game.register('battle', BattleScene);
@@ -68,5 +69,5 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { usePotionFlow, openMerchant, openTalents, HuntSim, Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { capturePost, TERRITORY, WorldScene, WORLD, goWorld, openDungeonGate, openWaypoints, DUNGEON_SITES, usePotionFlow, openMerchant, openTalents, HuntSim, Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

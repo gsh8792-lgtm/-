@@ -344,15 +344,17 @@ function settleRun(run) {
   // 결과에 따라 가져가는 몫: 성공 전부 · 후퇴 골드 절반·경험치 75% · 실패 골드 25%·경험치 50%
   const share = RUN_SHARE[run.result] || RUN_SHARE.defeat;
   const ob = 1 + oathReward(run) + (run.dungeon || run.site ? siteOf(run).reward : 0); // 원정 맹세 + 장소(광산) 보상
-  const gold = Math.round(run.gold * share.gold * ob);
+  const tb = terrBonus(p); // 영지: 확보한 지역 효과
+  const gold = Math.round(run.gold * share.gold * ob * (1 + tb.gold));
   p.gold += gold;
   const exp = [];
-  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp * ob); if (r) exp.push(r); }
+  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp * ob * (1 + tb.exp)); if (r) exp.push(r); }
   let unlocked = null;
   if (run.result === 'victory') {
     p.clears[run.tier] = (p.clears[run.tier] || 0) + 1;
     if (run.tier >= p.unlockedTier && run.tier < EQ.DB.tiers.length) { p.unlockedTier = run.tier + 1; unlocked = EQ.tierInfo(p.unlockedTier); }
   }
+  const invaded = terrMaybeInvade(p, Math.random); // 원정을 다녀오는 사이 거점이 습격당할 수 있다
   saveProfile();
-  return { gold, unlocked, exp, share };
+  return { gold, unlocked, exp, share, invaded };
 }

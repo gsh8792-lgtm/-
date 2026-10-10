@@ -612,25 +612,6 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .rd-pet.on { border-color: #ff8a5a; box-shadow: 0 0 8px rgba(255,120,80,0.5); }
 .rd-pet.locked { opacity: 0.5; }
 
-/* ---------- 구역 확보 · 영지 (v0.56) */
-.post-gain { background: rgba(70,110,170,.18); border: 1px solid rgba(120,170,255,.35); border-radius: 10px; padding: 8px 12px; margin: 8px 0; font-size: 14px; line-height: 1.6; }
-.post-gain small { color: var(--muted); }
-.result-invade { text-align: center; color: #ffb070; font-weight: 700; font-size: 14px; margin: 4px 0; }
-.terr-box { width: min(900px, 94vw); }
-.terr-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 10px 0; }
-.terr-zone { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; background: rgba(255,255,255,.03); }
-.terr-zone.secured { border-color: #6aa8ff; box-shadow: 0 0 0 1px rgba(106,168,255,.35) inset, 0 0 14px rgba(106,168,255,.18); }
-.tz-head { font-size: 15px; margin-bottom: 6px; display: flex; gap: 8px; align-items: baseline; }
-.tz-head small { color: var(--muted); font-size: 12px; }
-.tz-tag { margin-left: auto; font-size: 11px; font-weight: 800; color: #0e1a2e; background: #8ab8ff; border-radius: 6px; padding: 1px 7px; }
-.tz-posts { display: flex; gap: 6px; }
-.tz-post { flex: 1; text-align: center; border-radius: 8px; padding: 5px 4px; font-size: 13px; font-weight: 700; background: rgba(0,0,0,.25); }
-.tz-post small { display: block; font-size: 10px; font-weight: 600; color: var(--muted); }
-.tz-post.ours { background: rgba(74,138,224,.22); }
-.tz-post.contested { background: rgba(224,138,42,.25); animation: pulse 1.2s infinite; }
-.tz-post.enemy { opacity: .75; }
-.tz-inc { font-size: 11px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
-
 </style>
 </head>
 <body>
@@ -3815,7 +3796,6 @@ function showRulesHelp() {
       </ul></div>
       <div><h4>원정을 고르는 법</h4><ul>
         <li>마을 <b>포탈</b> → 필드 지역을 걸어 던전 입구로. 지역의 <b>웨이포인트</b>에 닿으면 등록되고 다음부터 포탈에서 바로 이동. 필드에서 지면 마을로 실려 오고, 마을에 오면 회복.</li>
-        <li><b>구역 확보</b>: 필드 지역마다 적 <b>거점 3곳</b>(망루·야영지·요새). 정예 무리를 쓰러뜨리면 우리 영지 — 시간이 지나며 골드·강화석·영혼 조각이 쌓이고 마을 <b>🏰 영지</b>에서 거둔다(최대 12시간). 지역 거점을 모두 확보하면 수입 +50%와 지역 효과. 우리 거점에 들르면 파티 HP 회복. 원정을 다녀오면 가끔 거점이 습격당한다 — 되찾기 전까지 수입 없음.</li>
         <li>던전 4곳: <b>고블린 굴</b>(튜토리얼) → <b>버려진 광산</b> → <b>저주받은 묘지</b> → <b>심연의 요새</b>. 앞 던전의 보스를 잡아야 다음 지역 길이 열리고, 뒤로 갈수록 급격히 어렵다(보상도 큼).</li>
         <li>입구에서 <b>난이도</b>와 <b>원정 맹세</b>(스스로 어렵게 → 보상 최대 +120%)를 골라요.</li>
         <li>📖 <b>적 도감</b>: 적마다 대응법이 있어요. 처음 만나면 등록 + 골드. 🏆 <b>업적</b>은 소환권·강화석 보상.</li>
@@ -6371,13 +6351,7 @@ const BattleScene = {
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
       if (this.node.dref) dungeonBattleWon(run, this.node.dref); // 던전으로 복귀할 자리·방 정리
-      if (this.node.world && run.world && this.node.world.pack) { run.world.cleared = (run.world.cleared || []).concat([this.node.world.pack]); run.world.at = 'resume'; } // 필드 지역: 잡은 무리는 마을에 갈 때까지 비어 있다
-      if (this.node.world && this.node.world.post !== undefined) { // 구역 확보: 거점을 빼앗았다
-        const P = Game.profile, z = WORLD.zones[this.node.world.zone], pt = TERRITORY.posts[this.node.world.post], was = zoneSecured(P, z.key);
-        capturePost(P, z.key, this.node.world.post); if (run.world) run.world.at = 'resume';
-        Game.toast(`🚩 ${z.name} 「${pt.name}」 확보! 마을 「🏰 영지」에서 수입을 거둔다` + (!was && zoneSecured(P, z.key) ? ` · 🎉 ${z.name} 확보 — ${TERRITORY.zoneBonus[this.node.world.zone]}` : ''), 2600);
-        achCheck(P); saveProfile();
-      }
+      if (this.node.world && run.world) { run.world.cleared = (run.world.cleared || []).concat([this.node.world.pack]); run.world.at = 'resume'; } // 필드 지역: 잡은 무리는 마을에 갈 때까지 비어 있다
       if (this.node.type === 'boss') { run.result = 'victory'; achBossWin(Game.profile, run, (this.sim.enemies.find((e) => e.def.abilities.includes('boss')) || {}).key); Game.go('result'); }
       else if (this.node.small) { // 복도의 작은 무리: 보상 화면 없이 골드만 챙기고 바로 이어서
         const g = 6 + this.node.stage * 3 + Math.floor(Math.random() * 6); run.gold += g;
@@ -6973,7 +6947,6 @@ const FieldScene = {
     const r = el('div', 'f-right');
     r.appendChild(btn('🌀 포탈 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
     r.appendChild(btn('🌾 사냥터', 'small', () => this.autoMove('hunt'), { id: 'btn-hunt' }));
-    r.appendChild(btn('🏰 영지', 'small', () => openTerritory(() => this.refreshRes()), { id: 'btn-territory' }));
     r.appendChild(btn('✨ 소환', 'small', () => openGacha(() => this.refreshRes()), { id: 'btn-gacha' }));
     r.appendChild(btn('🧑 캐릭터', 'small', () => openRoster({ onClose: () => this.refreshRes() }), { id: 'btn-roster' }));
     r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
@@ -8410,18 +8383,12 @@ const WorldScene = {
     const rng = makeRng(hashSeed('world', Z.key));
     this.decos = []; for (let i = 0; i < Math.round(Z.w / 70); i++) { const x = rng() * Z.w, y = 60 + rng() * (WORLD.H - 80); if (Math.abs(y - 480) < 70) continue; this.decos.push({ x, y, s: 0.7 + rng() * 0.7, v: rng() }); }
     this.blobs = []; for (let i = 0; i < Z.w / 6; i++) this.blobs.push({ x: rng() * Z.w, y: rng() * WORLD.H, rx: 20 + rng() * 60, ry: 10 + rng() * 26, c: Math.floor(rng() * 3) });
-    // 거점 3곳 (구역 확보 · 08e_territory.js): 길에서 멀리 위·아래 끝에 있다
-    this.posts = TERRITORY.posts.map((pt, i) => ({ i, x: Math.round(pt.fx * Z.w), y: pt.y, name: pt.name }));
-    this.healed = {};
-    this.decos = this.decos.filter((d) => !this.posts.some((pt) => Math.abs(d.x - pt.x) < 140 && d.y > pt.y - 160 && d.y < pt.y + 90)); // 거점 자리는 비운다
     const enc = DUNGEON_SITES[Z.site].enc.small, prng = makeRng(hashSeed(run.seed, 'packs', Z.key));
     this.packs = [];
     for (let i = 0; i < Z.packs; i++) {
       const id = `${Z.key}-${i}`; if (run.world.cleared.includes(id)) continue;
       const tb = enc[Math.min(4, Z.stage + (i >= Z.packs - 1 ? 1 : 0))] || enc[1];
-      const x = 420 + (i + 0.5) * ((Z.w - 900) / Z.packs) + (prng() - 0.5) * 80;
-      const np = this.posts.reduce((a, b) => (Math.abs(b.x - x) < Math.abs(a.x - x) ? b : a)), up = Math.abs(np.x - x) < 300 ? np.y > 450 : prng() < 0.5; // 거점과 겹치지 않게 반대편으로
-      const y = up ? 230 + prng() * 60 : 680 + prng() * 60; // 길(가운데)에서 떨어져 있다 — 일부러 다가가야 싸운다
+      const x = 420 + (i + 0.5) * ((Z.w - 900) / Z.packs) + (prng() - 0.5) * 80, y = prng() < 0.5 ? 220 + prng() * 70 : 690 + prng() * 110; // 길(가운데)에서 떨어져 있다 — 일부러 다가가야 싸운다
       this.packs.push({ id, x, y, hx: x, hy: y, waves: [tb[Math.floor(prng() * tb.length)].slice()], ph: prng() * 6 });
     }
     this.obstacles = this.decos.filter((d) => Z.deco !== 'tree' || d.v < 0.6).map((d) => ({ x: d.x, y: d.y, r: 22 * d.s }));
@@ -8451,7 +8418,7 @@ const WorldScene = {
   refreshRes() {
     const run = Game.run, p = Game.profile;
     const hp = partyIds(run).map((id) => `${HEROES[id].name} ${Math.round(run.heroes[id].hp / run.heroes[id].maxHp * 100)}%`).join(' · ');
-    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>🧪 ${run.potions}</span><span>${hp}</span><span>위험도 ${'★'.repeat(this.zi + 1)}${'☆'.repeat(WORLD.zones.length - this.zi - 1)}</span><span>🚩 거점 ${TERRITORY.posts.filter((_, i) => { const s = postInfo(p, this.Z.key, i); return s && s.owned && !s.contested; }).length}/3${zoneSecured(p, this.Z.key) ? ' 확보!' : ''}</span>`;
+    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>🧪 ${run.potions}</span><span>${hp}</span><span>위험도 ${'★'.repeat(this.zi + 1)}${'☆'.repeat(WORLD.zones.length - this.zi - 1)}</span>`;
   },
   registerWp() {
     const p = Game.profile; p.waypoints = p.waypoints || {};
@@ -8463,8 +8430,6 @@ const WorldScene = {
   },
   interactables() {
     const Z = this.Z, out = [{ key: 'gate', x: this.gate.x, y: this.gate.y + 60, label: `⛩ ${DUNGEON_SITES[Z.site].name}` }, { key: 'wp', x: this.wp.x, y: this.wp.y, label: '🌀 웨이포인트' }];
-    const P = Game.profile;
-    for (const pt of this.posts) { const st = this.postStatus(pt.i); out.push({ key: 'post' + pt.i, x: pt.x, y: pt.y + 50, label: st === 'ours' ? `🚩 우리 ${pt.name}` : st === 'contested' ? `🔥 ${pt.name} 습격 중!` : `⚔ 적 ${pt.name}` }); }
     out.push({ key: 'back', x: 40, y: 480, label: this.zi ? `◀ ${WORLD.zones[this.zi - 1].name}` : '◀ 마을' });
     if (zoneExitOpen(Game.profile, this.zi)) out.push({ key: 'next', x: Z.w - 40, y: 480, label: `${WORLD.zones[this.zi + 1].name} ▶` });
     return out;
@@ -8483,35 +8448,6 @@ const WorldScene = {
     else if (it.key === 'wp') this.registerWp();
     else if (it.key === 'back') { Sfx.play('door'); if (this.zi === 0) { run.world = null; Game.go('field', { from: 'world' }); } else goWorld(this.zi - 1, 'end'); }
     else if (it.key === 'next') { Sfx.play('door'); goWorld(this.zi + 1, 'start'); }
-    else if (it.key.startsWith('post')) this.postAction(+it.key.slice(4));
-  },
-  // ------------------------------------------------------------ 거점 (구역 확보)
-  postStatus(i) { const s = postInfo(Game.profile, this.Z.key, i); return !s || !s.owned ? 'enemy' : s.contested ? 'contested' : 'ours'; },
-  postAction(i) {
-    const pt = this.posts[i], st = this.postStatus(i), run = Game.run, Z = this.Z, inc = TERRITORY.income[this.zi];
-    if (st === 'ours') {
-      if (this.healed[i]) { Game.toast(`🚩 우리 ${pt.name} — 지키는 병사들이 손을 흔든다`, 1400); return; }
-      this.healed[i] = true;
-      for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * TERRITORY.postHeal); }
-      Sfx.play('heal'); Game.toast(`🚩 우리 ${pt.name}에서 쉬었다 — 파티 HP +${Math.round(TERRITORY.postHeal * 100)}%`, 1800); this.refreshRes(); return;
-    }
-    const box = el('div', 'confirm-box post-box');
-    box.appendChild(el('div', 'modal-title', st === 'contested' ? `🔥 ${pt.name} 탈환` : `⚔ 적 ${pt.name} 공략`));
-    box.appendChild(el('p', '', st === 'contested' ? '우리 거점이 습격당했다! 적을 몰아내기 전까지 이 거점의 수입이 없다.' : '거점을 지키는 정예 무리 (2웨이브). 쓰러뜨리면 우리 영지가 된다.'));
-    box.appendChild(el('div', 'post-gain', `거점 수입 · 시간당 ● ${inc.gold} · 💎 ${inc.stones}${inc.shards ? ` · ◆ ${inc.shards}` : ''}<br><small>지역 거점 3곳을 모두 확보하면 수입 +50% · ${TERRITORY.zoneBonus[this.zi]}</small>`));
-    box.appendChild(el('p', 'muted', `파티 ${partyIds(run).map((id) => `${HEROES[id].name} ${Math.round(run.heroes[id].hp / run.heroes[id].maxHp * 100)}%`).join(' · ')}`));
-    const row = el('div', 'btn-row');
-    row.appendChild(btn('물러나기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'post-no' }));
-    row.appendChild(btn(st === 'contested' ? '탈환 ▶' : '공략 ▶', 'primary', () => { Game.closeModal(); this.startPostFight(i); }, { id: 'post-go' }));
-    box.appendChild(row);
-    Game.modal(box, { dim: true, closeOnBg: true });
-  },
-  startPostFight(i) {
-    const run = Game.run, Z = this.Z, rng = makeRng(hashSeed(run.seed, 'post', Z.key, i, Date.now() % 997));
-    run.world.pos = { x: this.leader.x, y: this.leader.y + 40 }; run.world.at = 'resume';
-    const affs = Object.keys(ELITE_AFFIXES);
-    Sfx.play('charge');
-    Game.go('battle', { node: { stage: Z.stage, row: 0, type: 'elite', waves: postWaves(this.zi, i, rng), affix: i >= 1 ? affs[Math.floor(rng() * affs.length)] : null, world: { zone: this.zi, post: i }, worldScale: { hp: Z.scale.hp * 1.1, atk: Z.scale.atk * 1.05 } } });
   },
   // ------------------------------------------------------------ 입력 (마을과 같다)
   joyBase() { return FieldScene.joyBase(); },
@@ -8591,7 +8527,6 @@ const WorldScene = {
     const objs = [];
     for (const d of this.decos) if (d.x > cam.x - 120 && d.x < cam.x + 1080) objs.push({ y: d.y, draw: () => this.drawDeco(ctx, d, t) });
     objs.push({ y: this.gate.y + 40, draw: () => this.drawGate(ctx, this.gate.x, this.gate.y, t) });
-    for (const pt of this.posts) if (pt.x > cam.x - 200 && pt.x < cam.x + 1160) objs.push({ y: pt.y + 30, draw: () => this.drawPost(ctx, pt, t) });
     for (const k of this.packs) objs.push({ y: k.y, draw: () => k.waves[0].slice(0, 3).forEach((id, j) => { const ex = k.x + (j - 1) * 30, ey = k.y + (j % 2) * 12; FieldScene.shadow(ctx, ex, ey, 12); drawSprite(ctx, ENEMIES[id].sprite, ex, ey, { scale: ENEMIES[id].size > 1.3 ? 1.5 : 1.8, t, flip: L.x < k.x, phase: j + k.ph }); }) });
     this.followers.forEach((f) => objs.push({ y: f.y, draw: () => FieldScene.drawWalker.call(this, ctx, f.id, f, t, false) }));
     objs.push({ y: L.y, draw: () => FieldScene.drawWalker.call(this, ctx, partyIds(run)[0], L, t, true) });
@@ -8600,7 +8535,7 @@ const WorldScene = {
     // 표지
     ctx.textAlign = 'center'; ctx.font = 'bold 14px sans-serif';
     for (const it of this.interactables()) {
-      const near = this.nearby && this.nearby.key === it.key, bob = Math.sin(t * 4) * 3, ly = it.key === 'gate' ? it.y - 190 : it.key.startsWith('post') ? it.y + 34 : it.y - 64; // 거점 이름은 목책 아래 (위쪽은 화면 밖이 되기 쉽다)
+      const near = this.nearby && this.nearby.key === it.key, bob = Math.sin(t * 4) * 3, ly = it.key === 'gate' ? it.y - 190 : it.y - 64;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.88)'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.strokeText(it.label, it.x, ly + bob); ctx.fillText(it.label, it.x, ly + bob);
     }
@@ -8625,22 +8560,6 @@ const WorldScene = {
     ctx.fillStyle = '#2a2020'; ctx.beginPath(); ctx.moveTo(x - 20 * s, y); ctx.lineTo(x - 4 * s, y - 90 * s); ctx.lineTo(x + 6 * s, y - 60 * s); ctx.lineTo(x + 20 * s, y); ctx.fill();
     ctx.fillStyle = `rgba(255,110,40,${0.25 + 0.15 * Math.sin(t * 2 + v * 7)})`; ctx.beginPath(); ctx.ellipse(x, y + 2, 26 * s, 7 * s, 0, 0, Math.PI * 2); ctx.fill();
   },
-  // 거점: 목책 + 건물(망루/천막/요새) + 깃발 (적: 붉은 깃발 · 지키는 적 / 우리: 푸른 깃발 / 습격: 불길)
-  drawPost(ctx, pt, t) {
-    const st = this.postStatus(pt.i), x = pt.x, y = pt.y;
-    FieldScene.shadow(ctx, x, y + 26, 90);
-    ctx.fillStyle = '#5a3f28'; for (let a = 0; a < 14; a++) { const ang = Math.PI * (0.05 + a / 13 * 0.9), px = x + Math.cos(ang) * 92, py = y + 22 + Math.sin(ang) * 26; ctx.fillRect(px - 4, py - 26, 8, 26); ctx.beginPath(); ctx.moveTo(px - 4, py - 26); ctx.lineTo(px, py - 34); ctx.lineTo(px + 4, py - 26); ctx.fill(); }
-    if (pt.i === 0) { ctx.fillStyle = '#6b4a2e'; ctx.fillRect(x - 26, y - 90, 8, 110); ctx.fillRect(x + 18, y - 90, 8, 110); ctx.fillStyle = '#7d5a38'; ctx.fillRect(x - 34, y - 110, 68, 26); ctx.fillStyle = '#4e3520'; ctx.beginPath(); ctx.moveTo(x - 40, y - 108); ctx.lineTo(x, y - 140); ctx.lineTo(x + 40, y - 108); ctx.fill(); }
-    else if (pt.i === 1) { ctx.fillStyle = st === 'ours' ? '#4a6a9a' : '#8a4a3a'; ctx.beginPath(); ctx.moveTo(x - 50, y + 10); ctx.lineTo(x, y - 70); ctx.lineTo(x + 50, y + 10); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.moveTo(x - 12, y + 10); ctx.lineTo(x, y - 30); ctx.lineTo(x + 12, y + 10); ctx.fill(); }
-    else { ctx.fillStyle = '#7a7470'; ctx.fillRect(x - 46, y - 70, 92, 84); ctx.fillStyle = '#8e8884'; for (let k = -2; k <= 2; k++) ctx.fillRect(x + k * 20 - 7, y - 84, 14, 16); ctx.fillStyle = '#2a2224'; ctx.beginPath(); ctx.moveTo(x - 16, y + 14); ctx.lineTo(x - 16, y - 18); ctx.quadraticCurveTo(x, y - 34, x + 16, y - 18); ctx.lineTo(x + 16, y + 14); ctx.fill(); }
-    const fx = x + (pt.i === 1 ? 0 : 0), fy = pt.i === 0 ? y - 140 : pt.i === 1 ? y - 70 : y - 84;
-    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(fx - 2, fy - 50, 4, 52);
-    const col = st === 'ours' ? '#4a8ae0' : st === 'contested' ? '#e08a2a' : '#c03a30', wv = Math.sin(t * 4 + pt.i) * 4;
-    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(fx + 2, fy - 50); ctx.quadraticCurveTo(fx + 20, fy - 46 + wv, fx + 38, fy - 42); ctx.lineTo(fx + 2, fy - 30); ctx.fill();
-    if (st === 'contested') for (let k = 0; k < 5; k++) { const fl = (t * 1.4 + k * 0.37) % 1, ex = x - 60 + k * 30, ey = y - 10 - fl * 50; ctx.fillStyle = `rgba(255,${140 - fl * 90},40,${0.8 * (1 - fl)})`; ctx.beginPath(); ctx.arc(ex + Math.sin(t * 5 + k) * 4, ey, 9 * (1 - fl) + 3, 0, Math.PI * 2); ctx.fill(); }
-    if (st !== 'ours') { const ids = postWaves(this.zi, pt.i, makeRng(hashSeed(this.Z.key, pt.i)))[0].slice(0, 2); ids.forEach((id, j) => { const ex = x + (j ? 48 : -48), ey = y + 48; FieldScene.shadow(ctx, ex, ey, 12); drawSprite(ctx, ENEMIES[id].sprite, ex, ey, { scale: ENEMIES[id].size > 1.3 ? 1.4 : 1.7, t, flip: j === 1, phase: j + pt.i }); }); }
-    else if (st === 'ours') { const g = ctx.createRadialGradient(x, y, 10, x, y, 110); g.addColorStop(0, 'rgba(120,180,255,0.18)'); g.addColorStop(1, 'rgba(120,180,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 110, y - 110, 220, 220); }
-  },
   drawGate(ctx, x, y, t) {
     const S = DUNGEON_SITES[this.Z.site], open = !S.unlock || S.unlock(Game.profile);
     ctx.fillStyle = '#3a3438'; ctx.beginPath(); ctx.moveTo(x - 110, y + 40); ctx.quadraticCurveTo(x - 100, y - 120, x, y - 140); ctx.quadraticCurveTo(x + 100, y - 120, x + 110, y + 40); ctx.fill();
@@ -8650,97 +8569,6 @@ const WorldScene = {
     if (!open) { ctx.strokeStyle = '#8a7a6a'; ctx.lineWidth = 6; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(x + i * 22, y - 60); ctx.lineTo(x + i * 22, y + 40); ctx.stroke(); } }
   },
 };
-
-// ---------- 08e_territory.js
-// ===== 08e_territory.js : 구역 확보 — 필드 지역의 거점을 빼앗아 영지로 (v0.56) =====
-// 지역마다 거점 3곳. 거점의 적(정예 무리)을 쓰러뜨리면 우리 영지가 되고 시간이 지나며 자원을 만든다(마을 「🏰 영지」에서 수확).
-// 한 지역의 거점 3곳을 모두 확보하면 그 지역 「확보」 — 수입 +50% · 지역 효과(아래).
-// 원정을 마치고 돌아오면 가끔 거점 하나가 습격당한다 — 다시 지켜 내기 전까지 그 거점은 수입이 없다.
-
-const TERRITORY = {
-  posts: [{ fx: 0.27, y: 300, name: '망루' }, { fx: 0.5, y: 760, name: '야영지' }, { fx: 0.7, y: 300, name: '요새' }],
-  // 거점 1곳의 시간당 수입 (지역 순서대로 많아진다)
-  income: [{ gold: 30, stones: 1, shards: 0 }, { gold: 55, stones: 2, shards: 1 }, { gold: 90, stones: 3, shards: 2 }, { gold: 140, stones: 5, shards: 3 }],
-  capHours: 12,         // 쌓이는 최대 시간
-  invadeChance: 0.35,   // 원정을 마칠 때 확보한 거점 하나가 습격당할 확률
-  zoneBonus: ['원정 골드 +10%', '강화석 수입 ×2', '영혼 조각 수입 ×2', '원정 경험치 +10%'],
-  postHeal: 0.35,       // 우리 거점에 들르면 파티 HP 회복 (최대 HP 비율 · 거점마다 들어올 때 한 번)
-};
-function terrState(p) { p.territory = p.territory || { posts: {}, last: Date.now() }; p.territory.posts = p.territory.posts || {}; return p.territory; }
-const postKey = (zoneKey, i) => `${zoneKey}:${i}`;
-function postInfo(p, zoneKey, i) { return terrState(p).posts[postKey(zoneKey, i)] || null; } // { owned, contested }
-function zoneSecured(p, zoneKey) { return TERRITORY.posts.every((_, i) => { const s = postInfo(p, zoneKey, i); return s && s.owned && !s.contested; }); }
-function capturePost(p, zoneKey, i) {
-  const T = terrState(p); terrCollect(p); // 수입 계산을 지금 시점으로 맞춘 뒤 바꾼다
-  T.posts[postKey(zoneKey, i)] = { owned: true, contested: false, at: Date.now() };
-  achAdd(p, 'posts');
-}
-// 시간당 수입 합계 (확보한 지역은 +50%, 습격당한 거점은 0)
-function terrRate(p) {
-  const out = { gold: 0, stones: 0, shards: 0 };
-  WORLD.zones.forEach((z, zi) => {
-    const sec = zoneSecured(p, z.key), inc = TERRITORY.income[zi];
-    TERRITORY.posts.forEach((_, i) => {
-      const s = postInfo(p, z.key, i); if (!s || !s.owned || s.contested) return;
-      const m = sec ? 1.5 : 1;
-      out.gold += inc.gold * m; out.stones += inc.stones * m * (sec && zi === 1 ? 2 : 1); out.shards += inc.shards * m * (sec && zi === 2 ? 2 : 1);
-    });
-  });
-  return out;
-}
-// 지금까지 쌓인 수입 (최대 capHours)
-function terrPending(p, now) {
-  const T = terrState(p), h = Math.min(TERRITORY.capHours, Math.max(0, ((now || Date.now()) - (T.last || Date.now())) / 3600000)), r = terrRate(p);
-  return { hours: h, gold: Math.floor(r.gold * h), stones: Math.floor(r.stones * h), shards: Math.floor(r.shards * h) };
-}
-// 수확: 골드·강화석은 바로, 영혼 조각은 보유 캐릭터에게 무작위로 나눠 준다
-function terrCollect(p, now, rng) {
-  const T = terrState(p), got = terrPending(p, now);
-  p.gold += got.gold; p.stones += got.stones;
-  if (got.shards > 0) { const ids = GACHA.ownedIds(p); const r = rng || Math.random; for (let i = 0; i < got.shards; i++) GACHA.addShards(p, ids[Math.floor(r() * ids.length)], 1); }
-  T.last = now || Date.now();
-  return got;
-}
-// 원정이 끝났을 때 (settleRun): 확보한 거점 하나가 습격당할 수 있다
-function terrMaybeInvade(p, rng) {
-  const T = terrState(p), owned = Object.keys(T.posts).filter((k) => T.posts[k].owned && !T.posts[k].contested);
-  if (!owned.length || rng() >= TERRITORY.invadeChance) return null;
-  terrCollect(p);
-  const k = owned[Math.floor(rng() * owned.length)]; T.posts[k].contested = true;
-  return k;
-}
-// 지역 효과: 확보한 지역 수만큼
-function terrBonus(p) { return { gold: zoneSecured(p, 'outskirts') ? 0.1 : 0, exp: zoneSecured(p, 'ashland') ? 0.1 : 0 }; }
-// 거점 전투 (정예 무리 + 거점 우두머리)
-function postWaves(zi, i, rng) {
-  const Z = WORLD.zones[zi], E = DUNGEON_SITES[Z.site].enc, st = Math.min(4, Z.stage + i);
-  const el = E.elite[st] || E.elite[1];
-  return el[Math.floor(rng() * el.length)].map((w) => w.slice());
-}
-
-// 마을 「🏰 영지」 창
-function openTerritory(onClose) {
-  const p = Game.profile, now = Date.now(), pend = terrPending(p, now), rate = terrRate(p);
-  const box = el('div', 'inv-box terr-box');
-  const head = el('div', 'inv-head');
-  head.appendChild(el('div', 'modal-title', '🏰 영지 <small>필드 거점을 확보하면 자원이 쌓인다</small>'));
-  head.appendChild(el('div', 'inv-res', `<span>시간당 ● ${Math.round(rate.gold)} · 💎 ${rate.stones.toFixed(1)} · ◆ ${rate.shards.toFixed(1)}</span>`));
-  head.appendChild(btn(`수확 <small>● ${pend.gold} · 💎 ${pend.stones} · ◆ ${pend.shards}</small>`, 'primary small', () => { const g = terrCollect(p); saveProfile(); Sfx.play('coin'); Game.toast(`🏰 영지 수확: 골드 +${g.gold} · 강화석 +${g.stones} · 영혼 조각 +${g.shards}`, 2000); openTerritory(onClose); }, { id: 'terr-collect' }));
-  head.appendChild(btn('닫기', 'small', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'terr-close', sfx: 'back' }));
-  box.appendChild(head);
-  const grid = el('div', 'terr-grid');
-  WORLD.zones.forEach((z, zi) => {
-    const sec = zoneSecured(p, z.key), card = el('div', 'terr-zone' + (sec ? ' secured' : ''));
-    const inc = TERRITORY.income[zi];
-    card.appendChild(el('div', 'tz-head', `<b>${z.name}</b> <small>${DUNGEON_SITES[z.site].name}</small>${sec ? '<span class="tz-tag">확보</span>' : ''}`));
-    card.appendChild(el('div', 'tz-posts', TERRITORY.posts.map((pt, i) => { const s = postInfo(p, z.key, i); const st = !s || !s.owned ? 'enemy' : s.contested ? 'contested' : 'ours'; return `<span class="tz-post ${st}">${st === 'ours' ? '🚩' : st === 'contested' ? '🔥' : '⚔'} ${pt.name}<small>${st === 'ours' ? '우리 땅' : st === 'contested' ? '습격 중!' : '적 거점'}</small></span>`; }).join('')));
-    card.appendChild(el('div', 'tz-inc', `거점마다 시간당 ● ${inc.gold} · 💎 ${inc.stones}${inc.shards ? ` · ◆ ${inc.shards}` : ''} · 모두 확보: +50% · ${TERRITORY.zoneBonus[zi]}`));
-    grid.appendChild(card);
-  });
-  box.appendChild(grid);
-  box.appendChild(el('div', 'muted', `수입은 최대 ${TERRITORY.capHours}시간까지 쌓인다. 원정을 마치고 돌아오면 가끔 거점이 습격당한다 — 필드에서 다시 지켜 내자.`));
-  Game.closeModal(); Game.modal(box, { dim: true, cls: 'inv-modal' });
-}
 
 // ---------- 09_scenes.js
 // ===== 09_scenes.js : 타이틀 / 전투 전 팝업 / 보상 / 이벤트 / 상점 / 휴식 / 고목 / 결과 / 전략 편집 =====
@@ -9375,7 +9203,6 @@ const ResultScene = {
     const lootLine = run.loot.length ? `획득 장비 ${lootHtml(run.loot)}` : '획득 장비 없음';
     box.appendChild(el('div', 'result-loot', `${lootLine}<br>💎 강화석 +${run.stonesGot} · 마을로 가져간 골드 ● ${settle ? settle.gold : run.gold}${oathReward(run) ? ` <small>(⚔ 맹세 ${oathList(run).map((k) => OATHS[k].icon).join('')} 보상 +${Math.round(oathReward(run) * 100)}%)</small>` : ''}${settle && settle.unlocked ? `<br><b class="ok">새 난이도 해금: ${settle.unlocked.name} (T${settle.unlocked.tier})</b>` : ''}`));
     if (settle && settle.exp.length) box.appendChild(el('div', 'reward-exp', '경험치 정산 · ' + settle.exp.map((r) => `${HEROES[r.id].name} +${r.exp}${r.to > r.from ? ` <b class="lvup">Lv ${r.to}!</b>` : ''}`).join(' · ') + settle.exp.filter((r) => r.learned.length).map((r) => ` · <b class="learn">${HEROES[r.id].name} 「${r.learned.map((k) => ultDefFor(r.id, k, 0).name).join('」「')}」 습득</b>`).join('')));
-    if (settle && settle.invaded) { const [zk, i] = settle.invaded.split(':'), z = WORLD.zones[zoneIdx(zk)]; box.appendChild(el('div', 'result-invade', `🔥 원정을 다녀온 사이 ${z.name}의 「${TERRITORY.posts[+i].name}」이(가) 습격당했다! 필드에서 되찾기 전까지 수입이 없다.`)); }
     box.appendChild(el('div', 'muted', `${siteOf(run).name} · 시드 ${run.seed} · 난이도 ${EQ.tierInfo(run.tier).name}`));
     const row = el('div', 'btn-row');
     row.appendChild(btn('타이틀', 'ghost', () => Game.go('title'), { id: 'res-title' }));
@@ -9861,19 +9688,17 @@ function settleRun(run) {
   // 결과에 따라 가져가는 몫: 성공 전부 · 후퇴 골드 절반·경험치 75% · 실패 골드 25%·경험치 50%
   const share = RUN_SHARE[run.result] || RUN_SHARE.defeat;
   const ob = 1 + oathReward(run) + (run.dungeon || run.site ? siteOf(run).reward : 0); // 원정 맹세 + 장소(광산) 보상
-  const tb = terrBonus(p); // 영지: 확보한 지역 효과
-  const gold = Math.round(run.gold * share.gold * ob * (1 + tb.gold));
+  const gold = Math.round(run.gold * share.gold * ob);
   p.gold += gold;
   const exp = [];
-  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp * ob * (1 + tb.exp)); if (r) exp.push(r); }
+  for (const id in (run.pendExp || {})) { const r = GACHA.addExp(p, id, run.pendExp[id] * share.exp * ob); if (r) exp.push(r); }
   let unlocked = null;
   if (run.result === 'victory') {
     p.clears[run.tier] = (p.clears[run.tier] || 0) + 1;
     if (run.tier >= p.unlockedTier && run.tier < EQ.DB.tiers.length) { p.unlockedTier = run.tier + 1; unlocked = EQ.tierInfo(p.unlockedTier); }
   }
-  const invaded = terrMaybeInvade(p, Math.random); // 원정을 다녀오는 사이 거점이 습격당할 수 있다
   saveProfile();
-  return { gold, unlocked, exp, share, invaded };
+  return { gold, unlocked, exp, share };
 }
 
 // ---------- 09c_roster.js
@@ -10260,8 +10085,6 @@ const ACHIEVEMENTS = [
   { id: 'codex_all', name: '적 박사', desc: '적 도감을 모두 채운다', prog: (p) => [Object.keys(p.codex || {}).filter((k) => ENEMY_CODEX[k]).length, Object.keys(ENEMY_CODEX).length], reward: { tickets: 3 } },
   { id: 'chars10', name: '원정대 확장', desc: '캐릭터 15명을 모은다', prog: (p) => [GACHA.ownedIds(p).length, 15], reward: { tickets: 2 } },
   { id: 'talent_cap', name: '전문가', desc: '특성 트리의 핵심 특성을 하나 연다', prog: (p) => [Object.values(p.talents || {}).some((s) => Object.keys(s).some((k) => /_cap\d$/.test(k) && s[k] > 0)) ? 1 : 0, 1], reward: { stones: 10 } },
-  { id: 'post_first', name: '깃발을 꽂다', desc: '필드 거점을 처음 확보한다', prog: (p) => [achCnt(p, 'posts'), 1], reward: { tickets: 1 } },
-  { id: 'zone_secured', name: '영주', desc: '한 지역의 거점 3곳을 모두 확보한다', prog: (p) => [WORLD.zones.some((z) => zoneSecured(p, z.key)) ? 1 : 0, 1], reward: { tickets: 3 } },
   { id: 'hunt_elite10', name: '사냥터의 주인', desc: '사냥터 정예를 10마리 쓰러뜨린다', prog: (p) => [achCnt(p, 'huntElite'), 10], reward: { gold: 500 } },
 ];
 const ACH_REWARD_TXT = (r) => [r.tickets ? `🎟 ${r.tickets}` : '', r.gold ? `● ${r.gold}` : '', r.stones ? `💎 ${r.stones}` : ''].filter(Boolean).join(' ');
@@ -10311,9 +10134,8 @@ function openAchievements(onClose) {
 
 // ---------- 09g_news.js
 // ===== 09g_news.js : 타이틀 「새 소식」 — 이번 버전들에서 달라진 것 (길게는 CHANGELOG.md) =====
-const GAME_VERSION = '0.56';
+const GAME_VERSION = '0.55';
 const NEWS = [
-  { v: '0.56', t: '구역 확보 · 영지', b: '필드 지역마다 적 거점 3곳(망루·야영지·요새). 정예 무리를 쓰러뜨려 깃발을 꽂으면 시간이 지나며 골드·강화석·영혼 조각이 쌓인다 — 마을 「🏰 영지」에서 수확. 한 지역을 모두 확보하면 수입 +50%와 지역 효과(원정 골드 +10% 등). 원정을 다녀오면 가끔 거점이 습격당하니 되찾자.' },
   { v: '0.55', t: '던전 4곳 · 필드 지역 · 웨이포인트', b: '던전은 이제 마을 포탈 → 필드 지역을 걸어서 간다. 지역마다 적 무리와 웨이포인트(한 번 닿으면 포탈에서 바로 이동). 고블린 굴은 튜토리얼로 쉬워졌고, 버려진 광산 → 저주받은 묘지(언데드) → 심연의 요새(악마)로 갈수록 급격히 어려워진다. 새 몬스터 12종 · 보스 리치 왕 · 심연의 군주.' },
   { v: '0.54', t: '영혼 조각 · 흑마술사(악마 소환) · 저주술사', b: '소환은 이제 대부분 영혼 조각을 준다 — 조각 40개로 합류, 20/30/50/70/100개로 돌파(캐릭터 화면). 기존 흑마술사는 「저주술사」로 이름이 바뀌고, 새 「흑마술사」는 와우처럼 레벨이 오를수록 강한 악마를 부린다 (임프 → 공허방랑자 → 서큐버스 → 지옥사냥개, 필살기 지옥불정령·파멸의 수호병). 세렌 선물.' },
   { v: '0.53', t: '장비·스킬 다양화', b: '9개 직업 모두 다섯 번째 무기·갑옷과 새 스킬(사슬 끌어오기 · 처형 · 연막탄 · 진각 · 산탄 사격 · 시간 왜곡 · 흡혼 · 뼈 감옥 · 신성한 사슬 등 18종). 새 장신구 6종(회피 · 피해 흡수 · 가시 · 지속 피해 · 기절 지속 · 그로기 적 피해)과 패시브 2종.' },
@@ -10419,7 +10241,7 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { capturePost, TERRITORY, WorldScene, WORLD, goWorld, openDungeonGate, openWaypoints, DUNGEON_SITES, usePotionFlow, openMerchant, openTalents, HuntSim, Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { WorldScene, WORLD, goWorld, openDungeonGate, openWaypoints, DUNGEON_SITES, usePotionFlow, openMerchant, openTalents, HuntSim, Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 
 })();

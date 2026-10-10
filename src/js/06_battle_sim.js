@@ -644,13 +644,14 @@ class BattleSim {
         const d = this._damage(u, tgt, this._atkOf(u), { basic: true });
         if (d && u.role === 'monk') this._addKi(u, 1); // 수도승: 평타 적중마다 기 +1
         if (d && u.poisonDps && tgt.alive) this._applyStatus(u.owner, tgt, { status: 'poison', dur: 6, dps: u.poisonDps }); // 구울: 물면 중독
+        if (d && u.side === 'enemy' && u.def.onHit && tgt.alive) this._applyStatus(u, tgt, u.def.onHit); // 적 평타 부가 효과 (구울 중독 · 유혹 약화)
       } });
       this.events.push({ type: 'attack', unit: u, target: tgt, melee: true });
     } else {
       u.anim.cast = 0.18; u.anim.castMax = 0.18; u.face = tgt.x >= u.x ? 1 : -1;
       const travel = 0.12 + this.dist(u, tgt) / 1400;
       this.events.push({ type: 'projectile', from: u, to: tgt, kind: u.role === 'warlock' || u.role === 'demon' ? 'curse' : u.role === 'necro' ? 'bone' : u.key === 'minion_imp' ? 'soldam' : u.key, travel });
-      this.delayed.push({ t: travel, fn: () => { if (!tgt.alive) return; const d = this._damage(u, tgt, this._atkOf(u), { basic: true }); if (d && u.burnDps && tgt.alive) this._applyStatus(u.owner, tgt, { status: 'burn', dur: 4, dps: u.burnDps }); } }); // 임프: 화염탄 화상
+      this.delayed.push({ t: travel, fn: () => { if (!tgt.alive) return; const d = this._damage(u, tgt, this._atkOf(u), { basic: true }); if (d && u.burnDps && tgt.alive) this._applyStatus(u.owner, tgt, { status: 'burn', dur: 4, dps: u.burnDps }); if (d && u.side === 'enemy' && u.def.onHit && tgt.alive) this._applyStatus(u, tgt, u.def.onHit); } }); // 임프: 화염탄 화상
     }
   }
 

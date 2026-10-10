@@ -758,6 +758,21 @@ Object.assign(SPRITE_VARIANTS, {
   infernal: { base: 'ogre', filter: 'hue-rotate(-80deg) saturate(1.6) brightness(0.75) contrast(1.4)', swap: {} },
   doomguard: { base: 'orcCaptain', filter: 'hue-rotate(-120deg) saturate(1.8) brightness(0.7) contrast(1.3)', swap: {} },
   voidlord: { base: 'ogreChief', filter: 'hue-rotate(210deg) saturate(1.2) brightness(0.6) contrast(1.3)', swap: {} },
+  // v0.55 언데드 · 악마 (임시 외형: 기존 그림 색 변형)
+  skelWarrior: { base: 'orc', filter: 'grayscale(1) sepia(0.2) brightness(1.4) contrast(1.4)', swap: {} },
+  skelArcher: { base: 'goblinArcher', filter: 'grayscale(1) sepia(0.25) brightness(1.4) contrast(1.35)', swap: {} },
+  wraith: { base: 'goblinStalker', filter: 'grayscale(0.6) hue-rotate(180deg) brightness(1.5) opacity(0.75)', swap: {} },
+  ghoulE: { base: 'goblin', filter: 'hue-rotate(70deg) saturate(0.45) brightness(0.7) contrast(1.25)', swap: {} },
+  lichAcolyte: { base: 'goblinShaman', filter: 'grayscale(0.7) hue-rotate(170deg) brightness(1.2)', swap: {} },
+  boneGiant: { base: 'ogre', filter: 'grayscale(1) sepia(0.15) brightness(1.5) contrast(1.35)', swap: {} },
+  lichKing: { base: 'ogreChief', filter: 'grayscale(0.85) hue-rotate(190deg) brightness(1.15) contrast(1.3)', swap: {} },
+  impE: { base: 'goblin', filter: 'hue-rotate(-100deg) saturate(2) brightness(0.9)', swap: {} },
+  hellhound: { base: 'orcBerserker', filter: 'hue-rotate(-30deg) saturate(1.6) brightness(0.65) contrast(1.3)', swap: {} },
+  felguard: { base: 'orcCaptain', filter: 'hue-rotate(60deg) saturate(1.5) brightness(0.8) contrast(1.2)', swap: {} },
+  temptress: { base: 'goblinStalker', filter: 'hue-rotate(120deg) saturate(1.5) brightness(1.1)', swap: {} },
+  demonCaller: { base: 'goblinShaman', filter: 'hue-rotate(-40deg) saturate(1.6) brightness(0.8)', swap: {} },
+  doomLord: { base: 'orcCaptain', filter: 'hue-rotate(-60deg) saturate(1.8) brightness(0.6) contrast(1.4)', swap: {} },
+  pitLord: { base: 'ogreChief', filter: 'hue-rotate(-50deg) saturate(1.9) brightness(0.6) contrast(1.4)', swap: {} },
   skeleton: { base: 'goblin', filter: 'grayscale(1) sepia(0.25) brightness(1.45) contrast(1.4)', swap: {} },         // 네크로맨서 해골 병사
   ghoul: { base: 'goblin', filter: 'hue-rotate(60deg) saturate(0.5) brightness(0.75) contrast(1.2)', swap: {} }, // 구울
   boneGolem: { base: 'ogre', filter: 'grayscale(1) brightness(1.55) contrast(1.3) sepia(0.2)', swap: {} },    // 뼈 골렘 // 반격의 기사: 그림은 시트(02b), 이 항목은 크기 기준용

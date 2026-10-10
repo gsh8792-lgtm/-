@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '08d_world.js', '08e_territory.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {}, saveProfile: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={TERRITORY,terrState,capturePost,zoneSecured,terrRate,terrPending,terrCollect,terrMaybeInvade,terrBonus,postWaves,postInfo,DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { TERRITORY, terrState, capturePost, zoneSecured, terrRate, terrPending, terrCollect, terrMaybeInvade, terrBonus, postWaves, postInfo, DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -560,6 +560,54 @@ if (sa !== sb) fail++;
   console.log('gear variety:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(18 line-5 skills, pull, corpse heal, dodge/drain/thorns accessories, passives)');
   if (errs.length) fail++;
 }
+// 던전 4개 · 필드 지역 (v0.55): 조우표 유효 · 난이도 계단 · 해금 순서 · 보스 키트
+{
+  const errs = [];
+  const S = vm.runInContext('DUNGEON_SITES', ctx), W = vm.runInContext('WORLD', ctx);
+  const keys = ['cave', 'mine', 'crypt', 'abyss'];
+  if (Object.keys(S).join() !== keys.join()) errs.push('sites ' + Object.keys(S));
+  for (let i = 1; i < keys.length; i++) { const a = S[keys[i - 1]].scale, b = S[keys[i]].scale; if (!(b.hp >= a.hp * 1.4 && b.atk >= a.atk * 1.25)) errs.push('steep ' + keys[i]); }
+  if (!(S.cave.scale.hp < 1 && S.cave.enc.boss[5].length === 1)) errs.push('tutorial cave');
+  for (const k of keys) { const E = S[k].enc; for (const kind of ['battle', 'elite', 'small', 'boss']) for (const st in E[kind]) for (const enc of E[kind][st]) for (const w of (kind === 'small' ? [enc] : enc)) for (const id of w) if (!ENEMIES[id]) errs.push(`${k} ${kind} ${id}`);
+    for (const enc of E.boss[5]) { const b = enc[0][0]; if (!BOSS_KITS[b]) errs.push('kit ' + b); } }
+  const p = GACHA.ensure(EQ.newProfile());
+  if (S.mine.unlock(p) || S.crypt.unlock(p) || S.abyss.unlock(p)) errs.push('locked at start');
+  const run = { party: ['tobi'], heroes: { tobi: {} }, oaths: [], site: 'cave' };
+  achBossWin(p, run, 'ogre_chief'); if (!S.mine.unlock(p) || S.crypt.unlock(p)) errs.push('cave -> mine');
+  run.site = 'mine'; achBossWin(p, run, 'stone_golem'); if (!S.crypt.unlock(p) || S.abyss.unlock(p)) errs.push('mine -> crypt');
+  run.site = 'crypt'; achBossWin(p, run, 'lich_king'); if (!S.abyss.unlock(p)) errs.push('crypt -> abyss');
+  if (W.zones.map((z) => z.site).join() !== keys.join()) errs.push('world zones');
+  // 새 보스 2종 전투가 오류 없이 돌아간다 (전멸기 포함)
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  for (const b of ['lich_king', 'pit_lord']) { try { const sim = new BattleSim({ seed: 3, stage: 5, waves: [[b]], strategy: st0, autoMode: true, smartAuto: true, partySize: 3, heroes: ['tobi', 'danbi', 'bori'].map((id) => ({ id, hp: 9000, maxHp: 9000, upgrades: {} })) }); sim.enemies[0].hp = Math.round(sim.enemies[0].maxHp * 0.58); for (let i = 0; i < 60 * 60 && !sim.outcome && !sim.wipeLog.length; i++) sim.step(1 / 60); if (!sim.wipeLog.length) errs.push('no wipe ' + b); } catch (e) { errs.push(b + ' ' + e.message); } }
+  console.log('dungeons & world:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(4 sites steep scale, tutorial cave, unlock chain, encounters valid, new bosses)');
+  if (errs.length) fail++;
+}
+// 구역 확보 (v0.56): 거점 확보 · 수입 · 지역 확보 보너스 · 습격 · 거점 전투 구성
+{
+  const errs = [];
+  const p = { gold: 0, stones: 0, chars: { tobi: { lv: 1 }, danbi: { lv: 1 } }, shards: {} };
+  const t0 = 1e12; terrState(p).last = t0;
+  if (terrPending(p, t0 + 3600e3).gold !== 0) errs.push('no posts → no income');
+  capturePost(p, 'outskirts', 0); terrState(p).last = t0;
+  let pd = terrPending(p, t0 + 2 * 3600e3); if (pd.gold !== 60 || pd.stones !== 2) errs.push('1 post 2h ' + JSON.stringify(pd));
+  pd = terrPending(p, t0 + 30 * 3600e3); if (pd.gold !== 30 * TERRITORY.capHours) errs.push('cap ' + pd.gold);
+  if (zoneSecured(p, 'outskirts')) errs.push('secured early');
+  capturePost(p, 'outskirts', 1); capturePost(p, 'outskirts', 2); terrState(p).last = t0;
+  if (!zoneSecured(p, 'outskirts')) errs.push('not secured'); if (terrRate(p).gold !== 30 * 3 * 1.5) errs.push('secured +50% ' + terrRate(p).gold);
+  if (terrBonus(p).gold !== 0.1 || terrBonus(p).exp !== 0) errs.push('bonus ' + JSON.stringify(terrBonus(p)));
+  capturePost(p, 'marsh', 0); terrState(p).last = t0; p.gold = 0; p.stones = 0;
+  const g = terrCollect(p, t0 + 3600e3, makeRng(4)); if (p.gold !== g.gold || g.shards !== 2 || p.stones !== g.stones) errs.push('collect ' + JSON.stringify(g) + ' ' + p.gold);
+  if (terrPending(p, t0 + 3600e3).gold !== 0) errs.push('collect resets');
+  let inv = 0; for (let i = 0; i < 400; i++) { const q = JSON.parse(JSON.stringify(p)); if (terrMaybeInvade(q, makeRng(i))) inv++; }
+  if (inv < 400 * TERRITORY.invadeChance * 0.6 || inv > 400 * TERRITORY.invadeChance * 1.4) errs.push('invade rate ' + inv);
+  { const q = JSON.parse(JSON.stringify(p)); let k = null; for (let i = 0; !k && i < 50; i++) k = terrMaybeInvade(q, makeRng(i)); const [zk, pi] = k.split(':');
+    if (!postInfo(q, zk, +pi).contested || terrRate(q).gold >= terrRate(p).gold) errs.push('contested no income');
+    capturePost(q, zk, +pi); if (postInfo(q, zk, +pi).contested) errs.push('retake'); }
+  for (let zi = 0; zi < 4; zi++) for (let i = 0; i < 3; i++) { const w = postWaves(zi, i, makeRng(zi * 7 + i)); if (!w.length || w.some((wv) => !wv.length || wv.some((id) => !ENEMIES[id]))) errs.push(`postWaves ${zi}/${i}`); }
+  console.log('territory:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(posts income/cap, zone secured +50%, bonus, collect shards, invade & retake, post waves)');
+  if (errs.length) fail++;
+}
 // 연계 효과 (v0.37): 독연 폭발 · 동결 · 상처 벌리기
 {
   const errs = [];
@@ -617,7 +665,7 @@ if (sa !== sb) fail++;
   if (got !== 'boss_shadow_king,first_clear,flawless,oath3') errs.push('got ' + got);
   if (p.tickets !== t0 + 2 + 2 + 2 || p.gold !== g0 + 150) errs.push(`reward t${p.tickets - t0} g${p.gold - g0}`);
   if (achCheck(p, true).length) errs.push('granted twice');
-  for (const k of ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle', 'stone_golem']) achAdd(p, 'boss_' + k);
+  for (const k of ['ogre_chief', 'thorn_queen', 'mist_stag', 'swamp_turtle', 'stone_golem', 'lich_king', 'pit_lord']) achAdd(p, 'boss_' + k);
   if (!achCheck(p, true).some((a) => a.id === 'boss_all')) errs.push('boss_all');
   if (ACHIEVEMENTS.some((a) => !a.prog(p) || a.prog(p).length !== 2)) errs.push('prog');
   console.log('achievements:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(${ACHIEVEMENTS.length} achievements, boss/oath/flawless, rewards once)`);

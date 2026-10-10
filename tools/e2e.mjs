@@ -40,7 +40,9 @@ async function playRun(p, seed, opts) {
   // 궁극기 자동 사용 (게임 내 전략 설정 기능)
   await p.evaluate(() => { const r = window.GAME.Game.run; for (const k in r.strategy) r.strategy[k].ult.auto = true; });
   await p.click('#btn-automove');
-  await p.waitForSelector('#portal-yes', { timeout: 20000 });
+  await p.waitForSelector('#wp-walk', { timeout: 20000 }); await p.click('#wp-walk'); await p.waitForTimeout(400);
+  await p.click('#btn-gate');
+  await p.waitForSelector('#portal-yes', { timeout: 30000 });
   await p.click('#portal-yes');
   const log = [];
   const t0 = Date.now();
@@ -152,11 +154,18 @@ async function playRun(p, seed, opts) {
   await p.waitForTimeout(1500); await clickIf(p, '#guide-close'); await clickIf(p, '#portal-no');
   await p.screenshot({ path: `${OUT}/field.png` });
   await p.click('#btn-automove');
-  await p.waitForSelector('#portal-no', { timeout: 20000 });
+  await p.waitForSelector('#wp-walk', { timeout: 20000 });
+  ok('마을 포탈: 웨이포인트 목록 (처음엔 미등록)', await vis(p, '#wp-outskirts.locked'));
+  await p.click('#wp-walk'); await p.waitForTimeout(400);
+  ok('필드 지역: 마을 외곽 숲 · 적 무리', (await scene(p)) === 'world' && await p.evaluate(() => window.GAME.Game.scene.packs.length > 0));
+  await p.screenshot({ path: `${OUT}/world.png` });
+  await p.click('#btn-gate');
+  await p.waitForSelector('#portal-no', { timeout: 30000 });
   await p.click('#portal-no');
+  ok('필드 지역: 웨이포인트 지나며 등록', await p.evaluate(() => !!(window.GAME.Game.profile.waypoints || {}).outskirts));
   await p.click('#btn-interact'); await p.click('#portal-party'); await p.click('#ps-ok');
   await p.click('#portal-yes');
-  ok('포털 → 던전 1층 입구', (await scene(p)) === 'dungeon' && await p.evaluate(() => window.GAME.Game.run.dungeon.floor === 1 && window.GAME.Game.run.dungeon.at.room === 0)); await dismissHints(p);
+  ok('던전 입구 → 던전 1층 입구', (await scene(p)) === 'dungeon' && await p.evaluate(() => window.GAME.Game.run.dungeon.floor === 1 && window.GAME.Game.run.dungeon.at.room === 0)); await dismissHints(p);
   // 던전 화면
   await p.click('#btn-strategy'); await p.click('#strat-close');
   await p.click('#btn-potion'); ok('던전: 회복약 대상 선택 창', await vis(p, '.pick-box')); await p.click('.pick-box .btn.ghost');
@@ -358,14 +367,14 @@ async function playRun(p, seed, opts) {
   await p.click('#bs-close');
   ok('장비 정보 저장 (새로고침 후 유지)', await p.evaluate(() => { const s = JSON.parse(localStorage.getItem('fe_profile')); return !!s && !!s.equip.danbi.weapon; }));
   // 난이도 선택 (해금된 단계만)
-  await p.evaluate(() => { const G = window.GAME.Game; G.profile.unlockedTier = 1; window.GAME.EQ.saveProfile(G.profile); G.scene.interact(G.scene.interactables().find((i) => i.key === 'portal')); });
+  await p.evaluate(() => { const G = window.GAME.Game; G.profile.unlockedTier = 1; window.GAME.EQ.saveProfile(G.profile); window.GAME.openDungeonGate('cave', G.scene); });
   ok('포털: 해금된 난이도만 표시', (await vis(p, '#tier-1')) && !(await vis(p, '#tier-2')));
   await p.click('#tier-1');
   ok('포털: 난이도 선택', await p.evaluate(() => window.GAME.Game.run.tier === 1 && window.GAME.Game.profile.tier === 1));
   await p.click('#portal-yes');
   // 정예 전투 승리 → 장비 드랍 + 강화석
   await p.evaluate(() => { const G = window.GAME.Game; for (const k in G.run.strategy) { G.run.strategy[k].s2.auto = true; G.run.strategy[k].ult.auto = true; } G.debug.simMult = 8; G.go('battle', { node: { stage: 1, row: 0, type: 'elite', waves: [['goblin', 'goblin']] } }); });
-  ok('전투: 난이도 배율 적용', await p.evaluate(() => window.GAME.Game.scene.sim.tier.hp === window.GAME.EQ.DB.tiers[0].hp));
+  ok('전투: 난이도 배율 적용 (× 장소 배율)', await p.evaluate(() => Math.abs(window.GAME.Game.scene.sim.tier.hp - window.GAME.EQ.DB.tiers[0].hp * window.GAME.DUNGEON_SITES[window.GAME.Game.run.site || 'cave'].scale.hp) < 1e-9), await p.evaluate(() => window.GAME.Game.scene.sim.tier.hp));
   await p.waitForFunction(() => window.GAME.Game.sceneName !== 'battle', null, { timeout: 60000 });
   ok('정예 승리 → 보상에 장비·강화석 표시', (await scene(p)) === 'reward' && (await vis(p, '.reward-loot')) && (await p.textContent('.reward-loot')).includes('강화석'));
   ok('정예 승리 → 장비가 보관함에 들어감', await p.evaluate(() => window.GAME.Game.run.loot.length >= 1));
@@ -539,18 +548,44 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   await p.click('#codex-ach'); await p.waitForTimeout(150); ok('업적: 도감에서 열기 · 목록', await vis(p, '#ach-first_clear') && await vis(p, '#ach-boss_shadow_king'));
   await p.screenshot({ path: `${OUT}/achievements.png` }); await p.click('#ach-codex'); await p.waitForTimeout(150);
   await p.click('#codex-close'); ok('도감: 닫기', !(await vis(p, '.codex-box')));
-  await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'portal')); }); await p.waitForTimeout(200);
+  await p.evaluate(() => window.GAME.openDungeonGate('cave', window.GAME.Game.scene)); await p.waitForTimeout(200);
   await p.click('#oath-iron'); await p.waitForTimeout(100);
   ok('원정 맹세: 선택 → 보상 표시', (await p.locator('.oath-title').innerText()).includes('+25%'));
-  ok('던전 장소: 처음엔 광산 잠김 · 고블린 굴 선택', await vis(p, '#site-mine.locked') && await vis(p, '#site-cave.on'));
+  ok('던전 장소: 처음엔 광산 잠김 · 고블린 굴 선택', await p.evaluate(() => !window.GAME.DUNGEON_SITES.mine.unlock(window.GAME.Game.profile) && window.GAME.Game.profile.site === 'cave'));
   await p.click('#portal-yes'); await p.waitForTimeout(300);
   ok('원정 맹세: 입장 시 원정에 적용', await p.evaluate(() => (window.GAME.Game.run.oaths || []).includes('iron') && window.GAME.Game.sceneName === 'dungeon'));
   // 보스를 한 번 잡으면 광산이 열린다
   await p.evaluate(() => { const G = window.GAME.Game; G.profile.clears = { 0: 1 }; G.profile.oaths = []; G.go('field'); }); await p.waitForTimeout(300);
-  await p.evaluate(() => { const F = window.GAME.Game.scene; F.interact(F.interactables().find((x) => x.key === 'portal')); }); await p.waitForTimeout(200);
-  await p.click('#site-mine'); await p.waitForTimeout(150); await p.click('#portal-yes'); await p.waitForTimeout(400);
+  await p.evaluate(() => window.GAME.openDungeonGate('mine', window.GAME.Game.scene)); await p.waitForTimeout(200);
+  await p.click('#portal-yes'); await p.waitForTimeout(400);
   ok('두 번째 던전: 버려진 광산 입장', await p.evaluate(() => window.GAME.Game.run.site === 'mine' && window.GAME.Game.sceneName === 'dungeon' && document.querySelector('.map-title').textContent.includes('버려진 광산')));
   await p.screenshot({ path: `${OUT}/mine.png` });
+  await p.close();
+}
+
+// ---------------------------------------------------------------- 구역 확보 · 영지 (v0.56)
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, map: 1, battle: 1, charge: 1, break: 1, crush: 1 }; G.scenes.title.start(31); window.GAME.goWorld(0, 'start'); });
+  await p.waitForTimeout(300);
+  ok('구역 확보: 지역에 거점 3곳 (적 거점)', await p.evaluate(() => { const S = window.GAME.Game.scene; return S.posts.length === 3 && S.posts.every((pt) => S.postStatus(pt.i) === 'enemy'); }));
+  await p.evaluate(() => window.GAME.Game.scene.postAction(0)); await p.waitForTimeout(150);
+  ok('구역 확보: 공략 창 (수입 안내)', await vis(p, '.post-gain'));
+  await p.click('#post-go'); await p.waitForTimeout(400);
+  ok('구역 확보: 거점 전투 = 정예', await p.evaluate(() => { const G = window.GAME.Game; return G.sceneName === 'battle' && G.scene.node.type === 'elite' && G.scene.node.world.post === 0; }));
+  await p.evaluate(() => window.GAME.Game.scene.finish('win')); await p.waitForTimeout(300);
+  ok('구역 확보: 이기면 우리 거점', await p.evaluate(() => { const T = window.GAME.Game.profile.territory; return !!(T && T.posts['outskirts:0'] && T.posts['outskirts:0'].owned); }));
+  if (await vis(p, '#reward-0')) { await p.click('#reward-0'); await p.click('#btn-reward-confirm'); } else await p.click('#btn-continue'); await p.waitForTimeout(300);
+  ok('구역 확보: 보상 후 필드 지역으로 복귀', (await scene(p)) === 'world' && await p.evaluate(() => window.GAME.Game.scene.postStatus(0) === 'ours'));
+  await p.screenshot({ path: `${OUT}/territory_world.png` });
+  await p.evaluate(() => { const G = window.GAME.Game; G.profile.territory.last = Date.now() - 3 * 3600e3; G.run.world = null; G.go('field', { from: 'world' }); }); await p.waitForTimeout(300); await dismissHints(p);
+  await p.click('#btn-territory'); await p.waitForTimeout(150);
+  ok('영지: 창 · 지역 4곳', (await p.locator('.terr-zone').count()) === 4 && (await p.locator('.tz-post.ours').count()) === 1);
+  await p.screenshot({ path: `${OUT}/territory.png` });
+  const g0 = await p.evaluate(() => window.GAME.Game.profile.gold);
+  await p.click('#terr-collect'); await p.waitForTimeout(150);
+  ok('영지: 수확 → 골드', (await p.evaluate(() => window.GAME.Game.profile.gold)) >= g0 + 80);
+  await p.click('#terr-close'); ok('영지: 닫기', !(await vis(p, '.terr-box')));
   await p.close();
 }
 

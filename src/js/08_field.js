@@ -19,7 +19,8 @@ const FieldScene = {
   enter(params) {
     const run = Game.run;
     this.t = 0;
-    const st = params && params.from === 'hunt' ? { x: FIELD.huntExit.x + 90, y: FIELD.huntExit.y - 70 } : FIELD.start;
+    const st = params && params.from === 'hunt' ? { x: FIELD.huntExit.x + 90, y: FIELD.huntExit.y - 70 } : params && params.from === 'world' ? { x: FIELD.portal.x - 80, y: FIELD.portal.y + 90 } : FIELD.start;
+    if (params && params.from === 'world') { for (const id of Object.keys(run.heroes)) { const h = run.heroes[id]; h.dead = false; h.hp = h.maxHp; } run.world = null; Game.toast('🏠 마을로 돌아왔다 — 파티 회복', 1600); } // 필드에서 돌아오면 쉰다
     this.leader = { x: st.x, y: st.y, flip: false, moving: false };
     this.trail = [];
     for (let i = 0; i < 200; i++) this.trail.push({ x: this.leader.x - i * 1.5, y: this.leader.y + i * 0.5 });
@@ -47,8 +48,9 @@ const FieldScene = {
     const top = el('div', 'f-top');
     top.appendChild(el('div', 'f-title', '🌲 숲속 마을'));
     const r = el('div', 'f-right');
-    r.appendChild(btn('던전 입구로 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
+    r.appendChild(btn('🌀 포탈 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
     r.appendChild(btn('🌾 사냥터', 'small', () => this.autoMove('hunt'), { id: 'btn-hunt' }));
+    r.appendChild(btn('🏰 영지', 'small', () => openTerritory(() => this.refreshRes()), { id: 'btn-territory' }));
     r.appendChild(btn('✨ 소환', 'small', () => openGacha(() => this.refreshRes()), { id: 'btn-gacha' }));
     r.appendChild(btn('🧑 캐릭터', 'small', () => openRoster({ onClose: () => this.refreshRes() }), { id: 'btn-roster' }));
     r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
@@ -135,20 +137,7 @@ const FieldScene = {
     } else if (it.key === 'guide') {
       this.openGuide(0);
     } else if (it.key === 'portal') {
-      const box = el('div', 'confirm-box');
-      const P = Game.profile; if (!DUNGEON_SITES[P.site] || (DUNGEON_SITES[P.site].unlock && !DUNGEON_SITES[P.site].unlock(P))) P.site = 'cave';
-      box.appendChild(el('div', 'modal-title', `${DUNGEON_SITES[P.site].name}에 들어갈까요?`));
-      box.appendChild(this.sitePicker(() => this.interact(it)));
-      box.appendChild(this.tierPicker(() => this.interact(it)));
-      box.appendChild(this.oathPicker(() => this.interact(it)));
-      box.appendChild(el('div', 'portal-party', partyIds(run).map((id) => `<span>${HEROES[id].name}<small>${HEROES[id].roleName}</small></span>`).join('')));
-      box.appendChild(el('p', '', `파티 ${partyAlive(run).length}/${CONST.PARTY_SIZE}명 · 식량 ${run.food} · 회복약 ${run.potions} · 골드 ${run.gold}` + (run.gotSupply ? '' : '<br><b class="warn">보급 상자를 아직 열지 않았어요!</b>')));
-      const row = el('div', 'btn-row');
-      row.appendChild(btn('조금 더 둘러보기', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'portal-no' }));
-      row.appendChild(btn('👥 편성', '', () => openPartySelect(run, () => { this.rebuildParty(); this.interact(it); }), { id: 'portal-party' }));
-      row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = Game.profile.tier; run.site = Game.profile.site || 'cave'; run.oaths = (Game.profile.oaths || []).slice(); oathApplyStart(run); refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
-      box.appendChild(row);
-      Game.modal(box, { dim: true, closeOnBg: true });
+      openWaypoints(this); // v0.55: 던전은 필드 지역을 지나 걸어가거나, 등록한 웨이포인트로 이동
     }
   },
 
@@ -196,7 +185,7 @@ const FieldScene = {
 
   openGuide(page) {
     const pages = [
-      { t: '어서 오게, 원정대.', b: '광장 북동쪽 동굴이 <b>고블린 굴</b>이라네. 가장 깊은 방에서 굴의 주인이 기다리지. 원정마다 다른 놈이 나오니 상대를 보고 동료를 고르게.<br><br>떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 모닥불 앞에서도 제대로 쉴 수 없어.' },
+      { t: '어서 오게, 원정대.', b: '광장 북동쪽의 <b>포탈</b>로 마을 밖 <b>필드</b>에 나갈 수 있다네. 동쪽으로 걸어가면 <b>마을 외곽 숲</b> 끝에 튜토리얼 던전 <b>고블린 굴</b>이 있지. 굴의 주인을 쓰러뜨리면 그 너머 <b>바위 언덕 · 안개 늪지 · 잿빛 황야</b>로 길이 열리고, 던전은 갈수록 훨씬 험해진다네.<br><br>가는 길의 <b>웨이포인트</b>에 한 번 닿아 두면 다음부터는 포탈에서 바로 갈 수 있지. 떠나기 전에 내 옆 <b>보급 상자</b>를 챙기게. 식량이 없으면 모닥불 앞에서도 제대로 쉴 수 없어.' },
       { t: '지도 읽는 법', b: '굴 안은 갈림길투성이야. <b>다음 방은 같은 줄이거나 바로 위·아래 줄</b>만 갈 수 있지. 방에 뭐가 있는지는 들어가 봐야 알아. 방 안 갈림길에서는 귀를 기울이면 단서가 들릴 걸세.<br><br>횃불은 방을 옮길 때마다 줄어든다네. 꺼지면 어둠 속에서 정예가 덮칠 수도 있어.' },
       { t: '전투 요령', b: '덩치 큰 놈들은 단단해서 칼이 잘 안 박혀. 놈이 힘을 모을 때 머리 위 <b>끊기 칸</b>을 여러 직업이 함께 채우면 끊기고 <b>흔들리지</b>. 그때 몰아쳐 <b>그로기</b>로 만들게.<br><br>보스의 주먹은 맞을수록 묵직해지니(<b>짓누름</b>) 탱커를 앞세우게. 쓰러진 동료는… 이번 원정에선 돌아오지 못하네.' },
     ];
@@ -410,7 +399,7 @@ const FieldScene = {
       if (it.key === 'chest' && run.gotSupply) continue;
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.85)';
       ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'center';
-      const label = { portal: '고블린 굴', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', merchant: '잡화점', hunt: `사냥터 (Lv ${Object.values(HUNT_FIELDS).map((f) => f.level).join('·')})` }[it.key];
+      const label = { portal: '포탈 (웨이포인트)', guide: '길잡이', chest: '보급 상자', smith: '대장간', storage: '보관함', altar: '소환의 제단', merchant: '잡화점', hunt: `사냥터 (Lv ${Object.values(HUNT_FIELDS).map((f) => f.level).join('·')})` }[it.key];
       const ly = it.key === 'portal' ? it.y - 150 : it.y - 62;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.strokeText(label, it.x, ly + bob); ctx.fillText(label, it.x, ly + bob);
       if (it.key !== 'portal') { ctx.fillText('▼', it.x, ly + 14 + bob); }

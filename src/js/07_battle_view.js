@@ -24,7 +24,7 @@ const BattleScene = {
       relics: run.relics, strategy: run.strategy, autoMode: run.autoMode, fullAuto: !!node.small, smartAuto: !!(Game.debug && Game.debug.smartAuto), partySize: run.party.length,
       fruit: run.fruit && run.fruit.battles > 0 ? { bonus: run.fruit.bonus } : null,
       torchDark: run.torch <= 0,
-      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }, sc = run.dungeon ? siteOf(run).scale : { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp * sc.hp, atk: ti.atk * f * o.atk * sc.atk }; })(),
+      tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }, sc = run.dungeon ? siteOf(run).scale : node.worldScale || { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp * sc.hp, atk: ti.atk * f * o.atk * sc.atk }; })(), // 필드 지역 전투는 지역 배율
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
       eliteAffix: node.affix || null, named: node.named || null, surprise: (!!(ex && ex.surprise) || !!run.ambushNext) && !(run.camp && run.camp.guard),
     });
@@ -673,6 +673,13 @@ const BattleScene = {
     if (outcome === 'win' && !gaveUp) {
       grantBattleLoot(run, this.node);
       if (this.node.dref) dungeonBattleWon(run, this.node.dref); // 던전으로 복귀할 자리·방 정리
+      if (this.node.world && run.world && this.node.world.pack) { run.world.cleared = (run.world.cleared || []).concat([this.node.world.pack]); run.world.at = 'resume'; } // 필드 지역: 잡은 무리는 마을에 갈 때까지 비어 있다
+      if (this.node.world && this.node.world.post !== undefined) { // 구역 확보: 거점을 빼앗았다
+        const P = Game.profile, z = WORLD.zones[this.node.world.zone], pt = TERRITORY.posts[this.node.world.post], was = zoneSecured(P, z.key);
+        capturePost(P, z.key, this.node.world.post); if (run.world) run.world.at = 'resume';
+        Game.toast(`🚩 ${z.name} 「${pt.name}」 확보! 마을 「🏰 영지」에서 수입을 거둔다` + (!was && zoneSecured(P, z.key) ? ` · 🎉 ${z.name} 확보 — ${TERRITORY.zoneBonus[this.node.world.zone]}` : ''), 2600);
+        achCheck(P); saveProfile();
+      }
       if (this.node.type === 'boss') { run.result = 'victory'; achBossWin(Game.profile, run, (this.sim.enemies.find((e) => e.def.abilities.includes('boss')) || {}).key); Game.go('result'); }
       else if (this.node.small) { // 복도의 작은 무리: 보상 화면 없이 골드만 챙기고 바로 이어서
         const g = 6 + this.node.stage * 3 + Math.floor(Math.random() * 6); run.gold += g;
@@ -683,6 +690,8 @@ const BattleScene = {
       }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
       else Game.go('reward', { node: this.node });
+    } else if (this.node.world) { // 필드에서 지면 원정은 끝나지 않고 마을로 실려 간다
+      run.world = null; Game.toast('💫 쓰러진 파티가 마을로 실려 왔다…', 2400); Game.go('field', { from: 'world' });
     } else {
       run.result = gaveUp ? 'giveup' : 'defeat';
       Game.go('result');

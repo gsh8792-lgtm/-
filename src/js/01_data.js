@@ -284,6 +284,24 @@ const ENEMIES = {
                    phases: [{ at: 0.5, name: '2페이즈: 그림자 군단', summon: ['goblin_stalker', 'goblin_stalker'] }] }, // 그림자 습격: 사라졌다가 가장 먼 영웅 곁에 나타난다
   stone_golem:   { name: '광산 골렘', armor: 0.75, poise: 240, moveSpeed: 34, hp: 3300, atk: 38, fixedScale: true, atkInterval: 2.6, def: 0.2, size: 2.0, sprite: 'stoneGolem', color: '#8a8a8a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 13, chargeTime: 3, chargeMult: 3.6, chargeR: 95, softEnrage: 160,
                    phases: [{ at: 0.5, name: '2페이즈: 갱도가 흔들린다', summon: ['goblin_stalker', 'goblin'] }] }, // 버려진 광산 전용: 낙석(여러 곳 동시 예고) · 갱도 붕괴(피난처)
+  // ---- v0.55 저주받은 묘지 (언데드)
+  skel_warrior:  { name: '해골 전사', armor: 0.15, poise: 50, moveSpeed: 72, hp: 200, atk: 22, atkInterval: 1.5, def: 0.15, size: 1.1, sprite: 'skelWarrior', color: '#d8d0c0', gold: 8, abilities: [] },
+  skel_archer:   { name: '해골 궁수', moveSpeed: 70, hp: 100, atk: 18, atkInterval: 1.7, def: 0.05, size: 1, reach: 210, sprite: 'skelArcher', color: '#c8c0b0', gold: 7, abilities: [] },
+  wraith:        { name: '망령', moveSpeed: 112, hp: 150, atk: 24, atkInterval: 1.2, def: 0, size: 1, sprite: 'wraith', color: '#8aa8c8', gold: 10, abilities: [], ignoreTaunt: true, hunter: 'support' },
+  crypt_ghoul:   { name: '묘지 구울', moveSpeed: 104, hp: 180, atk: 20, atkInterval: 0.9, def: 0.05, size: 1, sprite: 'ghoulE', color: '#8a9a6a', gold: 8, abilities: [], onHit: { status: 'poison', dur: 6, dps: 0.12 } },
+  lich_acolyte:  { name: '리치 수련생', moveSpeed: 62, hp: 140, atk: 14, atkInterval: 1.7, def: 0, size: 1, reach: 180, sprite: 'lichAcolyte', color: '#6a8aa8', gold: 10, abilities: ['caller'], callEvery: 9, callCast: 1.8, callCount: 1, callUnit: 'skel_warrior' },
+  bone_giant:    { name: '뼈 거인', armor: 0.5, poise: 140, moveSpeed: 48, hp: 720, atk: 50, atkInterval: 2.4, def: 0.12, size: 1.6, sprite: 'boneGiant', color: '#e0d8c8', gold: 24, abilities: ['charge'], chargeEvery: 8, chargeTime: 2.8, chargeMult: 3.8, chargeR: 85 },
+  lich_king:     { name: '리치 왕', armor: 0.7, poise: 230, moveSpeed: 40, hp: 3800, atk: 36, fixedScale: true, atkInterval: 2.0, def: 0.15, size: 2.0, sprite: 'lichKing', color: '#7a9ab8', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 11, chargeTime: 2.8, chargeMult: 3.8, chargeR: 95, softEnrage: 150,
+                   phases: [{ at: 0.5, name: '2페이즈: 망자의 부름', summon: ['skel_warrior', 'wraith'] }] },
+  // ---- v0.55 심연의 요새 (악마)
+  fiend_imp:     { name: '화염 임프', moveSpeed: 84, hp: 95, atk: 20, atkInterval: 1.4, def: 0, size: 0.9, reach: 200, sprite: 'impE', color: '#e06a3a', gold: 8, abilities: [], onHit: { status: 'burn', dur: 4, dps: 0.15 } },
+  hellhound:     { name: '지옥 사냥개', moveSpeed: 128, hp: 210, atk: 26, atkInterval: 1.0, def: 0.05, size: 1.1, sprite: 'hellhound', color: '#c84a2a', gold: 12, abilities: [], ignoreTaunt: true, hunter: 'weakest', leapEvery: 8, leapMult: 2.0 },
+  felguard:      { name: '지옥 수호병', armor: 0.4, poise: 110, moveSpeed: 60, hp: 620, atk: 44, atkInterval: 2.0, def: 0.15, size: 1.45, sprite: 'felguard', color: '#5a8a3a', gold: 22, abilities: ['charge', 'enrage'], enrageAt: 0.4, enrageSpeed: 0.65, chargeEvery: 9, chargeTime: 2.6, chargeMult: 3.6, chargeR: 80 },
+  temptress:     { name: '유혹의 악마', moveSpeed: 100, hp: 220, atk: 28, atkInterval: 1.2, def: 0.05, size: 1, sprite: 'temptress', color: '#c06aa0', gold: 12, abilities: [], ignoreTaunt: true, hunter: 'support', onHit: { status: 'weaken', dur: 4, value: 0.2 } },
+  demon_caller:  { name: '악마 소환사', moveSpeed: 60, hp: 160, atk: 16, atkInterval: 1.8, def: 0.05, size: 1, reach: 190, sprite: 'demonCaller', color: '#8a3a5a', gold: 12, abilities: ['caller'], callEvery: 9, callCast: 1.8, callCount: 2, callUnit: 'fiend_imp' },
+  doom_lord:     { name: '파멸 군주', armor: 0.55, poise: 160, moveSpeed: 58, hp: 1050, atk: 46, atkInterval: 1.8, def: 0.15, size: 1.5, sprite: 'doomLord', color: '#7a2a2a', gold: 45, abilities: ['enrage', 'warcry', 'charge'], enrageAt: 0.5, enrageSpeed: 0.65, warcryEvery: 11, chargeEvery: 10, chargeTime: 2.6, chargeMult: 3.6, chargeR: 70 },
+  pit_lord:      { name: '심연의 군주', armor: 0.75, poise: 250, moveSpeed: 38, hp: 4200, atk: 42, fixedScale: true, atkInterval: 2.2, def: 0.2, size: 2.1, sprite: 'pitLord', color: '#8a2a1a', gold: 0, abilities: ['charge', 'boss'], chargeEvery: 12, chargeTime: 3, chargeMult: 4.0, chargeR: 100, softEnrage: 150,
+                   phases: [{ at: 0.5, name: '2페이즈: 심연이 열린다', summon: ['hellhound', 'fiend_imp', 'fiend_imp'] }] },
 };
 
 // 보스 패턴: 일반 스킬 1개 + 전멸기 1개 (HP 60%·25%에서 한 번씩, 이후 WIPE_EVERY초마다)
@@ -301,6 +319,10 @@ const BOSS_KITS = {
                   wipe: { key: 'collapse', name: '갱도 붕괴', type: 'safe', cast: 6, mult: 0.85, safeR: 90, hint: '무너지지 않는 자리로!' } },
   shadow_king:  { skill: { key: 'shadowstep', name: '그림자 습격', every: 11, first: 7, tele: 1.2, r: 80, mult: 3.2, target: 'far' },
                   wipe: { key: 'eclipse', name: '월식', type: 'shield', cast: 8, mult: 0.85, shield: 0.075, hint: '그림자 망토를 찢어라!' } },
+  lich_king:    { skill: { key: 'spit', name: '저주의 웅덩이', every: 10, first: 6, r: 95, dur: 7, dps: 0.5, target: 'random' },
+                  wipe: { key: 'bonewall', name: '뼈 방벽', type: 'shield', cast: 8, mult: 0.9, shield: 0.08, hint: '뼈 방벽을 부숴라!' } },
+  pit_lord:     { skill: { key: 'rockfall', name: '지옥불 비', every: 11, first: 6, tele: 1.8, r: 66, mult: 2.2, n: 3 },
+                  wipe: { key: 'abyss', name: '심연 폭발', type: 'safe', cast: 6, mult: 0.95, safeR: 85, hint: '심연이 닿지 않는 곳으로!' } },
 };
 const WIPE_AT = [0.6, 0.25], WIPE_EVERY = 70;
 // 자동 모드의 늦은 반응 (초): 장판이 생기고 이만큼 지나야 피한다. 수동으로 직접 끌어 피하면 바로 — 컨트롤의 몫

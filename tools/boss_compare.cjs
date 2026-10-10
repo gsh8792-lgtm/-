@@ -2,19 +2,22 @@
 // env PARTIES=tobi+danbi+bori;... BOSS=mist_stag 로 좁힐 수 있다.
 // 6층(던전 배율 포함) 보스 5종을 Lv 5 · UC 무기/갑옷 파티로 '잘하는 플레이(smartAuto)'와 '자동'으로 싸워 승률·시간·사망을 잰다.
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05b_dungeon.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05b_dungeon.js', '05e_sites.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
-vm.runInContext(code + '\nthis.X={BattleSim,ENCOUNTERS,AI_PRESETS,EQ,GACHA,DUNGEON,makeRng};', ctx);
-const { BattleSim, ENCOUNTERS, AI_PRESETS, EQ, GACHA, DUNGEON, makeRng } = ctx.X;
+vm.runInContext(code + '\nthis.X={BattleSim,ENCOUNTERS,AI_PRESETS,EQ,GACHA,DUNGEON,makeRng,DUNGEON_SITES};', ctx);
+const { BattleSim, ENCOUNTERS, AI_PRESETS, EQ, GACHA, DUNGEON, makeRng, DUNGEON_SITES } = ctx.X;
+const SITE = process.env.SITE ? DUNGEON_SITES[process.env.SITE] : null; // SITE=cave|mine|crypt|abyss: 그 던전의 보스 풀 · 배율
+const LV = +(process.env.LV || 5), GRADE = process.env.GRADE || 'UC'; // 캐릭터 레벨 · 무기/갑옷 등급
 const N = +(process.argv[2] || 12);
 const PARTIES = process.env.PARTIES ? process.env.PARTIES.split(';').map((x) => x.split('+')) : [['tobi', 'danbi', 'bori'], ['tobi', 'yeon', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const ONLY = process.env.BOSS || '';
-const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].lv = 5; if (process.env.PET) for (const id in p.chars) p.chars[id].pet = process.env.PET;
-for (const id of [...new Set(PARTIES.flat())]) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(1), p, { base: base.id, grade: 'UC' }); p.inv.push(it); p.equip[id][slot] = it.uid; }
+const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].lv = LV; if (process.env.PET) for (const id in p.chars) p.chars[id].pet = process.env.PET;
+for (const id of [...new Set(PARTIES.flat())]) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(1), p, { base: base.id, grade: GRADE }); p.inv.push(it); p.equip[id][slot] = it.uid; }
+if (process.env.FULL) for (const id of [...new Set(PARTIES.flat())]) for (const slot of ['medal', 'ring', 'necklace', 'belt']) { const base = EQ.DB.items.find((it) => (it.cls === EQ.heroClass(id) || it.cls === 'common') && it.slot === slot); const it = EQ.rollItem(makeRng(2), p, { base: base.id, grade: GRADE }); it.enh = Math.min(10, EQ.enhanceCap(it)); p.inv.push(it); p.equip[id][slot] = it.uid; } // FULL=1: 장신구·메달까지 같은 등급 +10
 const st = JSON.parse(JSON.stringify(AI_PRESETS)); for (const k in st) { st[k].s2.auto = true; st[k].ult.auto = true; st[k].ult.cond = 'auto'; }
 const f = 1 + DUNGEON.FLOOR_SCALE * 5;
-const POOL = ENCOUNTERS.boss[5].concat(ONLY && !ENCOUNTERS.boss[5].some((w) => w[0][0] === ONLY) ? [[[ONLY]]] : []); // 광산 전용 보스는 BOSS=로
-const MS = process.env.MINE ? { hp: 1.25, atk: 1.15 } : { hp: 1, atk: 1 }; // MINE=1: 광산 배율
+const POOL = SITE ? SITE.enc.boss[5] : ENCOUNTERS.boss[5].concat(ONLY && !ENCOUNTERS.boss[5].some((w) => w[0][0] === ONLY) ? [[[ONLY]]] : []); // 광산 전용 보스는 BOSS=로
+const MS = SITE ? SITE.scale : process.env.MINE ? { hp: 1.25, atk: 1.15 } : { hp: 1, atk: 1 }; // MINE=1: 예전 광산 배율
 for (const waves of POOL) {
   if (ONLY && waves[0][0] !== ONLY) continue;
   for (const smart of [true, false]) {

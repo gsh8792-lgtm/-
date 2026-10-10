@@ -1,0 +1,20 @@
+// 구역 확보 확인: node tools/dev/terr_shot.mjs → test-output/terr_*.png
+import { chromium } from 'playwright';
+import path from 'path';
+const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(300);
+await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, battle: 1, break: 1, charge: 1, crush: 1, dungeon: 1, map: 1 }; G.scenes.title.start(21); window.GAME.goWorld(1, 'start'); });
+await p.waitForTimeout(500);
+await p.evaluate(() => { const S = window.GAME.Game.scene; const pt = S.posts[0]; S.leader.x = pt.x; S.leader.y = pt.y + 140; S.cam.x = pt.x - 480; S.cam.y = pt.y - 200; }); await p.waitForTimeout(900);
+await p.screenshot({ path: 'test-output/terr_post_enemy.png' });
+await p.evaluate(() => { const G = window.GAME.Game; window.GAME.capturePost(G.profile, 'hills', 0); window.GAME.capturePost(G.profile, 'hills', 2); G.profile.territory.posts['hills:2'].contested = true; }); await p.waitForTimeout(300);
+await p.screenshot({ path: 'test-output/terr_post_ours.png' });
+await p.evaluate(() => { const S = window.GAME.Game.scene; const pt = S.posts[2]; S.leader.x = pt.x; S.leader.y = pt.y + 140; }); await p.waitForTimeout(1200);
+await p.screenshot({ path: 'test-output/terr_post_contested.png' });
+await p.evaluate(() => { const S = window.GAME.Game.scene; const pt = S.posts[1]; S.leader.x = pt.x; S.leader.y = pt.y - 60; }); await p.waitForTimeout(1200);
+await p.screenshot({ path: 'test-output/terr_post_camp.png' });
+await p.evaluate(() => { const G = window.GAME.Game; G.profile.territory.last = Date.now() - 5 * 3600e3; G.run.world = null; G.go('field', { from: 'world' }); }); await p.waitForTimeout(400);
+await p.screenshot({ path: 'test-output/terr_village.png' });
+await p.click('#btn-territory'); await p.waitForTimeout(300); await p.screenshot({ path: 'test-output/terr_window.png' });
+console.log(errs); await b.close();

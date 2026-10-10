@@ -8,7 +8,7 @@ const EXPLORE = { SPEED: 210, SPOT: 430, LANES: [342, 372, 402], CAM_LEAD: 380 }
 const MAP_BOX = { x: 600, y: 112, cw: 64, ch: 46, w: 5 * 64 + 12, h: 3 * 46 + 30 };
 
 // 다른 화면(전투·상점·이벤트·보상·야영)이 끝나면 돌아갈 곳
-function backToRun() { Game.go(Game.run && Game.run.dungeon ? 'dungeon' : 'field'); }
+function backToRun() { const r = Game.run; Game.go(r && r.dungeon ? 'dungeon' : r && r.world ? 'world' : 'field', r && r.world && !r.dungeon ? { zone: r.world.zone, at: 'resume' } : undefined); }
 
 // 원정 시작: 1층 입구 방
 function enterDungeon(run) {
