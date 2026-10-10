@@ -356,7 +356,7 @@ const BattleScene = {
   },
 
   unitAt(p) {
-    const all = this.sim.enemies.concat(this.sim.heroes).filter((u) => u.alive);
+    const all = this.sim.enemies.concat(this.sim.heroes, this.sim.minions || []).filter((u) => u.alive);
     let best = null, bd = 1e9;
     for (const u of all) {
       const s = getSprite(u.sprite);
@@ -469,7 +469,7 @@ const BattleScene = {
     ev.length = 0;
   },
 
-  unitScale(u) { return u.def.abilities && u.def.abilities.includes('boss') ? CONST.SPRITE_SCALE * 1.15 : CONST.SPRITE_SCALE; },
+  unitScale(u) { return u.minion ? CONST.SPRITE_SCALE * (u.size > 1 ? 0.6 : 0.68) : u.def.abilities && u.def.abilities.includes('boss') ? CONST.SPRITE_SCALE * 1.15 : CONST.SPRITE_SCALE; },
   unitTop(u) { return u.y - getSprite(u.sprite).h * this.unitScale(u); },
 
   popup(x, y, text, color, size, opts) {
@@ -501,7 +501,7 @@ const BattleScene = {
         const u = e.unit;
         this.smoke(u.x, u.y - 20, u.size || 1);
         Sfx.play('death');
-        if (u.side === 'hero') { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}번째 방`; this.shake = 6; }
+        if (u.side === 'hero' && !u.minion) { Game.toast(`💀 ${u.name} 쓰러짐`, 2400); run.stats.deathsAt[u.key] = `${this.node.stage}번째 방`; this.shake = 6; }
         break;
       }
       case 'projectile':
@@ -541,6 +541,14 @@ const BattleScene = {
       case 'counter': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '반격!', '#bfe8ff', 18, { label: true }); this.spark(e.target.x, e.target.y - 30, 8, '#bfe8ff'); Sfx.play('hit'); this.shake = Math.max(this.shake, 3); break;
       case 'combo': achAdd(Game.profile, 'combo'); { const ck = e.unit.uid + e.name, now = performance.now() / 1000; this.comboT = this.comboT || {}; if (!e.blast && (this.comboT[ck] || 0) > now) break; this.comboT[ck] = now + 3; }
         this.popup(e.unit.x, this.unitTop(e.unit) - 30, `연계! ${e.name}`, '#ffe066', 19, { label: true }); if (e.blast) { this.fx.push({ type: 'zone', x: e.unit.x, y: e.unit.y, r: e.blast, t: 0, dur: 0.6, color: '170,220,70' }); this.spark(e.unit.x, e.unit.y - 30, 14, '#b8e050'); this.shake = Math.max(this.shake, 5); } break;
+      case 'dodge': this.popup(e.unit.x, this.unitTop(e.unit) - 8, '흘림', '#cfe6ff', 15, { label: true }); break;
+      case 'kiSpend': this.popup(e.unit.x, this.unitTop(e.unit) - 30, `기 ×${e.n}`, '#f0b040', 18, { label: true }); this.sparkle(e.unit.x, e.unit.y - 30, '#ffd070', 6 + e.n * 2); break;
+      case 'corpse': this.popup(e.unit.x, this.unitTop(e.unit) - 30, `시체 ${e.n}구`, '#9ad08a', 16, { label: true }); break;
+      case 'minion': this.smoke(e.unit.x, e.unit.y - 10, 0.6); this.sparkle(e.unit.x, e.unit.y - 20, '#9ad08a', 6); break;
+      case 'minionExpire': this.smoke(e.unit.x, e.unit.y - 10, 0.6); break;
+      case 'minionBoom': this.fx.push({ type: 'zone', x: e.unit.x, y: e.unit.y, r: 80, t: 0, dur: 0.5, color: '170,230,140' }); Sfx.play('boom'); break;
+      case 'doomBoom': this.fx.push({ type: 'zone', x: e.unit.x, y: e.unit.y, r: 70, t: 0, dur: 0.6, color: '160,70,220' }); this.popup(e.unit.x, this.unitTop(e.unit) - 30, '파멸!', '#d08aff', 24, { crit: true }); Sfx.play('boom'); this.shake = Math.max(this.shake, 6); break;
+      case 'curseSpread': this.popup(e.unit.x, this.unitTop(e.unit) - 20, '저주 전이', '#c08aff', 15, { label: true }); this.fx.push({ type: 'proj', kind: 'curse', x0: e.from.x, y0: e.from.y - 30, to: e.unit, t: 0, dur: 0.3 }); break;
       case 'ambush': this.popup(e.unit.x, this.unitTop(e.unit) - 18, '기습!', '#d8b0ff', 20, { label: true }); this.spark(e.target.x, e.target.y - 30, 10, '#c8a0ff'); Sfx.play('hit'); break;
       case 'vengeance': if (e.v > 5) this.popup(e.unit.x, this.unitTop(e.unit) - 34, `응징 +${e.v}`, '#ffb0ff', 18, { label: true }); break;
       case 'wipeStart': this.banner = { text: e.name, sub: e.hint, t: 0, dur: 1.8 }; Sfx.play('phase'); this.shake = Math.max(this.shake, 6); this.slowmo = 0.6; break;
@@ -590,12 +598,17 @@ const BattleScene = {
         this.fx.push({ type: 'slash', x: tu ? tu.x : h.x + 40 * h.face, y: (tu ? tu.y : h.y) - 36, t: 0, dur: sk.fx === 'flurry' ? 0.75 : 0.3, color: sk.fx === 'bash' ? '#9fd0ff' : '#ffffff', multi: sk.fx === 'flurry' });
         break;
       case 'spin': this.fx.push({ type: 'spin', x: h.x, y: h.y, r: sk.areaR, t: 0, dur: 0.4 }); break;
-      case 'pierce': case 'starbolt': case 'snipe': if (tu) this.fx.push({ type: 'proj', kind: sk.fx, x0: h.x + 14 * h.face, y0: h.y - 40, to: tu, t: 0, dur: e.delay, big: true }); break;
+      case 'pierce': case 'starbolt': case 'snipe': case 'curse': if (tu) this.fx.push({ type: 'proj', kind: sk.fx, x0: h.x + 14 * h.face, y0: h.y - 40, to: tu, t: 0, dur: e.delay, big: true }); break;
       case 'meteor': for (let i = 0; i < 7; i++) { const a = Math.random() * 6.28, r = Math.random() * sk.areaR; this.fx.push({ type: 'meteor', tx: spec.x + Math.cos(a) * r, ty: spec.y + Math.sin(a) * r * 0.45, t: -i * 0.06, dur: 0.5 }); } this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.7, color: '255,180,80' }); break;
       case 'arrowrain': for (let i = 0; i < 16; i++) { const a = Math.random() * 6.28, r = Math.random() * sk.areaR; this.fx.push({ type: 'arrowdrop', tx: spec.x + Math.cos(a) * r, ty: spec.y + Math.sin(a) * r * 0.45, t: -Math.random() * 0.25, dur: 0.45 }); } this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.6, color: '255,220,140' }); break;
       case 'nova':
         this.fx.push({ type: 'flash', t: 0, dur: 0.5, color: 'rgba(200,170,255,' });
         for (const en of this.sim.aliveEnemies()) for (let i = 0; i < 3; i++) this.fx.push({ type: 'meteor', tx: en.x + (Math.random() - 0.5) * 40, ty: en.y, t: -i * 0.08 - Math.random() * 0.1, dur: 0.4, big: true });
+        break;
+      case 'bone':
+        if (tu) this.fx.push({ type: 'proj', kind: 'bone', x0: h.x + 14 * h.face, y0: h.y - 40, to: tu, t: 0, dur: e.delay, big: true });
+        else if (spec.x !== undefined) { this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR || 80, t: 0, dur: 0.7, color: '200,220,180' }); this.smoke(spec.x, spec.y - 10, 1); }
+        else this.fx.push({ type: 'zone', x: h.x, y: h.y, r: 70, t: 0, dur: 0.6, color: '150,220,140' });
         break;
       case 'smoke': this.fx.push({ type: 'zone', x: h.x, y: h.y, r: 70, t: 0, dur: 0.6, color: '120,110,150' }); this.sparkle(h.x, h.y - 30, '#b8b0d0', 12); break;
       case 'poison': this.fx.push({ type: 'zone', x: spec.x, y: spec.y, r: sk.areaR, t: 0, dur: 0.9, color: '130,210,60' }); break;
@@ -833,7 +846,7 @@ const BattleScene = {
     // 3D 시트가 있는 영웅은 쓰러진 모습(쓰러짐 동작 → 마지막 프레임)으로 남는다
     this.downAt = this.downAt || {};
     for (const h of sim.heroes) if (!h.alive && spriteSheetFor(h.sprite)) { if (this.downAt[h.uid] === undefined) this.downAt[h.uid] = t; const k = Math.min(1, (t - this.downAt[h.uid]) / 0.6); ctx.save(); ctx.globalAlpha = 0.85; drawSprite(ctx, h.sprite, h.x, h.y, { scale: this.unitScale(h), flip: h.face < 0, t, anim: 'down', animK: k }); ctx.restore(); }
-    const units = sim.heroes.concat(sim.enemies).filter((u) => u.alive);
+    const units = sim.heroes.concat(sim.minions || [], sim.enemies).filter((u) => u.alive);
     units.sort((a, b) => a.y - b.y);
     const inArea = d && d.over && d.sk.areaR ? new Set(sim.unitsInArea(d.h, d.slot, d.fx, d.fy).map((u) => u.uid)) : null;
     for (const u of units) this.drawUnit(ctx, u, t, (inArea && inArea.has(u.uid)) || (d && d.unit === u));
@@ -1070,6 +1083,12 @@ const BattleScene = {
             const r = f.big ? 7 : 4;
             ctx.fillStyle = '#ffe066'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = 'rgba(255,200,90,0.4)'; ctx.beginPath(); ctx.arc(x - Math.cos(ang) * 8, y - Math.sin(ang) * 8, r * 0.8, 0, Math.PI * 2); ctx.fill();
+          } else if (f.kind === 'curse') {
+            const r = f.big ? 7 : 4.5;
+            ctx.fillStyle = 'rgba(150,60,220,0.45)'; ctx.beginPath(); ctx.arc(x - Math.cos(ang) * 9, y - Math.sin(ang) * 9, r * 0.9, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#c070ff'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#2a0a3a'; ctx.beginPath(); ctx.arc(x, y, r * 0.4, 0, Math.PI * 2); ctx.fill();
+          } else if (f.kind === 'bone') {
+            ctx.save(); ctx.translate(x, y); ctx.rotate(ang + k * 10); ctx.fillStyle = '#ece6d6'; ctx.fillRect(-7, -1.6, 14, 3.2); ctx.beginPath(); ctx.arc(-7, 0, 2.6, 0, 7); ctx.arc(7, 0, 2.6, 0, 7); ctx.fill(); ctx.restore();
           } else { ctx.fillStyle = '#9fe0ff'; ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); }
           break;
         }

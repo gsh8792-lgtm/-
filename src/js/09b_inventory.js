@@ -20,7 +20,7 @@ function refreshRunLoadout(run) {
 // 장비 외형(무기 발광·갑옷 오라)은 캐릭터 에셋 확정 후 구현 — 구상은 docs/GAME_DESIGN.md 3-3
 
 // ---------------------------------------------------------------- 아이템 아이콘 (코드 드로잉, 임시 에셋)
-const WEAPON_SHAPE = { tank: 'mace', melee: 'sword', rogue: 'sword', ranged: 'bow', mage: 'staff', support: 'holy' };
+const WEAPON_SHAPE = { tank: 'mace', melee: 'sword', rogue: 'sword', monk: 'mace', ranged: 'bow', mage: 'staff', warlock: 'staff', necro: 'staff', support: 'holy' };
 function drawItemIcon(ctx, item, s) {
   const base = EQ.BASE[item.base], g = EQ.G[item.grade];
   const col = g.color;
@@ -58,7 +58,7 @@ function drawItemIcon(ctx, item, s) {
     }
   } else if (slot === 'armor') {
     ctx.beginPath(); ctx.moveTo(-18, -18); ctx.lineTo(-8, -22); ctx.quadraticCurveTo(0, -14, 8, -22); ctx.lineTo(18, -18); ctx.lineTo(22, -2); ctx.lineTo(14, 0); ctx.lineTo(14, 22); ctx.lineTo(-14, 22); ctx.lineTo(-14, 0); ctx.lineTo(-22, -2); ctx.closePath();
-    fill(base.cls === 'support' || base.cls === 'mage' ? '#7e6ab0' : base.cls === 'ranged' ? '#6a8a4a' : metal); stroke(dark, 2);
+    fill(base.cls === 'support' || base.cls === 'mage' || base.cls === 'warlock' || base.cls === 'necro' ? '#7e6ab0' : base.cls === 'ranged' ? '#6a8a4a' : metal); stroke(dark, 2);
     ctx.beginPath(); ctx.moveTo(0, -14); ctx.lineTo(0, 22); stroke('rgba(0,0,0,0.25)', 2);
     ctx.beginPath(); ctx.rect(-14, 8, 28, 4); fill(wood);
   } else if (slot === 'medal') {

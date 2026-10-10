@@ -231,7 +231,7 @@ const DungeonScene = {
     if (it.kind === 'curio') { this.openCurio(c, p); return; }
     if (it.kind === 'trap') {
       const ids = partyIds(run).filter((id) => !run.heroes[id].dead);
-      const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0);
+      const spot = 0.35 + (ids.some((id) => ['ranged', 'support'].includes(HEROES[id].role)) ? 0.2 : 0) + (ids.some((id) => HEROES[id].role === 'monk') ? 0.25 : 0); // 수도승의 감각
       const rogue = ids.find((id) => HEROES[id].role === 'rogue');
       if (rogue && rng() < 0.75) { const g = 6 + fl.floor * 3; run.gold += g; text = `도적 ${HEROES[rogue].name}: 함정 해제! 골드 +${g}`; Sfx.play('coin'); }
       else if (run.trapKits > 0) { run.trapKits--; const g = 10 + fl.floor * 4; run.gold += g; text = `함정 해제 도구로 해제! 부품 골드 +${g}`; Sfx.play('coin'); }
@@ -265,15 +265,18 @@ const DungeonScene = {
         ['지나간다', () => '상자를 두고 지나갔다'],
       ],
       altar: [
+        ...(alive.some((id) => HEROES[id].role === 'warlock') ? [['🩸 흑마술사가 계약을 맺는다 (흑마술사 HP -15%)', () => { const id = alive.find((x) => HEROES[x].role === 'warlock'); H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * 0.15)); run.fruit = { bonus: 0.2, battles: 3 }; return `${HEROES[id].name}이(가) 제단과 계약했다. 다음 3번의 전투에서 공격력 +20%`; }]] : []),
         ['피를 바친다 (가장 튼튼한 동료 HP -25%)', () => { const id = alive.slice().sort((a, b) => H(b).hp - H(a).hp)[0]; if (id) H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * 0.25)); run.fruit = { bonus: 0.15, battles: 3 }; return `${HEROES[id].name}의 피를 바쳤다. 다음 3번의 전투에서 공격력 +15%`; }],
         ['기도한다', () => rng() < 0.6 ? (healAll(0.15), '따뜻한 빛. 파티 HP +15%') : '아무 일도 일어나지 않았다'],
         ['지나간다', () => '제단을 지나쳤다'],
       ],
       corpse: [
+        ...(alive.some((id) => HEROES[id].role === 'necro') ? [['💀 네크로맨서가 망자에게 묻는다', () => { run.potions++; run.gold += g; return `망자가 숨겨 둔 곳을 알려 줬다. 회복약 +1 · 골드 +${g}`; }]] : []),
         ['가방을 뒤진다', () => { const v = rng(); if (v < 0.35) { run.potions++; return '회복약 +1'; } if (v < 0.6) { run.food++; return '식량 +1'; } if (v < 0.8) { run.gold += g; return `골드 +${g}`; } hurtAll(0.1); return '독침! 파티 HP -10%'; }],
         ['묻어 준다', () => { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 20); return '마음이 조금 가벼워졌다. 횃불 +20'; }],
       ],
       spring: [
+        ...(alive.some((id) => HEROES[id].role === 'monk') ? [['🧘 수도승이 물의 기운을 읽는다', () => { healAll(0.25); return '맑은 물을 골라 마셨다. 파티 HP +25%'; }]] : []),
         ['물을 마신다', () => rng() < 0.65 ? (healAll(0.25), '상쾌하다! 파티 HP +25%') : (hurtAll(0.12), '썩은 물이었다. 파티 HP -12%')],
         ['횃불을 적셔 둔다', () => { run.torch = Math.min(CONST.TORCH_MAX, run.torch + 30); return '횃불 +30'; }],
         ['지나간다', () => '샘을 지나쳤다'],
@@ -293,7 +296,7 @@ const DungeonScene = {
       ],
     }[it.curio];
     const finish = (fn) => { Game.closeModal(); it.done = true; const text = fn(); Sfx.play('coin'); this.fx.push({ x: p.x, y: 300, text, t: 0, dur: 2.2 }); Game.toast(`${C.icon} ${text}`, 2000); this.buildHud(); };
-    if (run.autoMode) { const safe = opts.find((o) => o[0].startsWith('🧰')) || opts.find((o) => o[0].startsWith('🗝')) || opts[opts.length - 1]; finish(safe[1]); return; } // 자동: 위험 없는 쪽
+    if (run.autoMode) { const safe = opts.find((o) => o[0].startsWith('🧰')) || opts.find((o) => o[0].startsWith('🗝')) || opts.find((o) => o[0].startsWith('💀') || o[0].startsWith('🧘')) || opts[opts.length - 1]; finish(safe[1]); return; } // 자동: 위험 없는 쪽
     const box = el('div', 'confirm-box');
     box.appendChild(el('div', 'modal-title', `${C.icon} ${C.name}`));
     box.appendChild(el('p', '', C.text));

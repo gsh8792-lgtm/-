@@ -31,6 +31,7 @@ const COMBO_INFO = [
   { name: '독연 폭발', how: '화상 걸린 적에게 중독', fx: '주변 폭발(공격력 ×1.3) + 주변 적에게 중독 1겹 · 화상 소모' },
   { name: '동결', how: '둔화된 적을 기절', fx: '기절 +0.6초' },
   { name: '상처 벌리기', how: '출혈 + 취약', fx: '출혈 피해 ×1.5' },
+  { name: '역병', how: '저주 + 중독 (흑마술사 × 도적·네크로맨서)', fx: '중독 +2겹' },
 ];
 function codexState(p) { return (p.codex = p.codex || {}); }
 // 처음 보면 true (보상 지급)

@@ -264,14 +264,14 @@ if (sa !== sb) fail++;
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
   const ids = Object.keys(GEAR_SKILLS);
-  if (ids.length !== 48 || new Set(Object.values(GEAR_SKILLS)).size !== 48) errs.push('48 distinct gear skills');
+  if (ids.length !== 72 || new Set(Object.values(GEAR_SKILLS)).size !== 72) errs.push('72 distinct gear skills');
   // 직업별 그로기 역할: 어떤 조합이든 끊기/기절/공명 수단이 남는다
-  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance'), rogue: (sk) => sk.interrupt >= 1 };
-  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor', rogue: 'armor' };
+  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance'), rogue: (sk) => sk.interrupt >= 1, monk: (sk) => sk.interrupt >= 2, warlock: (sk) => sk.interrupt >= 1, necro: (sk) => !!(sk.summon || sk.interrupt || sk.shieldPct) };
+  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor', rogue: 'armor', monk: 'armor', warlock: 'armor', necro: 'armor' };
   for (const cls in role) for (const n of [1, 2, 3]) { const sid = GEAR_SKILLS[`${cls}_${roleSlot[cls]}_${n}`]; if (!role[cls](SKILLS[sid])) errs.push('role lost ' + sid); }
   // 모든 장비 스킬이 실제로 시전되고 오류가 없다
   const mk = (id, skills, rank) => { const sim = new BattleSim({ seed: 11, stage: 5, waves: [['ogre_chief', 'goblin', 'goblin']], strategy: st0, autoMode: false, partySize: 3, heroes: [id, 'tobi', 'bori'].filter((x, i, a) => a.indexOf(x) === i).map((x) => ({ id: x, hp: 9999, maxHp: 9999, upgrades: {}, skills: x === id ? skills : null, skillRank: x === id ? rank : null })) }); for (let i = 0; i < 150; i++) sim.step(1 / 60); return sim; };
-  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi', rogue: 'ruka' };
+  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi', rogue: 'ruka', monk: 'soha', warlock: 'risha', necro: 'bella' };
   for (const it of ids) {
     const [cls, kind] = it.split('_'); const slot = kind === 'armor' ? 's1' : 's2'; const hid = clsHero[cls];
     try {
@@ -476,6 +476,48 @@ if (sa !== sb) fail++;
   { const p = GACHA.ensure(EQ.newProfile()); if (!p.chars.yeon) errs.push('yeon not gifted'); if (TALENTS[HEROES.yeon.role].length !== 2) errs.push('rogue talents');
     if (!EQ.DB.items.some((it) => it.cls === 'rogue' && it.slot === 'weapon' && it.line === 4)) errs.push('rogue gear'); }
   console.log('rogue class:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(opening stealth, untargetable, ambush, poison 5 stacks, detonate, backline, gear/talents)');
+  if (errs.length) fail++;
+}
+// 새 직업 (v0.52): 수도승 기·회피 / 흑마술사 저주 전이·파멸·계약 / 네크로맨서 소환·시체
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  const mk = (waves, ids) => new BattleSim({ seed: 5, stage: 2, waves, strategy: st0, autoMode: false, partySize: 3, heroes: ids.map((id) => ({ id, hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null })) });
+  // 수도승: 평타 적중 → 기, 기를 쓰면 위력 ↑, 평정 회피
+  { const sim = mk([['ogre']], ['mujin', 'tobi', 'bori']); for (let i = 0; i < 90; i++) sim.step(1 / 60); const m = sim.heroes[0], e = sim.enemies[0]; e.hp = e.maxHp = 1e6;
+    m.x = e.x - 50; m.y = e.y; m.atkTimer = 0; m.target = e; for (let i = 0; i < 30; i++) sim.step(1 / 60);
+    if (!(m.statuses.ki && m.statuses.ki.n >= 1)) errs.push('no ki from basic');
+    sim.rng = () => 0.5; const hit = (n) => { if (n) m.statuses.ki = { t: Infinity, n }; else delete m.statuses.ki; m.cds.s2 = 0; m.castLock = 0; const h0 = e.hp; delete e.statuses.stun; e.stunHist = []; sim.cast(m, 's2', { unit: e }); if (m.statuses.ki) errs.push('ki not consumed'); for (let i = 0; i < 30; i++) sim.step(1 / 60); return h0 - e.hp; };
+    const d0 = hit(0), d5 = hit(5); if (!(d5 > d0 * 2)) errs.push(`ki spend ${d0} -> ${d5}`);
+    sim.rng = () => 0.01; const hp = m.hp; sim._damage(e, m, 100, { basic: true }); if (m.hp !== hp) errs.push('serene dodge'); }
+  // 흑마술사: 저주(회복 -50%) → 쓰러지면 옮는다, 파멸 폭발, 계약 회복
+  { const sim = mk([['orc', 'orc', 'goblin']], ['daon', 'tobi', 'bori']); for (let i = 0; i < 90; i++) sim.step(1 / 60); const w = sim.heroes[0], [a, b] = sim.enemies; b.x = a.x + 40; b.y = a.y;
+    sim._applyStatus(w, a, { status: 'curse', dur: 8, dps: 0.3 }); if (!a.statuses.curse) errs.push('no curse');
+    const hh = a.hp; a.hp -= 100; const healed = sim._heal(null, a, 100, true); if (healed > 55) errs.push('curse heal cut ' + healed); a.hp = hh;
+    w.hp = 1000; const whp = w.hp; for (let i = 0; i < 120; i++) sim.step(1 / 60); if (!(w.hp > whp)) errs.push('pact heal');
+    sim._damage(w, a, 1e7, { noCrit: true }); if (!(b.statuses.curse)) errs.push('curse spread');
+    const d = sim.enemies[2]; d.hp = d.maxHp = 1e6; const h0 = d.hp; w.ult = 100; w.castLock = 0; sim.cast(w, 'ult', { unit: d }); for (let i = 0; i < 60 * 3; i++) sim.step(1 / 60); const mid = h0 - d.hp; for (let i = 0; i < 60 * 2; i++) sim.step(1 / 60);
+    if (!(h0 - d.hp > mid + sim._atkOf(w) * 3)) errs.push(`doom boom ${mid} -> ${h0 - d.hp}`); }
+  // 네크로맨서: 해골 소환 · 적이 병사를 노림 · 시체 쌓임/소모 · 만료
+  { const sim = mk([['orc', 'goblin', 'goblin']], ['myoyeon', 'bori']); for (let i = 0; i < 90; i++) sim.step(1 / 60); const n = sim.heroes[0];
+    n.cds.s1 = 0; n.castLock = 0; sim.cast(n, 's1', {}); if (sim.minions.filter((u) => u.alive).length !== 1) errs.push('summon 1 ' + sim.minions.length);
+    sim._damage(n, sim.enemies[2], 1e7, { noCrit: true }); if (sim.corpses !== 1) errs.push('corpse ' + sim.corpses);
+    n.cds.s1 = 0; n.castLock = 0; sim.cast(n, 's1', {}); if (sim.minions.filter((u) => u.alive).length !== 3 || sim.corpses !== 0) errs.push('summon with corpse ' + sim.minions.length + '/' + sim.corpses);
+    for (let i = 0; i < 60 * 4; i++) sim.step(1 / 60);
+    if (!sim.enemies.some((e) => e.alive && e.target && e.target.minion)) errs.push('enemies ignore minions');
+    if (!sim.minions.some((u) => u.stats === n.stats) || !(n.stats.dealt > 0)) errs.push('minion dmg not credited');
+    for (let i = 0; i < 60 * 16; i++) sim.step(1 / 60); if (sim.minions.some((u) => u.alive && u.life < -0.5)) errs.push('minion did not expire'); }
+  { const p = GACHA.ensure(EQ.newProfile()); for (const [id, role] of [['mujin', 'monk'], ['daon', 'warlock'], ['myoyeon', 'necro']]) {
+      if (!p.chars[id]) errs.push(id + ' not gifted'); if (TALENTS[role].length !== 2) errs.push(role + ' talents');
+      if (!EQ.DB.items.some((it) => it.cls === role && it.slot === 'weapon' && it.line === 4)) errs.push(role + ' gear');
+      if (CHARACTERS.filter((c) => c.role === role).length !== 3) errs.push(role + ' chars'); } }
+  // 모든 새 필살기(변주 포함)가 오류 없이 시전된다
+  for (const id of ['mujin', 'soha', 'baekun', 'daon', 'risha', 'kali', 'myoyeon', 'bella', 'kamu']) for (const k of ['A', 'B', 'C', 'A2', 'B2', 'C2']) {
+    try { const sim = mk([['ogre', 'goblin', 'goblin']], [id, 'tobi', 'bori']); for (let i = 0; i < 90; i++) sim.step(1 / 60); sim.corpses = 3; const h = sim.heroes[0]; h.ultDef = SKILLS[`${id}_ult_${k}`]; h.ult = 100; h.castLock = 0; h.statuses.ki = { t: Infinity, n: 3 };
+      for (const e of sim.enemies) { e.x = h.x + 70; e.y = h.y; }
+      const sp = sim.resolveTarget(h, 'ult') || {}; if (!sim.cast(h, 'ult', sp)) errs.push('ult cast ' + id + k); for (let i = 0; i < 60 * 5; i++) sim.step(1 / 60); } catch (e) { errs.push(id + k + ' ' + e.message); }
+  }
+  console.log('new classes:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(monk ki/dodge, warlock curse spread/doom/pact, necro minions/corpses, gifts, gear, talents, 54 ults)');
   if (errs.length) fail++;
 }
 // 연계 효과 (v0.37): 독연 폭발 · 동결 · 상처 벌리기

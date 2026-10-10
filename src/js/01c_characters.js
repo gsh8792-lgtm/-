@@ -29,7 +29,7 @@ const BREAKTHROUGH = {
 };
 
 // 직업 기본(기존 5인)이 ①② 스킬과 기본 능력치의 기준
-const CLASS_BASE = { tank: 'tobi', melee: 'danbi', rogue: 'yeon', ranged: 'byeolbi', mage: 'soldam', support: 'bori' };
+const CLASS_BASE = { tank: 'tobi', melee: 'danbi', rogue: 'yeon', monk: 'mujin', ranged: 'byeolbi', mage: 'soldam', warlock: 'daon', necro: 'myoyeon', support: 'bori' };
 
 // stat: 기준 대비 배율 { hp, atk, aspd(공격 간격 배율의 역수), ms }
 const CHARACTERS = [
@@ -143,6 +143,36 @@ const CHARACTERS = [
       C: { name: '연쇄 폭발', target: 'all_enemies', fx: 'nova', power: 0.8, detonate: { status: 'poison', mult: 1.4 }, desc: '모든 적 타격 + 각자의 중독을 터뜨림(×1.4).',
         v: { name: '독의 심판', power: 1.0, detonate: { status: 'poison', mult: 1.9 }, desc: '모든 적 타격 + 각자의 중독을 터뜨림(×1.9).' } },
     } },
+  // ---------------- 수도승 (v0.52): 기(평타·①로 모음) → ②·③으로 터뜨린다. 회피 · 끊기 · 그로기
+  { id: 'mujin', name: '무진', role: 'monk', title: '권법 수도승', sprite: 'monk', trait: 'serene', gift: true,
+    desc: '주먹으로 기를 모아 한 번에 터뜨린다. 근접 평타를 흘려 내며 앞줄에서 버틴다.',
+    ults: {
+      A: { base: 'mujin_ult', v: { name: '백보신권', power: 0.5, hits: 12, ki: 0.15, desc: '12연타 — 기 1개당 위력 +15% + 5초 취약. 타격마다 그로기 게이지 감소.' } },
+      B: { name: '금강불괴', target: 'self', fx: 'wall', kiGain: 5, effects: [{ status: 'invuln', dur: 2, to: 'self' }, { status: 'guard', dur: 6, value: 0.4, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }], desc: '2초 무적 + 6초간 받는 피해 -40% + 3초 도발 + 기 가득.',
+        v: { name: '금강역사', effects: [{ status: 'invuln', dur: 3, to: 'self' }, { status: 'guard', dur: 8, value: 0.5, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }, { status: 'reflect', dur: 6, value: 0.5, to: 'self' }], desc: '3초 무적 + 8초간 받는 피해 -50% + 4초 도발 + 근접 평타 50% 반사 + 기 가득.' } },
+      C: { name: '기공파', target: 'area_enemy', areaR: 110, fx: 'bash', power: 2.0, ki: 0.2, poise: 40, effects: [{ status: 'stun', dur: 1.2 }], desc: '지점에 기공파 — 기 1개당 위력 +20% + 1.2초 기절 + 그로기 감소.',
+        v: { name: '천지 기공파', areaR: 135, power: 2.4, poise: 60, effects: [{ status: 'stun', dur: 1.5 }], desc: '넓은 범위 기공파 — 기 1개당 위력 +20% + 1.5초 기절 + 그로기 대량 감소.' } },
+    } },
+  { id: 'soha', name: '소하', role: 'monk', title: '바람 발차기', sprite: 'monk_b', trait: 'keen', stat: { hp: 0.9, atk: 1.05, aspd: 1.1, ms: 1.15 },
+    desc: '바람처럼 적 사이를 누비는 발차기 수도승. 여러 적을 차례로 걷어찬다.',
+    ults: {
+      A: { name: '질풍각', target: 'multi_enemy', fx: 'flurry', count: 4, power: 1.3, ki: 0.1, effects: [{ status: 'vuln', dur: 4 }], desc: 'HP 비율 낮은 적부터 4명 걷어차기 + 4초 취약. 기 1개당 위력 +10%.',
+        v: { name: '천풍각', count: 6, power: 1.4, desc: 'HP 비율 낮은 적부터 6명 걷어차기 + 4초 취약.' } },
+      B: { name: '선풍각', target: 'self_area', areaR: 100, fx: 'spin', power: 0.7, hits: 4, effects: [{ status: 'stun', dur: 0.6 }], desc: '주변 적 4연타 + 0.6초 기절.',
+        v: { name: '대선풍', hits: 6, effects: [{ status: 'stun', dur: 0.8 }], desc: '주변 적 6연타 + 0.8초 기절.' } },
+      C: { name: '비연', target: 'enemy', behind: true, fx: 'slash', power: 3.2, ki: 0.25, execute: { below: 0.35, mult: 1.8 }, desc: '등 뒤로 날아 일격 — 기 1개당 위력 +25%. HP 35% 이하 적에게 1.8배.',
+        v: { name: '비연참', power: 3.8, ki: 0.3, desc: '더 강한 일격 — 기 1개당 위력 +30%. HP 35% 이하 적에게 1.8배.' } },
+    } },
+  { id: 'baekun', name: '백운', role: 'monk', title: '금강 수행자', sprite: 'monk_c', trait: 'sturdy', stat: { hp: 1.25, atk: 0.9, aspd: 0.9 },
+    desc: '쇠처럼 단단한 수행자. 파티를 지키고, 한 손가락으로 거인을 무너뜨린다.',
+    ults: {
+      A: { name: '금종조', target: 'party', fx: 'wall', shieldPct: 0.1, effects: [{ status: 'guard', dur: 6, value: 0.3, to: 'party' }, { status: 'taunt', dur: 3, to: 'all_enemies' }], desc: '파티 최대 HP 10% 보호막 + 6초간 받는 피해 -30% + 3초 도발.',
+        v: { name: '금강종', shieldPct: 0.15, effects: [{ status: 'guard', dur: 7, value: 0.4, to: 'party' }, { status: 'taunt', dur: 4, to: 'all_enemies' }], desc: '파티 15% 보호막 + 7초간 받는 피해 -40% + 4초 도발.' } },
+      B: { name: '반탄강기', target: 'self', fx: 'wall', effects: [{ status: 'reflect', dur: 6, value: 0.7, all: true, to: 'self' }, { status: 'guard', dur: 6, value: 0.3, to: 'self' }, { status: 'taunt', dur: 3, to: 'all_enemies' }], desc: '6초간 받은 모든 피해 70% 반사 + 받는 피해 -30% + 도발.',
+        v: { name: '호체신강', effects: [{ status: 'reflect', dur: 8, value: 1.0, all: true, to: 'self' }, { status: 'guard', dur: 8, value: 0.4, to: 'self' }, { status: 'taunt', dur: 4, to: 'all_enemies' }], desc: '8초간 받은 모든 피해 100% 반사 + 받는 피해 -40% + 도발.' } },
+      C: { name: '일지선', target: 'enemy', fx: 'bash', power: 2.6, ki: 0.2, poise: 90, effects: [{ status: 'stun', dur: 1.5 }], desc: '손가락 하나로 찌르기 — 기 1개당 위력 +20% + 1.5초 기절 + 그로기 대량 감소.',
+        v: { name: '탄지신통', poise: 120, effects: [{ status: 'stun', dur: 2 }], desc: '기 1개당 위력 +20% + 2초 기절 + 그로기 초대량 감소.' } },
+    } },
   // ---------------- 원딜
   { id: 'byeolbi', name: '별비', role: 'ranged', title: '명사수', sprite: 'archer', trait: 'keen', starter: true,
     desc: '단일·광역 사격을 고루 갖춘 원딜. 어느 파티에나 잘 어울린다.',
@@ -223,6 +253,66 @@ const CHARACTERS = [
       C: { name: '뇌신 강림', target: 'enemy', fx: 'starbolt', power: 3.8, poise: 70, effects: [{ status: 'stun', dur: 1.5 }], desc: '거대한 벼락 + 1.5초 기절 + 그로기 게이지 감소.',
         v: { name: '뇌신의 심판', power: 4.4, poise: 100, effects: [{ status: 'stun', dur: 2 }], desc: '더 큰 벼락 + 2초 기절 + 그로기 게이지 대량 감소.' } },
     } },
+  // ---------------- 흑마술사 (v0.52): 저주(옮는 지속 피해) · 생명력 흡수 · 파멸(지연 폭발) · HP를 바치는 계약
+  { id: 'daon', name: '다온', role: 'warlock', title: '계약의 흑마술사', sprite: 'warlock', trait: 'pact', gift: true,
+    desc: '저주를 퍼뜨리고 그 고통으로 산다. 파멸의 낙인은 몇 초 뒤 크게 터진다.',
+    ults: {
+      A: { base: 'daon_ult', v: { name: '종말', effects: [{ status: 'doom', dur: 3.5, boom: 6.5 }, { status: 'curse', dur: 10, dps: 0.5 }], desc: '강한 저주 + 3.5초 뒤 종말 폭발(공격력 ×6.5).' } },
+      B: { name: '역병의 계약', target: 'all_enemies', fx: 'curse', selfCost: 0.15, power: 0.6, effects: [{ status: 'curse', dur: 10, dps: 0.45 }], desc: 'HP 15%를 바쳐 모든 적에게 강한 저주 10초.',
+        v: { name: '피의 역병', effects: [{ status: 'curse', dur: 12, dps: 0.55 }, { status: 'weaken', dur: 8, value: 0.25 }], desc: 'HP 15%를 바쳐 모든 적에게 강한 저주 12초 + 8초 약화(-25%).' } },
+      C: { name: '영혼 수확', target: 'all_enemies', fx: 'nova', power: 1.0, partyHeal: 0.35, desc: '모든 적에게 피해 — 준 피해의 35%로 파티 회복.',
+        v: { name: '영혼 포식', power: 1.3, partyHeal: 0.5, desc: '모든 적에게 더 큰 피해 — 준 피해의 50%로 파티 회복.' } },
+    } },
+  { id: 'risha', name: '리샤', role: 'warlock', title: '혈마술사', sprite: 'warlock_b', trait: 'brave', stat: { hp: 1.1, atk: 1.05 },
+    desc: '자기 피를 대가로 힘을 끌어낸다. 위험할수록 강해지는 흡혈 마술사.',
+    ults: {
+      A: { name: '피의 계약', target: 'self', fx: 'curse', selfCost: 0.2, effects: [{ status: 'inspire', dur: 8, value: 0.6, to: 'self' }, { status: 'lifesteal', dur: 8, value: 0.3, to: 'self' }], desc: 'HP 20%를 바쳐 8초간 공격력 +60% · 흡혈 30%.',
+        v: { name: '피의 군주', effects: [{ status: 'inspire', dur: 9, value: 0.8, to: 'self' }, { status: 'lifesteal', dur: 9, value: 0.4, to: 'self' }], desc: 'HP 20%를 바쳐 9초간 공격력 +80% · 흡혈 40%.' } },
+      B: { name: '혈창', target: 'enemy', fx: 'snipe', selfCost: 0.1, power: 4.0, brokenMult: 1.5, desc: 'HP 10%를 바쳐 피의 창 — 그로기 적에게 1.5배.',
+        v: { name: '심홍의 창', power: 4.8, desc: 'HP 10%를 바쳐 더 강한 피의 창 — 그로기 적에게 1.5배.' } },
+      C: { name: '핏빛 안개', target: 'area_enemy', areaR: 110, fx: 'poison', power: 0.6, hits: 3, lifesteal: 0.5, effects: [{ status: 'curse', dur: 8, dps: 0.3 }], desc: '범위 3연타 + 저주. 준 피해의 50% 흡혈.',
+        v: { name: '피의 폭풍', hits: 4, lifesteal: 0.7, desc: '범위 4연타 + 저주. 준 피해의 70% 흡혈.' } },
+    } },
+  { id: 'kali', name: '칼리', role: 'warlock', title: '파멸술사', sprite: 'warlock_c', trait: 'cautious', stat: { hp: 0.9, atk: 1.15, aspd: 0.9 },
+    desc: '여러 적에게 파멸의 낙인을 새기고, 쌓인 저주를 한꺼번에 터뜨린다.',
+    ults: {
+      A: { name: '연쇄 파멸', target: 'multi_enemy', fx: 'curse', count: 3, power: 0.4, effects: [{ status: 'doom', dur: 4, boom: 3.0 }], desc: '적 3명에게 파멸의 낙인 — 4초 뒤 각각 폭발(공격력 ×3).',
+        v: { name: '파멸의 비', count: 5, desc: '적 5명에게 파멸의 낙인 — 4초 뒤 각각 폭발(공격력 ×3).' } },
+      B: { name: '공포', target: 'all_enemies', fx: 'nova', power: 0.3, effects: [{ status: 'stun', dur: 1.2 }, { status: 'weaken', dur: 6, value: 0.3 }], desc: '모든 적 1.2초 기절 + 6초 약화(-30%).',
+        v: { name: '심연의 공포', effects: [{ status: 'stun', dur: 1.6 }, { status: 'weaken', dur: 8, value: 0.35 }, { status: 'vuln', dur: 6 }], desc: '모든 적 1.6초 기절 + 8초 약화(-35%) + 6초 취약.' } },
+      C: { name: '저주 폭발', target: 'all_enemies', fx: 'nova', power: 0.6, detonate: { status: 'curse', mult: 1.5 }, desc: '모든 적 타격 + 각자의 저주를 한꺼번에 터뜨림(남은 저주 피해 ×1.5).',
+        v: { name: '저주의 심판', power: 0.8, detonate: { status: 'curse', mult: 2.2 }, desc: '모든 적 타격 + 저주를 터뜨림(×2.2).' } },
+    } },
+  // ---------------- 네크로맨서 (v0.52): 해골 병사 소환 · 시체(쓰러진 적) 활용
+  { id: 'myoyeon', name: '묘연', role: 'necro', title: '망자의 군주', sprite: 'necro', trait: 'grave', gift: true,
+    desc: '해골 병사를 일으켜 앞을 막는다. 쓰러진 적의 시체는 더 많은 병사나 폭발이 된다.',
+    ults: {
+      A: { base: 'myoyeon_ult', v: { name: '불멸의 군단', summon: { n: 4, corpse: 2, hp: 0.55, atk: 0.85, dur: 20 }, desc: '해골 병사 4 소환 (시체 2구까지 써서 더) — 20초.' } },
+      B: { name: '죽음의 손아귀', target: 'all_enemies', fx: 'bone', power: 0.5, corpsePow: { per: 0.3, max: 4 }, effects: [{ status: 'slow', dur: 5, value: 0.5 }, { status: 'weaken', dur: 6, value: 0.25 }], desc: '모든 적 5초 둔화(-50%) + 6초 약화(-25%) — 시체 1구당 위력 +30%(최대 4구).',
+        v: { name: '무덤의 손아귀', effects: [{ status: 'slow', dur: 6, value: 0.5 }, { status: 'weaken', dur: 8, value: 0.3 }, { status: 'stun', dur: 1 }], desc: '모든 적 1초 기절 + 6초 둔화 + 8초 약화(-30%).' } },
+      C: { name: '뼈 갑옷', target: 'party', fx: 'wall', shieldPct: 0.18, desc: '파티 전원 최대 HP 18% 뼈 보호막.',
+        v: { name: '망자의 갑주', shieldPct: 0.26, effects: [{ status: 'guard', dur: 6, value: 0.15, to: 'party' }], desc: '파티 전원 26% 보호막 + 6초 받는 피해 -15%.' } },
+    } },
+  { id: 'bella', name: '벨라', role: 'necro', title: '뼈 조각사', sprite: 'necro_b', trait: 'gentle', stat: { hp: 1.05, atk: 0.95 },
+    desc: '뼈를 깎아 거대한 골렘을 세운다. 골렘이 적을 붙잡는 동안 뼈 창으로 끊는다.',
+    ults: {
+      A: { name: '뼈 골렘', target: 'self', fx: 'bone', summon: { n: 1, kind: 'golem', hp: 1.2, atk: 1.0, dur: 20, taunt: 3 }, desc: '뼈 골렘 소환 — 20초. 나타날 때 주변 적 3초 도발.',
+        v: { name: '거대 뼈 골렘', summon: { n: 1, kind: 'golem', hp: 1.7, atk: 1.3, dur: 25, taunt: 4 }, desc: '더 큰 뼈 골렘 소환 — 25초. 주변 적 4초 도발.' } },
+      B: { name: '뼈 창', target: 'multi_enemy', fx: 'bone', count: 3, power: 1.5, interrupt: 1, effects: [{ status: 'slow', dur: 3, value: 0.4 }], desc: '시전 중인 적부터 3명 뼈 창 + 3초 둔화. 끊기 ●.',
+        v: { name: '뼈 창 폭우', count: 5, power: 1.6, desc: '5명 뼈 창 + 둔화. 끊기 ●.' } },
+      C: { name: '망자의 축복', target: 'self', fx: 'bone', summon: { n: 1, hp: 0.4, atk: 0.6, dur: 14 }, minionBuff: { heal: 0.6, inspire: 0.5, dur: 8 }, desc: '해골 병사 1 소환 + 모든 병사 HP 60% 회복 · 8초간 공격력 +50%.',
+        v: { name: '망자의 행진곡', summon: { n: 2, hp: 0.4, atk: 0.6, dur: 14 }, minionBuff: { heal: 1, inspire: 0.7, dur: 10 }, desc: '병사 2 소환 + 모든 병사 완전 회복 · 10초간 공격력 +70%.' } },
+    } },
+  { id: 'kamu', name: '카무', role: 'necro', title: '역병 사령술사', sprite: 'necro_c', trait: 'cautious', stat: { hp: 0.9, atk: 1.1 },
+    desc: '시체를 역병으로 바꾼다. 물어뜯는 구울 무리가 독을 옮긴다.',
+    ults: {
+      A: { name: '역병 시체', target: 'area_enemy', areaR: 110, fx: 'poison', power: 0.9, corpsePow: { per: 0.5, max: 3 }, effects: [{ status: 'poison', dur: 8, dps: 0.35 }], desc: '지점 역병 폭발 + 중독 1겹 — 시체 1구당 위력 +50%(최대 3구).',
+        v: { name: '대역병', power: 1.1, effects: [{ status: 'poison', dur: 10, dps: 0.45 }, { status: 'weaken', dur: 6, value: 0.25 }], desc: '더 강한 역병 + 강한 중독 + 6초 약화(-25%).' } },
+      B: { name: '구울 무리', target: 'self', fx: 'bone', summon: { n: 2, kind: 'ghoul', hp: 0.3, atk: 0.7, dur: 12, poison: 0.15 }, desc: '구울 2 소환 — 12초. 물 때마다 중독 1겹.',
+        v: { name: '구울 군단', summon: { n: 3, kind: 'ghoul', hp: 0.32, atk: 0.75, dur: 14, poison: 0.18 }, desc: '구울 3 소환 — 14초. 물 때마다 중독.' } },
+      C: { name: '죽음의 행진', target: 'all_enemies', fx: 'nova', power: 0.6, hits: 2, summon: { n: 1, hp: 0.35, atk: 0.55, dur: 12 }, desc: '모든 적 2연타 + 해골 병사 1 소환.',
+        v: { name: '망자의 대행진', hits: 3, summon: { n: 2, hp: 0.35, atk: 0.55, dur: 12 }, desc: '모든 적 3연타 + 해골 병사 2 소환.' } },
+    } },
   // ---------------- 서포터
   { id: 'bori', name: '보리', role: 'support', title: '생명의 사제', sprite: 'priest', trait: 'gentle', starter: true,
     desc: '광역 회복 특화. 장기전을 버티게 하는 파티의 중심.',
@@ -268,7 +358,7 @@ const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
 
 // HEROES / AI_PRESETS / HERO_ORDER / SKILLS 에 등록 (기존 5인은 그대로 두고 속성만 보강)
 (function registerCharacters() {
-  const order = ['tank', 'melee', 'rogue', 'ranged', 'mage', 'support'];
+  const order = ['tank', 'melee', 'rogue', 'monk', 'ranged', 'mage', 'warlock', 'necro', 'support'];
   HERO_ORDER.length = 0;
   for (const role of order) for (const c of CHARACTERS) if (c.role === role) HERO_ORDER.push(c.id);
   for (const c of CHARACTERS) {

@@ -307,7 +307,10 @@ const ART = {
       blob(ctx, 12, -54, 6.5, 5, '#8d96a3', 'metal');
       arm(ctx, 12, -52, 17, -40, '#e8dcc8', 'cloth', 3.8);
       shape(ctx, [14, -44, 21, -42, 20, -36, 13, -38], '#6e4a30', 'leather', { lw: 1 });
-      if (_FO && _FO.dagger) { // 도적: 짧은 단검
+      if (_FO && _FO.fist) { // 수도승: 붕대 감은 주먹
+        blob(ctx, 19, -40.5, 5.2, 4.6, '#f3cba6', 'skin', { lw: 1.1 });
+        for (let i = 0; i < 3; i++) line(ctx, [15.5, -43 + i * 2.4, 22.5, -42 + i * 2.4], _FO.fist === true ? '#e8e0d0' : _FO.fist, 1.2);
+      } else if (_FO && _FO.dagger) { // 도적: 짧은 단검
         paint(ctx, poly([20, -40, 23.5, -43, 36, -72, 34, -76, 31, -71]), '#c3cad4', [20, -76, 36, -40], 'metal', { lw: 1.3 });
         line(ctx, [22, -42.5, 33.5, -72], 'rgba(90,100,120,0.6)', 0.7);
         if (_FO.dagger !== true) line(ctx, [23.5, -46, 33, -70], _FO.dagger, 1.4); // 독 바른 날
@@ -315,10 +318,12 @@ const ART = {
       paint(ctx, poly([20, -40, 23, -43, 47, -104, 45.5, -106, 43, -103]), '#c3cad4', [20, -106, 47, -40], 'metal', { lw: 1.3 });
       line(ctx, [22, -42.5, 44.5, -102], 'rgba(90,100,120,0.6)', 0.7);
       }
+      if (!(_FO && _FO.fist)) {
       paint(ctx, poly([14, -42, 28, -47, 29, -44.5, 15, -39.5]), '#d8b048', [14, -47, 29, -39], 'gold', { lw: 0.9 });
       paint(ctx, poly([18, -38, 21, -39, 17.5, -30, 15, -31]), '#4a2e1c', [15, -39, 21, -30], 'leather', { lw: 0.8 });
       blob(ctx, 15.8, -29.5, 1.8, 1.8, '#d8b048', 'gold', { lw: 0.7 });
       hand(ctx, 19, -40.5);
+      }
     },
     head(ctx, blink) {
       shape(ctx, [-20, -82, -20, -98, -8, -106, 12, -106, 24, -96, 24, -80, 20, -70, 18, -82, -16, -82, -18, -66], '#9a4a2a', 'cloth', { smooth: true, ink: '#4a1e10' });
@@ -393,9 +398,16 @@ const ART = {
       paint(ctx, poly([22, -94, 25, -94, 24, 0, 21, 0]), '#7a5230', [21, -94, 25, 0], 'leather', { lw: 1.1 });
       for (const y of [-80, -60]) line(ctx, [21.5, y, 24.5, y + 3], '#4a2e1c', 1);
       shape(ctx, [16, -96, 23.5, -92, 31, -96, 30, -104, 23.5, -100, 17, -104], '#6a4224', 'leather', { smooth: true, lw: 1 });
-      glow(ctx, 23.5, -104, 16, '255,180,80', 0.55);
-      blob(ctx, 23.5, -104, 5.2, 5.2, '#ffb84a', 'gold', { ink: '#a85a10', lw: 1, lx: 0.3, ly: 0.3 });
+      if (_FO && _FO.skull) { // 네크로맨서: 해골 지팡이
+        glow(ctx, 23.5, -104, 15, _FO.skull, 0.5);
+        blob(ctx, 23.5, -105, 6, 5.6, '#ece6d6', 'cloth', { ink: '#5a5444', lw: 1 });
+        shape(ctx, [20, -101, 27, -101, 26, -97, 21, -97], '#ddd6c4', 'cloth', { lw: 0.8, ink: '#5a5444' });
+        ctx.fillStyle = `rgb(${_FO.skull})`; ctx.fillRect(20.6, -106.5, 2.2, 2.2); ctx.fillRect(24.6, -106.5, 2.2, 2.2);
+      } else {
+      glow(ctx, 23.5, -104, 16, (_FO && _FO.orb) || '255,180,80', 0.55);
+      blob(ctx, 23.5, -104, 5.2, 5.2, _FO && _FO.orb ? `rgb(${_FO.orb})` : '#ffb84a', 'gold', { ink: _FO && _FO.orb ? '#2a1438' : '#a85a10', lw: 1, lx: 0.3, ly: 0.3 });
       ctx.fillStyle = '#fff6d0'; ctx.beginPath(); ctx.arc(21.8, -106, 1.6, 0, 7); ctx.fill();
+      }
       shape(ctx, [10, -55, 16, -50, 22, -42, 18, -38, 9, -46], '#4a3a7a', 'cloth', { smooth: true });
       hand(ctx, 22.5, -43);
     },
@@ -672,6 +684,13 @@ const SPRITE_VARIANTS = {
     swap: { '#9a4a2a': '#d8d8e0', '#c03a36': '#2e2440', '#a8383a': '#281e38', '#4a1414': '#100a18', '#6e4a30': '#24202e', '#f3cba6': '#e8c8b0', '#3e7a5a': '#c03a5a' } },
   rogue_c: { base: 'sword', build: { sx: 0.92, sy: 0.96, hs: 1.03 }, face: { shape: 'child', eye: 'sleepy', brow: 'thin', mouth: 'smirk', extras: ['mole'], dagger: 'rgba(170,110,230,0.8)' },
     swap: { '#9a4a2a': '#5a3a7a', '#c03a36': '#3a7a6a', '#a8383a': '#2e6a5a', '#4a1414': '#0e2a24', '#6e4a30': '#2a3a34', '#3e7a5a': '#8ad03a' } },
+  // 수도승 (v0.52): 검사 체형에 주먹(붕대) · 도복 색
+  monk: { base: 'sword', build: { sx: 1.0, sy: 1.0, hs: 1.0 }, face: { shape: 'round', eye: 'gentle', brow: 'thick', mouth: 'smile', extras: [], fist: true },
+    swap: { '#9a4a2a': '#2a2420', '#c03a36': '#e0a030', '#a8383a': '#d8822a', '#4a1414': '#6a3a10', '#6e4a30': '#4a3424', '#ece2cf': '#f0e4c8', '#7a5236': '#c86a2a', '#4f7a4a': '#8a4a1a', '#3e7a5a': '#5a4a3a' } },
+  monk_b: { base: 'sword', build: { sx: 0.9, sy: 1.04, hs: 0.98 }, face: { shape: 'sharp', eye: 'sharp', brow: 'thin', mouth: 'grin', extras: ['blushBig'], fist: '#8ad0e0' },
+    swap: { '#9a4a2a': '#4ab0c0', '#c03a36': '#e8f0f0', '#a8383a': '#3a8a9a', '#4a1414': '#1a3a44', '#6e4a30': '#2a4a54', '#7a5236': '#2a6a7a', '#4f7a4a': '#e8f0f0', '#3e7a5a': '#2a7a8a' } },
+  monk_c: { base: 'sword', build: { sx: 1.18, sy: 1.0, hs: 0.98 }, face: { shape: 'square', eye: 'narrow', brow: 'thick', mouth: 'flat', extras: ['stubble', 'scar'], fist: '#d8b048' },
+    swap: { '#9a4a2a': '#e0c8a8', '#c03a36': '#8a6a2a', '#a8383a': '#6a5a3a', '#4a1414': '#2a2414', '#6e4a30': '#3a3020', '#ece2cf': '#d8b048', '#7a5236': '#8a3a2a', '#4f7a4a': '#d8b048', '#f3cba6': '#e0b088', '#3e7a5a': '#3a3020' } },
   sword_d: { base: 'sword', build: { sx: 0.9, sy: 1.04, hs: 0.98 }, face: { shape: 'long', eye: 'gentle', brow: 'thin', mouth: 'smile', extras: ['blushBig'] },
     swap: { '#9a4a2a': '#e8e0f0', '#c03a36': '#d04a8a', '#a8383a': '#c03a7a', '#4a1414': '#4a1430', '#6e4a30': '#5a3a4a', '#3e7a5a': '#d04a8a' } },
   archer_d: { base: 'archer', build: { sx: 1.02, sy: 1.0, hs: 1.0 }, face: { shape: 'square', eye: 'sharp', brow: 'thick', mouth: 'grin', extras: ['freckles'] },
@@ -686,6 +705,20 @@ const SPRITE_VARIANTS = {
     swap: { '#4a3a7a': '#2a1a2e', '#2e3a62': '#1a1a1a', '#141a30': '#140a18', '#1e1238': '#1a0e1e', '#3a2c62': '#2e1a34', '#5a4a90': '#5a2a4a', '#8a5ab0': '#d03a5a', '#d8b048': '#9a3a5a', '#f8d8bc': '#e8d0d0', '#43306e': '#241426', '#4e3a80': '#30182e' } },
   mage_d: { base: 'mage', build: { sx: 0.96, sy: 1.04, hs: 0.98 }, face: { shape: 'round', eye: 'sharp', brow: 'thin', mouth: 'smirk', extras: [] },
     swap: { '#4a3a7a': '#2a3a6a', '#2e3a62': '#f0e070', '#141a30': '#1a2440', '#1e1238': '#1a2448', '#3a2c62': '#2a3a72', '#5a4a90': '#4a6ac0', '#8a5ab0': '#f0d040', '#43306e': '#22306a', '#4e3a80': '#3048a0' } },
+  // 흑마술사 (v0.52): 마법사 체형에 보라·검정, 어둠의 구슬
+  warlock: { base: 'mage', build: { sx: 0.94, sy: 1.08, hs: 0.96 }, face: { shape: 'sharp', eye: 'sleepy', brow: 'thin', mouth: 'smirk', extras: [], orb: '176,90,240' },
+    swap: { '#4a3a7a': '#2a1a3a', '#2e3a62': '#e8e0f0', '#141a30': '#1a0e24', '#1e1238': '#140a1e', '#3a2c62': '#2e1a42', '#5a4a90': '#6a2a8a', '#8a5ab0': '#c04ae0', '#43306e': '#22122e', '#4e3a80': '#3a1a52', '#d8b048': '#9a6ad0' } },
+  warlock_b: { base: 'mage', build: { sx: 0.96, sy: 1.04, hs: 0.98 }, face: { shape: 'long', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: ['mole'], orb: '230,50,70' },
+    swap: { '#4a3a7a': '#5a1420', '#2e3a62': '#2a1a1e', '#141a30': '#1a0a0e', '#1e1238': '#2a0a10', '#3a2c62': '#4a1018', '#5a4a90': '#8a1a2a', '#8a5ab0': '#e03a4a', '#43306e': '#3a0e14', '#4e3a80': '#6a1420', '#f8d8bc': '#f0d8d8', '#d8b048': '#c03a4a' } },
+  warlock_c: { base: 'mage', build: { sx: 0.92, sy: 1.12, hs: 0.94 }, face: { shape: 'child', eye: 'narrow', brow: 'worried', mouth: 'flat', extras: [], orb: '120,240,150' },
+    swap: { '#4a3a7a': '#1a2a24', '#2e3a62': '#f0f0f0', '#141a30': '#0a1410', '#1e1238': '#0e1a14', '#3a2c62': '#16302a', '#5a4a90': '#2a5a4a', '#8a5ab0': '#7ae0a0', '#43306e': '#10221c', '#4e3a80': '#1e3e34', '#d8b048': '#6ac08a' } },
+  // 네크로맨서 (v0.52): 해골 지팡이 · 수의 색
+  necro: { base: 'mage', build: { sx: 0.95, sy: 1.08, hs: 0.97 }, face: { shape: 'long', eye: 'narrow', brow: 'thin', mouth: 'flat', extras: [], skull: '120,230,140' },
+    swap: { '#4a3a7a': '#2a3a32', '#2e3a62': '#d8dcd4', '#141a30': '#121a16', '#1e1238': '#101a14', '#3a2c62': '#22322a', '#5a4a90': '#3a5a4a', '#8a5ab0': '#9ad08a', '#43306e': '#1a2620', '#4e3a80': '#2a4436', '#f8d8bc': '#e8e4dc', '#d8b048': '#a8b0a0' } },
+  necro_b: { base: 'mage', build: { sx: 1.02, sy: 1.0, hs: 1.0 }, face: { shape: 'round', eye: 'big', brow: 'thick', mouth: 'grin', extras: ['freckles'], skull: '240,220,150' },
+    swap: { '#4a3a7a': '#5a4a3a', '#2e3a62': '#c87a3a', '#141a30': '#2a2014', '#1e1238': '#2a2018', '#3a2c62': '#4a3a2a', '#5a4a90': '#7a6a52', '#8a5ab0': '#e8d8a0', '#43306e': '#3a2e20', '#4e3a80': '#5a4a36', '#d8b048': '#e8d8a0' } },
+  necro_c: { base: 'mage', build: { sx: 0.9, sy: 1.1, hs: 0.95 }, face: { shape: 'sharp', eye: 'sleepy', brow: 'angry', mouth: 'smirk', extras: ['scar'], skull: '170,230,60' },
+    swap: { '#4a3a7a': '#3a4a1a', '#2e3a62': '#2a2a24', '#141a30': '#141a0a', '#1e1238': '#161e0a', '#3a2c62': '#2e3a16', '#5a4a90': '#5a6a2a', '#8a5ab0': '#b0e040', '#43306e': '#242e10', '#4e3a80': '#3a4a1a', '#f8d8bc': '#d8dcc0', '#d8b048': '#8aa030' } },
   priest_d: { base: 'priest', build: { sx: 1.04, sy: 1.0, hs: 1.0 }, face: { shape: 'square', eye: 'big', brow: 'thick', mouth: 'grin', extras: [] },
     swap: { '#f2ece0': '#e8d8c0', '#5aa0e0': '#c04a3a', '#3e6aa8': '#8a2a20', '#c88a8a': '#3a2a20', '#f2bfb8': '#d8a060', '#8a4a4a': '#2a1a10', '#4a9a7a': '#c06a2a' } },
   priest_b: { base: 'priest', build: { sx: 0.98, sy: 0.98, hs: 1.02 }, face: { shape: 'child', eye: 'big', brow: 'worried', mouth: 'open', extras: ['blushBig'] },
@@ -710,7 +743,10 @@ Object.assign(SPRITE_VARIANTS, {
   caveTroll: { base: 'ogre', filter: 'hue-rotate(70deg) saturate(0.55) brightness(0.85)', swap: {} },
   orcBerserker: { base: 'orc', filter: 'hue-rotate(-35deg) saturate(1.9) brightness(1.05)', swap: {} },
   goblinTrapper: { base: 'goblinHorn', filter: 'hue-rotate(110deg) saturate(0.85)', swap: {} },
-  knightElin: { base: 'knight', swap: {} }, // 반격의 기사: 그림은 시트(02b), 이 항목은 크기 기준용
+  knightElin: { base: 'knight', swap: {} },
+  skeleton: { base: 'goblin', filter: 'grayscale(1) sepia(0.25) brightness(1.45) contrast(1.4)', swap: {} },         // 네크로맨서 해골 병사
+  ghoul: { base: 'goblin', filter: 'hue-rotate(60deg) saturate(0.5) brightness(0.75) contrast(1.2)', swap: {} }, // 구울
+  boneGolem: { base: 'ogre', filter: 'grayscale(1) brightness(1.55) contrast(1.3) sepia(0.2)', swap: {} },    // 뼈 골렘 // 반격의 기사: 그림은 시트(02b), 이 항목은 크기 기준용
   merchant: { base: 'guide', filter: 'hue-rotate(150deg) saturate(1.4)', swap: {} }, // 마을 잡화점 상인 (임시: 길잡이 색 바꿈)
 });
 for (const name in SPRITE_VARIANTS) {

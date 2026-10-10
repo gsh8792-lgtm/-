@@ -16,7 +16,7 @@ const ACHIEVEMENTS = [
   { id: 'combo50', name: '연계의 달인', desc: '연계 효과를 50번 일으킨다', prog: (p) => [achCnt(p, 'combo'), 50], reward: { stones: 10 } },
   { id: 'codex10', name: '관찰자', desc: '적 도감에 10종 등록', prog: (p) => [Object.keys(p.codex || {}).length, 10], reward: { gold: 300 } },
   { id: 'codex_all', name: '적 박사', desc: '적 도감을 모두 채운다', prog: (p) => [Object.keys(p.codex || {}).filter((k) => ENEMY_CODEX[k]).length, Object.keys(ENEMY_CODEX).length], reward: { tickets: 3 } },
-  { id: 'chars10', name: '원정대 확장', desc: '캐릭터 10명을 모은다', prog: (p) => [GACHA.ownedIds(p).length, 10], reward: { tickets: 2 } },
+  { id: 'chars10', name: '원정대 확장', desc: '캐릭터 15명을 모은다', prog: (p) => [GACHA.ownedIds(p).length, 15], reward: { tickets: 2 } },
   { id: 'talent_cap', name: '전문가', desc: '특성 트리의 핵심 특성을 하나 연다', prog: (p) => [Object.values(p.talents || {}).some((s) => Object.keys(s).some((k) => /_cap\d$/.test(k) && s[k] > 0)) ? 1 : 0, 1], reward: { stones: 10 } },
   { id: 'hunt_elite10', name: '사냥터의 주인', desc: '사냥터 정예를 10마리 쓰러뜨린다', prog: (p) => [achCnt(p, 'huntElite'), 10], reward: { gold: 500 } },
 ];

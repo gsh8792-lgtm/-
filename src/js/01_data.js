@@ -110,6 +110,10 @@ const STATUS = {
   warcry: { name: '함성', short: '함', color: '#ffb04a', desc: '공격력 증가.' },
   stealth: { name: '은신', short: '은', color: '#8a7ab8', desc: '적이 노리지 않는다. 은신 중 첫 공격은 기습(피해 ×1.6, 반드시 치명타)이 되고 은신이 풀린다.' },
   poison: { name: '중독', short: '독', color: '#7ac83a', desc: '매초 피해. 다시 걸면 최대 5겹까지 쌓인다. 받는 회복량 -30%.' },
+  ki:     { name: '기', short: '기', color: '#f0b040', desc: '수도승이 평타·스킬로 모으는 기 (최대 5). 기를 쓰는 스킬은 기 1개마다 위력이 오른다.' },
+  curse:  { name: '저주', short: '저', color: '#a04ae0', desc: '매초 피해 + 받는 회복 -50%. 저주받은 적이 쓰러지면 가까운 적에게 옮는다.' },
+  doom:   { name: '파멸', short: '멸', color: '#6a2aa0', desc: '시간이 다 되면 큰 폭발이 터진다.' },
+  deathmark: { name: '죽음의 표식', short: '표', color: '#9ad08a', desc: '해골 병사들이 이 적부터 노린다.' },
 };
 
 // ---------------------------------------------------------------- 영웅
@@ -118,8 +122,11 @@ const HEROES = {
   tobi:  { name: '토비',   species: '수호기사', role: 'tank',    roleName: '탱커',   hp: 520, atk: 22, atkInterval: 1.7, range: 'melee', reach: 0, moveSpeed: 72,  def: 0.15, order: 0, skills: ['tobi_s1', 'tobi_s2'], ult: 'tobi_ult', traits: ['sturdy'],           portraitColor: '#9a6232', accent: '#e98a80', sprite: 'knight' },
   danbi: { name: '단비',   species: '검사',     role: 'melee',   roleName: '근딜',   hp: 300, atk: 40, atkInterval: 1.35, range: 'melee', reach: 0, moveSpeed: 95, def: 0.05, order: 1, skills: ['danbi_s1', 'danbi_s2'], ult: 'danbi_ult', traits: ['brave'],          portraitColor: '#9a958f', accent: '#6fb08a', sprite: 'sword' },
   yeon:  { name: '연',     species: '도적',     role: 'rogue',   roleName: '도적',   hp: 250, atk: 37, atkInterval: 1.1, range: 'melee', reach: 0, moveSpeed: 108, def: 0.04, order: 1, skills: ['yeon_s1', 'yeon_s2'], ult: 'yeon_ult', traits: ['shadow'],         portraitColor: '#7a8a6a', accent: '#8ad06a', sprite: 'rogue' },
+  mujin: { name: '무진',   species: '수도승',   role: 'monk',    roleName: '수도승', hp: 315, atk: 30, atkInterval: 0.95, range: 'melee', reach: 0, moveSpeed: 100, def: 0.08, order: 1, skills: ['mujin_s1', 'mujin_s2'], ult: 'mujin_ult', traits: ['serene'],       portraitColor: '#c8782a', accent: '#f0b040', sprite: 'monk' },
   byeolbi: { name: '별비', species: '궁수',     role: 'ranged',  roleName: '원딜',   hp: 260, atk: 36, atkInterval: 1.5, range: 'ranged', reach: 220, moveSpeed: 78, def: 0.0, order: 2, skills: ['byeolbi_s1', 'byeolbi_s2'], ult: 'byeolbi_ult', traits: ['keen'],     portraitColor: '#a49c92', accent: '#e8a83a', sprite: 'archer' },
   soldam: { name: '솔담',  species: '마법사',   role: 'mage',    roleName: '매지션', hp: 240, atk: 44, atkInterval: 1.9, range: 'ranged', reach: 210, moveSpeed: 66, def: 0.0, order: 3, skills: ['soldam_s1', 'soldam_s2'], ult: 'soldam_ult', traits: ['cautious'],    portraitColor: '#8a5a34', accent: '#8cc3a0', sprite: 'mage' },
+  daon:  { name: '다온',   species: '흑마술사', role: 'warlock', roleName: '흑마술사', hp: 250, atk: 40, atkInterval: 1.8, range: 'ranged', reach: 210, moveSpeed: 68, def: 0.0, order: 3, skills: ['daon_s1', 'daon_s2'], ult: 'daon_ult', traits: ['pact'],         portraitColor: '#5a2a7a', accent: '#b06ae0', sprite: 'warlock' },
+  myoyeon: { name: '묘연', species: '네크로맨서', role: 'necro', roleName: '네크로맨서', hp: 280, atk: 34, atkInterval: 1.9, range: 'ranged', reach: 200, moveSpeed: 66, def: 0.02, order: 3, skills: ['myoyeon_s1', 'myoyeon_s2'], ult: 'myoyeon_ult', traits: ['grave'], portraitColor: '#3a5a4a', accent: '#9ad08a', sprite: 'necro' },
   bori:  { name: '보리',   species: '사제',     role: 'support', roleName: '서포터', hp: 280, atk: 16, atkInterval: 1.9, range: 'ranged', reach: 190, moveSpeed: 70, def: 0.0, order: 4, skills: ['bori_s1', 'bori_s2'], ult: 'bori_ult', traits: ['gentle'],           portraitColor: '#fff4e0', accent: '#8cc3a0', sprite: 'priest' },
 };
 const HERO_ORDER = ['tobi', 'danbi', 'byeolbi', 'soldam', 'bori']; // 앞열 → 뒷열 (로스터)
@@ -134,6 +141,9 @@ const TRAITS = {
   keen:     { name: '예리함', desc: '치명타 확률 +10%.' },
   gentle:   { name: '다정함', desc: '주는 회복량 +15%.' },
   shadow:   { name: '그림자', desc: '전투 시작 시 3초 은신. 적 등 뒤에서 치는 평타 피해 +20%.' },
+  serene:   { name: '평정', desc: '근접 평타를 15% 확률로 흘려 낸다(회피).' },
+  pact:     { name: '계약', desc: '저주 피해의 30%만큼 HP 회복. HP 50% 이하일 때 스킬 피해 +20%.' },
+  grave:    { name: '무덤지기', desc: '해골 병사의 공격력 +20%, 지속 +4초.' },
   counter:  { name: '반격', desc: '받은 근접 평타 피해의 30%를 되돌린다. 막기(가드) 중에는 25% 확률로 즉시 반격 베기(공격력 ×1.4).' },
 };
 
@@ -154,6 +164,11 @@ const SKILLS = {
   yeon_s2:  { name: '연막',       target: 'self',      cd: 13, power: 0,   hint: 'selfThreat', effects: [{ status: 'stealth', dur: 4, to: 'self' }], fx: 'smoke', desc: '4초 은신 — 적이 노리던 대상을 잃는다. 은신 중 첫 공격은 기습(×1.6, 치명타).' },
   yeon_ult: { name: '맹독 폭발',  target: 'enemy',     cd: 0,  power: 2.0, detonate: { status: 'poison', mult: 1.6 }, effects: [{ status: 'stealth', dur: 2, to: 'self', after: true }], fx: 'flurry', desc: '강타 + 대상의 중독을 한꺼번에 터뜨림(남은 독 피해 ×1.6). 그 뒤 2초 은신.' },
 
+  // 수도승: 기를 모아(①·평타) 터뜨린다(②·③). ki = 기 1개당 위력 배율, kiGain = 얻는 기
+  mujin_s1: { name: '연환권',     target: 'enemy',     cd: 5,  power: 0.55, hits: 3, interrupt: 2, kiGain: 2, effects: [], fx: 'flurry', desc: '3연타 + 기 +2. 끊기 ●●.' },
+  mujin_s2: { name: '기공 장타',  target: 'enemy',     cd: 9,  power: 1.2, ki: 0.25, hint: 'enemyCharging', effects: [{ status: 'stun', dur: 0.8 }], fx: 'bash', desc: '모은 기를 전부 실어 장타 — 기 1개당 위력 +25%. 0.8초 기절(끊기 칸 전부).' },
+  mujin_ult:{ name: '백열권',     target: 'enemy',     cd: 0,  power: 0.42, hits: 10, ki: 0.12, poise: 8, effects: [{ status: 'vuln', dur: 5 }], fx: 'flurry', desc: '10연타 — 기 1개당 위력 +12% + 5초 취약. 타격마다 그로기 게이지 감소.' },
+
   byeolbi_s1: { name: '관통 사격', target: 'enemy',     cd: 6,  power: 1.5, interrupt: 2, shakeExtend: 3, effects: [{ status: 'vuln', dur: 5 }], fx: 'pierce', desc: '5초 취약. 끊기 ●●, 흔들림 +3초.' },
   byeolbi_s2: { name: '화살비',    target: 'area_enemy', cd: 10, power: 1.1, areaR: 95, hint: 'cluster', effects: [], fx: 'arrowrain', desc: '지정한 범위에 화살비.' },
   byeolbi_ult:{ name: '집중 사격', target: 'enemy',     cd: 0,  power: 4.2, effects: [{ status: 'vuln', dur: 6 }], fx: 'snipe', desc: '적 1명에게 초강력 사격 + 6초 취약.' },
@@ -161,6 +176,15 @@ const SKILLS = {
   soldam_s1: { name: '별빛 탄',   target: 'enemy',      cd: 5,  power: 1.4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '마법탄 + 5초 화상.' },
   soldam_s2: { name: '유성우',    target: 'area_enemy', cd: 11, power: 1.6, areaR: 100, hint: 'cluster', interrupt: 1, effects: [{ status: 'burn', dur: 3, dps: 0.2 }], fx: 'meteor', desc: '범위 유성우 + 3초 화상. 범위 안 모든 적 끊기 ●.' },
   soldam_ult:{ name: '대마법',    target: 'all_enemies', cd: 0, power: 2.6, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'nova', desc: '적 전체에 큰 피해 + 5초 화상.' },
+
+  // 흑마술사: 저주(옮는 지속 피해) · 생명력 흡수 · 파멸(지연 폭발)
+  daon_s1:  { name: '저주의 화살', target: 'enemy',    cd: 5,  power: 1.0, interrupt: 1, effects: [{ status: 'curse', dur: 8, dps: 0.36 }], fx: 'curse', desc: '8초 저주(지속 피해 · 회복 -50% · 쓰러지면 옮는다). 끊기 ●.' },
+  daon_s2:  { name: '생명력 흡수', target: 'enemy',    cd: 9,  power: 1.6, lifesteal: 0.6, effects: [{ status: 'weaken', dur: 4, value: 0.2 }], fx: 'curse', desc: '강한 흡수 — 준 피해의 60% 회복 + 4초 약화(-20%).' },
+  daon_ult: { name: '파멸',       target: 'enemy',     cd: 0,  power: 0.5, effects: [{ status: 'doom', dur: 4, boom: 5.0 }, { status: 'curse', dur: 8, dps: 0.4 }], fx: 'curse', desc: '저주 + 4초 뒤 파멸 폭발(공격력 ×5).' },
+  // 네크로맨서: 해골 병사 소환 · 시체(쓰러진 적) 활용
+  myoyeon_s1: { name: '해골 일으키기', target: 'self', cd: 7, power: 0, summon: { n: 1, corpse: 1, hp: 0.4, atk: 0.62, dur: 14 }, effects: [], fx: 'bone', desc: '해골 병사 1 소환 (시체가 있으면 1구를 써서 1 더) — 14초. 적의 공격을 대신 받는다.' },
+  myoyeon_s2: { name: '시체 폭발', target: 'area_enemy', cd: 10, power: 0.8, areaR: 95, hint: 'cluster', corpsePow: { per: 0.6, max: 3 }, effects: [{ status: 'slow', dur: 3, value: 0.3 }], fx: 'bone', desc: '지점 폭발 + 3초 둔화 — 시체 1구당 위력 +60% (최대 3구).' },
+  myoyeon_ult:{ name: '망자의 군단', target: 'self', cd: 0, power: 0, summon: { n: 3, corpse: 2, hp: 0.5, atk: 0.8, dur: 18 }, effects: [], fx: 'bone', desc: '해골 병사 3 소환 (시체 2구까지 써서 더) — 18초.' },
 
   bori_s1:  { name: '치유',       target: 'ally',      cd: 5,  heal: 2.0, healPct: 0.12, effects: [{ status: 'resonance', dur: 5, value: 0.3 }], fx: 'heal', desc: '아군 1명 회복 + 5초간 그로기 피해 +30%.' },
   bori_s2:  { name: '광역 치유',  target: 'area_ally', cd: 10, heal: 1.3, healPct: 0.1, areaR: 110, hint: 'alliesHurt', effects: [], fx: 'aoeheal', desc: '범위 안 아군 회복.' },
@@ -209,6 +233,9 @@ const AI_PRESETS = {
   tobi:    { s1: { auto: true, cond: 'saveForCharge', target: 'nearest' }, s2: { auto: false, cond: 'smartInterrupt', target: 'charging' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'tank' } },
   danbi:   { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
   yeon:    { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'auto', target: 'focus' } },
+  mujin:   { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'smartInterrupt', target: 'charging' }, ult: { auto: false, cond: 'auto', target: 'focus' } },
+  daon:    { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'allyHpBelow', param: 70, target: 'focus' }, ult: { auto: false, cond: 'auto', target: 'focus' } },
+  myoyeon: { s1: { auto: true, cond: 'always', target: 'nearest' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'auto', target: 'nearest' } },
   byeolbi: { s1: { auto: true, cond: 'smartInterrupt', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'focus' } },
   soldam:  { s1: { auto: true, cond: 'always', target: 'focus' },  s2: { auto: false, cond: 'hint', target: 'nearest' }, ult: { auto: false, cond: 'breakWindow', target: 'nearest' } },
   bori:    { s1: { auto: true, cond: 'always', target: 'lowestAlly' }, s2: { auto: false, cond: 'hint', target: 'lowestAlly' }, ult: { auto: false, cond: 'allyHpBelow', param: 50, target: 'lowestAlly' } },

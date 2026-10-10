@@ -751,6 +751,9 @@ function openPartySelect(run, onDone) {
     if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 보스를 버티기 어려워요.');
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
     if (pick.length && roles.includes('rogue')) tips.push('도적: 함정 해제 · 상자 자물쇠 따기 · 후열 적부터 처리.');
+    if (pick.length && roles.includes('monk')) tips.push('수도승: 평타로 기를 모아 ②·③으로 터뜨린다. 근접 평타 회피 · 함정 감지.');
+    if (pick.length && roles.includes('warlock')) tips.push('흑마술사: 저주는 쓰러진 적에게서 옮는다. 도적의 중독과 만나면 「역병」.');
+    if (pick.length && roles.includes('necro')) tips.push('네크로맨서: 해골 병사가 적을 막는다. 적이 쓰러질수록 시체가 쌓여 강해진다.');
     if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
     const row = el('div', 'btn-row');

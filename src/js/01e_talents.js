@@ -42,6 +42,18 @@ const TALENTS = {
       T('k_ult', '독의 순환', 'ultgain', 0.03, 2), T('k_ultp', '독의 정수', 'ultpow', 0.03, 2),
       { id: 'k_cap2', name: '맹독 심장', tier: 3, max: 1, cap: true, desc: '중독 최대 겹 +3 + 지속 피해 +25%', fx: [['dotdmg', 0.25], ['poisonstack', 3]] } ] },
   ],
+  monk: [
+    { key: 'fist', name: '권사', desc: '기를 모아 몰아친다', nodes: [
+      T('o_aspd', '빠른 주먹', 'aspd', 0.015, 0), T('o_crit', '급소 타격', 'crit', 0.012, 0),
+      T('o_ki', '기의 무게', 'kipow', 0.03, 1), T('o_brk', '경혈 타격', 'breakdmg', 0.04, 1),
+      T('o_s2', '장타 숙련', 's2pow', 0.04, 2), T('o_atk', '단련된 주먹', 'atk_pct', 0.02, 2),
+      { id: 'o_cap1', name: '천수권', tier: 3, max: 1, cap: true, desc: '기 최대치 +3 + 기 1개당 위력 +5%p', fx: [['kimax', 3], ['kipow', 0.05]] } ] },
+    { key: 'ascetic', name: '수행자', desc: '흘리고 버틴다', nodes: [
+      T('o_dodge', '흘려 내기', 'dodge', 0.02, 0), T('o_hp', '단련된 몸', 'hp_pct', 0.03, 0),
+      T('o_dr', '금강의 피부', 'dr', 0.012, 1), T('o_cc', '부동심', 'ccdur', 0.04, 1),
+      T('o_s1', '연환 숙련', 's1pow', 0.04, 2), T('o_ult', '깨달음', 'ultgain', 0.03, 2),
+      { id: 'o_cap2', name: '금강불괴', tier: 3, max: 1, cap: true, desc: 'HP 25% 아래로 떨어지면 1.5초 무적(전투당 1회) + 회피 +10%', fx: [['dodge', 0.1]], passive: ['stubborn', 1.5] } ] },
+  ],
   ranged: [
     { key: 'sniper', name: '저격수', desc: '한 발의 무게', nodes: [
       T('r_cd', '정조준', 'critdmg', 0.05, 0), T('r_crit', '매의 눈', 'crit', 0.012, 0),
@@ -66,6 +78,30 @@ const TALENTS = {
       T('g_hp', '마나 방벽', 'hp_pct', 0.03, 2), T('g_ultp', '시간 왜곡', 'ultpow', 0.03, 2),
       { id: 'g_cap2', name: '영겁', tier: 3, max: 1, cap: true, desc: '쿨타임 -8%, 필살기 충전 +20%', fx: [['cdr', 0.08], ['ultgain', 0.2]] } ] },
   ],
+  warlock: [
+    { key: 'hex', name: '저주술사', desc: '퍼지고 썩게 한다', nodes: [
+      T('w_dot', '깊은 저주', 'dotdmg', 0.06, 0), T('w_cdr', '빠른 주문', 'cdr', 0.012, 0),
+      T('w_spread', '전염', 'curseSpread', 0.2, 1), T('w_s1', '저주 숙련', 's1pow', 0.04, 1),
+      T('w_ult', '어둠의 순환', 'ultgain', 0.03, 2), T('w_ultp', '파멸의 정수', 'ultpow', 0.03, 2),
+      { id: 'w_cap1', name: '역병의 군주', tier: 3, max: 1, cap: true, desc: '저주가 쓰러진 적에게서 2명에게 옮는다 + 지속 피해 +25%', fx: [['dotdmg', 0.25], ['curseSpread', 1]] } ] },
+    { key: 'blood', name: '계약자', desc: '피로 산다', nodes: [
+      T('w_hp', '두꺼운 피', 'hp_pct', 0.03, 0), T('w_sk', '어둠의 힘', 'skilldmg', 0.03, 0),
+      T('w_drain', '흡수 연마', 'drain', 0.05, 1), T('w_dr', '피의 장막', 'dr', 0.01, 1),
+      T('w_s2', '흡수 숙련', 's2pow', 0.04, 2), T('w_atk', '피의 맹세', 'atk_pct', 0.02, 2),
+      { id: 'w_cap2', name: '피의 군주', tier: 3, max: 1, cap: true, desc: '모든 피해의 8%만큼 HP 회복 + HP 50% 이하일 때 스킬 피해 +20%', fx: [['drain', 0.08], ['bloodlust', 0.2]] } ] },
+  ],
+  necro: [
+    { key: 'legion', name: '사령관', desc: '군단을 키운다', nodes: [
+      T('n_mhp', '단단한 뼈', 'minionhp', 0.06, 0), T('n_matk', '날 선 뼈', 'minionatk', 0.06, 0),
+      T('n_mdur', '오래 가는 주문', 'miniondur', 0.08, 1), T('n_s1', '소환 숙련', 's1pow', 0.04, 1),
+      T('n_ult', '망자의 부름', 'ultgain', 0.03, 2), T('n_hp', '무덤의 기운', 'hp_pct', 0.03, 2),
+      { id: 'n_cap1', name: '불멸의 군단', tier: 3, max: 1, cap: true, desc: '병사 최대 수 +2 + 병사가 쓰러질 때 주변 적에게 폭발(공격력 ×0.8)', fx: [['minioncap', 2], ['minionboom', 0.8]] } ] },
+    { key: 'rot', name: '부패술사', desc: '시체를 무기로', nodes: [
+      T('n_sk', '부패의 힘', 'skilldmg', 0.03, 0), T('n_cdr', '빠른 의식', 'cdr', 0.012, 0),
+      T('n_corpse', '시체 다루기', 'corpsepow', 0.06, 1), T('n_dot', '썩은 기운', 'dotdmg', 0.06, 1),
+      T('n_s2', '폭발 숙련', 's2pow', 0.04, 2), T('n_ultp', '죽음의 정수', 'ultpow', 0.03, 2),
+      { id: 'n_cap2', name: '시체 군주', tier: 3, max: 1, cap: true, desc: '적이 쓰러질 때 시체 +1 더 + 시체 1구당 위력 +30%p', fx: [['corpseextra', 1], ['corpsepow', 0.3]] } ] },
+  ],
   support: [
     { key: 'healer', name: '치유사', desc: '쓰러지지 않게', nodes: [
       T('s_heal', '치유의 손', 'heal', 0.04, 0), T('s_hp', '생명력', 'hp_pct', 0.03, 0),
@@ -80,7 +116,7 @@ const TALENTS = {
   ],
 };
 // 노드 설명 문구 (랭크당)
-const TALENT_STAT_NAME = { hp_pct: '최대 HP', dr: '받는 피해 감소', ccdur: '기절·도발 지속', crushres: '짓누름 저항', s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultgain: '필살기 충전', ultpow: '필살기 위력', thorns: '근접 평타 반사', atk_pct: '공격력', counter: '반격 확률', breakdmg: '그로기 피해', crit: '치명타 확률', aspd: '공격 속도', critdmg: '치명타 피해', mspd: '이동 속도', vsbroken: '그로기 적 피해', skilldmg: '스킬 피해', cdr: '쿨타임 감소', dotdmg: '지속 피해', heal: '회복량', ambush: '기습 피해', backstab: '등 뒤 평타 피해', poisonstack: '중독 최대 겹' };
+const TALENT_STAT_NAME = { hp_pct: '최대 HP', dr: '받는 피해 감소', ccdur: '기절·도발 지속', crushres: '짓누름 저항', s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultgain: '필살기 충전', ultpow: '필살기 위력', thorns: '근접 평타 반사', atk_pct: '공격력', counter: '반격 확률', breakdmg: '그로기 피해', crit: '치명타 확률', aspd: '공격 속도', critdmg: '치명타 피해', mspd: '이동 속도', vsbroken: '그로기 적 피해', skilldmg: '스킬 피해', cdr: '쿨타임 감소', dotdmg: '지속 피해', heal: '회복량', ambush: '기습 피해', backstab: '등 뒤 평타 피해', poisonstack: '중독 최대 겹', kipow: '기 1개당 위력', dodge: '근접 평타 회피', curseSpread: '저주 추가 전염 확률', drain: '피해 흡수(회복)', minionhp: '병사 HP', minionatk: '병사 공격력', miniondur: '병사 지속', corpsepow: '시체 1구당 위력' };
 function talentPoints(p, id) { const lv = EQ.charLevel(p, id); return Math.max(0, lv - 1); }
 function talentState(p, id) { p.talents = p.talents || {}; return (p.talents[id] = p.talents[id] || {}); }
 function talentSpent(p, id) { const s = talentState(p, id); return Object.values(s).reduce((a, v) => a + v, 0); }
