@@ -133,6 +133,51 @@ Object.assign(SKILLS, {
   gs_necro_s2_d: { name: '영혼 흡수', target: 'all_enemies', cd: 14, power: 0.5, partyHeal: 0.3, effects: [], fx: 'nova', desc: '모든 적 피해 — 준 피해의 30%로 파티 회복.', ai: { cond: 'allyHpBelow', param: 70, target: 'nearest' } },
 });
 
+// ---------------- v0.53: 모든 직업에 다섯 번째 장비 라인 (무기·갑옷) → 새 스킬 18종 · 장신구 6종 · 패시브 2종
+Object.assign(SKILLS, {
+  gs_tank_s1_e: { name: '재생의 맹세', target: 'self', cd: 10, power: 0, selfHealPct: 0.1, effects: [{ status: 'taunt', dur: 3, to: 'all_enemies' }, { status: 'guard', dur: 3, value: 0.15, to: 'self' }], fx: 'taunt', desc: '3초간 모든 적 도발 + 받는 피해 -15% + HP 10% 회복.', ai: { cond: 'saveForCharge', target: 'nearest' } },
+  gs_tank_s2_e: { name: '사슬 끌어오기', target: 'enemy', ranged: true, cd: 11, hint: 'enemyCharging', power: 1.0, pull: true, effects: [{ status: 'stun', dur: 0.8 }, { status: 'taunt', dur: 3, force: true }], fx: 'bash', desc: '사슬로 적을 앞으로 끌어와 0.8초 기절(끊기 칸 전부) + 3초 도발. 후열의 궁수·주술사를 끌어낸다 (보스·큰 적은 끌리지 않음).', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  gs_melee_s1_e: { name: '피의 맹세', target: 'enemy', cd: 6, power: 1.3, interrupt: 2, interruptBack: 0.5, lifesteal: 0.35, effects: [{ status: 'bleed', dur: 4, dps: 0.3 }], fx: 'slash', desc: '흡혈 베기(준 피해의 35% 회복) + 4초 출혈. 끊기 ●● (정면 ●).', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_melee_s2_e: { name: '처형', target: 'enemy', cd: 12, power: 1.8, execute: { below: 0.3, mult: 2.2 }, effects: [], fx: 'slash', desc: '강타 — HP 30% 이하 적에게 2.2배.', ai: { cond: 'enemyHpBelow', param: 30, target: 'weakest' } },
+  gs_rogue_s1_e: { name: '맹독 표창', target: 'multi_enemy', count: 2, cd: 6, power: 0.7, interrupt: 1, effects: [{ status: 'poison', dur: 8, dps: 0.2 }], fx: 'pierce', desc: '시전 중인 적부터 2명에게 표창 — 중독 1겹. 맞은 적마다 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_rogue_s2_e: { name: '연막탄', target: 'area_enemy', cd: 12, power: 0.4, areaR: 95, hint: 'cluster', effects: [{ status: 'slow', dur: 3, value: 0.5 }, { status: 'weaken', dur: 4, value: 0.2 }, { status: 'stealth', dur: 2, to: 'self', after: true }], fx: 'smoke', desc: '지점 연막 — 3초 둔화(-50%) + 4초 약화(-20%), 그 뒤 2초 은신.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_monk_s1_e: { name: '진각', target: 'self_area', cd: 8, power: 0.9, areaR: 85, interrupt: 2, kiGain: 2, effects: [{ status: 'slow', dur: 2, value: 0.4 }], fx: 'spin', desc: '땅을 굴러 주변 적 타격 + 2초 둔화 + 기 +2. 범위 안 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'nearest' } },
+  gs_monk_s2_e: { name: '천근추', target: 'enemy', cd: 12, power: 1.5, ki: 0.3, poise: 35, effects: [{ status: 'stun', dur: 0.6 }], fx: 'bash', desc: '무게를 실어 내리찍기 — 기 1개당 위력 +30% + 0.6초 기절 + 그로기 감소.', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  gs_ranged_s1_e: { name: '사냥꾼의 표식', target: 'enemy', cd: 7, power: 1.0, interrupt: 2, effects: [{ status: 'vuln', dur: 6 }, { status: 'deathmark', dur: 8 }], fx: 'pierce', desc: '6초 취약 + 8초 표식 (해골 병사가 이 적부터). 끊기 ●●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_ranged_s2_e: { name: '산탄 사격', target: 'multi_enemy', count: 3, cd: 9, power: 1.1, effects: [{ status: 'slow', dur: 2, value: 0.3 }], fx: 'pierce', desc: '적 3명에게 한꺼번에 사격 + 2초 둔화.', ai: { cond: 'enemyCountGte', param: 2, target: 'nearest' } },
+  gs_mage_s1_e: { name: '시간 왜곡', target: 'all_enemies', cd: 12, power: 0.3, cdReduce: 2, effects: [{ status: 'slow', dur: 4, value: 0.35 }], fx: 'nova', desc: '모든 적 4초 둔화(-35%) + 동료 스킬 쿨타임 -2초.', ai: { cond: 'always', target: 'nearest' } },
+  gs_mage_s2_e: { name: '화염 폭풍', target: 'area_enemy', cd: 13, hint: 'cluster', power: 0.55, hits: 3, areaR: 120, interrupt: 1, effects: [{ status: 'burn', dur: 4, dps: 0.25 }], fx: 'meteor', desc: '넓은 범위 3연타 + 4초 화상. 범위 안 끊기 ●.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_warlock_s1_e: { name: '영혼 사슬', target: 'enemy', cd: 7, power: 0.8, interrupt: 1, lifesteal: 0.3, effects: [{ status: 'curse', dur: 6, dps: 0.25 }, { status: 'slow', dur: 2, value: 0.3 }], fx: 'curse', desc: '흡혈(30%) + 저주 + 2초 둔화. 끊기 ●.', ai: { cond: 'always', target: 'focus' } },
+  gs_warlock_s2_e: { name: '흡혼', target: 'all_enemies', cd: 15, power: 0.35, detonate: { status: 'curse', mult: 0.8 }, partyHeal: 0.3, effects: [], fx: 'nova', desc: '모든 적의 저주를 거둬들여 터뜨림(×0.8) — 준 피해의 30%로 파티 회복.', ai: { cond: 'allyHpBelow', param: 70, target: 'nearest' } },
+  gs_necro_s1_e: { name: '시체 먹기', target: 'self', cd: 10, power: 0, corpseHeal: { per: 0.04, max: 3 }, summon: { n: 1, hp: 0.3, atk: 0.5, dur: 10 }, effects: [], fx: 'bone', desc: '해골 병사 1 소환 + 시체 1구당 파티 HP 4% 회복(최대 3구).', ai: { cond: 'always', target: 'nearest' } },
+  gs_necro_s2_e: { name: '뼈 감옥', target: 'enemy', cd: 12, hint: 'enemyCharging', power: 0.5, effects: [{ status: 'stun', dur: 1.5 }, { status: 'vuln', dur: 4 }], fx: 'bone', desc: '뼈 감옥에 가둬 1.5초 기절(끊기 칸 전부) + 4초 취약.', ai: { cond: 'smartInterrupt', target: 'charging' } },
+  gs_support_s1_e: { name: '희생의 기도', target: 'ally', cd: 7, heal: 1.4, healPct: 0.12, selfCost: 0.05, effects: [{ status: 'resonance', dur: 5, value: 0.35 }], fx: 'heal', desc: '자기 HP 5%를 바쳐 아군 1명 크게 회복 + 5초간 그로기 피해 +35%.', ai: { cond: 'always', target: 'lowestAlly' } },
+  gs_support_s2_e: { name: '신성한 사슬', target: 'enemy', cd: 10, hint: 'enemyCharging', power: 1.0, effects: [{ status: 'stun', dur: 1 }, { status: 'weaken', dur: 5, value: 0.2 }], fx: 'starbolt', desc: '빛의 사슬로 1초 기절(끊기 칸 전부) + 5초 약화(-20%).', ai: { cond: 'smartInterrupt', target: 'charging' } },
+});
+(function addGearLine5() {
+  const DB = EQUIP_DB;
+  const names = { tank: ['재생의 판금갑', '사슬 철퇴'], melee: ['피의 맹세 경갑', '처형인의 대검'], rogue: ['표창 띠 조끼', '연막 단검'], monk: ['진각 도복', '천근 권갑'], ranged: ['사냥꾼의 망토', '산탄 석궁'],
+    mage: ['시간술사의 로브', '화염 폭풍 지팡이'], warlock: ['영혼 사슬 로브', '흡혼의 마도서'], necro: ['시체 먹는 로브', '뼈 감옥 홀'], support: ['희생의 성의', '신성한 사슬 홀'] };
+  for (const cls in names) for (const [i, slot] of [[0, 'armor'], [1, 'weapon']]) {
+    const base = DB.items.find((it) => it.cls === cls && it.slot === slot && it.line === 1);
+    if (!DB.items.some((it) => it.id === `${cls}_${slot}_5`)) DB.items.push(Object.assign({}, base, { id: `${cls}_${slot}_5`, name: names[cls][i], line: 5, innate: null }));
+  }
+  // 새 능력치 (수도승 회피 · 흡수 · 가시) → 장신구·패시브에서도
+  const st = (key, name, pw, cap) => { if (!DB.stats.some((x) => x.key === key)) DB.stats.push(Object.assign({ key, name, unit: '%', pct: true, pw }, cap ? { cap } : {})); };
+  st('dodge', '근접 평타 회피', 0.4, 0.4); st('drain', '피해 흡수', 0.5); st('thorns', '근접 피해 반사', 0.2);
+  const acc = [
+    ['common_ring_4', '독사의 반지', 'ring', 4, [['dotdmg', 0.08]]], ['common_ring_5', '흡혈귀의 반지', 'ring', 5, [['drain', 0.012]]],
+    ['common_necklace_4', '사슬의 목걸이', 'necklace', 4, [['ccdur', 0.06]]], ['common_necklace_5', '처형인의 목걸이', 'necklace', 5, [['vsbroken', 0.05]]],
+    ['common_belt_4', '바람의 띠', 'belt', 4, [['dodge', 0.02], ['mspd', 0.02]]], ['common_belt_5', '가시 벨트', 'belt', 5, [['thorns', 0.04], ['hp_pct', 0.01]]],
+  ];
+  for (const [id, name, slot, line, main] of acc) if (!DB.items.some((it) => it.id === id)) DB.items.push({ id, name, slot, cls: 'common', line, main: main.map(([stat, base]) => ({ stat, base })), innate: null });
+  const pas = [
+    { key: 'nimble', name: '날랜 몸', min: 'R', kind: 'stat', stat: 'dodge', v: 0.03, text: '근접 평타 회피 +{v}' },
+    { key: 'vampire', name: '피의 갈증', min: 'SR', kind: 'stat', stat: 'drain', v: 0.015, text: '피해 흡수 +{v}' },
+  ];
+  for (const x of pas) if (!DB.passives.some((p) => p.key === x.key)) DB.passives.push(x);
+})();
+
 // 장비 종류(EQUIP_DB 아이템 id) → 스킬
 const GEAR_SKILLS = {
   tank_armor_1: 'tobi_s1', tank_armor_2: 'gs_tank_s1_b', tank_armor_3: 'gs_tank_s1_c',
@@ -156,6 +201,15 @@ const GEAR_SKILLS = {
   warlock_weapon_1: 'daon_s2', warlock_weapon_2: 'gs_warlock_s2_b', warlock_weapon_3: 'gs_warlock_s2_c', warlock_weapon_4: 'gs_warlock_s2_d',
   necro_armor_1: 'myoyeon_s1', necro_armor_2: 'gs_necro_s1_b', necro_armor_3: 'gs_necro_s1_c', necro_armor_4: 'gs_necro_s1_d',
   necro_weapon_1: 'myoyeon_s2', necro_weapon_2: 'gs_necro_s2_b', necro_weapon_3: 'gs_necro_s2_c', necro_weapon_4: 'gs_necro_s2_d',
+  tank_armor_5: 'gs_tank_s1_e', tank_weapon_5: 'gs_tank_s2_e',
+  melee_armor_5: 'gs_melee_s1_e', melee_weapon_5: 'gs_melee_s2_e',
+  rogue_armor_5: 'gs_rogue_s1_e', rogue_weapon_5: 'gs_rogue_s2_e',
+  monk_armor_5: 'gs_monk_s1_e', monk_weapon_5: 'gs_monk_s2_e',
+  ranged_armor_5: 'gs_ranged_s1_e', ranged_weapon_5: 'gs_ranged_s2_e',
+  mage_armor_5: 'gs_mage_s1_e', mage_weapon_5: 'gs_mage_s2_e',
+  warlock_armor_5: 'gs_warlock_s1_e', warlock_weapon_5: 'gs_warlock_s2_e',
+  necro_armor_5: 'gs_necro_s1_e', necro_weapon_5: 'gs_necro_s2_e',
+  support_armor_5: 'gs_support_s1_e', support_weapon_5: 'gs_support_s2_e',
 };
 // 기본 스킬의 자동 전략도 같은 형식으로 (스킬을 다시 기본으로 바꿨을 때 되돌릴 값)
 for (const id of ['tobi', 'danbi', 'yeon', 'mujin', 'byeolbi', 'soldam', 'daon', 'myoyeon', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
@@ -164,5 +218,5 @@ for (const id of ['tobi', 'danbi', 'yeon', 'mujin', 'byeolbi', 'soldam', 'daon',
 }
 // 직업 → 슬롯별 스킬 목록 (도감·설명용)
 function gearSkillPool(cls) {
-  return { s1: [1, 2, 3, 4].map((n) => GEAR_SKILLS[`${cls}_armor_${n}`]), s2: [1, 2, 3, 4].map((n) => GEAR_SKILLS[`${cls}_weapon_${n}`]) };
+  return { s1: [1, 2, 3, 4, 5].map((n) => GEAR_SKILLS[`${cls}_armor_${n}`]), s2: [1, 2, 3, 4, 5].map((n) => GEAR_SKILLS[`${cls}_weapon_${n}`]) };
 }

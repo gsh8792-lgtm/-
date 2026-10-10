@@ -264,7 +264,7 @@ if (sa !== sb) fail++;
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
   const ids = Object.keys(GEAR_SKILLS);
-  if (ids.length !== 72 || new Set(Object.values(GEAR_SKILLS)).size !== 72) errs.push('72 distinct gear skills');
+  if (ids.length !== 90 || new Set(Object.values(GEAR_SKILLS)).size !== 90) errs.push('90 distinct gear skills');
   // 직업별 그로기 역할: 어떤 조합이든 끊기/기절/공명 수단이 남는다
   const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance'), rogue: (sk) => sk.interrupt >= 1, monk: (sk) => sk.interrupt >= 2, warlock: (sk) => sk.interrupt >= 1, necro: (sk) => !!(sk.summon || sk.interrupt || sk.shieldPct) };
   const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor', rogue: 'armor', monk: 'armor', warlock: 'armor', necro: 'armor' };
@@ -518,6 +518,25 @@ if (sa !== sb) fail++;
       const sp = sim.resolveTarget(h, 'ult') || {}; if (!sim.cast(h, 'ult', sp)) errs.push('ult cast ' + id + k); for (let i = 0; i < 60 * 5; i++) sim.step(1 / 60); } catch (e) { errs.push(id + k + ' ' + e.message); }
   }
   console.log('new classes:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(monk ki/dodge, warlock curse spread/doom/pact, necro minions/corpses, gifts, gear, talents, 54 ults)');
+  if (errs.length) fail++;
+}
+// 장비·스킬 다양화 (v0.53): 다섯 번째 라인 · 끌어오기 · 시체 먹기 · 새 장신구(회피·흡수·가시) · 새 패시브
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  for (const c of ['tank', 'melee', 'rogue', 'monk', 'ranged', 'mage', 'warlock', 'necro', 'support']) for (const s of ['armor', 'weapon']) if (!EQ.BASE[`${c}_${s}_5`] || !GEAR_SKILLS[`${c}_${s}_5`]) errs.push('line5 ' + c + s);
+  const mk = (ids, waves) => new BattleSim({ seed: 3, stage: 2, waves, strategy: st0, autoMode: false, partySize: 3, heroes: ids.map((id) => ({ id, hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null, skills: id === 'tobi' ? { s1: 'tobi_s1', s2: 'gs_tank_s2_e' } : id === 'myoyeon' ? { s1: 'gs_necro_s1_e', s2: 'myoyeon_s2' } : null })) });
+  { const sim = mk(['tobi', 'myoyeon', 'bori'], [['goblin_archer', 'ogre_chief']]); for (let i = 0; i < 90; i++) sim.step(1 / 60); const t = sim.heroes[0], a = sim.enemies[0], boss = sim.enemies[1];
+    const ax = a.x; t.cds.s2 = 0; t.castLock = 0; sim.cast(t, 's2', { unit: a }); if (!(Math.abs(a.x - t.x) < Math.abs(ax - t.x) - 50)) errs.push('pull'); for (let i = 0; i < 20; i++) sim.step(1 / 60); if (!a.statuses.taunt) errs.push('pull taunt');
+    const bx = boss.x; t.cds.s2 = 0; t.castLock = 0; sim.cast(t, 's2', { unit: boss }); if (boss.x !== bx) errs.push('boss pulled');
+    const n = sim.heroes[1]; for (const h of sim.heroes) h.hp = 1500; sim.corpses = 3; n.cds.s1 = 0; n.castLock = 0; sim.cast(n, 's1', {}); if (sim.corpses !== 0 || !(sim.heroes[2].hp > 1500)) errs.push('corpse heal ' + sim.corpses + ' ' + sim.heroes[2].hp); }
+  { const rng = makeRng(4), p = GACHA.ensure(EQ.newProfile());
+    for (const [base, who] of [['common_belt_4', 'mujin'], ['common_ring_5', 'mujin'], ['common_belt_5', 'daon']]) { const it = EQ.rollItem(rng, p, { base, grade: 'SR' }); if (!p.inv.includes(it)) p.inv.push(it); EQ.equip(p, who, it); }
+    const lo = EQ.heroLoadout(p, 'mujin'); for (const k of ['dodge', 'drain']) if (!(lo.mods[k] > 0)) errs.push('acc stat ' + k); if (!(EQ.heroLoadout(p, 'daon').mods.thorns > 0)) errs.push('acc stat thorns');
+    const sim = new BattleSim({ seed: 1, stage: 1, waves: [['goblin']], strategy: st0, autoMode: false, partySize: 1, heroes: [{ id: 'mujin', hp: 500, maxHp: lo.maxHp, mods: lo.mods, upgrades: {}, ultDef: null }] }); for (let i = 0; i < 90; i++) sim.step(1 / 60);
+    const m = sim.heroes[0], g = sim.enemies[0]; m.mods.drain = 0.5; m.hp = Math.round(m.maxHp * 0.5); const hp = m.hp; sim._damage(m, g, 40, { noCrit: true }); if (!(m.hp > hp)) errs.push('drain heal');
+    if (!EQ.PASSIVE.nimble || !EQ.PASSIVE.vampire) errs.push('new passives'); }
+  console.log('gear variety:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(18 line-5 skills, pull, corpse heal, dodge/drain/thorns accessories, passives)');
   if (errs.length) fail++;
 }
 // 연계 효과 (v0.37): 독연 폭발 · 동결 · 상처 벌리기

@@ -1031,6 +1031,7 @@ class BattleSim {
     if (sk.kiGain) this._addKi(h, sk.kiGain);
     if (sk.selfHealPct) this._heal(h, h, h.maxHp * sk.selfHealPct * pmul, true);
     if (sk.ultSelf) this._gainUltRaw(h, sk.ultSelf);
+    if (sk.corpseHeal) { const n = Math.min(this.corpses, sk.corpseHeal.max); if (n) { this.corpses -= n; this.events.push({ type: 'corpse', unit: h, n }); for (const a of this.aliveHeroes()) this._heal(h, a, a.maxHp * sk.corpseHeal.per * n * pmul, true); } }
     if (sk.summon) this._summonMinions(h, sk.summon, pmul);
     if (sk.minionBuff) for (const m of this.minions) if (m.alive && m.owner === h) { this._heal(h, m, m.maxHp * sk.minionBuff.heal, true); m.statuses.inspire = { t: sk.minionBuff.dur, value: sk.minionBuff.inspire, src: h }; }
     if (spec.unit) h.face = spec.unit.x >= h.x ? 1 : -1;
@@ -1054,6 +1055,7 @@ class BattleSim {
           if (this.dist(h, tgt) > r + 10) { h.x = tgt.x + side * r; h.y = tgt.y; this.events.push({ type: 'dash', unit: h }); }
           h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.5; h.anim.lungeY = 0;
         }
+        if (sk.pull && !tgt.def.abilities.includes('boss') && tgt.size <= 1.3) { tgt.x = clamp(h.x + h.face * 70, this.X0, this.X1); tgt.y = h.y; tgt.tx = tgt.x; tgt.ty = tgt.y; this.events.push({ type: 'dash', unit: tgt }); this.events.push({ type: 'pull', unit: tgt, by: h }); } // 사슬 끌어오기
         const hits = sk.hits || 1;
         for (let i = 0; i < hits; i++) this.delayed.push({ t: fxDelay + i * 0.11, fn: () => { if (!tgt.alive || !h.alive) return; hit(tgt); if (i === 0 || i === hits - 1) applyEffects(tgt); } });
         break;

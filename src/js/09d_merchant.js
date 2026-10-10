@@ -46,13 +46,13 @@ function openMerchant(onClose, tab) {
     // 출전 파티 직업의 UC 무기·갑옷 (기본 라인)
     for (const id of partyIds(run)) {
       const cls = EQ.heroClass(id);
-      for (const [slot, line] of [['weapon', 1], ['armor', 1], ['weapon', 4], ['armor', 4]]) {
+      for (const [slot, line] of [['weapon', 1], ['armor', 1], ['weapon', 4], ['armor', 4], ['weapon', 5], ['armor', 5]]) {
         const base = EQ.DB.items.find((it) => it.cls === cls && it.slot === slot && it.line === line);
-        const price = VILLAGE_SHOP.gearPrice.UC * (line === 4 ? 1.5 : 1);
+        const price = VILLAGE_SHOP.gearPrice.UC * (line >= 4 ? 1.5 : 1);
         const skId = GEAR_SKILLS[base.id], sk = skId && SKILLS[skId];
         const row = el('div', 'shop-item');
         row.appendChild(el('div', 'si-icon', slot === 'weapon' ? '🗡' : '🛡'));
-        row.appendChild(el('div', 'si-info', `<b>UC ${base.name}</b><small>${HEROES[id].name}(${HEROES[id].roleName}) ${slot === 'weapon' ? '무기 → ②' : '갑옷 → ①'} ${sk ? sk.name : ''}${line === 4 ? ' <b class="ok">새 스킬</b>' : ''}</small>`));
+        row.appendChild(el('div', 'si-info', `<b>UC ${base.name}</b><small>${HEROES[id].name}(${HEROES[id].roleName}) ${slot === 'weapon' ? '무기 → ②' : '갑옷 → ①'} ${sk ? sk.name : ''}${line === 5 ? ' <b class="ok">새 스킬</b>' : ''}</small>`));
         const b = btn(`● ${price}`, 'buy', () => {
           if (p.gold < price) return;
           p.gold -= price;
@@ -60,7 +60,7 @@ function openMerchant(onClose, tab) {
           p.inv.push(it); saveProfile(); Sfx.play('coin');
           Game.toast(`${EQ.itemName(it)} 구입 → 보관함`, 1400);
           openMerchant(onClose, tab);
-        }, { id: `mc-buy-${id}-${slot}${line === 4 ? '-4' : ''}`, sfx: 'coin' });
+        }, { id: `mc-buy-${id}-${slot}${line >= 4 ? '-' + line : ''}`, sfx: 'coin' });
         if (p.gold < price) b.disabled = true;
         row.appendChild(b); list.appendChild(row);
       }
