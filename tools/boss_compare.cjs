@@ -2,7 +2,7 @@
 // env PARTIES=tobi+danbi+bori;... BOSS=mist_stag 로 좁힐 수 있다.
 // 6층(던전 배율 포함) 보스 5종을 Lv 5 · UC 무기/갑옷 파티로 '잘하는 플레이(smartAuto)'와 '자동'으로 싸워 승률·시간·사망을 잰다.
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05b_dungeon.js', '05e_sites.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '01g_patterns.js', '04b_equip.js', '04c_gacha.js', '05b_dungeon.js', '05e_sites.js', '06_battle_sim.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {} }; vm.createContext(ctx);
 vm.runInContext(code + '\nthis.X={BattleSim,ENCOUNTERS,AI_PRESETS,EQ,GACHA,DUNGEON,makeRng,DUNGEON_SITES};', ctx);
 const { BattleSim, ENCOUNTERS, AI_PRESETS, EQ, GACHA, DUNGEON, makeRng, DUNGEON_SITES } = ctx.X;

@@ -224,7 +224,7 @@ async function playRun(p, seed, opts) {
   await p.waitForFunction(() => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return h.cmd && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) < 12; }, null, { timeout: 8000 }).catch(() => {});
   ok('전투: 지정 지점 도착 후 대기', await p.evaluate(() => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return !!h.cmd && Math.hypot(h.x - h.cmd.x, h.y - h.cmd.y) < 12; }));
   // 전장의 캐릭터 → 적 = 공격 대상
-  const dragPts = await p.evaluate(() => { const s = window.GAME.Game.scene.sim; const h = s.heroes.find((u) => u.key === 'danbi'); const e = s.aliveEnemies().find((u) => u.key !== 'ogre') || s.aliveEnemies()[0]; return { hx: h.x, hy: h.y - 30, ex: e.x, ey: e.y - 40, uid: e.uid }; });
+  const dragPts = await p.evaluate(() => { const s = window.GAME.Game.scene.sim; for (const e of s.enemies) { e.speed = 0; e.tx = e.x; e.ty = e.y; } /* 끄는 동안 적이 걸어 나가지 않게 (타이밍에 따라 다른 적 위에 놓인다) */ const h = s.heroes.find((u) => u.key === 'danbi'); const e = s.aliveEnemies().find((u) => u.key !== 'ogre') || s.aliveEnemies()[0]; return { hx: h.x, hy: h.y - 30, ex: e.x, ey: e.y - 40, uid: e.uid }; });
   await p.mouse.move(bb.x + dragPts.hx * k, bb.y + dragPts.hy * k); await p.mouse.down();
   await p.mouse.move(bb.x + dragPts.ex * k, bb.y + dragPts.ey * k, { steps: 10 }); await p.mouse.up();
   ok('전투: 캐릭터를 적 위로 끌기 → 공격 대상 지정', await p.evaluate((uid) => { const h = window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'danbi'); return !!h.cmd && h.cmd.type === 'attack' && h.cmd.unit.uid === uid && h.target.uid === uid; }, dragPts.uid));
@@ -622,6 +622,33 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   await p.click('#set-sound'); ok('설정: 효과음 끄기', await p.evaluate(() => window.GAME.Game.settings.sound === false)); await p.click('#set-sound'); await p.click('#set-close');
   await p.click('#btn-ach'); ok('메뉴: 업적', await vis(p, '#ach-first_clear')); await p.click('#ach-codex'); await p.click('#codex-close');
   await p.screenshot({ path: `${OUT}/village_menu.png` });
+  await p.close();
+}
+
+// ---------------------------------------------------------------- v0.59: 미지의 적 · 패턴 파악 · 층 환경 · 정찰
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, battle: 1, break: 1, charge: 1, crush: 1, dungeon: 1, map: 1 }; G.scenes.title.start(59); window.GAME.enterDungeon(G.run); G.run.dungeon.env = 'miasma';
+    G.go('battle', { node: { stage: 3, row: 0, type: 'battle', waves: [['orc', 'goblin_archer']] } }); });
+  await p.waitForTimeout(600);
+  ok('미지의 적: 처음 보는 적은 이름 ???', await p.evaluate(() => window.GAME.Game.scene.sim.enemies.every((e) => e.name.includes('???'))));
+  ok('층 환경: 전투에 적용 (독안개)', await p.evaluate(() => window.GAME.Game.scene.sim.env === 'miasma'));
+  await p.evaluate(() => { const s = window.GAME.Game.scene.sim; for (const e of s.enemies) { e.hp = e.maxHp = 1e6; } s.enemies.find((e) => e.key === 'orc').patCd.reflect = 0; });
+  await p.waitForFunction(() => { const c = window.GAME.Game.profile.codex.orc; return c && c.pats && c.pats.reflect; }, null, { timeout: 15000 }).catch(() => {});
+  ok('패턴 파악: 반격 자세 → 도감 기록', await p.evaluate(() => { const c = window.GAME.Game.profile.codex.orc; return !!(c && c.pats && c.pats.reflect); }));
+  await p.evaluate(() => { const G = window.GAME.Game; G.run.dungeon = null; G.go('field'); }); await p.waitForTimeout(300);
+  await p.click('#btn-codex'); await p.waitForTimeout(200);
+  ok('도감: 파악한 패턴 표시 · 이름은 처치 전 ???', (await p.locator('#cx-orc .cx-pats .on').count()) >= 1 && (await p.locator('#cx-orc b').first().innerText()) === '???');
+  await p.click('#codex-close');
+  await p.evaluate(() => { window.GAME.Game.profile.gold = 500; window.GAME.openMerchant(null, 'tools'); }); await p.waitForTimeout(200);
+  await p.click('#mc-buy-scout'); ok('잡화점: 정찰 두루마리 구입', await p.evaluate(() => window.GAME.Game.profile.scouts === 1)); await p.click('#mc-close');
+  await p.evaluate(() => window.GAME.openDungeonGate('cave', window.GAME.Game.scene)); await p.waitForTimeout(200);
+  ok('던전 입구: 보스 정보 (???)', await vis(p, '.gate-intel') && (await p.locator('.gi-boss.unknown').count()) >= 1);
+  await p.click('#gate-scout'); await p.waitForTimeout(200);
+  ok('정찰: 보스 패턴 하나 파악', await p.evaluate(() => { const c = window.GAME.Game.profile.codex.ogre_chief; return window.GAME.Game.profile.scouts === 0 && !!(c && c.pats && Object.keys(c.pats).length === 1); }));
+  await p.screenshot({ path: `${OUT}/gate_intel.png` });
+  await p.click('#portal-yes'); await p.waitForTimeout(300);
+  ok('층 환경: 던전 층에 기록 (1층 고블린 굴은 없음)', await p.evaluate(() => window.GAME.Game.run.dungeon.env === null));
   await p.close();
 }
 

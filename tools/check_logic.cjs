@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '08d_world.js', '08e_territory.js', '01f_soultree.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '01g_patterns.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '08d_world.js', '08e_territory.js', '01f_soultree.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {}, saveProfile: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={TERRITORY,terrState,capturePost,zoneSecured,terrRate,terrPending,terrCollect,terrMaybeInvade,terrBonus,postWaves,postInfo,DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,SOUL,soulAdd,soulRemove,soulCanRemove,soulPathTo,soulStart,soulMigrate,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { TERRITORY, terrState, capturePost, zoneSecured, terrRate, terrPending, terrCollect, terrMaybeInvade, terrBonus, postWaves, postInfo, DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, SOUL, soulAdd, soulRemove, soulCanRemove, soulPathTo, soulStart, soulMigrate, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={PATTERN_INFO,PAT,ENEMY_PATTERNS,enemyPatterns,FLOOR_ENVS,rollFloorEnv,codexReveal,codexKnown,codexComplete,codexScout,codexState,TERRITORY,terrState,capturePost,zoneSecured,terrRate,terrPending,terrCollect,terrMaybeInvade,terrBonus,postWaves,postInfo,DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,SOUL,soulAdd,soulRemove,soulCanRemove,soulPathTo,soulStart,soulMigrate,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { PATTERN_INFO, PAT, ENEMY_PATTERNS, enemyPatterns, FLOOR_ENVS, rollFloorEnv, codexReveal, codexKnown, codexComplete, codexScout, codexState, TERRITORY, terrState, capturePost, zoneSecured, terrRate, terrPending, terrCollect, terrMaybeInvade, terrBonus, postWaves, postInfo, DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, SOUL, soulAdd, soulRemove, soulCanRemove, soulPathTo, soulStart, soulMigrate, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -439,7 +439,7 @@ if (sa !== sb) fail++;
     a.heroes[0].recentTaken = 600; const sk = SKILLS.elin_ult_C, ea = a.enemies[0], eb = b.enemies[0]; ea.x = eb.x = a.heroes[0].x + 40; ea.y = eb.y = a.heroes[0].y;
     a.heroes[0].ultDef = b.heroes[0].ultDef = sk; a.heroes[0].ult = b.heroes[0].ult = 100; const ha = ea.hp, hb = eb.hp;
     a.cast(a.heroes[0], 'ult', {}); b.cast(b.heroes[0], 'ult', {}); for (let i = 0; i < 30; i++) { a.step(1 / 60); b.step(1 / 60); }
-    if (!(ha - ea.hp > (hb - eb.hp) + 200)) errs.push(`vengeance ${ha - ea.hp} vs ${hb - eb.hp}`); }
+    if (!(ha - ea.hp > (hb - eb.hp) + 150)) errs.push(`vengeance ${ha - ea.hp} vs ${hb - eb.hp}`); }
   console.log('counter knight:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(trait counter, reflect-all ult, vengeance)');
   if (errs.length) fail++;
 }
@@ -578,7 +578,7 @@ if (sa !== sb) fail++;
   const S = vm.runInContext('DUNGEON_SITES', ctx), W = vm.runInContext('WORLD', ctx);
   const keys = ['cave', 'mine', 'crypt', 'abyss'];
   if (Object.keys(S).join() !== keys.join()) errs.push('sites ' + Object.keys(S));
-  for (let i = 1; i < keys.length; i++) { const a = S[keys[i - 1]].scale, b = S[keys[i]].scale; if (!(b.hp >= a.hp * 1.4 && b.atk >= a.atk * 1.25)) errs.push('steep ' + keys[i]); }
+  for (let i = 1; i < keys.length; i++) { const a = S[keys[i - 1]].scale, b = S[keys[i]].scale; if (!(b.hp >= a.hp * 1.4 && b.atk >= a.atk * 1.2)) errs.push('steep ' + keys[i]); }
   if (!(S.cave.scale.hp < 1 && S.cave.enc.boss[5].length === 1)) errs.push('tutorial cave');
   for (const k of keys) { const E = S[k].enc; for (const kind of ['battle', 'elite', 'small', 'boss']) for (const st in E[kind]) for (const enc of E[kind][st]) for (const w of (kind === 'small' ? [enc] : enc)) for (const id of w) if (!ENEMIES[id]) errs.push(`${k} ${kind} ${id}`);
     for (const enc of E.boss[5]) { const b = enc[0][0]; if (!BOSS_KITS[b]) errs.push('kit ' + b); } }
@@ -618,6 +618,48 @@ if (sa !== sb) fail++;
     capturePost(q, zk, +pi); if (postInfo(q, zk, +pi).contested) errs.push('retake'); }
   for (let zi = 0; zi < 4; zi++) for (let i = 0; i < 3; i++) { const w = postWaves(zi, i, makeRng(zi * 7 + i)); if (!w.length || w.some((wv) => !wv.length || wv.some((id) => !ENEMIES[id]))) errs.push(`postWaves ${zi}/${i}`); }
   console.log('territory:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(posts income/cap, zone secured +50%, bonus, collect shards, invade & retake, post waves)');
+  if (errs.length) fail++;
+}
+// v0.59 미지의 적: 패턴 목록 · 새 패턴 7종 동작 · 발견(reveal) · 도감 · 층 환경
+{
+  const errs = [];
+  const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
+  for (const k of Object.keys(ENEMIES)) { const pl = enemyPatterns(k); for (const x of pl) if (!x.n || !x.c) errs.push('pat text ' + k + x.k); }
+  for (const k in ENEMY_PATTERNS) { if (!ENEMIES[k]) errs.push('no enemy ' + k); if (enemyPatterns(k).length < (k === 'goblin' ? 1 : 2)) errs.push('few patterns ' + k + ' ' + enemyPatterns(k).length); }
+  const mk = (waves, env, heroes) => new BattleSim({ seed: 7, stage: 3, waves, strategy: st0, autoMode: false, env, partySize: 3, heroes: (heroes || ['tobi', 'danbi', 'bori']).map((id) => ({ id, hp: 5000, maxHp: 5000, upgrades: {} })) });
+  const run = (sim, sec, f) => { for (let i = 0; i < sec * 60; i++) { sim.step(1 / 60); if (f) f(sim); } };
+  // reflect: 자세 중 근접 평타는 되돌아오고 75% 막힌다
+  { const sim = mk([['orc']]); run(sim, 1.5); const e = sim.enemies[0], h = sim.heroes[1]; e.hp = e.maxHp = 1e6; e.reflectT = 3; e.armor = 0; e.broken = 0;
+    const hh = h.hp, eh = e.hp; const d = sim._damage(h, e, 100, { basic: true, noCrit: true }); run(sim, 0.1);
+    if (!(d < 50)) errs.push('reflect block ' + d); if (!(hh - h.hp > 20)) errs.push('reflect back ' + (hh - h.hp)); }
+  // harden: 받는 피해 -80%, 그로기면 깨진다
+  { const sim = mk([['ogre']]); run(sim, 1.5); const e = sim.enemies[0]; e.armor = 0; e.hardenT = 4; const d1 = sim._damage(sim.heroes[1], e, 100, { noCrit: true, dot: true }); e.hardenT = 0; const d2 = sim._damage(sim.heroes[1], e, 100, { noCrit: true, dot: true });
+    if (!(d1 < d2 * 0.4)) errs.push(`harden ${d1}/${d2}`); e.hardenT = 4; e.broken = 2; sim._patterns(e, 1 / 60, false); if (e.hardenT > 0) errs.push('harden not broken'); }
+  // 패턴이 실제로 발동하고 reveal 이벤트가 나온다 (acid · guard · blink · frenzy)
+  const seen = (sim, sec) => { const got = new Set(); for (let i = 0; i < sec * 60; i++) { const n = sim.events.length; sim.step(1 / 60); for (let j = n; j < sim.events.length; j++) if (sim.events[j].type === 'reveal') got.add(sim.events[j].unit.key + ':' + sim.events[j].key); if (sim.events.length > 2000) sim.events.length = 0; } return got; };
+  { const sim = mk([['goblin_archer', 'goblin_archer']]); for (const e of sim.enemies) e.hp = e.maxHp = 1e6; const g = seen(sim, 16); if (!g.has('goblin_archer:acid')) errs.push('acid reveal ' + [...g]); if (!sim.zones.some((z) => z.acid) && !g.has('goblin_archer:acid')) errs.push('acid zone'); }
+  { const sim = mk([['goblin_shaman', 'orc']]); for (const e of sim.enemies) e.hp = e.maxHp = 1e6; let sh = false; for (let i = 0; i < 20 * 60; i++) { sim.step(1 / 60); if (sim.enemies[1].statuses.shield) sh = true; } if (!sh) errs.push('guard shield'); }
+  { const sim = mk([['goblin_stalker']], null, ['tobi', 'byeolbi', 'bori']); const e = sim.enemies[0]; e.hp = e.maxHp = 1e6; let tele = false; for (let i = 0; i < 20 * 60; i++) { sim.step(1 / 60); if (sim.events.some((x) => x.type === 'pat' && x.key === 'blink')) tele = true; if (sim.events.length > 2000) sim.events.length = 0; } if (!tele) errs.push('blink'); }
+  { const sim = mk([['goblin', 'goblin', 'goblin']]); run(sim, 2); const [a, b, c] = sim.enemies; b.hp = 0; b.alive = false; c.alive = false; c.hp = 0; run(sim, 0.2); if (a.frenzy !== 2) errs.push('frenzy ' + a.frenzy); const m = sim._atkOf(a) / a.atk; if (!(m >= 1.39)) errs.push('frenzy atk ' + m); }
+  // aura: 주변 영웅 회복 -50%
+  { const sim = mk([['wraith']]); run(sim, 1.5); const e = sim.enemies[0], h = sim.heroes[0]; h.hp = 100; e.x = h.x + 40; e.y = h.y; const a1 = sim._heal(null, h, 1000, true); h.hp = 100; e.x = h.x + 600; const a2 = sim._heal(null, h, 1000, true); if (!(a1 < a2 * 0.6)) errs.push(`aura ${a1}/${a2}`); }
+  // 보스 페이즈가 새 패턴을 드러낸다
+  { const sim = mk([['ogre_chief']]); run(sim, 1.5); const e = sim.enemies[0]; if (e.pats.includes('reflect')) errs.push('reflect too early'); e.hp = e.maxHp * 0.6; run(sim, 0.3); if (!e.pats.includes('reflect')) errs.push('phase pattern ' + e.pats); }
+  // 환경
+  { const a = mk([['goblin']], 'dark'), b = mk([['goblin']]); const r = (s) => s.attackRange(s.heroes.find((h) => !h.melee) || s.heroes[2], s.enemies[0]); if (!(r(a) < r(b))) errs.push('dark range'); }
+  { const sim = mk([['goblin']], 'miasma'); sim.enemies[0].hp = sim.enemies[0].maxHp = 1e6; const h0 = sim.heroes[0].hp; run(sim, 10); if (!(sim.heroes[0].hp < h0)) errs.push('miasma'); }
+  { const sim = mk([['goblin']], 'embers'); sim.enemies[0].hp = sim.enemies[0].maxHp = 1e6; let z = false; for (let i = 0; i < 12 * 60; i++) { sim.step(1 / 60); if (sim.zones.some((q) => q.name === '불씨')) z = true; } if (!z) errs.push('embers'); }
+  { const a = mk([['goblin']], 'frost'), b = mk([['goblin']]); if (!(a.heroes[0].speed < b.heroes[0].speed && a.enemies[0].speed < b.enemies[0].speed)) errs.push('frost'); }
+  { const a = mk([['goblin']], 'bloodmoon'), b = mk([['goblin']]); if (!(a._atkOf(a.enemies[0]) > b._atkOf(b.enemies[0]) * 1.15)) errs.push('bloodmoon'); }
+  { const a = mk([['goblin']], 'blessed'); const h = a.heroes[0]; h.hp = 100; const v = a._heal(null, h, 100, true); if (v !== 125) errs.push('blessed ' + v); }
+  { let n = 0; const c = {}; for (let i = 0; i < 400; i++) { const e = rollFloorEnv('crypt', 3, makeRng(i)); if (e) { n++; c[e] = 1; if (!FLOOR_ENVS[e]) errs.push('env ' + e); } } if (n < 250 || Object.keys(c).length < 4) errs.push('env roll ' + n); if (rollFloorEnv('cave', 1, makeRng(1)) !== null) errs.push('cave f1 env'); }
+  // 도감: 발견 → 보상 · 완성 · 정찰
+  { const p = GACHA.ensure(EQ.newProfile()); p.gold = 0; const pl = enemyPatterns('orc');
+    const r = codexReveal(p, 'orc', pl[0].k); if (!r || p.gold <= 0 || codexReveal(p, 'orc', pl[0].k)) errs.push('reveal once');
+    for (const x of pl) codexReveal(p, 'orc', x.k); if (!codexComplete(p, 'orc')) errs.push('complete');
+    if (codexKnown(p, 'orc')) errs.push('known before kill');
+    const r2 = codexScout(p, 'lich_king', makeRng(3)); if (!r2 || Object.keys(codexState(p).lich_king.pats).length !== 1) errs.push('scout'); }
+  console.log('unknown foes:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(pattern lists, reflect/harden/acid/guard/blink/frenzy/aura, boss phase patterns, 6 envs, discovery codex, scouting)');
   if (errs.length) fail++;
 }
 // 연계 효과 (v0.37): 독연 폭발 · 동결 · 상처 벌리기

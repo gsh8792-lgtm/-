@@ -122,7 +122,7 @@ const RewardScene = {
     const node = params.node;
     const rng = makeRng(hashSeed(run.seed, 'reward', node.stage, node.row, run.stats.battles));
     const gr = node.type === 'elite' ? REWARD.goldElite : REWARD.goldBattle;
-    const gold = rng.int(gr[0], gr[1]) + (params.bonusGold || 0);
+    const gold = Math.round((rng.int(gr[0], gr[1]) + (params.bonusGold || 0)) * (run.dungeon && run.dungeon.env === 'bloodmoon' ? 1 + FLOOR_ENVS.bloodmoon.gold : 1)); // 피의 달: 골드 +40%
     run.gold += gold;
     this.t = 0;
     const ui = Game.ui;

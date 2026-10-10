@@ -12,6 +12,7 @@ const VILLAGE_SHOP = {
     { key: 'food', icon: '🍞', name: '식량', price: 25, max: 6, desc: '야영지에서 쉬려면 필요하다 (HP 40% 회복).' },
     { key: 'torch', icon: '🔥', name: '횃불 묶음', price: 20, max: 3, desc: '던전에서 횃불 +40. 어두우면 기습당하기 쉽다.' },
     { key: 'trapKit', icon: '🧰', name: '함정 해제 도구', price: 40, max: 3, desc: '복도 함정을 밟으면 자동으로 해제하고 부품을 챙긴다 (피해 없음 + 골드).' },
+    { key: 'scout', icon: '📜', name: '정찰 두루마리', price: 90, max: 5, desc: '던전 입구에서 그곳 보스의 모르는 패턴 하나를 미리 알아낸다 (도감에 기록). 원정이 끝나도 남는다.' },
   ],
   gearPrice: { UC: 60 },
 };
@@ -20,12 +21,14 @@ function bagCount(run, key) {
   if (key === 'potion') return run.potions;
   if (key === 'food') return run.food;
   if (key === 'torch') return run.torchPacks || 0;
+  if (key === 'scout') return Game.profile.scouts || 0;
   return run[key + 's'] || 0;
 }
 function bagAdd(run, key, n) {
   if (key === 'potion') run.potions += n;
   else if (key === 'food') run.food += n;
   else if (key === 'torch') run.torchPacks = (run.torchPacks || 0) + n;
+  else if (key === 'scout') Game.profile.scouts = (Game.profile.scouts || 0) + n;
   else run[key + 's'] = (run[key + 's'] || 0) + n;
 }
 

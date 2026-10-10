@@ -58,11 +58,11 @@ const ENCOUNTERS_CAVE = Object.assign({}, ENCOUNTERS, { boss: { 5: [ [['ogre_chi
 const siteCleared = (p, k) => !!(p.ach && p.ach.c && p.ach.c['site_' + k] > 0);
 const DUNGEON_SITES = {
   cave: { name: '고블린 굴', desc: '튜토리얼 — 적이 약하다 · 보스 오우거 대족장', enc: ENCOUNTERS_CAVE, scale: { hp: 0.45, atk: 0.5 }, reward: 0, tint: null, rank: 1 },
-  mine: { name: '버려진 광산', desc: '적 체력 ×1.5 · 공격 ×1.35 · 보스 호위 · 보상 +50%', enc: ENCOUNTERS_MINE, scale: { hp: 1.5, atk: 1.35 }, reward: 0.5, tint: 'rgba(130,75,20,0.22)', rank: 2,
+  mine: { name: '버려진 광산', desc: '적 체력 ×1.35 · 공격 ×1.25 · 보스 호위 · 보상 +50%', enc: ENCOUNTERS_MINE, scale: { hp: 1.35, atk: 1.25 }, reward: 0.5, tint: 'rgba(130,75,20,0.22)', rank: 2,
     unlock: (p) => siteCleared(p, 'cave') || (p.ach && p.ach.c && p.ach.c.boss > 0) || Object.values(p.clears || {}).some((n) => n > 0), lockText: '고블린 굴 보스를 쓰러뜨리면 열린다' },
-  crypt: { name: '저주받은 묘지', desc: '언데드 · 적 체력 ×2.2 · 공격 ×1.7 · 보상 +100%', enc: ENCOUNTERS_CRYPT, scale: { hp: 2.2, atk: 1.7 }, reward: 1.0, tint: 'rgba(40,70,110,0.28)', rank: 3,
+  crypt: { name: '저주받은 묘지', desc: '언데드 · 적 체력 ×2.0 · 공격 ×1.55 · 보상 +100%', enc: ENCOUNTERS_CRYPT, scale: { hp: 2.0, atk: 1.55 }, reward: 1.0, tint: 'rgba(40,70,110,0.28)', rank: 3,
     unlock: (p) => siteCleared(p, 'mine') || !!(p.ach && p.ach.c && p.ach.c.mine > 0), lockText: '버려진 광산 보스를 쓰러뜨리면 열린다' },
-  abyss: { name: '심연의 요새', desc: '악마 · 적 체력 ×3.3 · 공격 ×2.3 · 보상 +200%', enc: ENCOUNTERS_ABYSS, scale: { hp: 3.3, atk: 2.3 }, reward: 2.0, tint: 'rgba(140,30,20,0.26)', rank: 4,
+  abyss: { name: '심연의 요새', desc: '악마 · 적 체력 ×3.0 · 공격 ×2.1 · 보상 +200%', enc: ENCOUNTERS_ABYSS, scale: { hp: 3.0, atk: 2.1 }, reward: 2.0, tint: 'rgba(140,30,20,0.26)', rank: 4,
     unlock: (p) => siteCleared(p, 'crypt'), lockText: '저주받은 묘지 보스를 쓰러뜨리면 열린다' },
 };
 function siteOf(run) { return DUNGEON_SITES[(run && run.site) || 'cave'] || DUNGEON_SITES.cave; }

@@ -57,6 +57,23 @@ function codexSee(p, key) {
   p.gold += codexReward(key);
   return true;
 }
+// v0.59 미지의 적: 처치해야 이름이 밝혀지고, 패턴은 전투에서 겪어야 하나씩 파악된다. 패턴을 모두 파악하면 공략(정답)이 열린다.
+function codexKnown(p, key) { const s = codexState(p)[key]; return !!(s && s.kills > 0); }
+function codexPats(p, key) { const s = codexState(p)[key]; return (s && s.pats) || {}; }
+function codexComplete(p, key) { const pats = codexPats(p, key); return enemyPatterns(key).every((x) => pats[x.k]); }
+const patReward = (key) => ({ 보스: 40, 정예: 15, 일반: 5 })[codexKind(key)];
+// 패턴 파악 (새로 알게 되면 { info, complete } — 골드 보상)
+function codexReveal(p, key, k) {
+  if (!ENEMY_CODEX[key]) return null;
+  const c = codexState(p); c[key] = c[key] || { seen: 1, kills: 0 }; c[key].pats = c[key].pats || {};
+  if (c[key].pats[k]) return null;
+  const info = enemyPatterns(key).find((x) => x.k === k); if (!info) return null;
+  c[key].pats[k] = 1; p.gold += patReward(key);
+  return { info, complete: codexComplete(p, key), gold: patReward(key) };
+}
+// 정찰: 아직 모르는 패턴 하나를 알아낸다
+function codexScout(p, key, rng) { const pats = codexPats(p, key), left = enemyPatterns(key).filter((x) => !pats[x.k]); if (!left.length) return null; const x = left[Math.floor((rng || Math.random)() * left.length)]; return codexReveal(p, key, x.k); }
+function enemyLabel(p, key) { return codexKnown(p, key) ? ENEMIES[key].name : '???'; }
 function codexKill(p, key, n) { const c = codexState(p); if (!ENEMY_CODEX[key]) return; c[key] = c[key] || { seen: 1, kills: 0 }; c[key].kills += n || 1; }
 
 function openCodex(onClose) {
@@ -66,7 +83,7 @@ function openCodex(onClose) {
   const box = el('div', 'inv-box codex-box');
   const head = el('div', 'inv-head');
   head.appendChild(el('div', 'modal-title', `📖 적 도감 <small>${found} / ${keys.length}</small>`));
-  head.appendChild(el('div', 'inv-res', '<span class="muted">처음 만난 적은 등록 보상 골드 · 전투 중에 대응법이 뜬다</span>'));
+  head.appendChild(el('div', 'inv-res', '<span class="muted">미지의 적과 싸우며 패턴을 하나씩 파악한다 · 모두 파악하면 공략이 열린다</span>'));
   head.appendChild(btn('🏆 업적', 'small', () => openAchievements(onClose), { id: 'codex-ach', sfx: 'click' }));
   head.appendChild(btn('닫기', 'small', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'codex-close', sfx: 'back' }));
   box.appendChild(head);
@@ -79,9 +96,12 @@ function openCodex(onClose) {
     card.id = 'cx-' + k;
     const pc = portraitCanvas(d.sprite, 64); if (!s) pc.style.filter = 'brightness(0) opacity(.55)';
     card.appendChild(pc);
+    const pl = enemyPatterns(k), pats = (s && s.pats) || {}, nf = pl.filter((x) => pats[x.k]).length, known = s && s.kills > 0, done = nf === pl.length;
+    const pHtml = `<div class="cx-pats">${pl.map((x) => pats[x.k] ? `<span class="on" title="${x.c}">🔍 ${x.n}</span>` : '<span>❔ ???</span>').join('')}</div>`;
     card.appendChild(el('div', 'cx-txt', s
-      ? `<b>${d.name}</b> <span class="cx-kind">${kind}</span><small>HP ${d.hp} · 공격 ${d.atk}${d.reach ? ' · 원거리' : ''} · 처치 ${s.kills}</small><div class="cx-tags">${e.tags.map((t) => `<span>${t}</span>`).join('')}</div><div class="cx-ans">💡 ${e.answer}</div>`
-      : `<b>???</b> <span class="cx-kind">${kind}</span><small>아직 만나지 못한 적 · 등록 보상 ● ${codexReward(k)}</small>`));
+      ? `<b>${known ? d.name : '???'}</b> <span class="cx-kind">${kind}</span><small>${known ? `HP ${d.hp} · 공격 ${d.atk}${d.reach ? ' · 원거리' : ''} · 처치 ${s.kills}` : '처치하면 이름이 밝혀진다'} · 패턴 ${nf}/${pl.length}</small>${pHtml}<div class="cx-ans">${done ? '📖 ' + e.answer : `<span class="muted">패턴을 모두 파악하면 공략이 열린다 (파악 1개당 ● ${patReward(k)})</span>`}</div>`
+      : `<b>???</b> <span class="cx-kind">${kind}</span><small>아직 만나지 못한 적 · 등록 보상 ● ${codexReward(k)} · 패턴 ?/${pl.length}</small>`));
+    if (s && done) card.classList.add('done');
     grid.appendChild(card);
   }
   box.appendChild(grid);

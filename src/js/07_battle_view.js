@@ -26,9 +26,11 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }, sc = run.dungeon ? siteOf(run).scale : node.worldScale || { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp * sc.hp, atk: ti.atk * f * o.atk * sc.atk }; })(), // 필드 지역 전투는 지역 배율
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
+      env: (run.dungeon && run.dungeon.env) || node.env || null,
       eliteAffix: node.affix || null, named: node.named || null, surprise: (!!(ex && ex.surprise) || !!run.ambushNext) && !(run.camp && run.camp.guard),
     });
     run.ambushNext = false; // 우상의 저주는 한 번
+    if (this.sim.env && !node.small) { const E = FLOOR_ENVS[this.sim.env]; setTimeout(() => Game.toast(`${E.i} ${E.n} — ${E.d}`, 2200), 300); }
     if (run.camp) { // 야영 활동 효과 (다음 전투 한 번)
       for (const h of this.sim.heroes) { if (run.camp.ult) h.ult = Math.min(100, h.ult + run.camp.ult); if (run.camp.guard) h.statuses.shield = { t: 20, value: h.maxHp * 0.12 }; }
       run.camp = null;
@@ -456,11 +458,12 @@ const BattleScene = {
     const ev = this.sim.events;
     if (this.sim.enemies.length !== this.codexN) { // 도감: 처음 보는 적 → 등록 + 대응법
       this.codexN = this.sim.enemies.length;
-      const fresh = []; for (const e of this.sim.enemies) if (codexSee(Game.profile, e.key)) fresh.push(e);
-      if (fresh.length) { // 한 줄로: 새 적 이름들 + 가장 센 적의 대응법만
+      const P = Game.profile, fresh = []; for (const e of this.sim.enemies) if (codexSee(P, e.key)) fresh.push(e);
+      for (const e of this.sim.enemies) if (!e.unknownSet && ENEMY_CODEX[e.key]) { e.unknownSet = true; if (!codexKnown(P, e.key)) { e.unknown = true; e.name = e.name.replace(e.def.name, '???'); } } // v0.59 미지의 적: 처치해야 이름이 밝혀진다
+      if (fresh.length) { // 공략은 알려 주지 않는다 — 싸우며 패턴을 파악한다
         saveProfile();
-        const key = fresh.slice().sort((a, b) => codexReward(b.key) - codexReward(a.key))[0].key;
-        Game.toast(`📖 새 적 ${fresh.map((e) => e.def.name).join(' · ')} (+● ${fresh.reduce((a, e) => a + codexReward(e.key), 0)})<br><small>💡 ${ENEMIES[key].name}: ${ENEMY_CODEX[key].answer}</small>`, 3400);
+        const n = new Set(fresh.map((e) => e.key)).size;
+        Game.toast(`❓ 미지의 적 ${n}종 등장! (+● ${fresh.reduce((a, e) => a + codexReward(e.key), 0)})<br><small>싸우며 패턴을 파악하자 — 파악한 패턴은 도감에 기록된다</small>`, 3000);
       }
     }
     if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < this.sim.W)) { this.breakHintPending = false; Game.hint('break'); }
@@ -557,6 +560,11 @@ const BattleScene = {
       case 'wipeStopped': this.popup(e.unit.x, this.unitTop(e.unit) - 30, `${e.name} 저지!`, '#9cf0ff', 24, { label: true }); Sfx.play('cancel'); break;
       case 'wipeHit': this.fx.push({ type: 'flash', color: 'rgba(255,60,40,', t: 0, dur: 0.6 }); this.shake = Math.max(this.shake, 14); Sfx.play('boom'); this.banner = { text: e.name + '!', sub: `${e.n}명이 휩쓸렸다`, t: 0, dur: 1.4 }; break;
       case 'bossSkill': this.popup(e.unit.x, this.unitTop(e.unit) - 18, e.name, '#ffb08a', 16, { label: true }); break;
+      case 'pat': this.popup(e.unit.x, this.unitTop(e.unit) - 24, e.name + '!', '#ffcf6a', 18, { label: true }); Sfx.play('charge'); break;
+      case 'patFx': this.popup(e.unit.x, this.unitTop(e.unit) - 18, e.name, '#cfe8ff', 15, { label: true }); break;
+      case 'reflectHit': this.popup(e.target.x, this.unitTop(e.target) - 10, '반사!', '#bfe0ff', 15, { label: true }); break;
+      case 'envFx': this.popup(this.camX + 480, 120, e.name, '#e8f0c0', 16, { label: true }); break;
+      case 'reveal': this.onReveal(e); break;
       case 'root': this.popup(e.unit.x, this.unitTop(e.unit) - 16, '속박!', '#9ad070', 16, { label: true }); break;
       case 'zoneImpact': this.smoke(e.x, e.y - 6, 1.2); this.shake = Math.max(this.shake, 5); Sfx.play('boom'); break;
       case 'affix': this.popup(e.unit.x, this.unitTop(e.unit) - 22, e.name + '!', '#ff9a6a', 18, { label: true }); break;
@@ -682,7 +690,7 @@ const BattleScene = {
       }
       if (this.node.type === 'boss') { run.result = 'victory'; achBossWin(Game.profile, run, (this.sim.enemies.find((e) => e.def.abilities.includes('boss')) || {}).key); Game.go('result'); }
       else if (this.node.small) { // 복도의 작은 무리: 보상 화면 없이 골드만 챙기고 바로 이어서
-        const g = 6 + this.node.stage * 3 + Math.floor(Math.random() * 6); run.gold += g;
+        const g = Math.round((6 + this.node.stage * 3 + Math.floor(Math.random() * 6)) * (run.dungeon && run.dungeon.env === 'bloodmoon' ? 1 + FLOOR_ENVS.bloodmoon.gold : 1)); run.gold += g;
         const L = run.lastLoot; run.lastLoot = null;
         const lv = L && L.exp ? L.exp.filter((r) => r.to > r.from).map((r) => `${HEROES[r.id].name} Lv ${r.to}!`) : [];
         Game.toast(`골드 +${g}` + (L && L.exp && L.exp[0] ? ` · 경험치 +${L.exp[0].exp}` : '') + (lv.length ? ' · ' + lv.join(' ') : ''), 1600);
@@ -815,8 +823,9 @@ const BattleScene = {
         ctx.fillStyle = `rgba(255,90,60,${0.3 + prog * 0.3})`; this.floorEllipse(ctx, z.x, z.y, z.r * prog, ry * prog);
         ctx.strokeStyle = 'rgba(255,140,110,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke();
       } else if (z.kind === 'pool') {
-        ctx.fillStyle = `rgba(110,200,60,${0.28 + Math.sin(t * 4 + z.x) * 0.06})`; this.floorEllipse(ctx, z.x, z.y, z.r, ry);
-        ctx.strokeStyle = 'rgba(160,240,90,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke();
+        const pc = z.acid ? '200,230,40' : z.name === '불씨' ? '255,120,40' : '110,200,60';
+        ctx.fillStyle = `rgba(${pc},${0.28 + Math.sin(t * 4 + z.x) * 0.06})`; this.floorEllipse(ctx, z.x, z.y, z.r, ry);
+        ctx.strokeStyle = z.acid ? 'rgba(230,255,90,0.8)' : z.name === '불씨' ? 'rgba(255,170,90,0.8)' : 'rgba(160,240,90,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke();
       } else if (z.kind === 'safe') {
         const pulse = 0.5 + Math.sin(t * 6) * 0.2;
         const g = ctx.createRadialGradient(z.x, z.y - 60, 10, z.x, z.y - 60, 160); g.addColorStop(0, `rgba(160,255,240,${0.35 * pulse})`); g.addColorStop(1, 'rgba(160,255,240,0)');
@@ -825,6 +834,8 @@ const BattleScene = {
         ctx.strokeStyle = 'rgba(200,255,245,0.95)'; ctx.lineWidth = 3; ctx.setLineDash([10, 6]); ctx.lineDashOffset = -t * 40; ctx.beginPath(); ctx.ellipse(z.x, z.y, z.r, ry, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
       }
     }
+    // 저주 오라 (v0.59): 이 안에서는 회복 -50%
+    for (const e of sim.enemies) if (e.alive && e.pats && e.pats.includes('aura') && e.x <= sim.W) { ctx.strokeStyle = `rgba(190,90,255,${0.35 + Math.sin(t * 3) * 0.12})`; ctx.lineWidth = 2; ctx.setLineDash([8, 6]); ctx.lineDashOffset = -t * 20; ctx.beginPath(); ctx.ellipse(e.x, e.y, PAT.aura.r, PAT.aura.r / CONST.Y_WEIGHT, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = 'rgba(150,60,220,0.07)'; this.floorEllipse(ctx, e.x, e.y, PAT.aura.r, PAT.aura.r / CONST.Y_WEIGHT); }
     // 차지 위험 범위 (원형)
     for (const e of sim.enemies) {
       if (!e.alive || !e.charge) continue;
@@ -864,6 +875,10 @@ const BattleScene = {
     this.drawFx(ctx);
     this.drawPopups(ctx);
     ctx.restore();
+    if (sim.env === 'dark') this.drawDarkness(ctx, cam, t); // 층 환경: 어둠
+    if (sim.env === 'miasma') { ctx.fillStyle = `rgba(120,160,80,${0.1 + Math.sin(t * 0.8) * 0.03})`; ctx.fillRect(0, 0, 960, 540); }
+    if (sim.env === 'frost') { ctx.fillStyle = 'rgba(170,210,255,0.1)'; ctx.fillRect(0, 0, 960, 540); }
+    if (sim.env === 'bloodmoon') { ctx.fillStyle = 'rgba(160,20,30,0.12)'; ctx.fillRect(0, 0, 960, 540); }
     if (sim.W > 960) this.drawOffscreen(ctx, cam, t);
     this.drawWipe(ctx, t);
     for (const f of this.fx) if (f.type === 'flash') { ctx.fillStyle = f.color + (0.5 * (1 - f.t / f.dur)).toFixed(3) + ')'; ctx.fillRect(0, 0, 960, 540); }
@@ -980,6 +995,22 @@ const BattleScene = {
     }
   },
 
+  // 패턴 파악 (v0.59): 도감 기록 + 공략 문구 한 번
+  onReveal(e) {
+    const P = Game.profile, r = codexReveal(P, e.unit.key, e.key);
+    if (!r) return;
+    this.popup(e.unit.x, this.unitTop(e.unit) - 40, `🔍 ${r.info.n} 파악`, '#9cf0ff', 17, { label: true });
+    Game.toast(`🔍 ${e.unit.unknown ? '???' : e.unit.def.name} — <b>${r.info.n}</b> 파악 (+● ${r.gold})<br><small>${r.info.c}</small>` + (r.complete ? `<br><b>📖 ${e.unit.unknown ? '이 적' : e.unit.def.name}의 패턴을 모두 파악했다 — 도감에 공략이 열렸다</b>` : ''), 3200);
+    saveProfile();
+  },
+  // 층 환경 「어둠」: 영웅 주변만 밝다
+  drawDarkness(ctx, cam, t) {
+    if (!this.darkCv) { this.darkCv = document.createElement('canvas'); this.darkCv.width = 960; this.darkCv.height = 540; }
+    const c = this.darkCv.getContext('2d'); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, 960, 540); c.fillStyle = 'rgba(4,4,12,0.72)'; c.fillRect(0, 0, 960, 540);
+    c.globalCompositeOperation = 'destination-out';
+    for (const h of this.sim.heroes.concat(this.sim.minions || [])) if (h.alive) { const x = h.x - cam, y = h.y - 40, R = h.minion ? 90 : 190 + Math.sin(t * 3 + h.uid) * 6; const g = c.createRadialGradient(x, y, 20, x, y, R); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - R, y - R, R * 2, R * 2); }
+    ctx.drawImage(this.darkCv, 0, 0);
+  },
   drawUnit(ctx, u, t, highlight) {
     if (u.statuses && u.statuses.stealth && !u._ghost) { ctx.save(); ctx.globalAlpha = 0.38 + Math.sin(t * 4) * 0.06; this.drawUnit(ctx, Object.assign({}, u, { _ghost: true }), t, highlight); ctx.restore(); return; } // 은신: 반투명
     if (u.vanished) { ctx.save(); ctx.globalAlpha = 0.18 + Math.sin(t * 5) * 0.08; this.drawUnit(ctx, Object.assign({}, u, { vanished: false }), t, false); ctx.restore(); return; }
@@ -1015,6 +1046,9 @@ const BattleScene = {
       drawSprite(ctx, u.sprite, x, y - walk, so);
       drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'white', alpha: u.charge ? 0.7 : 0.5 }));
     } else drawSprite(ctx, u.sprite, x, y - walk, Object.assign(so, { tint, tintAlpha }));
+    if (u.reflectT > 0) { const r = 26 + u.size * 10; ctx.strokeStyle = `rgba(200,230,255,${0.6 + Math.sin(t * 14) * 0.3})`; ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i <= 6; i++) { const a = i / 6 * Math.PI * 2 + t; ctx.lineTo(x + Math.cos(a) * r, y - r * 0.9 + Math.sin(a) * r * 0.9); } ctx.stroke(); } // 반격 자세: 빛나는 육각 방패
+    if (u.hardenT > 0) { drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'dark', alpha: 0.4 })); const r = 24 + u.size * 12; ctx.strokeStyle = 'rgba(170,160,140,0.9)'; ctx.lineWidth = 4; ctx.setLineDash([6, 4]); ctx.beginPath(); ctx.ellipse(x, y - r * 0.8, r, r * 0.95, 0, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🪨', x, y - r * 1.9); } // 돌가죽: 회색 껍질
+    if (u.frenzy) { ctx.fillStyle = '#ff5a4a'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('🩸'.repeat(u.frenzy), x, y + 16); }
     if (u.moving && Math.random() < 0.08) this.fx.push({ type: 'dust', x: u.x - u.face * 8, y: u.y, vx: -u.face * 20, vy: -20, t: 0, dur: 0.4 });
     const top = y - s.h * sc;
     if (u.statuses.stun) for (let i = 0; i < 3; i++) { const a = t * 5 + i * 2.1; ctx.fillStyle = '#ffd34a'; ctx.fillRect(x + Math.cos(a) * 16 - 2, top - 4 + Math.sin(a) * 4, 5, 5); }

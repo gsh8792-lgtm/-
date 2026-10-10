@@ -13,6 +13,7 @@ function backToRun() { const r = Game.run; Game.go(r && r.dungeon ? 'dungeon' : 
 // 원정 시작: 1층 입구 방
 function enterDungeon(run) {
   run.dungeon = genFloor(run.seed, 1);
+  run.dungeon.env = rollFloorEnv(run.site || 'cave', 1, makeRng(hashSeed(run.seed, 'env', 1))); // 층 환경 (v0.59)
   run.pos = { stage: 1, row: 0 };
   Game.go('dungeon');
 }
@@ -47,7 +48,7 @@ const DungeonScene = {
     const top = el('div', 'map-top ex-top');
     const hdr = el('div', 'map-hdr');
     const goal = fl.floor === DUNGEON.BOSS_FLOOR ? (bossOpen(fl) ? '보스 방이 열렸다' : `${BOSS_GIMMICKS[fl.gimmick].name} ${fl.have}/${BOSS_GIMMICKS[fl.gimmick].need}`) : '계단을 찾아라';
-    hdr.appendChild(el('div', 'map-title', `${siteOf(run).name} ${fl.floor === DUNGEON.BOSS_FLOOR ? '— 가장 깊은 곳' : `${fl.floor}층`} <small class="goal">${goal}</small>`));
+    hdr.appendChild(el('div', 'map-title', `${siteOf(run).name} ${fl.floor === DUNGEON.BOSS_FLOOR ? '— 가장 깊은 곳' : `${fl.floor}층`} <small class="goal">${goal}</small>${fl.env ? ` <span class="floor-env" title="${FLOOR_ENVS[fl.env].d}">${FLOOR_ENVS[fl.env].i} ${FLOOR_ENVS[fl.env].n}</span>` : ''}`));
     hdr.appendChild(resourceBar(run));
     top.appendChild(hdr);
     top.appendChild(partyPanel(run, { compact: true }));
@@ -153,6 +154,8 @@ const DungeonScene = {
     const run = Game.run, fl = run.dungeon;
     const next = fl.floor + 1;
     run.dungeon = genFloor(run.seed, next);
+    run.dungeon.env = rollFloorEnv(run.site || 'cave', next, makeRng(hashSeed(run.seed, 'env', next)));
+    if (run.dungeon.env) setTimeout(() => Game.toast(`${FLOOR_ENVS[run.dungeon.env].i} ${next}층 환경: <b>${FLOOR_ENVS[run.dungeon.env].n}</b><br><small>${FLOOR_ENVS[run.dungeon.env].d}</small>`, 3000), 400);
     run.pos = { stage: next, row: 0 };
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + 10);
     for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * DUNGEON.STAIRS_HEAL)); }

@@ -23,7 +23,8 @@ class BattleSim {
     this.eliteAffix = opts.eliteAffix || null; // 정예 변이 (ELITE_AFFIXES 키)
     this.named = opts.named || null;           // 네임드 정예 이름
     this.surprise = !!opts.surprise;          // 기습: 파티가 잠깐 굳는다
-    this.levelGap = opts.levelGap || 0;          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
+    this.levelGap = opts.levelGap || 0;
+    this.env = opts.env || null; this.envT = 0; // 층 환경 (FLOOR_ENVS 키 · v0.59)          // 파티 전투 레벨 − 던전 레벨 (영웅별 값은 hero.levelGap)
     // 영웅 AI 성향 (밸런스 측정용): none = 실제 게임(이동 판단은 플레이어 작전에 맡김)
     // gimmick = 차지 범위 회피 + 그로기 대상 집중 / brute = 기믹 무시하고 딜만
     this.aiProfile = opts.aiProfile || 'none';
@@ -52,6 +53,7 @@ class BattleSim {
     this.zones = [];   // 바닥 장판: impact(잠시 뒤 터짐) · pool(지속 피해) · safe(전멸기 피난처)
     this.wipeLog = []; // 전멸기 결과 기록 (검증용)
     opts.heroes.forEach((h, i) => this.heroes.push(this._makeHero(h, i, opts.heroes.length)));
+    if (this.env === 'frost') for (const h of this.heroes) { h.speed *= FLOOR_ENVS.frost.move; h.atkInterval /= FLOOR_ENVS.frost.aspd; }
     this._spawnWave(0, true);
     if (this.surprise) { this.introT = 0.2; for (const h of this.heroes) { h.actLock = 1.6; h.castLock = 1.6; h.atkTimer = 1.6; } this.events.push({ type: 'surprise' }); }
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
@@ -96,8 +98,9 @@ class BattleSim {
     const hpMul = (def.fixedScale ? 1 : CONST.ENEMY_HP_MULT) * this.partyScale * this.tier.hp, atkMul = (def.fixedScale ? 1 : CONST.ENEMY_ATK_MULT) * this.tier.atk;
     return {
       uid: this.uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
-      hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval,
-      defPct: def.def, size: def.size, melee: !def.reach, reach: def.reach || 0, speed: def.moveSpeed || 60,
+      hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval / (this.env === 'frost' ? FLOOR_ENVS.frost.aspd : 1),
+      defPct: def.def, size: def.size, melee: !def.reach, reach: def.reach || 0, speed: (def.moveSpeed || 60) * (this.env === 'frost' ? FLOOR_ENVS.frost.move : 1),
+      pats: (def.patterns || []).slice(), patCd: {}, revealed: {},
       x, y, tx: x, ty: y, face: -1, moving: false,
       atkTimer: 0.6 + this.rng() * 1.0, target: null, retarget: 0,
       statuses: {}, alive: true,
@@ -225,7 +228,7 @@ class BattleSim {
       }
       if (z.kind === 'pool') {
         z.acc += dt;
-        if (z.acc >= 0.5) { z.acc -= 0.5; for (const h of this.aliveHeroes()) if (this.distXY(h, z.x, z.y) <= z.r) { this._damage(z.src, h, z.dps * 0.5, { noCrit: true, dot: 'poison' }); if (z.slow) h.statuses.slow = { t: 1, value: 0.45 }; } }
+        if (z.acc >= 0.5) { z.acc -= 0.5; for (const h of this.aliveHeroes()) if (this.distXY(h, z.x, z.y) <= z.r) { this._damage(z.src, h, z.dps * 0.5, { noCrit: true, dot: 'poison' }); if (z.slow) h.statuses.slow = { t: 1, value: 0.45 }; if (z.acid) h.statuses.vuln = { t: 1 }; } }
       }
       if (z.t <= 0 && z.kind !== 'safe') this.zones.splice(i, 1);
     }
@@ -269,12 +272,33 @@ class BattleSim {
   dist(a, b) { const dx = a.x - b.x, dy = (a.y - b.y) * CONST.Y_WEIGHT; return Math.sqrt(dx * dx + dy * dy); }
   distXY(u, x, y) { const dx = u.x - x, dy = (u.y - y) * CONST.Y_WEIGHT; return Math.sqrt(dx * dx + dy * dy); }
   nearest(u, list) { let b = null, bd = 1e9; for (const o of list) { const d = this.dist(u, o); if (d < bd) { bd = d; b = o; } } return b; }
-  attackRange(u, tgt) { return u.melee ? CONST.MELEE_RANGE + ((tgt && tgt.size) || 1) * 12 + (u.size - 1) * 14 : u.reach; }
+  attackRange(u, tgt) { return u.melee ? CONST.MELEE_RANGE + ((tgt && tgt.size) || 1) * 12 + (u.size - 1) * 14 : u.reach * (this.env === 'dark' && u.side === 'hero' ? FLOOR_ENVS.dark.rangeMul : 1); }
   frontEnemy() { let b = null; for (const e of this.enemies) if (e.alive && (!b || e.x < b.x)) b = e; return b; }
   frontHero() { let b = null; for (const h of this.heroes) if (h.alive && (!b || h.x > b.x)) b = h; return b; }
 
   // ------------------------------------------------------------ 진행
-  step(dt) {
+  // 한 틱: 패턴 발견(reveal)은 이번 틱에 생긴 이벤트에서 뽑는다 (v0.59)
+  step(dt) { const n0 = this.events.length; this._stepCore(dt); this._revealScan(n0); }
+  _reveal(u, k) { if (!u || u.side !== 'enemy' || !u.revealed || u.revealed[k]) return; u.revealed[k] = true; this.events.push({ type: 'reveal', unit: u, key: k }); }
+  _revealScan(n0) {
+    const ev = this.events; for (let i = n0; i < ev.length; i++) { const e = ev[i], u = e.unit; if (!u || u.side !== 'enemy') continue; const d = u.def;
+      switch (e.type) {
+        case 'chargeStart': this._reveal(u, u.charge && u.charge.leap ? 'leap' : 'charge'); break;
+        case 'callStart': this._reveal(u, 'caller'); break;
+        case 'warcry': this._reveal(u, 'warcry'); break;
+        case 'enrage': this._reveal(u, 'enrage'); break;
+        case 'regenStop': this._reveal(u, 'regen'); break;
+        case 'bossSkill': this._reveal(u, e.name === '끈끈이 덫' ? 'trap' : u.kit ? 'skill' : 'trap'); break;
+        case 'wipeStart': this._reveal(u, 'wipe'); break;
+        case 'phase': this._reveal(u, 'phase'); break;
+        case 'explode': this._reveal(u, 'bomb'); break;
+        case 'break': if (d.poiseRegen) this._reveal(u, 'poiseRegen'); break;
+        case 'attack': if ((d.hunter || d.ignoreTaunt) && e.target && e.target.role !== 'tank') this._reveal(u, 'hunter'); if (d.onHit) this._reveal(u, 'onHit'); break;
+        case 'pat': this._reveal(u, e.key); break;
+      }
+    }
+  }
+  _stepCore(dt) {
     if (this.outcome) return;
     this.time += dt;
     for (let i = this.delayed.length - 1; i >= 0; i--) {
@@ -291,6 +315,7 @@ class BattleSim {
     if (this.minions.length > 16) this.minions = this.minions.filter((u) => u.alive);
     for (const u of this.enemies) if (u.alive) { if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
     if (!intro) this._tickZones(dt);
+    if (!intro && this.env) this._envTick(dt);
     this._move(dt);
     for (const u of this.heroes.concat(this.minions, this.enemies)) {
       u.anim.lunge = Math.max(0, u.anim.lunge - dt);
@@ -521,6 +546,15 @@ class BattleSim {
       const foes = u.side === 'hero' ? this.aliveEnemies() : this.aliveAllies();
       tgt = foes.find((f) => this.dist(u, f) <= this.attackRange(u, f)) || null;
     }
+    // v0.59 패턴 대응: 반격 자세에 근접 평타를 멈추고(자동은 늦게 알아챈다), 돌가죽이면 다른 적을 친다 — 잘하는 플레이는 즉시
+    if (tgt && u.side === 'hero' && tgt.side === 'enemy' && (tgt.reflectT > 0 || tgt.hardenT > 0)) {
+      const avoidR = u.melee && tgt.reflectT > 0 && (this.smartAuto || (this.autoMode && PAT.reflect.dur - tgt.reflectT >= AUTO_REACT.reflect));
+      const avoidH = tgt.hardenT > 0 && this.smartAuto;
+      if (avoidR || avoidH) {
+        const alt = this.aliveEnemies().find((f) => f !== tgt && !(f.reflectT > 0 && u.melee) && !(f.hardenT > 0) && this.dist(u, f) <= this.attackRange(u, f));
+        if (alt) tgt = alt; else if (avoidR) { u.atkTimer = 0.15; return; }
+      }
+    }
     if (tgt) { u.atkTimer = u.atkInterval * (0.95 + this.rng() * 0.1); this._basicAttack(u, tgt); }
     else u.atkTimer = 0.15;
   }
@@ -544,6 +578,7 @@ class BattleSim {
         u.chargeCd = Math.min(u.chargeCd, 2.5);
         this.events.push({ type: 'phase', unit: u, name: ph.name, phase: u.phase + 1 });
         if (ph.summon) this._summon(ph.summon, u);
+        if (ph.patterns) for (const k of ph.patterns) if (!u.pats.includes(k)) { u.pats.push(k); u.patCd[k] = 2.5; } // 새 패턴을 드러낸다
       }
     }
     // 트롤: 화상·출혈이 없으면 빠르게 재생한다 (정답: 불·출혈로 재생을 막고 몰아친다)
@@ -553,6 +588,7 @@ class BattleSim {
     // 광전사: 멀리 있는 약한 영웅에게 도약 (예고 1초) — 정답: 기절로 끊거나 대상을 탱커 쪽으로 빼낸다
     if (d.leapEvery && !stunned && !u.charge) { u.leapCd = (u.leapCd === undefined ? 4 : u.leapCd) - dt; const t = u.target; if (u.leapCd <= 0 && t && t.alive && this.dist(u, t) > 160) { u.leapCd = d.leapEvery; u.charge = { t: 1.0, total: 1.0, cx: t.x, cy: t.y, r: 60, mult: d.leapMult || 2.2, leap: true }; this.events.push({ type: 'chargeStart', unit: u, leap: true }); } }
     if (u.kit && u.x <= this.W && this._bossKit(u, dt, stunned)) return;
+    if (u.pats && u.pats.length) this._patterns(u, dt, stunned || !!u.charge || !!u.call);
     if (u.charge) {
       if (stunned && !d.stunNoCancel) this._cancelCast(u, (u.statuses.stun || {}).src);
       else if (!stunned) { u.charge.t -= dt; if (u.charge.t <= 0) this._chargeImpact(u); }
@@ -584,6 +620,55 @@ class BattleSim {
       u.warcryCd -= dt;
       if (u.warcryCd <= 0) { u.warcryCd = d.warcryEvery; for (const e of this.aliveEnemies()) e.statuses.warcry = { t: 6, value: 0.3 }; this.events.push({ type: 'warcry', unit: u }); }
     }
+  }
+
+  // ------------------------------------------------------------ v0.59 새 패턴 (01g_patterns.js PAT)
+  _patterns(u, dt, busy) {
+    if (u.reflectT > 0) u.reflectT -= dt;
+    if (u.hardenT > 0) { u.hardenT -= dt; if (u.broken > 0) { u.hardenT = 0; this.events.push({ type: 'patFx', unit: u, name: '돌가죽이 깨졌다!' }); } }
+    for (const k of u.pats) {
+      if (k === 'aura') continue; // _heal 에서
+      if (k === 'frenzy') { // 동료가 쓰러질 때마다
+        const dead = this.enemies.filter((e) => !e.alive && e !== u).length;
+        if (u.frenzySeen === undefined) u.frenzySeen = dead;
+        if (dead > u.frenzySeen) { const n = dead - u.frenzySeen; u.frenzySeen = dead; if ((u.frenzy || 0) < PAT.frenzy.max) { u.frenzy = Math.min(PAT.frenzy.max, (u.frenzy || 0) + n); this.events.push({ type: 'pat', unit: u, key: 'frenzy', name: `피의 갈증 ×${u.frenzy}` }); } }
+        continue;
+      }
+      const S = PAT[k]; if (!S || !S.every) continue;
+      if (u.patCd[k] === undefined) u.patCd[k] = S.first * (0.8 + this.rng() * 0.4);
+      if (busy || u.x > this.W) continue;
+      u.patCd[k] -= dt; if (u.patCd[k] > 0) continue;
+      this.patLast = this.patLast || {}; if (this.time - (this.patLast[k] || -99) < 3.5) { u.patCd[k] = 1 + this.rng(); continue; } // 같은 패턴은 전장 전체에서 3.5초에 한 번 (몰아치지 않게)
+      this.patLast[k] = this.time;
+      u.patCd[k] = S.every;
+      if (k === 'reflect') u.reflectT = S.dur;
+      else if (k === 'harden') { if (u.broken > 0) { u.patCd[k] = 2; continue; } u.hardenT = S.dur; }
+      else if (k === 'acid') {
+        const hs = this.aliveHeroes(); if (!hs.length) { u.patCd[k] = 2; continue; }
+        const v = hs.slice().sort((a, b) => (a.melee ? 1 : 0) - (b.melee ? 1 : 0) || Math.abs(b.x - u.x) - Math.abs(a.x - u.x))[0];
+        this.zones.push({ kind: 'pool', x: v.x, y: v.y, r: S.r, t: S.dur, total: S.dur, dps: Math.min(this._atkOf(u) * S.dps, v.maxHp * 0.06), src: u, acc: 0, name: '산성 웅덩이', acid: true }); // 보스의 큰 공격력에도 초당 최대 HP 6%까지
+      } else if (k === 'guard') {
+        const al = this.aliveEnemies().filter((e) => e !== u && e.x <= this.W); if (!al.length) { u.patCd[k] = 3; continue; }
+        const t = al.sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+        t.statuses.shield = { t: 8, value: Math.max(t.maxHp, u.maxHp) * S.shield };
+        this.events.push({ type: 'patFx', unit: t, name: '보호막!' });
+      } else if (k === 'blink') {
+        if (u.statuses.taunted || u.statuses.taunt) { u.patCd[k] = 3; continue; }
+        const hs = this.aliveHeroes(), back = hs.filter((h) => !h.melee), pool = back.length ? back : hs; if (!pool.length) { u.patCd[k] = 3; continue; }
+        const v = pool.sort((a, b) => Math.abs(b.x - u.x) - Math.abs(a.x - u.x))[0];
+        u.x = clamp(v.x - 46, this.X0, this.X1); u.y = v.y; u.tx = u.x; u.ty = u.y; u.target = v; u.retarget = 2; u.face = 1;
+        u.charge = { t: S.tele, total: S.tele, cx: v.x, cy: v.y, r: 54, mult: S.mult, leap: true };
+      }
+      this.events.push({ type: 'pat', unit: u, key: k, name: PATTERN_INFO[k].n });
+    }
+  }
+  // 층 환경
+  _envTick(dt) {
+    const E = FLOOR_ENVS[this.env]; if (!E || !E.every) return;
+    this.envT += dt; if (this.envT < E.every) return; this.envT -= E.every;
+    const hs = this.aliveHeroes(); if (!hs.length) return;
+    if (this.env === 'miasma') { for (const h of hs) this._damage(null, h, h.maxHp * E.pct, { noCrit: true, dot: 'poison', trueDmg: true }); this.events.push({ type: 'envFx', name: '☁ 독안개' }); }
+    else if (this.env === 'embers') { const v = hs[Math.floor(this.rng() * hs.length)]; this.zones.push({ kind: 'pool', x: v.x, y: v.y, r: 64, t: 5, total: 5, dps: v.maxHp * 0.07, src: null, acc: 0, name: '불씨' }); this.events.push({ type: 'envFx', name: '🔥 불씨' }); }
   }
 
   // 가시덩굴 여왕: 꽃봉오리 2개를 유지하고, 모든 꽃봉오리가 동시에 호출을 시작한다
@@ -680,6 +765,8 @@ class BattleSim {
     if (u.statuses.inspire) m += u.statuses.inspire.value;
     if (u.side === 'enemy') {
       if (u.enrageStacks) m += u.enrageStacks * CONST.UNBLOCKED_ENRAGE_STACK;
+      if (u.frenzy) m += u.frenzy * PAT.frenzy.step; // 피의 갈증
+      if (this.env === 'bloodmoon') m += FLOOR_ENVS.bloodmoon.atk;
       if (CONST.BREAK_V2 && u.def.softEnrage && this.time > u.def.softEnrage) m += CONST.SOFT_ENRAGE_STEP * Math.floor((this.time - u.def.softEnrage) / 10 + 1);
       else if (!u.def.softEnrage && this.time > CONST.STALL_ENRAGE) m += CONST.SOFT_ENRAGE_STEP * 2 * Math.floor((this.time - CONST.STALL_ENRAGE) / 10 + 1); // 일반 전투가 너무 길어지면 적이 지치지 않고 광폭 (교착 방지)
     }
@@ -733,8 +820,13 @@ class BattleSim {
     if (tgt.broken > 0) dmg *= 1 + CONST.BREAK_BONUS + ((src && src.mods && src.mods.vsbroken) || 0); // 그로기
     if (src && src.mods && src.mods.nonbroken && tgt.poiseMax && !(tgt.broken > 0)) dmg *= 1 + src.mods.nonbroken; // 달빛 맹세 단점
     if (src && src.statuses && src.statuses.weaken) dmg *= 1 - src.statuses.weaken.value;
-    if (src && !src.melee && src.side === 'hero' && tgt.def.frontRangedDmg && (src.x - tgt.x) * tgt.face > 0) dmg *= tgt.def.frontRangedDmg; // 사슴왕 안개: 정면 원거리 피해 감소
-    if (src && src.side === 'hero' && tgt.def.frontGuard && !info.dot && (src.x - tgt.x) * tgt.face > 0) dmg *= 1 - tgt.def.frontGuard; // 방패: 정면 피해 감소
+    if (src && !src.melee && src.side === 'hero' && tgt.def.frontRangedDmg && (src.x - tgt.x) * tgt.face > 0) { dmg *= tgt.def.frontRangedDmg; this._reveal(tgt, 'frontRanged'); } // 사슴왕 안개: 정면 원거리 피해 감소
+    if (src && src.side === 'hero' && tgt.def.frontGuard && !info.dot && (src.x - tgt.x) * tgt.face > 0) { dmg *= 1 - tgt.def.frontGuard; this._reveal(tgt, 'frontGuard'); } // 방패: 정면 피해 감소
+    if (tgt.hardenT > 0 && src && src.side !== 'enemy') dmg *= 1 - PAT.harden.cut; // 돌가죽
+    if (tgt.reflectT > 0 && src && src.side === 'hero' && src.alive && info.basic && src.melee && !info.reflect) { // 반격 자세: 근접 평타를 되돌려 준다
+      const back = dmg * PAT.reflect.back; this.delayed.push({ t: 0.05, fn: () => { if (src.alive && tgt.alive) { this._damage(tgt, src, back, { noCrit: true, reflect: true }); this.events.push({ type: 'reflectHit', unit: tgt, target: src }); } } });
+      dmg *= 1 - PAT.reflect.block;
+    }
     if (tgt.statuses.vuln) dmg *= 1.25;
     if (tgt.statuses.guard) dmg *= 1 - tgt.statuses.guard.value;
     if (tgt.side === 'hero' && tgt.role === 'tank' && this.relics.has('bark')) dmg *= 0.85;
@@ -864,6 +956,11 @@ class BattleSim {
     if (tgt.statuses.burn) a *= 0.5;
     if (tgt.statuses.poison) a *= 0.7;
     if (tgt.statuses.curse) a *= 0.5;
+    if (tgt.side === 'hero') {
+      if (this.env === 'blessed') a *= 1 + FLOOR_ENVS.blessed.heal;
+      const au = this.enemies.find((e) => e.alive && e.pats && e.pats.includes('aura') && this.dist(e, tgt) <= PAT.aura.r); // 저주 오라
+      if (au) { a *= 1 - PAT.aura.cut; this._reveal(au, 'aura'); }
+    }
     a = Math.round(Math.min(a, tgt.maxHp - tgt.hp));
     if (a <= 0) return 0;
     tgt.hp += a;
@@ -1057,7 +1154,7 @@ class BattleSim {
         if (h.melee && !sk.ranged) { // 근접 스킬은 대상에게 순간 돌진 (behind: 등 뒤로 — 후방 끊기)
           const side = sk.behind ? -(tgt.face || -1) : h.x <= tgt.x ? -1 : 1;
           const r = this.attackRange(h, tgt) * 0.7;
-          if (this.dist(h, tgt) > r + 10) { h.x = tgt.x + side * r; h.y = tgt.y; this.events.push({ type: 'dash', unit: h }); }
+          if (this.dist(h, tgt) > r + 10) { h.x = clamp(tgt.x + side * r, this.X0, this.X1); h.y = tgt.y; this.events.push({ type: 'dash', unit: h }); }
           h.anim.lunge = 0.25; h.anim.lungeX = (tgt.x - h.x) * 0.5; h.anim.lungeY = 0;
         }
         if (sk.pull && !tgt.def.abilities.includes('boss') && tgt.size <= 1.3) { tgt.x = clamp(h.x + h.face * 70, this.X0, this.X1); tgt.y = h.y; tgt.tx = tgt.x; tgt.ty = tgt.y; this.events.push({ type: 'dash', unit: tgt }); this.events.push({ type: 'pull', unit: tgt, by: h }); } // 사슬 끌어오기

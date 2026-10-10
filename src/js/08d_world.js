@@ -27,6 +27,7 @@ function openDungeonGate(siteKey, scene) {
   P.site = siteKey;
   box.appendChild(el('div', 'modal-title', `${S.name}에 들어갈까요?`));
   box.appendChild(el('div', 'site-desc', S.desc));
+  box.appendChild(gateIntel(siteKey, reopen)); // v0.59 보스 정보 · 정찰
   box.appendChild(FieldScene.tierPicker.call(scene, reopen));
   box.appendChild(FieldScene.oathPicker.call(scene, reopen));
   box.appendChild(el('div', 'portal-party', partyIds(run).map((id) => `<span>${HEROES[id].name}<small>${HEROES[id].roleName}</small></span>`).join('')));
@@ -37,6 +38,33 @@ function openDungeonGate(siteKey, scene) {
   row.appendChild(btn('입장 ▶', 'primary', () => { Game.closeModal(); Sfx.play('door'); run.tier = P.tier; run.site = siteKey; run.world = null; run.oaths = (P.oaths || []).slice(); oathApplyStart(run); refreshRunLoadout(run); enterDungeon(run); }, { id: 'portal-yes' }));
   box.appendChild(row);
   Game.modal(box, { dim: true, closeOnBg: true });
+}
+
+// 던전 입구의 보스 정보 (v0.59): 아는 만큼만 보인다 — 도감에서 파악한 패턴 · 📜 정찰 두루마리로 하나 더
+function siteBosses(siteKey) { const out = []; for (const enc of (DUNGEON_SITES[siteKey].enc.boss || {})[5] || []) for (const w of enc) for (const id of w) if (ENEMIES[id] && ENEMIES[id].abilities.includes('boss') && !out.includes(id)) out.push(id); return out; }
+function gateIntel(siteKey, reopen) {
+  const P = Game.profile, wrap = el('div', 'gate-intel');
+  const bosses = siteBosses(siteKey);
+  wrap.appendChild(el('div', 'gi-head', `<b>👁 보스 정보</b> <small>도감에서 파악한 만큼 보인다 · 이 중 하나가 기다린다</small>`));
+  const row = el('div', 'gi-row');
+  for (const id of bosses) {
+    const pl = enemyPatterns(id), pats = codexPats(P, id), c = el('div', 'gi-boss' + (codexKnown(P, id) ? '' : ' unknown'));
+    const pc = portraitCanvas(ENEMIES[id].sprite, 40); if (!codexKnown(P, id)) pc.style.filter = 'brightness(0) opacity(.6)'; c.appendChild(pc);
+    c.appendChild(el('div', 'gi-txt', `<b>${enemyLabel(P, id)}</b><small>패턴 ${pl.filter((x) => pats[x.k]).length}/${pl.length}</small><div class="gi-pats">${pl.map((x) => pats[x.k] ? `<span class="on" title="${x.c}">${x.n}</span>` : '<span>?</span>').join('')}</div>`));
+    row.appendChild(c);
+  }
+  wrap.appendChild(row);
+  const n = P.scouts || 0, left = bosses.some((id) => !codexComplete(P, id));
+  const b = btn(`📜 정찰 <small>${n}장</small>`, 'small' + (n && left ? ' primary' : ''), () => {
+    if (!n) { Game.toast('정찰 두루마리가 없어요 — 마을 잡화점(던전 도구)에서 산다', 1600); return; }
+    const cand = bosses.filter((id) => !codexComplete(P, id)); if (!cand.length) { Game.toast('보스의 패턴을 이미 모두 알고 있다', 1400); return; }
+    const id = cand[Math.floor(Math.random() * cand.length)], r = codexScout(P, id);
+    P.scouts = n - 1; saveProfile(); Sfx.play('coin');
+    Game.toast(`📜 정찰: ${enemyLabel(P, id)} — <b>${r.info.n}</b><br><small>${r.info.c}</small>`, 3200); reopen();
+  }, { id: 'gate-scout' });
+  if (!left) b.disabled = true;
+  wrap.appendChild(b);
+  return wrap;
 }
 
 // 마을 포탈: 걸어서 출발 + 등록한 웨이포인트로 순간 이동
@@ -268,7 +296,7 @@ const WorldScene = {
       ctx.fillStyle = near ? '#ffd34a' : 'rgba(255,255,255,0.88)'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)';
       ctx.strokeText(it.label, it.x, ly + bob); ctx.fillText(it.label, it.x, ly + bob);
     }
-    for (const k of this.packs) { ctx.fillStyle = '#ff8a7a'; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 12px sans-serif'; const n = k.waves[0].map((id) => ENEMIES[id].name); const lbl = n[0] + (n.length > 1 ? ` 외 ${n.length - 1}` : ''); ctx.strokeText(lbl, k.x, k.y - 72); ctx.fillText(lbl, k.x, k.y - 72); }
+    for (const k of this.packs) { ctx.fillStyle = '#ff8a7a'; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.font = 'bold 12px sans-serif'; const n = k.waves[0].map((id) => enemyLabel(Game.profile, id)); const lbl = n[0] + (n.length > 1 ? ` 외 ${n.length - 1}` : ''); ctx.strokeText(lbl, k.x, k.y - 72); ctx.fillText(lbl, k.x, k.y - 72); }
     if (this.tapMark) { const k = this.tapMark.t / 0.6; ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(this.tapMark.x, this.tapMark.y, 10 + k * 14, 5 + k * 7, 0, 0, Math.PI * 2); ctx.stroke(); }
     ctx.restore();
     if (Z.tint) { ctx.fillStyle = Z.tint; ctx.fillRect(0, 0, 960, 540); }
