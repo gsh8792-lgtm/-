@@ -740,7 +740,7 @@ const _imgCache = {};
 
 function getSprite(name) {
   const d = ART[name], sh = spriteSheetFor(name);
-  return { w: (d.box[2] - d.box[0]) * UNIT_TO_PX * 0.7, h: d.top * UNIT_TO_PX * (sh ? (sh.hMul || 1.18) * 0.92 : 1) }; // 3D 시트는 키가 더 크다 (머리 위 표시 위치)
+  return { w: (d.box[2] - d.box[0]) * UNIT_TO_PX * 0.7, h: d.top * UNIT_TO_PX * (sh ? (sh.barMul || sh.hMul || 1.18) * 0.92 : 1) }; // 3D 시트는 키가 더 크다 (머리 위 표시 위치)
 }
 
 function renderLayer(name, layer, variant, k) {
@@ -802,7 +802,7 @@ function drawSprite(ctx, name, x, y, opt) {
     const img = sheetImage(sheet);
     if (img.complete && img.naturalWidth) {
       const an = sheet.anims[opt.anim] || sheet.anims.idle;
-      const f = !an.loop && opt.animK !== undefined ? clamp(Math.floor(opt.animK * an.n), 0, an.n - 1) : Math.floor((t + ph * 0.37) * an.fps) % an.n; // 한 번짜리 동작은 진행도(animK)로
+      const f = opt.frame !== undefined && opt.anim === 'attack' && an === sheet.anims.attack ? clamp(opt.frame, 0, an.n - 1) : !an.loop && opt.animK !== undefined ? clamp(Math.floor(opt.animK * an.n), 0, an.n - 1) : Math.floor((t + ph * 0.37) * an.fps) % an.n; // 한 번짜리 동작은 진행도(animK)로
       const h = d.top * k * (sheet.hMul || 1.18), w = sheet.fw / sheet.fh * h;
       ctx.scale(1 / sx, 1 / sy); // 숨쉬기 변형은 동작 프레임이 대신한다 (찌그러짐만 유지)
       if (opt.squash) ctx.scale(1, opt.squash);
@@ -853,7 +853,7 @@ function drawPortrait(canvas, name, opts) {
       if (opts && opts.dead) c.filter = 'grayscale(1) brightness(0.55)';
       if (opts && opts.flip) { c.translate(canvas.width, 0); c.scale(-1, 1); }
       const P = sheet.portrait || { x: 0.53 - 0.25, y: 0, w: 0.5, h: 0.25 }, sw = sheet.fw * P.w, sh = sheet.fh * P.h, s = Math.min(canvas.width / sw, canvas.height / sh);
-      c.drawImage(img, sheet.fw * P.x, sheet.fh * P.y, sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s);
+      c.drawImage(img, sheet.fw * P.x, sheet.fh * ((P.row || 0) + P.y), sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s);
       c.restore();
     };
     if (img.complete && img.naturalWidth) draw(); else img.addEventListener('load', draw, { once: true });

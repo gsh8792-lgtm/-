@@ -978,6 +978,15 @@ const BattleScene = {
     const walk = u.moving ? Math.abs(Math.sin(t * 12 + u.uid)) * 3 : 0;
     const so = { scale: sc, flip: u.face < 0, t: t * (u.statuses.stun ? 0.2 : 1), phase: u.uid, blinking, squash, anim: u.casting || (u.anim.cast > 0 && u.anim.castMax > 0.2) ? 'cast' : u.anim.lunge > 0 || u.anim.cast > 0 ? 'attack' : u.anim.hurt > 0.05 ? 'hurt' : u.moving ? 'walk' : 'idle',
       animK: u.casting ? 1 - u.casting.t / u.casting.total : u.anim.cast > 0 ? 1 - u.anim.cast / (u.anim.castMax || 0.3) : u.anim.lunge > 0 ? 1 - u.anim.lunge / 0.22 : u.anim.hurt > 0.05 ? 1 - u.anim.hurt / 0.18 : 0 };
+    const atA = (spriteSheetFor(u.sprite) || { anims: {} }).anims.attack;
+    if (atA && atA.segs) { // 연격 시트: 평타마다 다음 베기를 끝까지 보여 준다 (돌진 0.22초보다 길게)
+      this.atkSeg = this.atkSeg || {}; const st = this.atkSeg[u.uid] || (this.atkSeg[u.uid] = { i: -1, t0: -99, lunge: 0 });
+      if (u.anim.lunge > st.lunge + 0.01) { st.i = (st.i + 1) % atA.segs.length; st.t0 = t; }
+      st.lunge = u.anim.lunge;
+      if (u.moving && u.anim.lunge <= 0) st.t0 = -99;
+      const sg = atA.segs[Math.max(0, st.i)], dt = t - st.t0;
+      if (so.anim !== 'cast' && dt < (sg[1] - sg[0]) / atA.fps) { so.anim = 'attack'; so.frame = sg[0] + Math.floor(dt * atA.fps); }
+    }
     if (tint === 'white') { // 피격/차지 섬광: 원래 그림 위에 반투명 흰색
       drawSprite(ctx, u.sprite, x, y - walk, so);
       drawSprite(ctx, u.sprite, x, y - walk, Object.assign({}, so, { tint: 'white', alpha: u.charge ? 0.7 : 0.5 }));

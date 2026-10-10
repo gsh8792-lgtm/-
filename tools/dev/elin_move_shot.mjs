@@ -10,4 +10,5 @@ await p.waitForTimeout(600); await p.screenshot({ path: 'test-output/elin_field.
 await p.evaluate(() => { const G = window.GAME.Game; G.go('battle', { node: { stage: 2, row: 0, type: 'battle', waves: [['orc', 'goblin']] } }); });
 await p.waitForTimeout(900); await p.screenshot({ path: 'test-output/elin_run.png' });
 await p.waitForTimeout(2600); await p.screenshot({ path: 'test-output/elin_fight.png' });
+for (let i = 0; i < 6; i++) { await p.waitForTimeout(170); await p.screenshot({ path: `test-output/elin_fight_${i}.png`, clip: { x: 200, y: 200, width: 700, height: 420 } }); }
 console.log(errs); await b.close();

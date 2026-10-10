@@ -1,0 +1,177 @@
+{
+ "version": "knight_v18_final",
+ "frame_order": "row-major, left-to-right then top-to-bottom, 0-based frame index",
+ "facing": "right (flip X for left; mirror the anchor: x' = frame_w - anchor.x)",
+ "pixels_per_world_unit": 34.83,
+ "anchor_note": "anchor = feet/ground contact point, identical pixel in every frame of every clip (fixed camera, same scale)",
+ "clips": {
+  "idle": {
+   "file": "idle.png",
+   "frame_w": 436,
+   "frame_h": 428,
+   "frame_count": 96,
+   "columns": 12,
+   "rows": 8,
+   "fps": 24,
+   "loop": true,
+   "anchor_px": {
+    "x": 158,
+    "y": 365
+   },
+   "anchor_norm": {
+    "x": 0.3624,
+    "y": 0.8528
+   },
+   "label_ko": "대기",
+   "note": "combat guard idle; 48-frame breathing cycle x2, seamless loop"
+  },
+  "run": {
+   "file": "run.png",
+   "frame_w": 436,
+   "frame_h": 428,
+   "frame_count": 24,
+   "columns": 8,
+   "rows": 3,
+   "fps": 24,
+   "loop": true,
+   "anchor_px": {
+    "x": 158,
+    "y": 365
+   },
+   "anchor_norm": {
+    "x": 0.3624,
+    "y": 0.8528
+   },
+   "label_ko": "달리기",
+   "note": "run in place; move the object",
+   "move_speed_px_per_sec": 196,
+   "move_speed_px_per_frame": 8.2
+  },
+  "attack": {
+   "file": "attack.png",
+   "frame_w": 436,
+   "frame_h": 428,
+   "frame_count": 40,
+   "columns": 8,
+   "rows": 5,
+   "fps": 24,
+   "loop": false,
+   "anchor_px": {
+    "x": 158,
+    "y": 365
+   },
+   "anchor_norm": {
+    "x": 0.3624,
+    "y": 0.8528
+   },
+   "label_ko": "공격",
+   "note": "3-hit combo, starts from clean guard pose, ends in guard pose",
+   "hit_frames": [
+    7,
+    15,
+    27
+   ],
+   "active_windows": [
+    [
+     6,
+     8
+    ],
+    [
+     15,
+     16
+    ],
+    [
+     26,
+     28
+    ]
+   ],
+   "cancel_ok_from": 30
+  },
+  "skill": {
+   "file": "skill.png",
+   "frame_w": 436,
+   "frame_h": 428,
+   "frame_count": 97,
+   "columns": 10,
+   "rows": 10,
+   "fps": 24,
+   "loop": false,
+   "anchor_px": {
+    "x": 158,
+    "y": 365
+   },
+   "anchor_norm": {
+    "x": 0.3624,
+    "y": 0.8528
+   },
+   "label_ko": "스킬",
+   "note": "jump slash; frames 0-47 skill, 48-96 return to guard (included)",
+   "active_windows": [
+    [
+     22,
+     25
+    ]
+   ],
+   "hit_frames": [
+    25
+   ],
+   "impact_frame": 25,
+   "airborne_frames": [
+    8,
+    24
+   ],
+   "return_to_guard_from": 48
+  }
+ },
+ "transitions": [
+  {
+   "from": "idle",
+   "to": "run",
+   "when": "move input",
+   "at": "any frame",
+   "blend_frames": 0,
+   "note": "start run at frame 0"
+  },
+  {
+   "from": "run",
+   "to": "idle",
+   "when": "no move input",
+   "at": "any frame (best at run frame 0 or 12, both feet near ground)"
+  },
+  {
+   "from": "idle",
+   "to": "attack",
+   "at": "any frame"
+  },
+  {
+   "from": "run",
+   "to": "attack",
+   "at": "any frame; stop movement"
+  },
+  {
+   "from": "attack",
+   "to": "idle",
+   "at": "last frame (39) -> idle frame 0"
+  },
+  {
+   "from": "attack",
+   "to": "skill",
+   "at": "frame >= 30 (optional cancel)"
+  },
+  {
+   "from": "idle",
+   "to": "skill",
+   "at": "any frame"
+  },
+  {
+   "from": "run",
+   "to": "skill",
+   "at": "any frame; stop movement"
+  },
+  {
+   "from": "skill",
+   "to": "idle",
+   "at": "last frame (96) -> idle frame 0 (seamless)"
+  }
+ ]
+}
