@@ -77,7 +77,7 @@ const DungeonScene = {
     this.refreshAuto();
     this.refreshWalkBox();
   },
-  refreshAuto() { if (this.autoBtn) this.autoBtn.innerHTML = Game.run.autoMode ? '자동' : '수동'; this.autoBtn.classList.toggle('on', !!Game.run.autoMode); },
+  refreshAuto() { if (this.autoBtn) this.autoBtn.innerHTML = Game.run.autoMode ? '자동' : '수동'; this.autoBtn.classList.toggle('on', !!Game.run.autoMode); if (this.walkBox) this.refreshWalkBox(); }, // 복도에서 수동으로 바꾸면 ▶ 버튼이 바로 보이게
   refreshWalkBox() { const inCorr = Game.run.dungeon.at.corr !== undefined; this.walkBox.classList.toggle('hidden', !inCorr || Game.run.autoMode); },
   refreshRes() { const old = Game.ui.querySelector('.ex-top .res-bar'); if (old) old.replaceWith(resourceBar(Game.run)); },
 
@@ -414,7 +414,7 @@ const DungeonScene = {
     const walking = this.moving && !Game.modalOpen;
     for (const p of list.slice().sort((a, b) => a.y - b.y)) {
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
-      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft, anim: walking ? 'walk' : 'idle', phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
+      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + heroPhase(p.id))) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft, anim: walking ? 'walk' : 'idle', phase: heroPhase(p.id), blinking: ((t + heroPhase(p.id) * 0.5) % 3.4) < 0.12 });
     }
   },
 };

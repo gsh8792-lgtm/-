@@ -427,13 +427,13 @@ const FieldScene = {
 
   drawWalker(ctx, heroId, w, t, isLeader) {
     const sprite = HEROES[heroId].sprite;
-    const bob = w.moving ? Math.abs(Math.sin(t * 12 + w.x * 0.01)) * 3 : 0;
+    const ph = heroPhase(heroId), bob = w.moving ? Math.abs(Math.sin(t * 12 + ph)) * 3 : 0;
     this.shadow(ctx, w.x, w.y, 16);
     if (isLeader) {
       ctx.strokeStyle = '#7dff8a'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.ellipse(w.x, w.y + 2, 22 + Math.sin(t * 5) * 1.5, 9, 0, 0, Math.PI * 2); ctx.stroke();
     }
-    drawSprite(ctx, sprite, w.x, w.y - bob, { scale: 2, t, flip: w.flip, anim: w.moving ? 'walk' : 'idle', phase: w.x * 0.01, blinking: ((t + w.x * 0.003) % 3.4) < 0.12, squash: w.moving ? 1 + Math.sin(t * 24) * 0.03 : 1 });
+    drawSprite(ctx, sprite, w.x, w.y - bob, { scale: 2, t, flip: w.flip, anim: w.moving ? 'walk' : 'idle', phase: ph, blinking: ((t + ph * 0.5) % 3.4) < 0.12, squash: w.moving ? 1 + Math.sin(t * 24) * 0.03 : 1 });
   },
   // 대장간: 모루 + 화로 + 대장장이 (임시로 길잡이 스프라이트 사용)
   drawSmith(ctx, x, y, t, L) {

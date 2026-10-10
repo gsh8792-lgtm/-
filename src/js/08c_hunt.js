@@ -258,8 +258,8 @@ const HuntScene = {
     FieldScene.shadow(ctx, h.x, h.y, 16);
     if (!h.alive) { ctx.globalAlpha = 0.35; }
     const anim = !h.alive ? 'down' : h.anim > 0.3 ? 'cast' : h.anim > 0 ? 'attack' : h.moving ? 'walk' : 'idle';
-    const bob = h.moving && h.alive ? Math.abs(Math.sin(t * 12 + h.x * 0.01)) * 3 : 0;
-    drawSprite(ctx, sp, h.x, h.y - bob, { scale: 2, t, flip: h.face < 0, phase: h.x * 0.01, anim, animK: !h.alive ? 1 : h.anim > 0 ? 1 - h.anim / 0.45 : 0, blinking: ((t + h.x * 0.003) % 3.4) < 0.12 });
+    const bob = h.moving && h.alive ? Math.abs(Math.sin(t * 12 + heroPhase(h.id))) * 3 : 0;
+    drawSprite(ctx, sp, h.x, h.y - bob, { scale: 2, t, flip: h.face < 0, phase: heroPhase(h.id), anim, animK: !h.alive ? 1 : h.anim > 0 ? 1 - h.anim / 0.45 : 0, blinking: ((t + heroPhase(h.id) * 0.5) % 3.4) < 0.12 });
     ctx.globalAlpha = 1;
   },
   drawMob(ctx, m, t) {

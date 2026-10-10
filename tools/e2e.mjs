@@ -187,6 +187,7 @@ async function playRun(p, seed, opts) {
   await p.waitForSelector('#hint-ok', { timeout: 15000 }).catch(() => {});
   ok('전투: 큰 적 등장 → 그로기 도움말', (await p.evaluate(() => document.querySelector('.hint-text')?.textContent || '')).includes('그로기'));
   await dismissHints(p);
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints.charge = G.settings.seenHints.crush = true; }); // 예고 공격·짓누름 첫 도움말이 명령 테스트 도중에 뜨면 끌기를 가린다 (타이밍에 따라)
   await p.click('#btn-speed'); ok('전투: 배속 2x', (await p.textContent('#btn-speed')).includes('2x'));
   await p.click('#btn-speed'); ok('전투: 배속 3x', (await p.textContent('#btn-speed')).includes('3x')); await p.click('#btn-speed');
   await p.click('#btn-manual'); ok('전투: 수동', await p.evaluate(() => !window.GAME.Game.run.autoMode && !window.GAME.Game.scene.sim.autoMode));
@@ -235,9 +236,9 @@ async function playRun(p, seed, opts) {
   await p.click('#btn-bpotion'); await p.click('#face-bori');
   ok('전투: 회복약 → 얼굴 탭으로 사용', (await p.evaluate(() => window.GAME.Game.run.potions)) === pots0 - 1 && (await p.evaluate(() => window.GAME.Game.scene.sim.heroes.find((u) => u.key === 'bori').hp > 30)));
   // 차지 → ② 방패 강타 "지금!" 탭 → 캔슬
-  await p.waitForFunction(() => window.GAME.Game.scene.sim && window.GAME.Game.scene.sim.enemies.some((e) => e.alive && e.charge), null, { timeout: 30000 });
+  await p.waitForFunction(() => { const s = window.GAME.Game.scene.sim; const o = s && s.enemies.find((e) => e.key === 'ogre'); return o && o.alive && o.charge && o.charge.t > 1; }, null, { timeout: 45000, polling: 30 }); // 오우거의 차지 (남은 시간 1초 이상) — 다른 적의 차지·끝나 가는 차지는 기다리지 않는다
+  await p.evaluate(() => { const s = window.GAME.Game.scene.sim, o = s.enemies.find((e) => e.key === 'ogre'); o.charge.t = Math.max(o.charge.t, 2.5); s.heroes.find((h) => h.key === 'tobi').cds.s2 = 0; });
   await dismissHints(p);
-  await p.evaluate(() => { window.GAME.Game.scene.sim.heroes.find((h) => h.key === 'tobi').cds.s2 = 0; });
   await p.waitForTimeout(120);
   ok('전투: 차지 중 ② 방패 강타에 "지금!" 표시', (await p.textContent('#sk-tobi-s2 .sk-tag')).includes('지금'));
   await p.screenshot({ path: `${OUT}/battle_charge.png` });

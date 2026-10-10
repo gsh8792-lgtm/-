@@ -845,6 +845,8 @@ function layerCanvas(name, layer, variant, k) {
   return SpriteCache[key];
 }
 
+// 영웅마다 고정된 애니메이션 위상 — 위치(x)에 묶으면 왼쪽으로 달릴 때 동작이 느려져 미끄러져 보인다 (v0.58)
+function heroPhase(id) { let h = 7; for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 9973; return (h % 600) / 100; }
 // opt: { scale, flip, t, phase, blinking, tint:'white'|'red'|'dark', tintAlpha, squash, alpha }
 function drawSprite(ctx, name, x, y, opt) {
   const d = ART[name];
