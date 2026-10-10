@@ -20,7 +20,7 @@ const FieldScene = {
     const run = Game.run;
     this.t = 0;
     const st = params && params.from === 'hunt' ? { x: FIELD.huntExit.x + 90, y: FIELD.huntExit.y - 70 } : params && params.from === 'world' ? { x: FIELD.portal.x - 80, y: FIELD.portal.y + 90 } : FIELD.start;
-    if (params && params.from === 'world') { for (const id of Object.keys(run.heroes)) { const h = run.heroes[id]; h.dead = false; h.hp = h.maxHp; } run.world = null; Game.toast('🏠 마을로 돌아왔다 — 파티 회복', 1600); } // 필드에서 돌아오면 쉰다
+    if (params && params.from === 'world') { for (const id of Object.keys(run.heroes)) { const h = run.heroes[id]; h.dead = false; h.hp = h.maxHp; } run.world = null; Game.note('🏠 마을로 돌아왔다 — 파티 회복'); } // 필드에서 돌아오면 쉰다
     this.leader = { x: st.x, y: st.y, flip: false, moving: false };
     this.trail = [];
     for (let i = 0; i < 200; i++) this.trail.push({ x: this.leader.x - i * 1.5, y: this.leader.y + i * 0.5 });
@@ -93,12 +93,12 @@ const FieldScene = {
     this.pendingInteract = null;
     const run = Game.run;
     if (it.key === 'chest') {
-      if (run.gotSupply) { Game.toast('상자가 비어 있어요'); return; }
+      if (run.gotSupply) { Game.note('상자가 비어 있어요'); return; }
       run.gotSupply = true;
       run.food += CONST.SUPPLY_BOX_FOOD;
       run.potions += 1;
       Sfx.play('coin');
-      Game.toast(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD} · 회복약 +1`, 2200);
+      Game.note(`보급 상자: 식량 +${CONST.SUPPLY_BOX_FOOD} · 회복약 +1`);
       this.refreshRes();
     } else if (it.key === 'smith') {
       openBlacksmith(() => this.refreshRes());

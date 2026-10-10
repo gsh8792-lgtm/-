@@ -8,6 +8,7 @@
 //   해당 PNG(발 중앙 하단 기준)를 그린다. (언리얼 이식 시 Paper2D/텍스처로 대응)
 
 const SPRITE_IMAGE_OVERRIDES = {};
+const ART_IMG_META = {}; // 일러스트 정보 (02c_art.js · tools/art/import_art.py): { w, h, face: { x, y, w, h } }
 const UNIT_TO_PX = 0.36; // 기존 scale 인자(3 = 전투)와 호환: 높이 100단위 × 0.36 × 3 ≈ 108px
 
 // ---------------------------------------------------------------- 색 유틸
@@ -884,7 +885,25 @@ function drawSprite(ctx, name, x, y, opt) {
   if (ovr) {
     let img = _imgCache[ovr];
     if (!img) { img = _imgCache[ovr] = new Image(); img.src = ovr; }
-    if (img.complete && img.naturalWidth) { const h = d.top * k * 1.1, w = img.naturalWidth / img.naturalHeight * h; ctx.drawImage(img, -w / 2, -h, w, h); ctx.restore(); return; }
+    if (img.complete && img.naturalWidth) {
+      const meta = ART_IMG_META[name], h = d.top * k * (meta ? 1.2 : 1.1), w = img.naturalWidth / img.naturalHeight * h;
+      if (meta) { // 일러스트(정지 그림)로 동작 흉내: 숨쉬기 · 걸음 흔들림 · 공격 앞으로 기울기 · 시전 늘이기 · 피격 젖힘 · 쓰러짐
+        ctx.scale(1 / sx, 1 / sy);
+        const an = opt.anim || 'idle', K = clamp(opt.animK || 0, 0, 1), q = Math.sin(K * Math.PI);
+        let rot = 0, dx = 0, scX = 1, scY = 1;
+        if (an === 'walk') { rot = Math.sin(t * 12 + ph) * 0.055; scY = 1 + Math.abs(Math.sin(t * 12 + ph)) * 0.02; }
+        else if (an === 'attack') { rot = q * 0.2; dx = q * w * 0.12; scX = 1 + q * 0.04; }
+        else if (an === 'cast') { scY = 1 + q * 0.07; scX = 1 - q * 0.03; rot = -q * 0.05; }
+        else if (an === 'hurt') rot = -0.14 * (1 - K);
+        else if (an === 'down') rot = -1.45 * (opt.animK === undefined ? 1 : K);
+        else { scY = 1 + Math.sin(t * 2.4 + ph) * 0.014; scX = 1 - Math.sin(t * 2.4 + ph) * 0.006; }
+        if (opt.squash) ctx.scale(1, opt.squash);
+        const tintF = opt.tint === 'white' ? 'brightness(2.4) saturate(0)' : opt.tint === 'dark' ? 'brightness(0)' : opt.tint === 'red' && opt.tintAlpha ? `sepia(1) saturate(4) hue-rotate(-30deg) opacity(${1 - opt.tintAlpha * 0.5})` : '';
+        if (tintF) ctx.filter = tintF;
+        ctx.translate(dx, 0); ctx.rotate(rot); ctx.scale(scX, scY);
+      }
+      ctx.drawImage(img, -w / 2, -h, w, h); ctx.restore(); return;
+    }
   }
   const ox = d.box[0] * k, oy = d.box[1] * k;
   const headDy = Math.sin(t * 2.6 + ph - 0.6) * 0.7 * k;
@@ -922,6 +941,19 @@ function drawPortrait(canvas, name, opts) {
       const P = sheet.portrait || { x: 0.53 - 0.25, y: 0, w: 0.5, h: 0.25 }, sw = sheet.fw * P.w, sh = sheet.fh * P.h, s = Math.min(canvas.width / sw, canvas.height / sh);
       c.drawImage(img, sheet.fw * P.x, sheet.fh * ((P.row || 0) + P.y), sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s);
       c.restore();
+    };
+    if (img.complete && img.naturalWidth) draw(); else img.addEventListener('load', draw, { once: true });
+    return;
+  }
+  const meta = ART_IMG_META[name], ovr = SPRITE_IMAGE_OVERRIDES[name];
+  if (meta && ovr) { // 일러스트: 얼굴 칸 (face 비율)
+    let img = _imgCache[ovr]; if (!img) { img = _imgCache[ovr] = new Image(); img.src = ovr; }
+    const draw = () => {
+      const F = meta.face, W = img.naturalWidth, H = img.naturalHeight, sw = W * F.w, sh = H * F.h, s = Math.min(canvas.width / sw, canvas.height / sh);
+      c.clearRect(0, 0, canvas.width, canvas.height); c.save();
+      if (opts && opts.dead) c.filter = 'grayscale(1) brightness(0.55)';
+      if (opts && opts.flip) { c.translate(canvas.width, 0); c.scale(-1, 1); }
+      c.drawImage(img, W * F.x, H * F.y, sw, sh, (canvas.width - sw * s) / 2, (canvas.height - sh * s) / 2, sw * s, sh * s); c.restore();
     };
     if (img.complete && img.naturalWidth) draw(); else img.addEventListener('load', draw, { once: true });
     return;

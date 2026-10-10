@@ -103,3 +103,9 @@
 .soul-legend .lg.notable { width: 13px; height: 13px; box-shadow: 0 0 0 2px #c8a860; }
 .soul-legend .lg.key { width: 14px; height: 14px; box-shadow: 0 0 0 2px #8a7a5a, 0 0 0 4px #1a1020; }
 .soul-legend .lg.on { background: #ffd86a; }
+
+/* ---------- 작은 알림 (v0.60): 왼쪽 위 한 줄씩, 화면을 가리지 않는다 */
+#notes { position: absolute; left: 10px; top: 108px; display: flex; flex-direction: column; gap: 3px; z-index: 19; pointer-events: none; max-width: 420px; }
+.note { font-size: 12px; font-weight: 700; color: #f6ecd6; background: rgba(10,6,16,.66); border-left: 3px solid #e8c060; border-radius: 4px; padding: 3px 8px; text-shadow: 0 1px 0 #000; animation: noteIn .15s ease-out; transition: opacity .5s; }
+.note.out { opacity: 0; }
+@keyframes noteIn { from { transform: translateX(-8px); opacity: 0; } to { transform: none; opacity: 1; } }

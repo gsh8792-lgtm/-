@@ -14,6 +14,7 @@ class BattleSim {
     this.waves = opts.waves.map((w) => w.slice());
     this.partyScale = PARTY_ENEMY_SCALE[clamp(opts.partySize || opts.heroes.length, 1, 3)] || 1;
     this.tier = opts.tier || { hp: 1, atk: 1 }; // 난이도 단계 배율 (보스 포함 모든 적)
+    this.bossScale = opts.bossScale || null; // 던전 보스만 추가 배율 (v0.60: 고블린 굴을 뺀 던전의 보스는 치명적)
     // 전장 폭 (탐험 중 조우 전투는 화면 2배). 좌표는 전장 기준(0 ~ W)
     this.W = opts.fieldW || 960;
     this.X0 = CONST.FIELD_X0; this.X1 = this.W - (960 - CONST.FIELD_X1);
@@ -95,7 +96,8 @@ class BattleSim {
   _makeEnemy(id, x, y) {
     const def = ENEMIES[id];
     const sc = def.fixedScale ? 1 : this.scale;
-    const hpMul = (def.fixedScale ? 1 : CONST.ENEMY_HP_MULT) * this.partyScale * this.tier.hp, atkMul = (def.fixedScale ? 1 : CONST.ENEMY_ATK_MULT) * this.tier.atk;
+    const bs = this.bossScale && def.abilities.includes('boss') ? this.bossScale : { hp: 1, atk: 1 };
+    const hpMul = (def.fixedScale ? 1 : CONST.ENEMY_HP_MULT) * this.partyScale * this.tier.hp * bs.hp, atkMul = (def.fixedScale ? 1 : CONST.ENEMY_ATK_MULT) * this.tier.atk * bs.atk;
     return {
       uid: this.uidSeq++, side: 'enemy', key: id, def, name: def.name, sprite: def.sprite,
       hp: Math.round(def.hp * sc * hpMul), maxHp: Math.round(def.hp * sc * hpMul), atk: def.atk * sc * atkMul, atkInterval: def.atkInterval / (this.env === 'frost' ? FLOOR_ENVS.frost.aspd : 1),

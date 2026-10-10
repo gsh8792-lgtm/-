@@ -132,7 +132,6 @@ const WorldScene = {
     ui.appendChild(this.actBtn);
     this.refreshRes();
     if (!waypointOn(Game.profile, Z.key) && at === 'waypoint') this.registerWp();
-    Game.toast(`🗺 ${Z.name} — ${DUNGEON_SITES[Z.site].name}이(가) 동쪽에 있다`, 1800);
   },
   shadow(ctx, x, y, r) { FieldScene.shadow(ctx, x, y, r); },
   rebuildParty() {
@@ -182,10 +181,10 @@ const WorldScene = {
   postAction(i) {
     const pt = this.posts[i], st = this.postStatus(i), run = Game.run, Z = this.Z, inc = TERRITORY.income[this.zi];
     if (st === 'ours') {
-      if (this.healed[i]) { Game.toast(`🚩 우리 ${pt.name} — 지키는 병사들이 손을 흔든다`, 1400); return; }
+      if (this.healed[i]) { Game.note(`🚩 우리 ${pt.name}`); return; }
       this.healed[i] = true;
       for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, h.hp + h.maxHp * TERRITORY.postHeal); }
-      Sfx.play('heal'); Game.toast(`🚩 우리 ${pt.name}에서 쉬었다 — 파티 HP +${Math.round(TERRITORY.postHeal * 100)}%`, 1800); this.refreshRes(); return;
+      Sfx.play('heal'); Game.note(`🚩 우리 ${pt.name}에서 쉬었다 — 파티 HP +${Math.round(TERRITORY.postHeal * 100)}%`); this.refreshRes(); return;
     }
     const box = el('div', 'confirm-box post-box');
     box.appendChild(el('div', 'modal-title', st === 'contested' ? `🔥 ${pt.name} 탈환` : `⚔ 적 ${pt.name} 공략`));

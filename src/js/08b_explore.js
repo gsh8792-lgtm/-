@@ -23,7 +23,7 @@ function dungeonBattleWon(run, ref) {
   const fl = run.dungeon; if (!fl) return;
   if (ref.room !== undefined) {
     const r = fl.rooms[ref.room]; r.cleared = true;
-    if (r.type === 'key') { fl.have++; Game.toast(`열쇠를 얻었다! (${fl.have}/${BOSS_GIMMICKS.key.need})`, 2000); }
+    if (r.type === 'key') { fl.have++; Game.note(`🗝 열쇠 ${fl.have}/${BOSS_GIMMICKS.key.need}`); }
   } else if (ref.corr !== undefined) {
     const c = fl.corridors[ref.corr], it = c.items.find((x) => x.id === ref.item);
     if (it) it.done = true;
@@ -56,7 +56,7 @@ const DungeonScene = {
     const side = el('div', 'map-actions ex-actions');
     this.speedBtn = btn(`배속 ${Game.settings.speed || 1}x`, 'small', () => { Game.settings.speed = (Game.settings.speed || 1) >= 3 ? 1 : (Game.settings.speed || 1) + 1; Game.saveSettings(); this.speedBtn.innerHTML = `배속 ${Game.settings.speed}x`; }, { id: 'btn-ex-speed' });
     side.appendChild(this.speedBtn);
-    this.autoBtn = btn('', 'small', () => { run.autoMode = !run.autoMode; this.refreshAuto(); Game.toast(run.autoMode ? '자동: 복도를 알아서 걷고 전투도 전략대로 해요' : '수동: ▶을 누르고 있거나 바닥을 탭해서 걸어요', 1400); }, { id: 'btn-ex-auto' });
+    this.autoBtn = btn('', 'small', () => { run.autoMode = !run.autoMode; this.refreshAuto(); Game.note(run.autoMode ? '자동: 복도를 알아서 걷고 전투도 전략대로 해요' : '수동: ▶을 누르고 있거나 바닥을 탭해서 걸어요', 1400); }, { id: 'btn-ex-auto' });
     side.appendChild(this.autoBtn);
     side.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(run), { id: 'btn-strategy' }));
     side.appendChild(btn('🧪', 'small', () => usePotionFlow(run, () => this.buildHud()), { id: 'btn-potion' }));
@@ -155,14 +155,14 @@ const DungeonScene = {
     const next = fl.floor + 1;
     run.dungeon = genFloor(run.seed, next);
     run.dungeon.env = rollFloorEnv(run.site || 'cave', next, makeRng(hashSeed(run.seed, 'env', next)));
-    if (run.dungeon.env) setTimeout(() => Game.toast(`${FLOOR_ENVS[run.dungeon.env].i} ${next}층 환경: <b>${FLOOR_ENVS[run.dungeon.env].n}</b><br><small>${FLOOR_ENVS[run.dungeon.env].d}</small>`, 3000), 400);
+    if (run.dungeon.env) setTimeout(() => Game.note(`${FLOOR_ENVS[run.dungeon.env].i} ${next}층: ${FLOOR_ENVS[run.dungeon.env].n} — ${FLOOR_ENVS[run.dungeon.env].d}`, 3200), 400);
     run.pos = { stage: next, row: 0 };
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + 10);
     for (const id of partyIds(run)) { const h = run.heroes[id]; if (!h.dead) h.hp = Math.min(h.maxHp, Math.round(h.hp + h.maxHp * DUNGEON.STAIRS_HEAL)); }
     Sfx.play('door');
     Game.go('dungeon');
     if (next === DUNGEON.BOSS_FLOOR) setTimeout(() => Game.toast(BOSS_GIMMICKS[run.dungeon.gimmick].text, 3600), 300);
-    else Game.toast(DUNGEON.STAIRS_HEAL ? `${next}층 — 계단에서 숨을 돌렸다 (HP +${DUNGEON.STAIRS_HEAL * 100}%)` : `${next}층`, 1400);
+    else Game.note(DUNGEON.STAIRS_HEAL ? `${next}층 — 계단에서 숨을 돌렸다 (HP +${DUNGEON.STAIRS_HEAL * 100}%)` : `${next}층`, 1400);
   },
   startRoomFight(r) {
     const run = Game.run, fl = run.dungeon;
@@ -352,7 +352,7 @@ const DungeonScene = {
     run.torch = Math.min(CONST.TORCH_MAX, run.torch + CONST.TORCH_REST_GAIN);
     CAMP_ACTS.guard.fn(run); CAMP_ACTS.tales.fn(run); // 자동 야영 활동: 보초 + 옛 이야기
     Sfx.play('heal');
-    Game.toast(`야영: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN} · 보초·옛 이야기`, 1800);
+    Game.note(`야영: 식량 1개로 HP ${CONST.REST_HEAL_PCT * 100}% 회복 · 횃불 +${CONST.TORCH_REST_GAIN} · 보초·옛 이야기`, 1800);
     this.buildHud(); this.showRoomActions(r);
   },
 
@@ -362,16 +362,16 @@ const DungeonScene = {
     // 지도 탭: 이웃 방으로 출발 (방 안에서, 전투가 끝난 뒤)
     const r = this.mapHit(p);
     if (r) {
-      if (fl.at.room === undefined) { Game.toast('복도를 다 지난 뒤에 고를 수 있어요', 1200); return; }
+      if (fl.at.room === undefined) { Game.note('복도를 다 지난 뒤에 고를 수 있어요'); return; }
       const here = fl.rooms[fl.at.room];
       if (here.fight && !here.cleared) return;
       if (r.id === here.id) return;
-      if (!floorNeighbors(fl, here.id).some((n) => n.room.id === r.id)) { Game.toast('이웃한 방으로만 갈 수 있어요', 1100); Sfx.play('back'); return; }
+      if (!floorNeighbors(fl, here.id).some((n) => n.room.id === r.id)) { Game.note('이웃한 방으로만 갈 수 있어요'); Sfx.play('back'); return; }
       this.goTo(r);
       return;
     }
     // 복도에서 바닥 탭 = 그 지점까지 걷기 (수동)
-    if (fl.at.corr !== undefined && !run.autoMode && p.y > 250) this.walkTarget = clamp(p.x + this.camX, -40, this.corridor().len);
+    if (fl.at.corr !== undefined && !run.autoMode && p.y > 250) this.walkTarget = clamp((p.x - 480) / DUNGEON_ZOOM + 480 + this.camX, -40, this.corridor().len);
   },
   mapHit(p) {
     const fl = Game.run.dungeon, B = MAP_BOX;
@@ -390,9 +390,11 @@ const DungeonScene = {
     if (!fl) return;
     const c = this.corridor();
     const cam = Math.round(this.camX);
-    drawCorridor(ctx, cam + (c ? c.id * 3000 : 50000 + fl.at.room * 3000), t, fl.floor);
+    ctx.save(); zoomTf(ctx, DUNGEON_ZOOM); // 시야 1.2배
+    drawCorridor(ctx, cam + (c ? c.id * 3000 : 50000 + fl.at.room * 3000), t, fl.floor, zoomExt(DUNGEON_ZOOM));
+    ctx.restore();
     siteTint(ctx);
-    ctx.save(); ctx.translate(-cam, 0);
+    ctx.save(); zoomTf(ctx, DUNGEON_ZOOM); ctx.translate(-cam, 0);
     if (c) {
       drawExitDoor(ctx, -60, t); drawExitDoor(ctx, c.len + 30, t);
       for (const p of corridorTrack(c, fl.at.from)) if (!p.it.done) drawPoi(ctx, p.it, p.x, t, fl);
@@ -407,7 +409,8 @@ const DungeonScene = {
     ctx.globalAlpha = 1;
     ctx.restore();
     const dark = run.torch <= 0 ? 0.55 : run.torch < 30 ? 0.3 : 0.1;
-    const g = ctx.createRadialGradient(EXPLORE.CAM_LEAD + 120, 330, 120, EXPLORE.CAM_LEAD + 120, 330, 620);
+    const vx = 480 + (EXPLORE.CAM_LEAD + 120 - 480) * DUNGEON_ZOOM;
+    const g = ctx.createRadialGradient(vx, 330, 140, vx, 330, 700);
     g.addColorStop(0, 'rgba(8,6,14,0)'); g.addColorStop(1, `rgba(8,6,14,${dark + 0.35})`);
     ctx.fillStyle = g; ctx.fillRect(0, 0, 960, 540);
     drawDungeonMap(ctx, fl, t);
@@ -539,29 +542,33 @@ function drawPoi(ctx, it, x, t, fl) {
 
 // ---------------------------------------------------------------- 배경 (탐험·조우 전투 공용)
 // 숲속 굴 복도: 먼 벽(느린 시차) · 기둥과 나무뿌리 · 횃불 · 바닥. camX는 탐험 세계 좌표
-function drawCorridor(ctx, camX, t, theme) {
-  const W = 960, top = CONST.FIELD_Y0 - 30;
+// 던전 시야 (v0.60): 월드를 1/1.2 로 줄여 그린다 — 화면 아래(바닥)를 기준으로, 좌우·위가 더 보인다
+const DUNGEON_ZOOM = 1 / 1.2, ZOOM_AY = 540;
+function zoomTf(ctx, z) { ctx.translate(480, ZOOM_AY); ctx.scale(z, z); ctx.translate(-480, -ZOOM_AY); }
+const zoomExt = (z) => ({ x0: Math.floor(480 - 480 / z) - 2, x1: Math.ceil(480 + 480 / z) + 2, y0: Math.floor(ZOOM_AY - ZOOM_AY / z) - 2 });
+function drawCorridor(ctx, camX, t, theme, ext) {
+  const X0 = ext ? ext.x0 : 0, W = ext ? ext.x1 : 960, Y0 = ext ? ext.y0 : 0, top = CONST.FIELD_Y0 - 30;
   const tint = ['#231c33', '#231c33', '#1f2430', '#22202c', '#261c2a', '#2a1a22'][theme || 0] || '#231c33';
-  ctx.fillStyle = tint; ctx.fillRect(0, 0, W, 540);
+  ctx.fillStyle = tint; ctx.fillRect(X0, Y0, W - X0, 540 - Y0);
   // 먼 돌벽
   const o1 = -camX * 0.3;
-  for (let row = 0; row < 9; row++) {
-    const y = 40 + row * 34, off = (row % 2) * 44;
-    const start = Math.floor((-o1 - off) / 88) * 88 + off + o1 - 88;
+  for (let row = Y0 < 0 ? -Math.ceil(-Y0 / 34) : 0; row < 9; row++) {
+    const y = 40 + row * 34, off = (((row % 2) + 2) % 2) * 44;
+    const start = Math.floor((X0 - o1 - off) / 88) * 88 + off + o1 - 88;
     for (let x = start; x < W + 88; x += 88) { ctx.fillStyle = row % 3 === 0 ? '#2e2642' : '#2b2340'; ctx.fillRect(Math.round(x), y, 84, 30); ctx.fillStyle = 'rgba(255,255,255,0.03)'; ctx.fillRect(Math.round(x), y, 84, 3); }
   }
   // 나무뿌리 (중간 시차)
   const o2 = -camX * 0.55;
-  for (let k = Math.floor((-o2 - 200) / 340); k < Math.floor((-o2 + W + 200) / 340) + 1; k++) {
+  for (let k = Math.floor((X0 - o2 - 200) / 340); k < Math.floor((-o2 + W + 200) / 340) + 1; k++) {
     const x = k * 340 + o2 + ((k * 97) % 120);
     ctx.strokeStyle = '#3a2a22'; ctx.lineWidth = 10 + (k % 3) * 4;
-    ctx.beginPath(); ctx.moveTo(x, -10); ctx.bezierCurveTo(x + 30, 80, x - 20, 160, x + 10 + (k % 2) * 30, 270); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, Y0 - 10); ctx.bezierCurveTo(x + 30, 80, x - 20, 160, x + 10 + (k % 2) * 30, 270); ctx.stroke();
     ctx.strokeStyle = 'rgba(120,160,90,0.25)'; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(x + 4, 20); ctx.bezierCurveTo(x + 26, 90, x - 14, 150, x + 12, 240); ctx.stroke();
   }
   // 기둥 + 횃불 (가까운 시차)
   const o3 = -camX * 0.8;
-  for (let k = Math.floor((-o3 - 300) / 600); k < Math.floor((-o3 + W + 300) / 600) + 1; k++) {
+  for (let k = Math.floor((X0 - o3 - 300) / 600); k < Math.floor((-o3 + W + 300) / 600) + 1; k++) {
     const px = k * 600 + o3 + 200;
     ctx.fillStyle = '#3a3152'; ctx.fillRect(px - 16, 70, 32, 220); ctx.fillStyle = '#463c62'; ctx.fillRect(px - 16, 70, 8, 220);
     ctx.fillStyle = '#4c4268'; ctx.fillRect(px - 22, 62, 44, 12); ctx.fillRect(px - 22, 282, 44, 14);
@@ -577,12 +584,12 @@ function drawCorridor(ctx, camX, t, theme) {
   // 바닥
   const g2 = ctx.createLinearGradient(0, top, 0, 540);
   g2.addColorStop(0, '#3b3150'); g2.addColorStop(1, '#221b30');
-  ctx.fillStyle = g2; ctx.fillRect(0, top, W, 540 - top);
+  ctx.fillStyle = g2; ctx.fillRect(X0, top, W - X0, 540 - top);
   ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2;
   const o4 = -camX;
-  for (let k = Math.floor((-o4 - 400) / 80); k < Math.floor((-o4 + W + 400) / 80); k++) { const x = k * 80 + o4; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo((x - 480) * 1.35 + 480, 540); ctx.stroke(); }
-  for (const y of [top + 30, top + 75, top + 130, top + 200]) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
-  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(0, top, W, 3);
+  for (let k = Math.floor((X0 - o4 - 400) / 80); k < Math.floor((-o4 + W + 400) / 80); k++) { const x = k * 80 + o4; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo((x - 480) * 1.35 + 480, 540); ctx.stroke(); }
+  for (const y of [top + 30, top + 75, top + 130, top + 200]) { ctx.beginPath(); ctx.moveTo(X0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fillRect(X0, top, W - X0, 3);
 }
 
 function drawExitDoor(ctx, x, t) {

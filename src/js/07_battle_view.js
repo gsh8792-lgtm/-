@@ -26,11 +26,10 @@ const BattleScene = {
       torchDark: run.torch <= 0,
       tier: (() => { const f = run.dungeon ? 1 + DUNGEON.FLOOR_SCALE * (run.dungeon.floor - 1) : 1, o = run.dungeon ? oathScale(run) : { hp: 1, atk: 1 }, sc = run.dungeon ? siteOf(run).scale : node.worldScale || { hp: 1, atk: 1 }; return { hp: ti.hp * f * o.hp * sc.hp, atk: ti.atk * f * o.atk * sc.atk }; })(), // 필드 지역 전투는 지역 배율
       fieldW: ex ? ex.fieldW : undefined, heroPos: ex ? ex.heroPos : undefined, enemySpawnX: ex ? ex.enemySpawnX : undefined,
-      env: (run.dungeon && run.dungeon.env) || node.env || null,
+      env: (run.dungeon && run.dungeon.env) || node.env || null, bossScale: run.dungeon ? siteOf(run).boss || null : null,
       eliteAffix: node.affix || null, named: node.named || null, surprise: (!!(ex && ex.surprise) || !!run.ambushNext) && !(run.camp && run.camp.guard),
     });
     run.ambushNext = false; // 우상의 저주는 한 번
-    if (this.sim.env && !node.small) { const E = FLOOR_ENVS[this.sim.env]; setTimeout(() => Game.toast(`${E.i} ${E.n} — ${E.d}`, 2200), 300); }
     if (run.camp) { // 야영 활동 효과 (다음 전투 한 번)
       for (const h of this.sim.heroes) { if (run.camp.ult) h.ult = Math.min(100, h.ult + run.camp.ult); if (run.camp.guard) h.statuses.shield = { t: 20, value: h.maxHp * 0.12 }; }
       run.camp = null;
@@ -64,15 +63,19 @@ const BattleScene = {
   exit() { this.drag = null; this.cmdDrag = null; this.cmdPress = null; this.tacPause = false; if (this.onKey) window.removeEventListener('keydown', this.onKey); },
 
   // ------------------------------------------------------------ 카메라 (전장이 화면보다 넓을 때)
+  // 던전 안 전투는 시야 1.2배 (탐험 화면과 같은 줌 · v0.60)
+  get zoom() { return this.explore ? DUNGEON_ZOOM : 1; },
   camTarget() {
-    const sim = this.sim;
+    const sim = this.sim, half = 480 / this.zoom;
+    if (this.zoom !== 1) { if (sim.W <= half * 2) return sim.W / 2 - 480; }
     if (sim.W <= 960) return 0;
     const hs = sim.aliveHeroes(), es = sim.aliveEnemies().filter((e) => e.x < sim.W);
     const avg = (l) => l.reduce((a, u) => a + u.x, 0) / l.length;
     const hc = hs.length ? avg(hs) : sim.W / 2, ec = es.length ? avg(es) : hc;
-    return clamp((hs.length ? hc * 0.6 + ec * 0.4 : ec) - 480, 0, sim.W - 960);
+    return clamp((hs.length ? hc * 0.6 + ec * 0.4 : ec) - 480, half - 480, sim.W - half - 480);
   },
-  toWorld(p) { return p ? { x: p.x + this.camX, y: p.y } : p; },
+  toWorld(p) { const z = this.zoom; return p ? { x: (p.x - 480) / z + 480 + this.camX, y: (p.y - ZOOM_AY) / z + ZOOM_AY } : p; },
+  toScreenX(x) { return 480 + (x - this.camX - 480) * this.zoom; },
 
   // ------------------------------------------------------------ HUD 구성 (DOM)
   buildHud() {
@@ -81,7 +84,7 @@ const BattleScene = {
     const top = el('div', 'b-top');
     this.stageLabel = el('div', 'b-stage', '');
     top.appendChild(this.stageLabel);
-    this.pauseBtn = btn('<span class="pz">❚❚</span> 일시정지', 'b-pause', () => this.openPause(), { id: 'btn-pause', sfx: 'pause' });
+    this.pauseBtn = btn('<span class="pz">❚❚</span>', 'b-pause b-icon', () => this.openPause(), { id: 'btn-pause', sfx: 'pause' });
     top.appendChild(this.pauseBtn);
     // 전술 정지: 시간을 멈춘 채 스킬·이동·대상 명령을 내린다 (던전 세틀러즈·발더스 게이트처럼)
     this.tacBtn = btn('⏸ 전술 정지', 'b-pause b-tac', () => this.toggleTac(), { id: 'btn-tac', sfx: 'pause' });
@@ -165,7 +168,7 @@ const BattleScene = {
     this.sim.autoMode = on;
     this.autoBtn.classList.toggle('on', on);
     this.manualBtn.classList.toggle('on', !on);
-    if (!silent) Game.toast(on ? '자동: 전략대로 스킬을 써요' : '수동: 스킬을 직접 써요', 1000);
+    if (!silent) Game.note(on ? '자동: 전략대로 스킬을 써요' : '수동: 스킬을 직접 써요');
   },
 
   toggleTac(on) {
@@ -263,9 +266,9 @@ const BattleScene = {
 
   explainCant(h, slot) {
     Sfx.play('back');
-    if (h.statuses.stun) Game.toast(`${h.name} 기절 중`, 900);
-    else if (slot === 'ult') Game.toast(`필살기 게이지 ${Math.floor(h.ult)}%`, 900);
-    else Game.toast(`쿨타임 ${h.cds[slot].toFixed(1)}초`, 900);
+    if (h.statuses.stun) Game.note(`${h.name} 기절 중`);
+    else if (slot === 'ult') Game.note(`필살기 게이지 ${Math.floor(h.ult)}%`);
+    else Game.note(`쿨타임 ${h.cds[slot].toFixed(1)}초`);
   },
 
   tapSkill(h, slot) {
@@ -312,10 +315,10 @@ const BattleScene = {
     Game.ui.classList.remove('dragging');
     d.b.classList.remove('drag');
     this.tmsg.classList.add('hidden');
-    if (!d.over) { Sfx.play('back'); Game.toast('취소', 600); return; }
+    if (!d.over) { Sfx.play('back'); return; }
     const t = d.sk.target;
     let spec;
-    if (t === 'enemy' || t === 'ally') { if (!d.unit) { Sfx.play('back'); Game.toast('대상이 없어요', 900); return; } spec = { unit: d.unit }; }
+    if (t === 'enemy' || t === 'ally') { if (!d.unit) { Sfx.play('back'); Game.note('대상이 없어요'); return; } spec = { unit: d.unit }; }
     else if (t === 'area_enemy' || t === 'area_ally') spec = { x: d.fx, y: d.fy };
     else spec = this.sim.resolveTarget(d.h, d.slot) || {};
     if (this.sim.cast(d.h, d.slot, spec)) { Sfx.play('skill'); this.slowmo = CONST.CONFIRM_SLOWMO_SEC; }
@@ -326,7 +329,7 @@ const BattleScene = {
   startPotion(kind) {
     if (this.sim.outcome) return;
     this.potionKind = kind === 'big' ? 'big' : 'normal';
-    if (this.potionKind === 'big' ? !(this.run.bigPotions > 0) : this.run.potions <= 0) { Game.toast('물약이 없어요', 900); return; }
+    if (this.potionKind === 'big' ? !(this.run.bigPotions > 0) : this.run.potions <= 0) { Game.note('물약이 없어요'); return; }
     this.potionPick = true;
     this.tmsg.innerHTML = this.potionKind === 'big' ? '상급 회복약을 누구에게 쓸까요? (HP 100% + 해로운 효과 해제)' : '회복약을 누구에게 쓸까요?';
     this.tmsg.classList.remove('hidden');
@@ -463,7 +466,7 @@ const BattleScene = {
       if (fresh.length) { // 공략은 알려 주지 않는다 — 싸우며 패턴을 파악한다
         saveProfile();
         const n = new Set(fresh.map((e) => e.key)).size;
-        Game.toast(`❓ 미지의 적 ${n}종 등장! (+● ${fresh.reduce((a, e) => a + codexReward(e.key), 0)})<br><small>싸우며 패턴을 파악하자 — 파악한 패턴은 도감에 기록된다</small>`, 3000);
+        Game.note(`❓ 미지의 적 ${n}종 (+● ${fresh.reduce((a, e) => a + codexReward(e.key), 0)})`);
       }
     }
     if (this.breakHintPending && !Game.modalOpen && this.sim.enemies.some((e) => e.alive && e.poiseMax && e.x < this.sim.W)) { this.breakHintPending = false; Game.hint('break'); }
@@ -693,7 +696,7 @@ const BattleScene = {
         const g = Math.round((6 + this.node.stage * 3 + Math.floor(Math.random() * 6)) * (run.dungeon && run.dungeon.env === 'bloodmoon' ? 1 + FLOOR_ENVS.bloodmoon.gold : 1)); run.gold += g;
         const L = run.lastLoot; run.lastLoot = null;
         const lv = L && L.exp ? L.exp.filter((r) => r.to > r.from).map((r) => `${HEROES[r.id].name} Lv ${r.to}!`) : [];
-        Game.toast(`골드 +${g}` + (L && L.exp && L.exp[0] ? ` · 경험치 +${L.exp[0].exp}` : '') + (lv.length ? ' · ' + lv.join(' ') : ''), 1600);
+        Game.note(`골드 +${g}` + (L && L.exp && L.exp[0] ? ` · 경험치 +${L.exp[0].exp}` : '') + (lv.length ? ' · ' + lv.join(' ') : ''));
         backToRun();
       }
       else if (this.node.fromEvent) { Game.go('reward', { node: this.node, goldOnly: true }); }
@@ -710,7 +713,7 @@ const BattleScene = {
   // ------------------------------------------------------------ HUD 갱신
   updateHud() {
     const sim = this.sim;
-    this.stageLabel.textContent = `${this.run.dungeon ? `${this.run.dungeon.floor}층` : `방 ${this.node.stage}`} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
+    this.stageLabel.textContent = `${sim.env ? FLOOR_ENVS[sim.env].i + ' ' + FLOOR_ENVS[sim.env].n + ' · ' : ''}${this.run.dungeon ? `${this.run.dungeon.floor}층` : `방 ${this.node.stage}`} · 웨이브 ${sim.waveIndex + 1}/${sim.waves.length}`;
     this.potionBtn.innerHTML = `🧪 ${this.run.potions}`;
     this.potionBtn.disabled = this.run.potions <= 0;
     this.bigBtn.innerHTML = `💖 ${this.run.bigPotions || 0}`; this.bigBtn.classList.toggle('hidden', !(this.run.bigPotions > 0));
@@ -809,11 +812,11 @@ const BattleScene = {
     const t = this.t;
     ctx.save();
     if (this.shake > 0) ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
-    if (this.explore) drawCorridor(ctx, this.explore.worldX + this.camX, t, this.explore.theme);
+    if (this.explore) { ctx.save(); zoomTf(ctx, this.zoom); drawCorridor(ctx, this.explore.worldX + this.camX, t, this.explore.theme, zoomExt(this.zoom)); ctx.restore(); }
     else this.drawBackground(ctx, Math.sin(t * 0.3) * 6, t);
     if (this.explore) siteTint(ctx); // 광산: 흙빛 색조
     const cam = Math.round(this.camX);
-    ctx.translate(-cam, 0);
+    zoomTf(ctx, this.zoom); ctx.translate(-cam, 0);
     // 보스 장판: 터질 곳(붉게, 차오름) · 독 웅덩이(초록) · 피난처(밝은 청록, 전멸기)
     for (const z of sim.zones) {
       const ry = z.r / CONST.Y_WEIGHT;
@@ -894,7 +897,7 @@ const BattleScene = {
       const bp = Input.toLogical({ clientX: br.left + br.width / 2, clientY: br.top });
       ctx.strokeStyle = d.over ? 'rgba(156,240,168,0.95)' : 'rgba(255,255,255,0.5)'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.setLineDash([2, 10]);
       ctx.beginPath(); ctx.moveTo(bp.x, bp.y); ctx.quadraticCurveTo((bp.x + d.x) / 2, Math.min(bp.y, d.y) - 60, d.x, d.y); ctx.stroke(); ctx.setLineDash([]);
-      if (d.unit) { ctx.save(); ctx.translate(-cam, 0); this.drawTargetArc(ctx, d.h, d.unit, t); ctx.restore(); }
+      if (d.unit) { ctx.save(); zoomTf(ctx, this.zoom); ctx.translate(-cam, 0); this.drawTargetArc(ctx, d.h, d.unit, t); ctx.restore(); }
     }
     const cd = this.cmdDrag;
     if (cd) {
@@ -944,7 +947,7 @@ const BattleScene = {
   drawOffscreen(ctx, cam, t) {
     for (const u of this.sim.heroes.concat(this.sim.enemies)) {
       if (!u.alive || u.x > this.sim.W) continue;
-      const sx = u.x - cam;
+      const sx = this.toScreenX(u.x);
       if (sx > 10 && sx < 950) continue;
       const left = sx <= 10, x = left ? 14 : 946, y = u.y - 40;
       const hot = u.charge || u.call;
@@ -999,8 +1002,8 @@ const BattleScene = {
   onReveal(e) {
     const P = Game.profile, r = codexReveal(P, e.unit.key, e.key);
     if (!r) return;
-    this.popup(e.unit.x, this.unitTop(e.unit) - 40, `🔍 ${r.info.n} 파악`, '#9cf0ff', 17, { label: true });
-    Game.toast(`🔍 ${e.unit.unknown ? '???' : e.unit.def.name} — <b>${r.info.n}</b> 파악 (+● ${r.gold})<br><small>${r.info.c}</small>` + (r.complete ? `<br><b>📖 ${e.unit.unknown ? '이 적' : e.unit.def.name}의 패턴을 모두 파악했다 — 도감에 공략이 열렸다</b>` : ''), 3200);
+    this.popup(e.unit.x, this.unitTop(e.unit) - 40, '🔍', '#9cf0ff', 20, { label: true }); // 이름은 작은 알림에만
+    Game.note(`🔍 ${r.info.n} 파악 (+● ${r.gold})` + (r.complete ? ' · 📖 공략 공개' : ''), 2600); // 자세한 공략은 도감에
     saveProfile();
   },
   // 층 환경 「어둠」: 영웅 주변만 밝다
@@ -1008,7 +1011,7 @@ const BattleScene = {
     if (!this.darkCv) { this.darkCv = document.createElement('canvas'); this.darkCv.width = 960; this.darkCv.height = 540; }
     const c = this.darkCv.getContext('2d'); c.globalCompositeOperation = 'source-over'; c.clearRect(0, 0, 960, 540); c.fillStyle = 'rgba(4,4,12,0.72)'; c.fillRect(0, 0, 960, 540);
     c.globalCompositeOperation = 'destination-out';
-    for (const h of this.sim.heroes.concat(this.sim.minions || [])) if (h.alive) { const x = h.x - cam, y = h.y - 40, R = h.minion ? 90 : 190 + Math.sin(t * 3 + h.uid) * 6; const g = c.createRadialGradient(x, y, 20, x, y, R); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - R, y - R, R * 2, R * 2); }
+    for (const h of this.sim.heroes.concat(this.sim.minions || [])) if (h.alive) { const x = this.toScreenX(h.x), y = ZOOM_AY + (h.y - 40 - ZOOM_AY) * this.zoom, R = h.minion ? 90 : 190 + Math.sin(t * 3 + h.uid) * 6; const g = c.createRadialGradient(x, y, 20, x, y, R); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(x - R, y - R, R * 2, R * 2); }
     ctx.drawImage(this.darkCv, 0, 0);
   },
   drawUnit(ctx, u, t, highlight) {

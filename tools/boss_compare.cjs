@@ -25,7 +25,7 @@ for (const waves of POOL) {
     for (let s = 0; s < N; s++) {
       const party = PARTIES[s % PARTIES.length];
       const heroes = party.map((id) => { const lo = EQ.heroLoadout(p, id); return { id, hp: Math.round(lo.maxHp * 0.85), maxHp: lo.maxHp, mods: lo.mods, skills: lo.skills, skillRank: lo.skillRank, upgrades: {}, ultDef: null, pet: GACHA.petFor(p, id) }; });
-      const sim = new BattleSim({ seed: 500 + s, stage: 5, waves, heroes, strategy: st, autoMode: true, smartAuto: smart, partySize: 3, tier: { hp: f * MS.hp, atk: f * MS.atk } });
+      const sim = new BattleSim({ seed: 500 + s, stage: 5, waves, heroes, strategy: st, autoMode: true, smartAuto: smart, partySize: 3, tier: { hp: f * MS.hp, atk: f * MS.atk }, bossScale: SITE ? SITE.boss || null : null });
       let guard = 0; while (!sim.outcome && guard++ < 60 * 400) sim.step(1 / 60);
       if (sim.outcome === 'win') win++; t += sim.time; dead += sim.heroes.filter((h) => !h.alive).length;
       if (process.env.VERBOSE) console.log('   ', party.join('+'), sim.outcome, Math.round(sim.time) + 's', 'boss', Math.round(sim.enemies[0].hp / sim.enemies[0].maxHp * 100) + '%', sim.heroes.map((h) => h.key + ':' + Math.round(h.hp)).join(' '));

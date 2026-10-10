@@ -1,0 +1,10 @@
+{
+  "_설명": "시트의 왼쪽부터 1~5번 그림이 어느 영웅인지. 비워 두면(null) 쓰지 않는다. face = 초상화 얼굴 중심 [가로 비율, 세로 비율]",
+  "sheets": {
+    "knight.png":  { "1": "leon", "2": "tobi", "3": null, "4": "gor", "5": null },
+    "warrior.png": { "1": "danbi", "2": null, "3": "kai", "4": "bran", "5": "hwa" },
+    "mage.png":    { "1": "soldam", "2": "seori", "3": "eun", "4": "nox", "5": null },
+    "hexer.png":   { "1": "daon", "2": null, "3": "risha", "4": null, "5": "kali" }
+  },
+  "face": {}
+}

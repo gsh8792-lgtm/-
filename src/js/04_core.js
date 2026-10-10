@@ -92,11 +92,26 @@ const Game = {
     document.body.dataset.scene = name;
   },
 
+  // 큰 알림: 한 번에 최대 2개 · 같은 문구는 새로 띄우지 않는다 (v0.60 메시지 최소화)
   toast(msg, ms) {
-    const t = el('div', 'toast', msg);
-    document.getElementById('toasts').appendChild(t);
-    setTimeout(() => t.classList.add('out'), ms || 1800);
-    setTimeout(() => t.remove(), (ms || 1800) + 400);
+    const box = document.getElementById('toasts');
+    for (const o of box.children) if (o.dataset.msg === msg && !o.classList.contains('out')) return;
+    while (box.children.length >= 2) box.firstChild.remove();
+    const t = el('div', 'toast', msg); t.dataset.msg = msg;
+    box.appendChild(t);
+    const d = Math.min(ms || 1800, 2600);
+    setTimeout(() => t.classList.add('out'), d);
+    setTimeout(() => t.remove(), d + 400);
+  },
+  // 작은 알림 (왼쪽 아래 한 줄 · 최대 3줄 · 화면을 가리지 않는다)
+  note(msg, ms) {
+    let box = document.getElementById('notes');
+    if (!box) { box = el('div', ''); box.id = 'notes'; document.getElementById('stage').appendChild(box); }
+    for (const o of box.children) if (o.dataset.msg === msg) o.remove();
+    while (box.children.length >= 3) box.firstChild.remove();
+    const t = el('div', 'note', msg); t.dataset.msg = msg; box.appendChild(t);
+    setTimeout(() => t.classList.add('out'), ms || 2200);
+    setTimeout(() => t.remove(), (ms || 2200) + 500);
   },
 
   // 첫 플레이 튜토리얼 힌트 (한 번만)

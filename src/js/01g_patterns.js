@@ -53,8 +53,8 @@ const ENEMY_PATTERNS = {
   fiend_imp: ['frenzy'], hellhound: ['blink'], felguard: ['reflect', 'harden'], temptress: ['aura', 'blink'], demon_caller: ['guard'], doom_lord: ['reflect', 'aura'],
 };
 const BOSS_PHASE_PATTERNS = { // 보스: 몇 번째 페이즈(1부터)에 어떤 패턴을 새로 드러내나
-  ogre_chief: { 1: ['reflect'], 2: ['harden'] }, thorn_queen: { 0: ['acid'] }, mist_stag: { 1: ['harden'] }, swamp_turtle: { 0: ['harden'] },
-  shadow_king: { 1: ['blink'] }, stone_golem: { 1: ['harden'] }, lich_king: { 0: ['aura'], 1: ['guard'] }, pit_lord: { 0: ['aura'], 1: ['reflect'] },
+  ogre_chief: { 1: ['reflect'], 2: ['harden'] }, thorn_queen: { 0: ['acid'] }, swamp_turtle: { 0: ['harden'] },
+  shadow_king: { 1: ['blink'] }, stone_golem: { 1: ['harden'] }, lich_king: { 0: ['aura'], 1: ['guard'] }, pit_lord: { 1: ['aura', 'reflect'] },
 };
 (function attachPatterns() {
   for (const k in ENEMY_PATTERNS) if (ENEMIES[k]) ENEMIES[k].patterns = ENEMY_PATTERNS[k].slice();
