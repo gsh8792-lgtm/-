@@ -45,22 +45,7 @@ const FieldScene = {
       .concat([{ x: FIELD.merchant.x, y: FIELD.merchant.y - 12, r: 46 }, { x: FIELD.well.x, y: FIELD.well.y, r: 34 }, { x: FIELD.smith.x + 34, y: FIELD.smith.y, r: 22 }, { x: FIELD.storage.x, y: FIELD.storage.y, r: 24 }, { x: FIELD.altar.x, y: FIELD.altar.y, r: 26 }]);
     this.buildGround();
     const ui = Game.ui;
-    const top = el('div', 'f-top');
-    top.appendChild(el('div', 'f-title', '🌲 숲속 마을'));
-    const r = el('div', 'f-right');
-    r.appendChild(btn('🌀 포탈 ▶', 'primary small', () => this.autoMove('portal'), { id: 'btn-automove' }));
-    r.appendChild(btn('🌾 사냥터', 'small', () => this.autoMove('hunt'), { id: 'btn-hunt' }));
-    r.appendChild(btn('🏰 영지', 'small', () => openTerritory(() => this.refreshRes()), { id: 'btn-territory' }));
-    r.appendChild(btn('✨ 소환', 'small', () => openGacha(() => this.refreshRes()), { id: 'btn-gacha' }));
-    r.appendChild(btn('🧑 캐릭터', 'small', () => openRoster({ onClose: () => this.refreshRes() }), { id: 'btn-roster' }));
-    r.appendChild(btn('🎒 장비', 'small', () => openInventory({ onClose: () => this.refreshRes() }), { id: 'btn-inv' }));
-    r.appendChild(btn('📖 도감·업적', 'small', () => openCodex(() => this.refreshRes()), { id: 'btn-codex' }));
-    r.appendChild(btn('👥 파티 편성', 'small', () => openPartySelect(Game.run, () => this.rebuildParty()), { id: 'btn-party' }));
-    r.appendChild(btn('⚙ 전략', 'small', () => openStrategyEditor(Game.run), { id: 'btn-f-strategy' }));
-    top.appendChild(r);
-    ui.appendChild(top);
-    this.resBox = el('div', 'f-res');
-    ui.appendChild(this.resBox);
+    buildVillageHud(this); // v0.57: 지명 패 · 자원 · 하단 메뉴 (09h_hud.js)
     this.actBtn = btn('', 'primary f-act hidden', () => this.interact(this.nearby), { id: 'btn-interact' });
     ui.appendChild(this.actBtn);
     this.refreshRes();
@@ -77,7 +62,9 @@ const FieldScene = {
   refreshRes() {
     const run = Game.run;
     const p = Game.profile;
-    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>💎 ${p.stones}</span><span>🎟 ${p.tickets}</span><span>🍞 ${run.food}</span><span>난이도 ${EQ.tierInfo(p.tier).name}</span><span>파티 ${partyIds(run).map((id) => HEROES[id].name).join('·')}</span>`;
+    const tp = terrPending(p);
+    this.resBox.innerHTML = `<span>● ${p.gold}</span><span>💎 ${p.stones}</span><span>🎟 ${p.tickets}</span><span>🍞 ${run.food}</span><span>${EQ.tierInfo(p.tier).name}</span>${tp.gold >= 100 ? `<span class="hot">🏰 수확 ● ${tp.gold}</span>` : ''}`;
+    refreshVillageBadges(this);
   },
 
   interactables() {

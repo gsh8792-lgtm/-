@@ -222,7 +222,7 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .hunt-log small { color: #b8c4b8; }
 .hunt-log .hl-sub { margin-top: 4px; color: #d8e8d8; font-weight: 700; }
 .hunt-log .hl-item { font-weight: 700; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.f-act { position: absolute; right: 26px; bottom: 30px; min-width: 150px; min-height: 76px; font-size: 22px; border-radius: 40px; }
+.f-act { position: absolute; right: 26px; bottom: 112px; min-width: 150px; min-height: 76px; font-size: 22px; border-radius: 40px; }
 
 .dialog-box { width: 600px; }
 .merchant-box { width: 660px; max-height: 510px; overflow-y: auto; }

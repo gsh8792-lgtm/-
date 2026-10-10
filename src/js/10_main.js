@@ -6,6 +6,7 @@ function boot() {
   Game.overlay = document.getElementById('overlay');
   Game.loadSettings();
   Game.profile = EQ.loadProfile();
+  if (soulMigrate(Game.profile)) { EQ.saveProfile(Game.profile); setTimeout(() => Game.toast('🔮 특성 트리가 소울트리로 바뀌었어요 — 찍은 점수를 모두 돌려받았어요', 3200), 800); }
   Game.register('title', TitleScene);
   Game.register('field', FieldScene);
   Game.register('world', WorldScene);
@@ -69,5 +70,5 @@ function resize() {
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
 
-window.GAME = { capturePost, TERRITORY, WorldScene, WORLD, goWorld, openDungeonGate, openWaypoints, DUNGEON_SITES, usePotionFlow, openMerchant, openTalents, HuntSim, Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
+window.GAME = { SOUL, soulAdd, soulPathTo, soulStart, openSoulTree, soulUI, openSettings, capturePost, TERRITORY, WorldScene, WORLD, goWorld, openDungeonGate, openWaypoints, DUNGEON_SITES, usePotionFlow, openMerchant, openTalents, HuntSim, Music, Sfx, enterDungeon, floorNeighbors, dungeonNextStep, EQ, GACHA, CHARACTERS, grantBattleLoot, openInventory, openBlacksmith, openRoster, openGacha, refreshRunLoadout, Game, CONST, BattleSim, genFloor, newRun, HEROES, ENEMIES, SKILLS, ENCOUNTERS, NODE_TYPES, EVENTS, RELICS, AI_PRESETS, BattleScene, FieldScene, makeRng, hashSeed, drawSprite, drawDungeonBackdrop, SpriteCache, ART };
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();

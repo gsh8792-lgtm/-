@@ -719,45 +719,87 @@ function sel(options, value, onChange, id) {
   return s;
 }
 
-// ---------------------------------------------------------------- 파티 편성 (최대 3인, 던전 입장 전)
+// ---------------------------------------------------------------- 파티 편성 (v0.57: 출전 진형 3칸 · 파티 분석 · 직업 필터)
+const PARTY_COMBOS = [
+  { name: '독연 폭발', need: [['rogue'], ['mage']] },
+  { name: '동결', need: [['mage', 'ranged'], ['tank', 'monk']] },
+  { name: '상처 벌리기', need: [['melee'], ['ranged']] },
+  { name: '역병', need: [['warlock'], ['rogue', 'necro']] },
+];
+const ROLE_TIPS = {
+  rogue: '도적: 함정 해제 · 상자 자물쇠 · 후열 적 먼저', monk: '수도승: 평타로 기를 모아 ②·③으로 터뜨린다 · 함정 감지',
+  warlock: '저주술사: 저주는 쓰러진 적에게서 옮는다', demon: '흑마술사: 악마가 함께 싸운다 (영웅 창 「악마」 탭)', necro: '네크로맨서: 해골 병사 · 시체가 쌓일수록 강해진다',
+};
+function partyAnalysis(pick) {
+  const roles = pick.map((id) => HEROES[id].role), p = Game.profile, out = { chips: [], combos: [], tips: [] };
+  const has = (rs) => rs.some((r) => roles.includes(r));
+  out.chips.push([has(['tank']) ? 'ok' : 'warn', '🛡 버팀', has(['tank']) ? '탱커' : '없음']);
+  out.chips.push([has(['support']) ? 'ok' : 'warn', '✚ 회복', has(['support']) ? '서포터' : '회복약뿐']);
+  const dps = roles.filter((r) => r !== 'tank' && r !== 'support').length;
+  out.chips.push([dps ? 'ok' : 'warn', '⚔ 딜', dps + '명']);
+  out.chips.push([has(['demon', 'necro']) ? 'ok' : 'off', '👿 소환', has(['demon', 'necro']) ? '있음' : '—']);
+  for (const c of PARTY_COMBOS) if (c.need.every((g) => has(g))) out.combos.push(c.name);
+  for (const r of new Set(roles)) if (ROLE_TIPS[r]) out.tips.push(ROLE_TIPS[r]);
+  const hp = pick.reduce((a, id) => a + EQ.heroLoadout(p, id).maxHp, 0);
+  const lv = pick.length ? Math.round(pick.reduce((a, id) => a + EQ.heroLevel(p, id), 0) / pick.length) : 0;
+  out.sum = { hp, lv };
+  return out;
+}
 function openPartySelect(run, onDone) {
   let pick = run.party.slice();
-  const box = el('div', 'party-select');
+  const st = { role: 'all' };
+  const box = el('div', 'party-select ps2');
   const render = () => {
+    const p = Game.profile;
     box.innerHTML = '';
-    box.appendChild(el('div', 'modal-title', `파티 편성 <small>최대 ${CONST.PARTY_SIZE}명</small>`));
+    const head = el('div', 'inv-head');
+    head.appendChild(el('div', 'fx-title', `👥 파티 편성 <small>출전 ${CONST.PARTY_SIZE}명 · 첫 번째가 앞장선다</small>`));
+    box.appendChild(head);
+    const top = el('div', 'ps-top');
+    // 출전 진형 3칸
+    const slots = el('div', 'ps-slots fx-parch');
+    for (let i = 0; i < CONST.PARTY_SIZE; i++) {
+      const id = pick[i], s = el('button', 'ps-slot' + (id ? ' full' : '')); s.type = 'button'; s.id = 'pslot-' + i;
+      s.appendChild(el('span', 'pss-n', ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ'][i]));
+      if (id) {
+        const d = HEROES[id];
+        s.appendChild(portraitCanvas(d.sprite, 64));
+        s.appendChild(el('div', 'pss-txt', `<b>${d.name}</b><small>${ROLE_ICON[d.role]} ${d.roleName} · Lv ${EQ.heroLevel(p, id)}</small><small class="pss-ult">③ ${GACHA.ultFor(p, id).name}</small>`));
+        s.addEventListener('click', () => { Sfx.play('back'); pick = pick.filter((x) => x !== id); render(); });
+      } else { s.appendChild(el('div', 'pss-empty', '＋')); s.appendChild(el('div', 'pss-txt', '<small>아래에서 영웅을 고르세요</small>')); }
+      slots.appendChild(s);
+    }
+    top.appendChild(slots);
+    // 파티 분석
+    const an = partyAnalysis(pick), info = el('div', 'ps-anal fx-panel');
+    info.appendChild(el('div', 'pa-chips', an.chips.map(([c, a, b]) => `<span class="pa-chip ${c}"><b>${a}</b>${b}</span>`).join('')));
+    info.appendChild(el('div', 'pa-sum', `파티 HP <b>${an.sum.hp}</b> · 평균 전투 Lv <b>${an.sum.lv}</b>`));
+    info.appendChild(el('div', 'pa-combo', an.combos.length ? '⚡ 연계: ' + an.combos.map((c) => `<b>${c}</b>`).join(' · ') : '<span class="muted">⚡ 연계 없음 — 서로 다른 직업의 상태이상이 만나면 터진다</span>'));
+    if (an.tips.length) info.appendChild(el('div', 'ps-tips', an.tips.join('<br>')));
+    top.appendChild(info);
+    box.appendChild(top);
+    // 직업 필터 + 영웅 카드
+    const roles = el('div', 'hl-roles ps-roles');
+    for (const r of ['all'].concat(SOUL_CLASSES)) { const b = el('button', 'hl-role' + (st.role === r ? ' on' : ''), r === 'all' ? '전체' : ROLE_ICON[r]); b.type = 'button'; b.id = 'psr-' + r; b.addEventListener('click', () => { Sfx.play('click'); st.role = r; render(); }); roles.appendChild(b); }
+    box.appendChild(roles);
     const grid = el('div', 'ps-grid');
-    for (const id of GACHA.ownedIds(Game.profile)) {
-      const d = HEROES[id];
+    for (const id of GACHA.ownedIds(p)) {
+      const d = HEROES[id]; if (st.role !== 'all' && d.role !== st.role) continue;
       const on = pick.includes(id);
-      const c = el('button', 'ps-card' + (on ? ' on' : ''));
-      c.type = 'button';
-      c.id = 'ps-' + id;
-      c.appendChild(portraitCanvas(d.sprite, 84));
-      const sk = ['s1', 's2'].map((s) => heroSkill(id, s).name).join(' · ');
-      c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><span class="ps-role">${d.roleName} · ${d.title || d.species}</span><small>Lv ${EQ.heroLevel(Game.profile, id)} · HP ${d.hp} · 공격 ${d.atk}</small><small>${sk}</small><small class="ps-ult">필살기: ${GACHA.ultFor(Game.profile, id).name}</small><small class="ps-trait">${d.traits.map((t) => TRAITS[t].name).join(', ')}</small>`));
-      if (on) c.appendChild(el('div', 'ps-badge', String(pick.indexOf(id) + 1)));
+      const c = el('button', 'ps-card' + (on ? ' on' : '')); c.type = 'button'; c.id = 'ps-' + id;
+      c.appendChild(portraitCanvas(d.sprite, 44));
+      c.appendChild(el('div', 'ps-info', `<b>${d.name}</b><small>${ROLE_ICON[d.role]} ${d.roleName} · Lv ${EQ.heroLevel(p, id)}</small>`));
+      if (on) c.appendChild(el('div', 'ps-badge', ['Ⅰ', 'Ⅱ', 'Ⅲ', 'Ⅳ'][pick.indexOf(id)]));
       c.addEventListener('click', () => {
         Sfx.play('click');
         if (on) pick = pick.filter((x) => x !== id);
         else if (pick.length < CONST.PARTY_SIZE) pick.push(id);
-        else { Game.toast(`최대 ${CONST.PARTY_SIZE}명까지 출전할 수 있어요`, 1200); return; }
+        else { Game.toast(`최대 ${CONST.PARTY_SIZE}명까지 출전할 수 있어요 — 위 칸을 눌러 빼세요`, 1400); return; }
         render();
       });
       grid.appendChild(c);
     }
     box.appendChild(grid);
-    const roles = pick.map((id) => HEROES[id].role);
-    const tips = [];
-    if (pick.length && !roles.includes('tank')) tips.push('탱커가 없으면 보스를 버티기 어려워요.');
-    if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
-    if (pick.length && roles.includes('rogue')) tips.push('도적: 함정 해제 · 상자 자물쇠 따기 · 후열 적부터 처리.');
-    if (pick.length && roles.includes('monk')) tips.push('수도승: 평타로 기를 모아 ②·③으로 터뜨린다. 근접 평타 회피 · 함정 감지.');
-    if (pick.length && roles.includes('warlock')) tips.push('저주술사: 저주는 쓰러진 적에게서 옮는다. 도적의 중독과 만나면 「역병」.');
-    if (pick.length && roles.includes('demon')) tips.push('흑마술사: 악마가 함께 싸운다 (캐릭터 화면에서 고름 · 레벨로 더 강한 악마). 필살기로 지옥불정령·파멸의 수호병.');
-    if (pick.length && roles.includes('necro')) tips.push('네크로맨서: 해골 병사가 적을 막는다. 적이 쓰러질수록 시체가 쌓여 강해진다.');
-    if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
-    box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));
     const row = el('div', 'btn-row');
     row.appendChild(btn('취소', 'ghost', () => Game.closeModal(), { sfx: 'back', id: 'ps-cancel' }));
     const ok = btn(`확정 (${pick.length}/${CONST.PARTY_SIZE})`, 'primary', () => { run.party = pick.slice(); Game.closeModal(); if (onDone) onDone(); }, { id: 'ps-ok' });

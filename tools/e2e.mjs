@@ -468,13 +468,13 @@ async function playRun(p, seed, opts) {
   ok('영혼 조각 20개 → 1돌파', await p.evaluate((id) => window.GAME.Game.profile.chars[id].bt === 1 && window.GAME.Game.profile.shards[id] === 0, st.newcomer));
   await p.click('#roster-close');
   // 도감: 새 캐릭터 선택 → 두 번째 필살기 장착
-  await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`);
+  await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`); await p.click('#ht-ult');
   ok('도감: 필살기 6종 표시 (변주는 잠금)', (await p.locator('.rd-ult').count()) === 6);
   await p.click('#ult-B');
   ok('도감: Lv1은 두 번째 필살기 잠금', await p.evaluate((id) => window.GAME.Game.profile.chars[id].ult === 'A', st.newcomer));
   // 레벨을 올리면 배운다 (경험치 지급 → 도감 다시 열기)
   const lv = await p.evaluate((id) => { const G = window.GAME; G.GACHA.addExp(G.Game.profile, id, 5000); return G.Game.profile.chars[id].lv; }, st.newcomer);
-  await p.click('#roster-close'); await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`);
+  await p.click('#roster-close'); await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`); await p.click('#ht-ult');
   await p.click('#ult-B');
   ok('도감: 레벨업 후 필살기 선택 저장' + ` (Lv ${lv})`, await p.evaluate((id) => window.GAME.Game.profile.chars[id].ult === 'B', st.newcomer));
   await p.screenshot({ path: `${OUT}/roster.png` });
@@ -586,6 +586,41 @@ for (const vp of [{ width: 844, height: 390, name: 'iphone14_land' }, { width: 6
   await p.click('#terr-collect'); await p.waitForTimeout(150);
   ok('영지: 수확 → 골드', (await p.evaluate(() => window.GAME.Game.profile.gold)) >= g0 + 80);
   await p.click('#terr-close'); ok('영지: 닫기', !(await vis(p, '.terr-box')));
+  await p.close();
+}
+
+// ---------------------------------------------------------------- v0.57: 마을 메뉴 · 영웅 창 · 소울트리 · 설정
+{
+  const p = await newPage();
+  await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1 }; G.profile.chars.tobi.lv = 21; G.scenes.title.start(41); });
+  await p.waitForTimeout(400);
+  ok('마을: 하단 메뉴 10개', (await p.locator('.v-dock .fx-orb').count()) === 10);
+  await p.click('#btn-roster'); await p.click('#rc-tobi');
+  ok('영웅 창: 능력치 탭(스탯창)', await vis(p, '.hs-main') && (await p.textContent('.hs-main')).includes('최대 HP'));
+  await p.click('#ht-skill'); ok('영웅 창: 스킬 탭', (await p.locator('.hs-skill').count()) === 3);
+  await p.click('#hr-tank'); ok('영웅 창: 직업 필터', (await p.locator('.roster-grid .rg-card').count()) < 10);
+  await p.click('#btn-talent'); await p.waitForTimeout(300);
+  ok('소울트리: 열기 · 남은 점수 20', await vis(p, '#soul-cv') && (await p.textContent('.soul-pts')).includes('20'));
+  const q = await p.evaluate(() => window.GAME.soulUI.st.toScreen('tank:0:0'));
+  await p.mouse.click(q.x, q.y); await p.waitForTimeout(150);
+  await p.click('#soul-add'); await p.waitForTimeout(150);
+  ok('소울트리: 노드 눌러 찍기', await p.evaluate(() => (window.GAME.Game.profile.soul.tobi || []).includes('tank:0:0')));
+  await p.evaluate(() => { window.GAME.soulUI.st.sel = 'tank:0:4'; }); const q2 = await p.evaluate(() => window.GAME.soulUI.st.toScreen('tank:0:4'));
+  await p.click('#soul-zout'); await p.evaluate(() => { const s = window.GAME.soulUI.st; s.zoom = 0.8; }); await p.waitForTimeout(100);
+  const q3 = await p.evaluate(() => window.GAME.soulUI.st.toScreen('tank:0:4')); await p.mouse.click(q3.x, q3.y); await p.waitForTimeout(150);
+  await p.click('#soul-path'); await p.waitForTimeout(150);
+  ok('소울트리: 여기까지 찍기 (길)', await p.evaluate(() => window.GAME.Game.profile.soul.tobi.length === 5));
+  const hp = await p.evaluate(() => window.GAME.EQ.heroLoadout(window.GAME.Game.profile, 'tobi').maxHp);
+  ok('소울트리: 효과가 능력치에', hp > 520, String(hp));
+  await p.mouse.move(640, 400); await p.mouse.down(); await p.mouse.move(500, 300, { steps: 5 }); await p.mouse.up();
+  await p.screenshot({ path: `${OUT}/soultree.png` });
+  await p.click('#talent-reset'); ok('소울트리: 초기화', await p.evaluate(() => window.GAME.Game.profile.soul.tobi.length === 0));
+  await p.click('#talent-close'); await p.waitForTimeout(200);
+  ok('소울트리 닫기 → 영웅 창', await vis(p, '.hero-box')); await p.click('#roster-close');
+  await p.click('#btn-settings'); ok('설정 창', await vis(p, '.set-box'));
+  await p.click('#set-sound'); ok('설정: 효과음 끄기', await p.evaluate(() => window.GAME.Game.settings.sound === false)); await p.click('#set-sound'); await p.click('#set-close');
+  await p.click('#btn-ach'); ok('메뉴: 업적', await vis(p, '#ach-first_clear')); await p.click('#ach-codex'); await p.click('#codex-close');
+  await p.screenshot({ path: `${OUT}/village_menu.png` });
   await p.close();
 }
 

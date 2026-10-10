@@ -1,10 +1,10 @@
 // 로직 검증 (브라우저 불필요): node tools/check_logic.cjs
 // 1) 지도 생성 제약 1000시드  2) 같은 시드 → 같은 지도  3) 같은 시드 → 같은 전투 결과
 const fs = require('fs'), vm = require('vm');
-const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '08d_world.js', '08e_territory.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
+const code = ['00_util.js', '01_data.js', '01b_equip_db.js', '01c_characters.js', '01d_gear_skills.js', '01e_talents.js', '04b_equip.js', '04c_gacha.js', '05_map.js', '05b_dungeon.js', '05c_hunt.js', '05d_oaths.js', '05e_sites.js', '06_battle_sim.js', '08b_explore.js', '08d_world.js', '08e_territory.js', '01f_soultree.js', '09e_codex.js', '09f_achieve.js'].map((f) => fs.readFileSync(__dirname + '/../src/js/' + f, 'utf8')).join('\n');
 const ctx = { console, safeStorageGet: () => null, safeStorageSet: () => {}, saveProfile: () => {} }; vm.createContext(ctx);
-vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={TERRITORY,terrState,capturePost,zoneSecured,terrRate,terrPending,terrCollect,terrMaybeInvade,terrBonus,postWaves,postInfo,DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,talentAdd,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
-const { TERRITORY, terrState, capturePost, zoneSecured, terrRate, terrPending, terrCollect, terrMaybeInvade, terrBonus, postWaves, postInfo, DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, talentAdd, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
+vm.runInContext(code.replace(/const MapScene[\s\S]*?\n};\n/, '') + '\nthis.X={TERRITORY,terrState,capturePost,zoneSecured,terrRate,terrPending,terrCollect,terrMaybeInvade,terrBonus,postWaves,postInfo,DUNGEON_SITES,ENCOUNTERS_MINE,ACHIEVEMENTS,achCheck,achAdd,achBossWin,OATHS,oathScale,oathReward,oathWaves,oathApplyStart,TALENTS,SOUL,soulAdd,soulRemove,soulCanRemove,soulPathTo,soulStart,soulMigrate,talentMods,talentPoints,talentSpent,talentReset,HuntSim,HUNT_FIELDS,HUNT,huntGradeTable,huntHeroFrom,huntExpMult,AUTO_REACT,BOSS_KITS,WIPE_AT,DUNGEON,BOSS_GIMMICKS,genFloor,floorNeighbors,bossOpen,corridorTrack,corridorWaves,floorStage,dungeonNextStep,ELITE_AFFIXES,CHAR_LV,GEAR_SKILLS,SKILLS,CONST,ENEMIES,EQ,GACHA,CHARACTERS,ultDefFor,ultChoices,BREAKTHROUGH,makeRng,BattleSim,ENCOUNTERS,HEROES,AI_PRESETS,NODE_TYPES,EVENTS,encounterFor};', ctx);
+const { TERRITORY, terrState, capturePost, zoneSecured, terrRate, terrPending, terrCollect, terrMaybeInvade, terrBonus, postWaves, postInfo, DUNGEON_SITES, ENCOUNTERS_MINE, ACHIEVEMENTS, achCheck, achAdd, achBossWin, OATHS, oathScale, oathReward, oathWaves, oathApplyStart, TALENTS, SOUL, soulAdd, soulRemove, soulCanRemove, soulPathTo, soulStart, soulMigrate, talentMods, talentPoints, talentSpent, talentReset, HuntSim, HUNT_FIELDS, HUNT, huntGradeTable, huntHeroFrom, huntExpMult, AUTO_REACT, BOSS_KITS, WIPE_AT, DUNGEON, BOSS_GIMMICKS, genFloor, floorNeighbors, bossOpen, corridorTrack, corridorWaves, floorStage, dungeonNextStep, ELITE_AFFIXES, CHAR_LV, GEAR_SKILLS, SKILLS, CONST, ENEMIES, EQ, GACHA, CHARACTERS, ultDefFor, ultChoices, BREAKTHROUGH, makeRng, BattleSim, ENCOUNTERS, HEROES, AI_PRESETS, NODE_TYPES, encounterFor } = ctx.X;
 let fail = 0;
 // 던전 층 생성: 1000시드 × 6층 — 연결성, 입구·계단(보스)·기믹 방 수, 복도 내용, 결정성
 {
@@ -443,21 +443,33 @@ if (sa !== sb) fail++;
   console.log('counter knight:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(trait counter, reflect-all ult, vengeance)');
   if (errs.length) fail++;
 }
-// 특성 트리: 직업마다 두 갈래, 점수 = 레벨-1, 단 잠금, 효과가 장비처럼 loadout에 들어간다
+// 소울트리 (v0.57): 하나로 이어진 트리 · 직업별 시작점 · 이웃만 찍기 · 빼기는 연결 유지 · 길 찍기 · 효과가 loadout에
 {
   const errs = [];
-  for (const role in TALENTS) { if (TALENTS[role].length !== 2) errs.push('branches ' + role); for (const br of TALENTS[role]) if (br.nodes.filter((n) => n.cap).length !== 1) errs.push('cap ' + br.key); }
+  for (const role in TALENTS) { if (TALENTS[role].length !== 2) errs.push('branches ' + role); for (const br of TALENTS[role]) { if (br.nodes.filter((n) => n.cap).length !== 1) errs.push('cap ' + br.key); for (let t = 0; t < 3; t++) if (br.nodes.filter((n) => n.tier === t && !n.cap).length !== 2) errs.push(`tier ${br.key}/${t}`); } }
+  const ids = Object.keys(SOUL.nodes);
+  if (ids.length < 300) errs.push('nodes ' + ids.length);
+  for (const a in SOUL.links) for (const b of SOUL.links[a]) if (!SOUL.links[b].includes(a)) errs.push('asym ' + a + b);
+  { const seen = new Set([ids[0]]), q = [ids[0]]; while (q.length) for (const m of SOUL.links[q.pop()]) if (!seen.has(m)) { seen.add(m); q.push(m); } if (seen.size !== ids.length) errs.push('not connected ' + seen.size); }
+  if (ids.filter((k) => SOUL.nodes[k].type === 'keystone').length !== 20) errs.push('keystones');
+  for (const k of ids) { const n = SOUL.nodes[k]; for (const [st, v] of n.stats) if (!(typeof v === 'number' && isFinite(v))) errs.push('stat ' + k + st); }
+  { let close = 0; for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const a = SOUL.nodes[ids[i]], b = SOUL.nodes[ids[j]]; if (Math.hypot(a.x - b.x, a.y - b.y) < 14) close++; } if (close) errs.push('overlap ' + close); }
   const p = GACHA.ensure(EQ.newProfile()); p.chars.tobi.lv = 21;
   if (talentPoints(p, 'tobi') !== 20) errs.push('points');
-  if (talentAdd(p, 'tobi', 'guardian', 't_s1')) errs.push('tier lock not enforced');
-  for (let i = 0; i < 5; i++) talentAdd(p, 'tobi', 'guardian', 't_hp');
-  if (!talentAdd(p, 'tobi', 'guardian', 't_cc')) errs.push('tier 2 should open at 5');
-  const hp0 = EQ.heroLoadout(GACHA.ensure(EQ.newProfile()), 'tobi').maxHp, hp1 = EQ.heroLoadout(p, 'tobi').maxHp;
-  if (!(hp1 > hp0 * 1.14)) errs.push(`hp talent ${hp0}->${hp1}`);
-  for (let i = 0; i < 30; i++) talentAdd(p, 'tobi', 'avenger', 't_thorn');
+  if (soulAdd(p, 'tobi', 'tank:0:4')) errs.push('non-adjacent allowed');
+  if (!soulAdd(p, 'tobi', 'tank:0:0') || !soulAdd(p, 'tobi', 'tank:0:1')) errs.push('adjacent add');
+  if (soulAdd(p, 'tobi', 'melee:0:0')) errs.push('other start');
+  if (soulCanRemove(p, 'tobi', 'tank:0:0')) errs.push('remove breaks chain'); if (!soulRemove(p, 'tobi', 'tank:0:1')) errs.push('remove leaf');
+  const path = soulPathTo(p, 'tobi', 'tank:0:15'); if (!path || path.length !== 15) errs.push('path ' + (path && path.length));
+  for (const id of path) soulAdd(p, 'tobi', id);
+  if (talentSpent(p, 'tobi') !== 16) errs.push('spent ' + talentSpent(p, 'tobi'));
+  const lo = EQ.heroLoadout(p, 'tobi'), hp0 = EQ.heroLoadout(GACHA.ensure(EQ.newProfile()), 'tobi').maxHp;
+  if (!(lo.maxHp > hp0 * 1.1)) errs.push(`hp ${hp0}->${lo.maxHp}`); if (!lo.mods.passives.stubborn) errs.push('keystone passive');
+  for (let i = 0; i < 20; i++) { const n = Object.keys(SOUL.nodes).find((k) => SOUL.links[k].some((m) => p.soul.tobi.includes(m)) && !p.soul.tobi.includes(k) && SOUL.nodes[k].type !== 'start'); soulAdd(p, 'tobi', n); }
   if (talentSpent(p, 'tobi') > talentPoints(p, 'tobi')) errs.push('overspent');
   talentReset(p, 'tobi'); if (talentSpent(p, 'tobi') !== 0) errs.push('reset');
-  console.log('talents:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(2 branches × 6 classes, points, tier locks, loadout)');
+  { const q = GACHA.ensure(EQ.newProfile()); q.talents = { tobi: { t_hp: 3 } }; if (!soulMigrate(q) || Object.keys(q.talents).length || soulMigrate(q)) errs.push('migrate'); }
+  console.log('soul tree:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', `(${ids.length} nodes connected, 20 keystones, adjacency, connected removal, path, loadout, migrate)`);
   if (errs.length) fail++;
 }
 // 도적 (v0.35): 시작 은신 · 은신 중 적이 노리지 않음 · 기습 · 중독 중첩 · 독 폭발 · 후열 노리기

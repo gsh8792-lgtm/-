@@ -9,65 +9,113 @@ function ultUnlockText(choice, cs) {
   return need.length ? need.join(' + ') + ' 필요' : '';
 }
 
-// ---------------------------------------------------------------- 캐릭터 도감
+// ---------------------------------------------------------------- 영웅 창 (v0.57: 목록 · 인물 카드 · 능력치/필살기/스킬/악마 탭)
+const ROLE_ICON = { tank: '🛡', melee: '⚔', rogue: '🗡', monk: '👊', ranged: '🏹', mage: '🔥', warlock: '☠', demon: '👿', necro: '💀', support: '✚' };
+const STAT_GROUPS = [
+  ['공격', ['crit', 'critdmg', 'aspd', 'skilldmg', 's1pow', 's2pow', 'ultpow', 'ultgain', 'cdr', 'dotdmg', 'breakdmg', 'vsbroken', 'nonbroken', 'ambush', 'backstab', 'kipow', 'kimax', 'poisonstack', 'bloodlust']],
+  ['방어', ['dr', 'dodge', 'counter', 'thorns', 'thornsAll', 'drain', 'ccdur', 'crushres', 'heal', 'mspd']],
+  ['소환', ['minionhp', 'minionatk', 'miniondur', 'minioncap', 'minionboom', 'corpsepow', 'corpseextra', 'petcdr', 'curseSpread']],
+];
+function statLine(k, v) {
+  const t = EQ.fmtStat(k, v);
+  if (!t.startsWith(k)) return t;
+  const n = (typeof TALENT_STAT_NAME !== 'undefined' && TALENT_STAT_NAME[k]) || k;
+  return ['poisonstack', 'kimax', 'minioncap', 'corpseextra'].includes(k) ? `${n} +${v}` : `${n} ${v < 0 ? '-' : '+'}${Math.round(Math.abs(v) * 1000) / 10}%`;
+}
+// 스탯창: 장비 + 소울트리 + 기본 능력치
+function heroStatSheet(id) {
+  const p = Game.profile, d = HEROES[id], lo = EQ.heroLoadout(p, id), m = lo.mods;
+  const atk = d.atk * (1 + (m.atk_pct || 0)) + (m.atk || 0), aps = 1 / (d.atkInterval / (1 + (m.aspd || 0)));
+  const wrap = el('div', 'hs-sheet');
+  wrap.appendChild(el('div', 'hs-main', `<div><small>최대 HP</small><b>${lo.maxHp}</b></div><div><small>공격력</small><b>${Math.round(atk)}</b></div><div><small>초당 공격</small><b>${aps.toFixed(2)}</b></div><div><small>방어</small><b>${Math.round((d.def || 0) * 100)}%</b></div><div><small>이동</small><b>${Math.round(d.moveSpeed * (1 + (m.mspd || 0)))}</b></div><div><small>사거리</small><b>${d.range === 'melee' ? '근접' : '원거리'}</b></div>`));
+  const used = new Set(['atk', 'atk_pct', 'hp', 'hp_pct', 'passives']);
+  const groups = STAT_GROUPS.map(([name, keys]) => { const ls = keys.filter((k) => m[k] && Math.abs(m[k]) > 1e-6).map((k) => { used.add(k); return statLine(k, m[k]); }); return [name, ls]; });
+  const rest = Object.keys(m).filter((k) => !used.has(k) && typeof m[k] === 'number' && Math.abs(m[k]) > 1e-6).map((k) => statLine(k, m[k]));
+  if (rest.length) groups.push(['기타', rest]);
+  const psv = Object.keys(lo.mods.passives || {}).map((k) => (EQ.PASSIVE && EQ.PASSIVE[k] ? `「${EQ.PASSIVE[k].name}」` : `「${k}」`));
+  if (psv.length) groups.push(['특수 효과', psv]);
+  const cols = el('div', 'hs-groups'), shown = groups.filter(([, ls]) => ls.length);
+  if (!shown.length) cols.appendChild(el('div', 'muted hs-none', '추가 능력치 없음 — 🎒 장비와 🔮 소울트리로 붙는다'));
+  for (const [name, ls] of shown) cols.appendChild(el('div', 'hs-group', `<div class="hs-gh">${name}</div>${ls.length ? ls.map((x) => `<div>${x}</div>`).join('') : '<div class="muted">—</div>'}`));
+  wrap.appendChild(cols);
+  wrap.appendChild(el('div', 'hs-src muted', `장비 ${EQ.SLOTS.filter((s) => p.equip[id] && p.equip[id][s]).length}/${EQ.SLOTS.length}칸 · 소울트리 ${talentSpent(p, id)}점 · 전투 Lv ${EQ.heroLevel(p, id)}`));
+  return wrap;
+}
 function openRoster(opts) {
   opts = opts || {};
   const p = Game.profile;
-  const st = { sel: opts.id || GACHA.ownedIds(p)[0] };
+  const st = { sel: opts.id || openRoster.last || GACHA.ownedIds(p)[0], tab: opts.tab || openRoster.tab || 'stats', role: openRoster.role || 'all' };
   const render = () => {
-    const box = el('div', 'inv-box roster-box');
+    openRoster.last = st.sel; openRoster.tab = st.tab; openRoster.role = st.role;
+    const box = el('div', 'inv-box hero-box');
     const head = el('div', 'inv-head');
-    head.appendChild(el('div', 'modal-title', '캐릭터'));
-    head.appendChild(el('div', 'inv-res', `<span>보유 ${GACHA.ownedIds(p).length}/${CHARACTERS.length}</span><span>🎟 소환권 ${p.tickets}</span>`));
+    head.appendChild(el('div', 'fx-title', `영웅 <small>보유 ${GACHA.ownedIds(p).length}/${CHARACTERS.length} · 🎟 ${p.tickets}</small>`));
     head.appendChild(btn('닫기', 'ghost small', () => { Game.closeModal(); if (opts.onClose) opts.onClose(); }, { sfx: 'back', id: 'roster-close' }));
     box.appendChild(head);
-    const body = el('div', 'roster-body');
+    const body = el('div', 'hero-body');
+    // 1) 목록: 직업 필터 + 카드
+    const left = el('div', 'hero-list fx-panel');
+    const roles = el('div', 'hl-roles');
+    for (const r of ['all'].concat(SOUL_CLASSES)) { const b = el('button', 'hl-role' + (st.role === r ? ' on' : ''), r === 'all' ? '전체' : ROLE_ICON[r]); b.type = 'button'; b.id = 'hr-' + r; b.title = r; b.addEventListener('click', () => { Sfx.play('click'); st.role = r; render(); }); roles.appendChild(b); }
+    left.appendChild(roles);
     const grid = el('div', 'roster-grid');
     for (const id of HERO_ORDER) {
+      if (st.role !== 'all' && HEROES[id].role !== st.role) continue;
       const own = GACHA.owned(p, id), c = CHAR[id];
       const b = el('button', 'rg-card' + (own ? '' : ' locked') + (st.sel === id ? ' on' : '')); b.type = 'button'; b.id = 'rc-' + id;
-      b.appendChild(portraitCanvas(HEROES[id].sprite, 52, { dead: !own }));
+      b.appendChild(portraitCanvas(HEROES[id].sprite, 46, { dead: !own }));
       b.appendChild(el('span', 'rg-name', c.name));
       if (own) b.appendChild(el('span', 'rg-lv', 'Lv ' + p.chars[id].lv));
       if (own && p.chars[id].bt) b.appendChild(el('span', 'rg-bt', '★' + p.chars[id].bt));
       const sh = GACHA.shards(p, id); if (sh) b.appendChild(el('span', 'rg-sh' + (GACHA.canUnlock(p, id) || GACHA.canBreak(p, id) ? ' ready' : ''), '◆' + sh));
+      if (own && talentSpent(p, id) < talentPoints(p, id)) b.appendChild(el('span', 'rg-pt', '●'));
       b.addEventListener('click', () => { Sfx.play('click'); st.sel = id; render(); });
       grid.appendChild(b);
     }
-    body.appendChild(grid);
-    body.appendChild(detail(st.sel));
+    left.appendChild(grid);
+    body.appendChild(left);
+    // 2) 인물 카드 (양피지)
+    body.appendChild(card(st.sel));
+    // 3) 탭
+    const right = el('div', 'hero-tabs');
+    const tabs = el('div', 'fx-tabs');
+    const list = [['stats', '능력치'], ['ult', '필살기'], ['skill', '스킬']].concat(HEROES[st.sel].role === 'demon' ? [['pet', '악마']] : []);
+    if (!list.some((x) => x[0] === st.tab)) st.tab = 'stats';
+    for (const [k, n] of list) { const t = el('button', 'fx-tab' + (st.tab === k ? ' on' : ''), n); t.type = 'button'; t.id = 'ht-' + k; t.addEventListener('click', () => { Sfx.play('click'); st.tab = k; render(); }); tabs.appendChild(t); }
+    right.appendChild(tabs);
+    const tb = el('div', 'fx-tabbody');
+    tb.appendChild(st.tab === 'ult' ? ultTab(st.sel) : st.tab === 'skill' ? skillTab(st.sel) : st.tab === 'pet' ? petTab(st.sel) : (GACHA.owned(p, st.sel) ? heroStatSheet(st.sel) : el('div', 'muted hs-locked', '아직 합류하지 않은 영웅이에요. 영혼 조각을 모아 합류시키세요.')));
+    right.appendChild(tb);
+    body.appendChild(right);
     box.appendChild(body);
-    Game.modal(box, { dim: true, cls: 'inv-modal' });
+    const cur = Game.modalOpen && document.querySelector('.hero-box');
+    if (cur) cur.replaceWith(box); else Game.modal(box, { dim: true, cls: 'inv-modal' });
   };
-  const detail = (id) => {
+  const card = (id) => {
     const c = CHAR[id], d = HEROES[id], own = GACHA.owned(p, id), cs = own ? p.chars[id] : GACHA.newChar();
-    const wrap = el('div', 'roster-detail');
-    const top = el('div', 'rd-top');
-    top.appendChild(portraitCanvas(d.sprite, 84, { dead: !own }));
+    const wrap = el('div', 'hero-card fx-parch');
+    const pc = el('div', 'hc-portrait'); pc.appendChild(portraitCanvas(d.sprite, 104, { dead: !own })); pc.appendChild(el('span', 'hc-role', `${ROLE_ICON[d.role]} ${d.roleName}`)); wrap.appendChild(pc);
     const stars = '★'.repeat(cs.bt) + '☆'.repeat(BREAKTHROUGH.max - cs.bt);
-    top.appendChild(el('div', 'rd-txt', `<div class="rd-name">${c.name} <small>${d.roleName} · ${c.title}</small></div><div class="rd-bt">${own ? `Lv ${cs.lv}${cs.lv < CHAR_LV.max ? ` <span class="rd-exp"><i style="width:${Math.round(cs.exp / CHAR_LV.expNext(cs.lv) * 100)}%"></i></span> <small>${cs.exp}/${CHAR_LV.expNext(cs.lv)}</small>` : ' (최대)'} · 전투 Lv ${EQ.heroLevel(p, id)} · 돌파 ${stars}` : '<span class="muted">미보유 — 소환에서 얻을 수 있어요</span>'}</div><div class="rd-desc">${c.desc}</div><div class="rd-stat">HP ${d.hp} · 공격 ${d.atk} · 공격 간격 ${d.atkInterval}초 · 특성 「${TRAITS[c.trait].name}」 ${TRAITS[c.trait].desc}</div>`));
-    wrap.appendChild(top);
-    { // 영혼 조각: 모아서 합류 · 돌파
-      const sh = GACHA.shards(p, id), need = own ? GACHA.btCost(p, id) : GACHA.SHARD.unlock;
-      const row = el('div', 'rd-shard');
-      row.appendChild(el('div', 'rd-sh-txt', need === null ? `<b>◆ 영혼 조각 ${sh}</b> <small>최대 돌파</small>` : `<b>◆ 영혼 조각 ${sh} / ${need}</b> <small>${own ? `${cs.bt + 1}돌파에 필요` : '모으면 합류'}</small><span class="rd-sh-bar"><i style="width:${Math.min(100, sh / need * 100)}%"></i></span>`));
-      if (!own) { const b = btn('합류', 'small' + (GACHA.canUnlock(p, id) ? ' primary' : ''), () => { if (GACHA.unlock(p, id)) { Sfx.play('ult'); saveProfile(); if (Game.run) refreshRunLoadout(Game.run); Game.toast(`✨ ${c.name} 합류!`, 1600); render(); } else { Sfx.play('back'); Game.toast(`영혼 조각이 ${GACHA.SHARD.unlock}개 필요해요`, 1000); } }, { id: 'btn-unlock' }); row.appendChild(b); }
-      else if (need !== null) { const b = btn(`돌파 ★${cs.bt + 1}`, 'small' + (GACHA.canBreak(p, id) ? ' primary' : ''), () => { const stp = GACHA.breakthrough(p, id); if (stp) { Sfx.play('ult'); saveProfile(); if (Game.run) refreshRunLoadout(Game.run); Game.toast(`★ ${c.name} ${stp.bt}돌파 — ${stp.text}`, 2000); render(); } else { Sfx.play('back'); Game.toast(`영혼 조각이 ${need}개 필요해요`, 1000); } }, { id: 'btn-bt' }); row.appendChild(b); }
-      wrap.appendChild(row);
+    wrap.appendChild(el('div', 'hc-name', `<b>${c.name}</b><small>${c.title}</small>`));
+    wrap.appendChild(el('div', 'hc-lv', own ? `Lv <b>${cs.lv}</b>${cs.lv < CHAR_LV.max ? `<span class="hc-exp"><i style="width:${Math.round(cs.exp / CHAR_LV.expNext(cs.lv) * 100)}%"></i></span>` : ' <small>MAX</small>'}<span class="hc-stars">${stars}</span>` : '<span class="muted">미보유</span>'));
+    // 영혼 조각: 합류 · 돌파
+    const sh = GACHA.shards(p, id), need = own ? GACHA.btCost(p, id) : GACHA.SHARD.unlock;
+    const row = el('div', 'rd-shard');
+    row.appendChild(el('div', 'rd-sh-txt', need === null ? `<b>◆ ${sh}</b> <small>최대 돌파</small>` : `<b>◆ ${sh} / ${need}</b> <small>${own ? `${cs.bt + 1}돌파` : '합류'}</small><span class="rd-sh-bar"><i style="width:${Math.min(100, sh / need * 100)}%"></i></span>`));
+    if (!own) { const b = btn('합류', 'small' + (GACHA.canUnlock(p, id) ? ' primary' : ''), () => { if (GACHA.unlock(p, id)) { Sfx.play('ult'); saveProfile(); if (Game.run) refreshRunLoadout(Game.run); Game.toast(`✨ ${c.name} 합류!`, 1600); render(); } else { Sfx.play('back'); Game.toast(`영혼 조각이 ${GACHA.SHARD.unlock}개 필요해요`, 1200); } }, { id: 'btn-unlock' }); row.appendChild(b); }
+    else if (need !== null) { const b = btn(`돌파 ★${cs.bt + 1}`, 'small' + (GACHA.canBreak(p, id) ? ' primary' : ''), () => { const stp = GACHA.breakthrough(p, id); if (stp) { Sfx.play('ult'); saveProfile(); if (Game.run) refreshRunLoadout(Game.run); Game.toast(`★ ${c.name} ${stp.bt}돌파 — ${stp.text}`, 2000); render(); } else { Sfx.play('back'); Game.toast(`영혼 조각이 ${need}개 필요해요`, 1200); } }, { id: 'btn-bt' }); row.appendChild(b); }
+    wrap.appendChild(row);
+    if (own) {
+      const acts = el('div', 'hc-acts');
+      const tp = talentPoints(p, id), ts = talentSpent(p, id);
+      acts.appendChild(btn(`🔮 소울트리 <small>${ts}/${tp}</small>`, 'small' + (ts < tp ? ' primary' : ''), () => openSoulTree(id, () => openRoster(Object.assign({}, opts, { id }))), { id: 'btn-talent' }));
+      acts.appendChild(btn('🎒 장비', 'small', () => openInventory({ hero: id, onClose: () => openRoster(Object.assign({}, opts, { id })) }), { id: 'btn-hero-gear' }));
+      wrap.appendChild(acts);
     }
-    if (own) { const tp = talentPoints(p, id), ts = talentSpent(p, id); const tb = btn(`🌿 특성 <small>${ts}/${tp}</small>`, 'small' + (ts < tp ? ' primary' : ''), () => openTalents(id, () => openRoster(Object.assign({}, opts, { id }))), { id: 'btn-talent' }); wrap.appendChild(tb); }
-    if (d.role === 'demon') { // 흑마술사: 상시 악마 고르기 (레벨로 해금)
-      const cur = GACHA.petFor(p, id) || 'imp', pets = el('div', 'rd-pets');
-      pets.appendChild(el('div', 'rd-pets-h', '<b>상시 악마</b> <small>전투 시작부터 함께 싸운다 · 레벨로 해금</small>'));
-      for (const pt of DEMON_PETS) {
-        const open = own && (cs.lv || 1) >= pt.lv, on = own && cur === pt.key;
-        const b = el('button', 'rd-pet' + (open ? '' : ' locked') + (on ? ' on' : '')); b.type = 'button'; b.id = 'pet-' + pt.key;
-        b.innerHTML = `<b>${pt.name}</b><small>${open ? (on ? '<span class="ok">함께하는 중</span>' : '') : '🔒 Lv ' + pt.lv}</small><span>${pt.desc}</span>`;
-        b.addEventListener('click', () => { if (!open) { Sfx.play('back'); Game.toast(own ? `Lv ${pt.lv}에 해금` : '보유하지 않은 캐릭터예요', 900); return; } Sfx.play('click'); p.chars[id].pet = pt.key; saveProfile(); render(); });
-        pets.appendChild(b);
-      }
-      wrap.appendChild(pets);
-    }
+    return wrap;
+  };
+  const ultTab = (id) => {
+    const own = GACHA.owned(p, id), cs = own ? p.chars[id] : GACHA.newChar();
     const list = el('div', 'rd-ults');
     const choices = ultChoices(id, cs.bt, cs.lv);
     for (const k of ['A', 'A2', 'B', 'B2', 'C', 'C2']) {
@@ -80,12 +128,32 @@ function openRoster(opts) {
       });
       list.appendChild(b);
     }
-    wrap.appendChild(list);
-    // ①② = 장비가 정함 (직업 공통 스킬 풀)
-    const pool = gearSkillPool(d.role), cur = own ? EQ.heroLoadout(p, id).skills : {};
-    wrap.appendChild(el('div', 'rd-gear', ['s1', 's2'].map((slot) => `<div><b>${slot === 's1' ? '① 갑옷 스킬' : '② 무기 스킬'}</b> ${pool[slot].map((sid) => `<span class="${cur[slot] === sid ? 'ok' : 'muted'}" title="${SKILLS[sid].desc}">${SKILLS[sid].name}</span>`).join(' · ')}</div>`).join('')));
-    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">필살기 습득: 두 번째 Lv10 · 세 번째 Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s, i) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파 (◆${GACHA.SHARD.bt[i]}): ${s.text}</span>`).join('')));
+    const wrap = el('div', ''); wrap.appendChild(list);
+    wrap.appendChild(el('div', 'rd-steps', `<span class="muted">습득: 두 번째 Lv10 · 세 번째 Lv20 · 변주 Lv30/40/50(+돌파) · Lv60·70 숙련 +5%</span>` + BREAKTHROUGH.steps.map((s, i) => `<span class="${cs.bt >= s.bt ? 'ok' : 'muted'}">${s.bt}돌파 (◆${GACHA.SHARD.bt[i]}): ${s.text}</span>`).join('')));
     return wrap;
+  };
+  const skillTab = (id) => {
+    const d = HEROES[id], own = GACHA.owned(p, id), pool = gearSkillPool(d.role), lo = own ? EQ.heroLoadout(p, id) : null, cur = lo ? lo.skills : {};
+    const wrap = el('div', 'hs-skills');
+    for (const slot of ['s1', 's2']) {
+      const sid = cur[slot] || d.skills[slot === 's1' ? 0 : 1], sk = SKILLS[sid];
+      wrap.appendChild(el('div', 'hs-skill fx-panel', `<div class="hk-h"><span class="hk-slot">${slot === 's1' ? '①' : '②'}</span><b>${sk.name}</b><small>${slot === 's1' ? '갑옷이 정한다' : '무기가 정한다'} · 쿨 ${sk.cd}초${lo && lo.skillRank[slot] ? ` · 랭크 +${Math.round(lo.skillRank[slot] * GEAR_SKILL_RANK * 100)}%` : ''}</small></div><div class="hk-d">${sk.desc}</div><div class="hk-pool">${pool[slot].map((x) => `<span class="${x === sid ? 'on' : ''}" title="${SKILLS[x].desc}">${SKILLS[x].name}</span>`).join('')}</div>`));
+    }
+    const u = own ? GACHA.ultFor(p, id) : SKILLS[d.ult];
+    if (u) wrap.appendChild(el('div', 'hs-skill fx-panel', `<div class="hk-h"><span class="hk-slot ult">③</span><b>${u.name}</b><small>필살기 · 「필살기」 탭에서 고른다</small></div><div class="hk-d">${u.desc}</div>`));
+    return wrap;
+  };
+  const petTab = (id) => {
+    const own = GACHA.owned(p, id), cs = own ? p.chars[id] : GACHA.newChar(), cur = GACHA.petFor(p, id) || 'imp', pets = el('div', 'rd-pets');
+    pets.appendChild(el('div', 'rd-pets-h', '<b>상시 악마</b> <small>전투 시작부터 함께 싸운다 · 레벨로 해금</small>'));
+    for (const pt of DEMON_PETS) {
+      const open = own && (cs.lv || 1) >= pt.lv, on = own && cur === pt.key;
+      const b = el('button', 'rd-pet' + (open ? '' : ' locked') + (on ? ' on' : '')); b.type = 'button'; b.id = 'pet-' + pt.key;
+      b.innerHTML = `<b>${pt.name}</b><small>${open ? (on ? '<span class="ok">함께하는 중</span>' : '') : '🔒 Lv ' + pt.lv}</small><span>${pt.desc}</span>`;
+      b.addEventListener('click', () => { if (!open) { Sfx.play('back'); Game.toast(own ? `Lv ${pt.lv}에 해금` : '보유하지 않은 캐릭터예요', 900); return; } Sfx.play('click'); p.chars[id].pet = pt.key; saveProfile(); render(); });
+      pets.appendChild(b);
+    }
+    return pets;
   };
   render();
 }
@@ -134,39 +202,5 @@ function openGacha(onClose) {
   render();
 }
 
-// ---------------------------------------------------------------- 특성 트리 창
-function openTalents(id, onClose) {
-  const p = Game.profile, tree = talentTree(id), st = talentState(p, id);
-  const pts = talentPoints(p, id), spent = talentSpent(p, id);
-  const box = el('div', 'inv-box talent-box');
-  const head = el('div', 'inv-head');
-  head.appendChild(el('div', 'modal-title', `${CHAR[id].name}의 특성 <small>${HEROES[id].roleName}</small>`));
-  head.appendChild(el('div', 'inv-res', `<span>남은 점수 <b>${pts - spent}</b> / ${pts}</span><span class="muted">캐릭터 레벨 1당 1점</span>`));
-  head.appendChild(btn('초기화', 'ghost small', () => { talentReset(p, id); saveProfile(); refreshRunLoadout(Game.run); openTalents(id, onClose); }, { id: 'talent-reset', sfx: 'back' }));
-  head.appendChild(btn('닫기', 'small', () => { Game.closeModal(); if (onClose) onClose(); }, { id: 'talent-close', sfx: 'back' }));
-  box.appendChild(head);
-  const cols = el('div', 'talent-cols');
-  for (const br of tree) {
-    const col = el('div', 'talent-col');
-    const bs = talentBranchSpent(p, id, br);
-    col.appendChild(el('div', 'tc-head', `<b>${br.name}</b> <small>${br.desc} · ${bs}점</small>`));
-    for (let tier = 0; tier < 4; tier++) {
-      const row = el('div', 'tc-row' + (bs >= TALENT_TIER_NEED[tier] ? '' : ' locked'));
-      row.appendChild(el('div', 'tc-need', tier ? `${TALENT_TIER_NEED[tier]}점` : ''));
-      for (const n of br.nodes.filter((x) => x.tier === tier)) {
-        const r = st[n.id] || 0, can = talentCanAdd(p, id, br, n);
-        const b = el('button', 'tc-node' + (n.cap ? ' cap' : '') + (r ? ' on' : '') + (can ? ' can' : '')); b.type = 'button'; b.id = 'tn-' + n.id;
-        const eff = n.cap ? n.desc : `${TALENT_STAT_NAME[n.stat] || n.stat} +${Math.round(n.v * 1000) / 10}%${n.stat === 'counter' || n.stat === 'thorns' ? '' : ''} / 랭크`;
-        b.innerHTML = `<b>${n.name}</b><span class="tc-rank">${r}/${n.max}</span><small>${eff}</small>`;
-        b.addEventListener('click', () => { if (talentAdd(p, id, br.key, n.id)) { Sfx.play('click'); saveProfile(); refreshRunLoadout(Game.run); openTalents(id, onClose); } else { Sfx.play('back'); Game.toast(talentSpent(p, id) >= pts ? '특성 점수가 없어요 (레벨을 올리면 생긴다)' : r >= n.max ? '이미 최대예요' : `이 단은 ${br.name}에 ${TALENT_TIER_NEED[n.tier]}점을 쓴 뒤 열려요`, 1100); } });
-        row.appendChild(b);
-      }
-      col.appendChild(row);
-    }
-    cols.appendChild(col);
-  }
-  box.appendChild(cols);
-  box.appendChild(el('div', 'muted', '두 갈래를 섞어 찍을 수 있다. 핵심 특성(4단)은 한 갈래에 18점을 쓰면 열린다. 효과는 장비처럼 바로 적용된다.'));
-  const cur = Game.modalOpen && document.querySelector('.talent-box');
-  if (cur) cur.replaceWith(box); else { Game.closeModal(); Game.modal(box, { dim: true, cls: 'inv-modal' }); }
-}
+// ---------------------------------------------------------------- 특성 → 소울트리 (v0.57)
+function openTalents(id, onClose) { openSoulTree(id, onClose); }

@@ -1,0 +1,25 @@
+// v0.57 UI 확인: node tools/dev/ui57_shot.mjs → test-output/ui57_*.png
+import { chromium } from 'playwright';
+import path from 'path';
+const b = await chromium.launch(); const p = await (await b.newContext({ viewport: { width: 1280, height: 720 } })).newPage();
+const errs = []; p.on('pageerror', (e) => errs.push(e.message)); p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+await p.goto('file://' + path.resolve('dist/forest_expedition.html')); await p.waitForTimeout(400);
+await p.screenshot({ path: 'test-output/ui57_title.png' });
+await p.evaluate(() => { const G = window.GAME.Game; G.settings.seenHints = { field: 1, battle: 1, break: 1, charge: 1, crush: 1, dungeon: 1, map: 1 }; G.profile.chars.tobi.lv = 30; G.profile.chars.bori.lv = 12; G.scenes.title.start(21); });
+await p.waitForTimeout(600); await p.screenshot({ path: 'test-output/ui57_village.png' });
+const shot = async (sel, name) => { await p.click(sel); await p.waitForTimeout(400); await p.screenshot({ path: `test-output/ui57_${name}.png` }); };
+await shot('#btn-roster', 'hero'); await shot('#ht-ult', 'hero_ult'); await shot('#ht-skill', 'hero_skill'); await p.click('#roster-close');
+await p.evaluate(() => { const G = window.GAME, P = G.Game.profile, rng = G.makeRng(5); P.inv.push(G.EQ.rollItem(rng, P, { base: 'tank_weapon_1', grade: 'SR' }), G.EQ.rollItem(rng, P, { base: 'tank_armor_2', grade: 'SSR' }), G.EQ.rollItem(rng, P, { base: 'melee_weapon_1', grade: 'R' })); });
+await shot('#btn-inv', 'bag'); await p.locator('.inv-item').first().click(); await p.waitForTimeout(300); await p.screenshot({ path: 'test-output/ui57_bag_detail.png' }); await p.click('#inv-close');
+await shot('#btn-party', 'party'); await p.click('#ps-cancel');
+await shot('#btn-soul', 'soul');
+await p.evaluate(() => { const G = window.GAME; const path = G.soulPathTo(G.Game.profile, 'tobi', 'tank:0:9'); for (const id of path) G.soulAdd(G.Game.profile, 'tobi', id); G.soulUI.st.sel = 'tank:0:15'; }); await p.click('#soul-next'); await p.click('#soul-prev'); await p.waitForTimeout(300);
+const q = await p.evaluate(() => window.GAME.soulUI.st.toScreen('tank:0:12')); await p.mouse.click(q.x, q.y); await p.waitForTimeout(400);
+await p.screenshot({ path: 'test-output/ui57_soul_sel.png' });
+await p.click('#soul-zout'); await p.click('#soul-zout'); await p.click('#soul-zout'); await p.waitForTimeout(300); await p.screenshot({ path: 'test-output/ui57_soul_far.png' });
+await p.click('#talent-close');
+await shot('#btn-settings', 'settings'); await p.click('#set-close');
+await shot('#btn-territory', 'terr'); await p.click('#terr-close');
+await shot('#btn-gacha', 'gacha'); await p.click('#gacha-close');
+await shot('#btn-ach', 'ach');
+console.log(errs); await b.close();

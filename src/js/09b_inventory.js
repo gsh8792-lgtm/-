@@ -123,94 +123,100 @@ function heroSkill(id, slot) {
   return SKILLS[EQ.heroLoadout(Game.profile, id).skills[slot]];
 }
 
-// ---------------------------------------------------------------- 장비창
+// ---------------------------------------------------------------- 가방 (v0.57: 영웅 장착 칸 · 가방 칸 · 양피지 상세)
+const BAG_FILTERS = [['all', '전체'], ['weapon', '무기'], ['armor', '갑옷'], ['acc', '장신구']];
 function openInventory(opts) {
   opts = opts || {};
-  const st = { hero: opts.hero || (Game.run ? partyIds(Game.run)[0] : HERO_ORDER[0]), slot: null, sel: null };
+  const st = { hero: opts.hero || openInventory.hero || (Game.run ? partyIds(Game.run)[0] : HERO_ORDER[0]), slot: null, sel: null, filter: 'all', mine: true };
+  const accSlots = EQ.SLOTS.filter((s) => s !== 'weapon' && s !== 'armor');
+  const close = () => { Game.closeModal(); refreshRunLoadout(Game.run); if (opts.onClose) opts.onClose(); };
   const render = () => {
     const p = profile();
-    const box = el('div', 'inv-box');
-    // 머리
+    if (!GACHA.owned(p, st.hero)) st.hero = GACHA.ownedIds(p)[0];
+    openInventory.hero = st.hero;
+    const box = el('div', 'inv-box bag-box');
     const head = el('div', 'inv-head');
-    head.appendChild(el('div', 'modal-title', '장비'));
-    head.appendChild(el('div', 'inv-res', `<span>● ${p.gold}</span><span>💎 강화석 ${p.stones}</span><span>가방 ${p.inv.length}</span>`));
-    head.appendChild(btn('닫기', 'ghost small', () => { Game.closeModal(); refreshRunLoadout(Game.run); if (opts.onClose) opts.onClose(); }, { sfx: 'back', id: 'inv-close' }));
+    head.appendChild(el('div', 'fx-title', '🎒 가방'));
+    head.appendChild(el('div', 'inv-res', `<span>● ${p.gold}</span><span>💎 강화석 ${p.stones}</span><span>장비 ${p.inv.length}</span><span>보석 ${p.gems.filter((g) => !g.inItem).length}</span>`));
+    head.appendChild(btn('닫기', 'ghost small', close, { sfx: 'back', id: 'inv-close' }));
     box.appendChild(head);
-    const body = el('div', 'inv-body');
-    // 영웅 탭
+    const body = el('div', 'bag-body');
+    // ---- 왼쪽: 영웅 고르기 + 장착 칸 6개 + 요약
+    const left = el('div', 'bag-hero fx-panel');
     const tabs = el('div', 'inv-tabs');
-    for (const id of GACHA.ownedIds(profile())) {
-      const t = el('button', 'inv-tab' + (id === st.hero ? ' on' : '')); t.type = 'button'; t.id = 'inv-hero-' + id;
-      t.appendChild(portraitCanvas(HEROES[id].sprite, 40));
-      t.appendChild(el('span', '', HEROES[id].name));
+    for (const id of GACHA.ownedIds(p)) {
+      const t = el('button', 'inv-tab' + (id === st.hero ? ' on' : '')); t.type = 'button'; t.id = 'inv-hero-' + id; t.title = HEROES[id].name;
+      t.appendChild(portraitCanvas(HEROES[id].sprite, 34));
       t.addEventListener('click', () => { Sfx.play('click'); st.hero = id; st.sel = null; render(); });
       tabs.appendChild(t);
     }
-    body.appendChild(tabs);
-    // 영웅 패널: 능력치 + 6칸
-    const hp = el('div', 'inv-hero');
+    left.appendChild(tabs);
     const lo = EQ.heroLoadout(p, st.hero), def = HEROES[st.hero];
     const atk = def.atk * (1 + (lo.mods.atk_pct || 0)) + (lo.mods.atk || 0);
-    const statLines = Object.keys(lo.mods).filter((k) => k !== 'atk' && k !== 'atk_pct' && k !== 'passives' && Math.abs(lo.mods[k]) > 1e-6).map((k) => EQ.fmtStat(k, lo.mods[k]));
-    const psv = Object.values(lo.passives).map((ps) => `「${EQ.PASSIVE[ps.key].name}」`);
-    hp.appendChild(el('div', 'inv-stats', `<div class="is-name">${def.name} <small>${def.roleName} · 전투 Lv ${EQ.heroLevel(p, st.hero)}</small></div><div class="is-main"><span>HP <b>${lo.maxHp}</b></span><span>공격력 <b>${Math.round(atk)}</b></span></div><div class="is-list">${statLines.concat(psv).join(' · ') || '<span class="muted">장비 없음</span>'}</div>`));
-    const grid = el('div', 'inv-slots');
+    left.appendChild(el('div', 'bh-name', `<b>${def.name}</b> <small>${ROLE_ICON[def.role] || ''} ${def.roleName} · Lv ${EQ.charLevel(p, st.hero)}</small>`));
+    const doll = el('div', 'bag-doll');
     for (const s of EQ.SLOTS) {
       const uid = p.equip[st.hero][s], item = uid && EQ.findItem(p, uid);
-      const b = el('button', 'inv-slot' + (st.slot === s ? ' on' : '')); b.type = 'button'; b.id = 'inv-slot-' + s;
-      if (item) b.appendChild(itemIcon(item, 44)); else b.appendChild(el('div', 'ic empty', ''));
-      b.appendChild(el('span', '', item ? EQ.itemName(item) : EQ.SLOT_NAME[s]));
-      b.addEventListener('click', () => { Sfx.play('click'); st.slot = st.slot === s ? null : s; st.sel = item ? item.uid : null; render(); });
-      grid.appendChild(b);
+      const b = el('button', 'inv-slot fx-slot' + (st.slot === s ? ' on' : '') + (item ? ' g-' + item.grade : '')); b.type = 'button'; b.id = 'inv-slot-' + s;
+      if (item) b.appendChild(itemIcon(item, 40)); else b.appendChild(el('div', 'ic empty', ''));
+      b.appendChild(el('span', 'is-lb', EQ.SLOT_NAME[s]));
+      b.addEventListener('click', () => { Sfx.play('click'); st.slot = st.slot === s ? null : s; st.filter = 'all'; st.sel = item ? item.uid : null; render(); });
+      doll.appendChild(b);
     }
-    hp.appendChild(grid);
-    body.appendChild(hp);
-    // 목록 또는 상세
-    const right = el('div', 'inv-right');
+    left.appendChild(doll);
+    left.appendChild(el('div', 'bh-sum', `<span>HP <b>${lo.maxHp}</b></span><span>공격력 <b>${Math.round(atk)}</b></span><span>① ${SKILLS[lo.skills.s1].name}</span><span>② ${SKILLS[lo.skills.s2].name}</span>`));
+    left.appendChild(btn('능력치 자세히', 'ghost small', () => openRoster({ id: st.hero, tab: 'stats', onClose: () => openInventory(opts) }), { id: 'inv-stats' }));
+    body.appendChild(left);
+    // ---- 가운데: 가방 칸
+    const mid = el('div', 'bag-grid-wrap');
+    const ft = el('div', 'fx-tabs');
+    for (const [k, n] of BAG_FILTERS) { const t = el('button', 'fx-tab' + (!st.slot && st.filter === k ? ' on' : ''), n); t.type = 'button'; t.id = 'bag-f-' + k; t.addEventListener('click', () => { Sfx.play('click'); st.filter = k; st.slot = null; render(); }); ft.appendChild(t); }
+    const mine = el('button', 'fx-tab mine' + (st.mine ? ' on' : ''), st.mine ? '✔ 내 것만' : '모두 보기'); mine.type = 'button'; mine.id = 'bag-mine'; mine.addEventListener('click', () => { Sfx.play('click'); st.mine = !st.mine; render(); }); ft.appendChild(mine);
+    mid.appendChild(ft);
+    const grid = el('div', 'bag-grid fx-tabbody');
+    let items = p.inv.filter((it) => { const sl = EQ.BASE[it.base].slot; if (st.slot) return sl === st.slot && EQ.usableBy(it, st.hero); if (st.mine && !EQ.usableBy(it, st.hero)) return false; return st.filter === 'all' || (st.filter === 'acc' ? accSlots.includes(sl) : sl === st.filter); });
+    items = items.map((it) => ({ it, sc: EQ.itemScore(p, it, st.hero) })).sort((a, b) => EQ.G[b.it.grade].idx - EQ.G[a.it.grade].idx || b.sc - a.sc);
+    mid.appendChild(el('div', 'il-head', `${st.slot ? EQ.SLOT_NAME[st.slot] + ' · ' + HEROES[st.hero].name + ' 착용 가능' : BAG_FILTERS.find((f) => f[0] === st.filter)[1]} <b>${items.length}</b>개`));
+    if (!items.length) grid.appendChild(el('div', 'muted il-empty', '비어 있어요. 던전의 정예·보스와 상인에게서 장비를 얻어요.'));
+    for (const { it, sc } of items) {
+      const owner = EQ.equippedBy(p, it.uid), usable = EQ.usableBy(it, st.hero);
+      const r = el('button', 'inv-item fx-slot' + (st.sel === it.uid ? ' on' : '') + (usable ? '' : ' unusable')); r.type = 'button'; r.dataset.uid = it.uid; r.title = `${EQ.itemName(it)} · 점수 ${sc}`;
+      r.appendChild(itemIcon(it, 44));
+      if (owner) r.appendChild(el('span', 'bi-owner', HEROES[owner].name));
+      r.addEventListener('click', () => { Sfx.play('click'); st.sel = it.uid; render(); });
+      grid.appendChild(r);
+    }
+    mid.appendChild(grid);
+    body.appendChild(mid);
+    // ---- 오른쪽: 상세 (양피지)
+    const right = el('div', 'bag-detail fx-parch');
     const sel = st.sel && EQ.findItem(p, st.sel);
     if (sel) right.appendChild(detailPanel(sel));
-    else right.appendChild(listPanel());
+    else right.appendChild(el('div', 'bd-empty', `<b>장비를 고르세요</b><br><small>왼쪽 칸을 누르면 그 부위만, 가방의 장비를 누르면 자세히 볼 수 있어요.<br>등급: <span class="g-N">N</span> · <span class="g-R">R</span> · <span class="g-SR">SR</span> · <span class="g-SSR">SSR</span> · <span class="g-L">L</span> · <span class="g-E">E</span></small>`));
     body.appendChild(right);
     box.appendChild(body);
-    Game.modal(box, { dim: true, cls: 'inv-modal' });
-  };
-  const listPanel = () => {
-    const p = profile();
-    const wrap = el('div', 'inv-list');
-    let items = p.inv.filter((it) => EQ.usableBy(it, st.hero) && (!st.slot || EQ.BASE[it.base].slot === st.slot));
-    items = items.map((it) => ({ it, sc: EQ.itemScore(p, it, st.hero) })).sort((a, b) => b.sc - a.sc);
-    wrap.appendChild(el('div', 'il-head', `${st.slot ? EQ.SLOT_NAME[st.slot] : '전체'} ${items.length}개 <small class="muted">${HEROES[st.hero].name} 착용 가능</small>`));
-    if (!items.length) wrap.appendChild(el('div', 'muted il-empty', '아직 장비가 없어요. 던전에서 얻을 수 있어요.'));
-    for (const { it, sc } of items) {
-      const r = el('button', 'inv-item'); r.type = 'button'; r.dataset.uid = it.uid;
-      r.appendChild(itemIcon(it, 36));
-      const owner = EQ.equippedBy(p, it.uid);
-      r.appendChild(el('div', 'ii-txt', `<b class="g-${it.grade}">${EQ.itemName(it)}</b><small>${EQ.SLOT_NAME[EQ.BASE[it.base].slot]} · 점수 ${sc}${owner ? ` · <span class="eqd">${HEROES[owner].name} 장착</span>` : ''}</small>`));
-      r.addEventListener('click', () => { Sfx.play('click'); st.sel = it.uid; render(); });
-      wrap.appendChild(r);
-    }
-    return wrap;
+    const cur = Game.modalOpen && document.querySelector('.bag-box');
+    if (cur) cur.replaceWith(box); else { Game.closeModal(); Game.modal(box, { dim: true, cls: 'inv-modal' }); }
   };
   const detailPanel = (item) => {
     const p = profile();
     const wrap = el('div', 'inv-detail'); wrap.id = 'inv-detail';
     const top = el('div', 'id-top');
-    top.appendChild(itemIcon(item, 56));
+    top.appendChild(itemIcon(item, 52));
     top.appendChild(el('div', 'id-txt', itemDetailHtml(item, st.hero)));
     wrap.appendChild(top);
-    const slot = EQ.BASE[item.base].slot;
-    const curUid = p.equip[st.hero][slot];
-    const usable = EQ.usableBy(item, st.hero);
-    if (curUid && curUid !== item.uid && usable) { // 비교
-      const cur = EQ.findItem(p, curUid);
-      const d = EQ.itemScore(p, item, st.hero) - EQ.itemScore(p, cur, st.hero);
+    const slot = EQ.BASE[item.base].slot, curUid = p.equip[st.hero][slot], usable = EQ.usableBy(item, st.hero), owner = EQ.equippedBy(p, item.uid);
+    if (curUid && curUid !== item.uid && usable) {
+      const cur = EQ.findItem(p, curUid), d = EQ.itemScore(p, item, st.hero) - EQ.itemScore(p, cur, st.hero);
       wrap.appendChild(el('div', 'id-cmp ' + (d >= 0 ? 'up' : 'down'), `지금 장비 <b>${EQ.itemName(cur)}</b> 대비 점수 ${d >= 0 ? '▲' : '▼'} ${Math.abs(d)}`));
     }
+    if (owner && owner !== st.hero) wrap.appendChild(el('div', 'id-owner', `${HEROES[owner].name}이(가) 착용 중 — 장착하면 옮겨 온다`));
+    if (!usable) wrap.appendChild(el('div', 'id-owner warn', `${HEROES[st.hero].name}은(는) 쓸 수 없는 장비`));
     const row = el('div', 'btn-row');
-    row.appendChild(btn('◀ 목록', 'ghost small', () => { st.sel = null; render(); }, { sfx: 'back', id: 'inv-back' }));
+    row.appendChild(btn('◀', 'ghost small icon', () => { st.sel = null; render(); }, { sfx: 'back', id: 'inv-back' }));
     if (curUid === item.uid) row.appendChild(btn('해제', 'small', () => { EQ.unequip(p, st.hero, slot); saveProfile(); render(); }, { id: 'inv-unequip' }));
     else if (usable) row.appendChild(btn('장착', 'primary small', () => { EQ.equip(p, st.hero, item); saveProfile(); Sfx.play('coin'); render(); }, { id: 'inv-equip' }));
-    if (item.gems.length) item.gems.forEach((gu, i) => row.appendChild(btn(gu ? `보석 ${i + 1} 빼기` : `보석 ${i + 1} 넣기`, 'small', () => { if (gu) { EQ.unsocket(p, item, i); saveProfile(); render(); } else pickGem(item, i); }, { id: 'inv-sock-' + i })));
+    if (item.gems.length) item.gems.forEach((gu, i) => row.appendChild(btn(gu ? `💠${i + 1} 빼기` : `💠${i + 1} 넣기`, 'small', () => { if (gu) { EQ.unsocket(p, item, i); saveProfile(); render(); } else pickGem(item, i); }, { id: 'inv-sock-' + i })));
     row.appendChild(btn('분해', 'danger small', () => confirmDismantle(item), { id: 'inv-dismantle' }));
     wrap.appendChild(row);
     return wrap;
@@ -222,10 +228,10 @@ function openInventory(opts) {
     const free = p.gems.filter((g) => !g.inItem);
     if (!free.length) box.appendChild(el('p', 'muted', '끼울 수 있는 보석이 없어요. 보스를 쓰러뜨리면 얻을 수 있어요.'));
     for (const g of free) {
-      const b = btn(`${gemBadge(g)} ${EQ.gemEffects(g).map((e) => EQ.fmtStat(e.stat, e.v)).join(', ')}`, 'choice gem-pick', () => { EQ.socket(p, item, idx, g); saveProfile(); render(); });
+      const b = btn(`${gemBadge(g)} ${EQ.gemEffects(g).map((e) => EQ.fmtStat(e.stat, e.v)).join(', ')}`, 'choice gem-pick', () => { EQ.socket(p, item, idx, g); saveProfile(); Game.closeModal(); render(); });
       b.dataset.uid = g.uid; box.appendChild(b);
     }
-    box.appendChild(btn('취소', 'ghost', () => render(), { sfx: 'back', id: 'gem-cancel' }));
+    box.appendChild(btn('취소', 'ghost', () => { Game.closeModal(); render(); }, { sfx: 'back', id: 'gem-cancel' }));
     Game.modal(box, { dim: true });
   };
   const confirmDismantle = (item) => {
@@ -233,8 +239,8 @@ function openInventory(opts) {
     box.appendChild(el('div', 'modal-title', `${EQ.itemName(item)} 분해`));
     box.appendChild(el('p', '', `강화석 ${EQ.DB.dismantle[item.grade] + item.enh}개를 얻어요. 끼워 둔 보석은 돌려받아요.`));
     const row = el('div', 'btn-row');
-    row.appendChild(btn('취소', 'ghost', () => render(), { sfx: 'back', id: 'dis-no' }));
-    row.appendChild(btn('분해', 'danger', () => { const n = EQ.dismantle(profile(), item); saveProfile(); Game.toast(`강화석 +${n}`); st.sel = null; render(); }, { id: 'dis-yes' }));
+    row.appendChild(btn('취소', 'ghost', () => { Game.closeModal(); render(); }, { sfx: 'back', id: 'dis-no' }));
+    row.appendChild(btn('분해', 'danger', () => { const n = EQ.dismantle(profile(), item); saveProfile(); Game.toast(`강화석 +${n}`); st.sel = null; Game.closeModal(); render(); }, { id: 'dis-yes' }));
     box.appendChild(row);
     Game.modal(box, { dim: true });
   };

@@ -19,7 +19,7 @@ const ACHIEVEMENTS = [
   { id: 'codex10', name: '관찰자', desc: '적 도감에 10종 등록', prog: (p) => [Object.keys(p.codex || {}).length, 10], reward: { gold: 300 } },
   { id: 'codex_all', name: '적 박사', desc: '적 도감을 모두 채운다', prog: (p) => [Object.keys(p.codex || {}).filter((k) => ENEMY_CODEX[k]).length, Object.keys(ENEMY_CODEX).length], reward: { tickets: 3 } },
   { id: 'chars10', name: '원정대 확장', desc: '캐릭터 15명을 모은다', prog: (p) => [GACHA.ownedIds(p).length, 15], reward: { tickets: 2 } },
-  { id: 'talent_cap', name: '전문가', desc: '특성 트리의 핵심 특성을 하나 연다', prog: (p) => [Object.values(p.talents || {}).some((s) => Object.keys(s).some((k) => /_cap\d$/.test(k) && s[k] > 0)) ? 1 : 0, 1], reward: { stones: 10 } },
+  { id: 'talent_cap', name: '전문가', desc: '소울트리의 핵심 노드를 하나 찍는다', prog: (p) => [Object.values(p.soul || {}).some((s) => (s || []).some((k) => SOUL.nodes[k] && SOUL.nodes[k].type === 'keystone')) ? 1 : 0, 1], reward: { stones: 10 } },
   { id: 'post_first', name: '깃발을 꽂다', desc: '필드 거점을 처음 확보한다', prog: (p) => [achCnt(p, 'posts'), 1], reward: { tickets: 1 } },
   { id: 'zone_secured', name: '영주', desc: '한 지역의 거점 3곳을 모두 확보한다', prog: (p) => [WORLD.zones.some((z) => zoneSecured(p, z.key)) ? 1 : 0, 1], reward: { tickets: 3 } },
   { id: 'hunt_elite10', name: '사냥터의 주인', desc: '사냥터 정예를 10마리 쓰러뜨린다', prog: (p) => [achCnt(p, 'huntElite'), 10], reward: { gold: 500 } },
