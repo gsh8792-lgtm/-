@@ -579,3 +579,25 @@ small { font-size: .78em; color: var(--muted); font-weight: 500; }
 .rm-chip { background: rgba(0,0,0,.25); border-radius: 8px; padding: 2px 8px; color: #e0d8f0; }
 .rm-chip.dead { opacity: .5; }
 .rm-chip b { color: #ffd34a; }
+
+/* v0.54 영혼 조각 */
+.rg-sh { position: absolute; left: 3px; bottom: 18px; font-size: 10px; font-weight: 800; color: #b8a0ff; text-shadow: 0 1px 2px #000; }
+.rg-sh.ready { color: #ffe066; animation: pulse 1s infinite alternate; }
+.rd-shard { display: flex; align-items: center; gap: 10px; background: rgba(120,90,200,0.14); border: 1px solid rgba(160,130,255,0.35); border-radius: 10px; padding: 6px 10px; margin: 6px 0; }
+.rd-sh-txt { flex: 1; font-size: 13px; }
+.rd-sh-txt small { color: #b8b0d8; margin-left: 4px; }
+.rd-sh-bar { display: block; height: 6px; background: rgba(0,0,0,0.4); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+.rd-sh-bar i { display: block; height: 100%; background: linear-gradient(90deg, #8a6aff, #d0a0ff); }
+.gr-card.shard { opacity: 0.92; }
+.gr-card.big { box-shadow: 0 0 10px rgba(170,130,255,0.6); }
+.gr-card.hero { box-shadow: 0 0 14px rgba(255,210,90,0.8); }
+@keyframes pulse { from { opacity: 0.6; } to { opacity: 1; } }
+
+/* v0.54 흑마술사 악마 고르기 */
+.rd-pets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 6px 0; }
+.rd-pets-h { grid-column: 1 / -1; font-size: 13px; }
+.rd-pets-h small { color: #b8b0d8; }
+.rd-pet { text-align: left; background: #241830; border: 2px solid #4a2a3a; border-radius: 8px; color: var(--text); padding: 5px 7px; font: 600 11px var(--font); cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.rd-pet b { font-size: 13px; color: #ffb08a; }
+.rd-pet.on { border-color: #ff8a5a; box-shadow: 0 0 8px rgba(255,120,80,0.5); }
+.rd-pet.locked { opacity: 0.5; }

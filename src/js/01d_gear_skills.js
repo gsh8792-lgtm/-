@@ -93,8 +93,10 @@ Object.assign(SKILLS, {
   const defs = [
     { key: 'monk', from: 'melee', hero: 'mujin', name: '수도승', heroName: '무진', baseAtk: 30, baseHp: 315, trait: 'critdmg', traitName: '치명타 피해',
       names: { weapon: ['강철 권갑', '바람의 각반', '금강저', '용의 손톱'], armor: ['수행자의 도복', '흐르는 물의 장삼', '쌍룡 무복', '금강 가사'], medal: ['백열의 소울 메달', '명경의 소울 메달'] } },
-    { key: 'warlock', from: 'mage', hero: 'daon', name: '흑마술사', heroName: '다온', baseAtk: 40, baseHp: 250, trait: 'dotdmg', traitName: '지속 피해',
+    { key: 'warlock', from: 'mage', hero: 'daon', name: '저주술사', heroName: '다온', baseAtk: 40, baseHp: 250, trait: 'dotdmg', traitName: '지속 피해',
       names: { weapon: ['저주받은 마도서', '피의 단검', '파멸의 수정구', '영혼 사슬'], armor: ['계약자의 로브', '고통의 망토', '사슬 로브', '심연의 외투'], medal: ['역병의 소울 메달', '파멸의 소울 메달'] } },
+    { key: 'demon', from: 'mage', hero: 'seren', name: '흑마술사', heroName: '세렌', baseAtk: 38, baseHp: 255, trait: 'skilldmg', traitName: '스킬 피해',
+      names: { weapon: ['악마의 홀', '지옥불 마도서', '공허의 수정', '혼돈의 지팡이', '계약의 단검'], armor: ['계약자의 로브', '지옥불 망토', '공허 장막 로브', '혼돈의 외투', '악마 가죽 갑옷'], medal: ['군주의 소울 메달', '계약의 소울 메달'] } },
     { key: 'necro', from: 'mage', hero: 'myoyeon', name: '네크로맨서', heroName: '묘연', baseAtk: 34, baseHp: 280, trait: 'skilldmg', traitName: '스킬 피해',
       names: { weapon: ['해골 지팡이', '시체 낫', '죽음의 홀', '영혼 등불'], armor: ['무덤지기 로브', '뼈 갑주', '수의', '망자의 외투'], medal: ['군단의 소울 메달', '시체의 소울 메달'] } },
   ];
@@ -117,13 +119,22 @@ Object.assign(SKILLS, {
   gs_monk_s2_b: { name: '파산장', target: 'self_area', cd: 10, power: 1.1, areaR: 90, ki: 0.25, hint: 'nearEnemies', effects: [{ status: 'stun', dur: 0.8 }], fx: 'spin', desc: '주변 적 장타 + 0.8초 기절 — 기 1개당 위력 +25%.', ai: { cond: 'hint', target: 'nearest' } },
   gs_monk_s2_c: { name: '기혈 순환', target: 'self', cd: 12, power: 0, kiHeal: 0.05, effects: [{ status: 'inspire', dur: 6, value: 0.3, to: 'self' }], fx: 'heal', desc: '기를 모두 써서 기 1개당 HP 5% 회복 + 6초간 공격력 +30%.', ai: { cond: 'allyHpBelow', param: 60, target: 'nearest' } },
   gs_monk_s2_d: { name: '용권풍', target: 'enemy', cd: 11, power: 2.2, ki: 0.3, brokenMult: 1.6, effects: [], fx: 'slash', desc: '회오리 주먹 — 기 1개당 위력 +30%. 그로기 적에게 1.6배.', ai: { cond: 'breakWindow', target: 'focus' } },
-  // ---------------- 흑마술사 ① 갑옷 (저주 + 끊기 ●) / ② 무기
+  // ---------------- 저주술사 ① 갑옷 (저주 + 끊기 ●) / ② 무기
   gs_warlock_s1_b: { name: '쇠약의 저주', target: 'enemy', cd: 6, power: 0.6, interrupt: 1, effects: [{ status: 'weaken', dur: 6, value: 0.3 }, { status: 'curse', dur: 6, dps: 0.2 }], fx: 'curse', desc: '6초 약화(주는 피해 -30%) + 저주. 끊기 ●. 보스·광전사에게.', ai: { cond: 'always', target: 'focus' } },
   gs_warlock_s1_c: { name: '고통의 낙인', target: 'enemy', cd: 5, power: 0.7, interrupt: 1, effects: [{ status: 'curse', dur: 10, dps: 0.38 }], fx: 'curse', desc: '10초 강한 저주. 끊기 ●.', ai: { cond: 'always', target: 'focus' } },
   gs_warlock_s1_d: { name: '어둠의 사슬', target: 'multi_enemy', count: 2, cd: 7, power: 0.7, interrupt: 1, effects: [{ status: 'slow', dur: 3, value: 0.4 }, { status: 'curse', dur: 6, dps: 0.22 }], fx: 'curse', desc: '시전 중인 적부터 2명 사슬 — 3초 둔화 + 저주. 맞은 적마다 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
   gs_warlock_s2_b: { name: '영혼 화염', target: 'area_enemy', cd: 10, power: 1.2, areaR: 85, hint: 'cluster', effects: [{ status: 'curse', dur: 8, dps: 0.3 }], fx: 'poison', desc: '지점 범위 피해 + 모두 저주. 뭉친 적에게.', ai: { cond: 'hint', target: 'nearest' } },
   gs_warlock_s2_c: { name: '피의 대가', target: 'self', cd: 12, power: 0, selfCost: 0.1, ultSelf: 20, effects: [{ status: 'inspire', dur: 5, value: 0.3, to: 'self' }], fx: 'curse', desc: 'HP 10%를 바쳐 필살기 게이지 +20 + 5초간 공격력 +30%.', ai: { cond: 'always', target: 'nearest' } },
   gs_warlock_s2_d: { name: '파멸의 씨앗', target: 'enemy', cd: 12, power: 0.4, effects: [{ status: 'doom', dur: 3, boom: 2.4 }], fx: 'curse', desc: '3초 뒤 터지는 파멸의 씨앗(공격력 ×2.4).', ai: { cond: 'breakWindow', target: 'focus' } },
+  // ---------------- 흑마술사(악마) ① 갑옷 (어둠 마법 · 끊기 ●) / ② 무기 (악마 다루기)
+  gs_demon_s1_b: { name: '불타는 영혼', target: 'enemy', cd: 6, power: 1.0, interrupt: 1, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], fx: 'starbolt', desc: '지옥불 + 5초 화상. 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_demon_s1_c: { name: '생명력 착취', target: 'enemy', cd: 7, power: 1.1, interrupt: 1, lifesteal: 0.5, effects: [], fx: 'curse', desc: '흡혈(50%) 어둠 화살. 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_demon_s1_d: { name: '혼돈의 화살', target: 'enemy', cd: 8, power: 1.8, interrupt: 1, brokenMult: 1.3, effects: [], fx: 'snipe', desc: '혼돈의 화살 — 그로기 적에게 1.3배. 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_demon_s1_e: { name: '악마의 손아귀', target: 'multi_enemy', count: 2, cd: 7, power: 0.8, interrupt: 1, effects: [{ status: 'slow', dur: 3, value: 0.4 }], fx: 'curse', desc: '시전 중인 적부터 2명 붙잡기 + 3초 둔화. 맞은 적마다 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
+  gs_demon_s2_b: { name: '희생', target: 'self', cd: 12, power: 0, shieldPct: 0.28, petCost: 0.3, effects: [], fx: 'wall', desc: '내 악마의 HP 30%를 바쳐 자신에게 최대 HP 28% 보호막.', ai: { cond: 'allyHpBelow', param: 60, target: 'nearest' } },
+  gs_demon_s2_c: { name: '지옥의 문', target: 'self', cd: 12, power: 0, summon: { n: 2, kind: 'imp', hp: 0.22, atk: 0.5, dur: 10 }, effects: [], fx: 'bone', desc: '작은 임프 2마리 10초 소환.', ai: { cond: 'always', target: 'nearest' } },
+  gs_demon_s2_d: { name: '공포의 울부짖음', target: 'self_area', cd: 12, power: 0.4, areaR: 100, hint: 'nearEnemies', effects: [{ status: 'stun', dur: 1 }], fx: 'nova', desc: '주변 적 1초 기절(끊기 칸 전부). 붙은 적을 떼어 낸다.', ai: { cond: 'hint', target: 'nearest' } },
+  gs_demon_s2_e: { name: '악마 변신', target: 'self', cd: 14, power: 0, effects: [{ status: 'inspire', dur: 8, value: 0.5, to: 'self' }, { status: 'guard', dur: 8, value: 0.2, to: 'self' }], petBuff: { heal: 0.3, inspire: 0.3, dur: 8 }, fx: 'curse', desc: '8초간 공격력 +50% · 받는 피해 -20% + 악마도 강해진다.', ai: { cond: 'breakWindow', target: 'nearest' } },
   // ---------------- 네크로맨서 ① 갑옷 / ② 무기
   gs_necro_s1_b: { name: '뼈 창', target: 'enemy', cd: 6, power: 1.2, interrupt: 1, effects: [{ status: 'slow', dur: 3, value: 0.3 }], fx: 'bone', desc: '뼈 창 + 3초 둔화. 끊기 ●.', ai: { cond: 'smartInterrupt', target: 'focus' } },
   gs_necro_s1_c: { name: '구울 소환', target: 'self', cd: 9, power: 0, summon: { n: 2, kind: 'ghoul', hp: 0.25, atk: 0.5, dur: 10, poison: 0.12 }, effects: [], fx: 'bone', desc: '구울 2 소환 — 10초. 물 때마다 중독.', ai: { cond: 'always', target: 'nearest' } },
@@ -199,6 +210,8 @@ const GEAR_SKILLS = {
   monk_weapon_1: 'mujin_s2', monk_weapon_2: 'gs_monk_s2_b', monk_weapon_3: 'gs_monk_s2_c', monk_weapon_4: 'gs_monk_s2_d',
   warlock_armor_1: 'daon_s1', warlock_armor_2: 'gs_warlock_s1_b', warlock_armor_3: 'gs_warlock_s1_c', warlock_armor_4: 'gs_warlock_s1_d',
   warlock_weapon_1: 'daon_s2', warlock_weapon_2: 'gs_warlock_s2_b', warlock_weapon_3: 'gs_warlock_s2_c', warlock_weapon_4: 'gs_warlock_s2_d',
+  demon_armor_1: 'seren_s1', demon_armor_2: 'gs_demon_s1_b', demon_armor_3: 'gs_demon_s1_c', demon_armor_4: 'gs_demon_s1_d', demon_armor_5: 'gs_demon_s1_e',
+  demon_weapon_1: 'seren_s2', demon_weapon_2: 'gs_demon_s2_b', demon_weapon_3: 'gs_demon_s2_c', demon_weapon_4: 'gs_demon_s2_d', demon_weapon_5: 'gs_demon_s2_e',
   necro_armor_1: 'myoyeon_s1', necro_armor_2: 'gs_necro_s1_b', necro_armor_3: 'gs_necro_s1_c', necro_armor_4: 'gs_necro_s1_d',
   necro_weapon_1: 'myoyeon_s2', necro_weapon_2: 'gs_necro_s2_b', necro_weapon_3: 'gs_necro_s2_c', necro_weapon_4: 'gs_necro_s2_d',
   tank_armor_5: 'gs_tank_s1_e', tank_weapon_5: 'gs_tank_s2_e',
@@ -212,7 +225,7 @@ const GEAR_SKILLS = {
   support_armor_5: 'gs_support_s1_e', support_weapon_5: 'gs_support_s2_e',
 };
 // 기본 스킬의 자동 전략도 같은 형식으로 (스킬을 다시 기본으로 바꿨을 때 되돌릴 값)
-for (const id of ['tobi', 'danbi', 'yeon', 'mujin', 'byeolbi', 'soldam', 'daon', 'myoyeon', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
+for (const id of ['tobi', 'danbi', 'yeon', 'mujin', 'byeolbi', 'soldam', 'daon', 'seren', 'myoyeon', 'bori']) for (const [slot, i] of [['s1', 0], ['s2', 1]]) {
   const sk = SKILLS[HEROES[id].skills[i]], p = AI_PRESETS[id][slot];
   if (!sk.ai) sk.ai = { cond: p.cond, target: p.target, param: p.param };
 }

@@ -187,7 +187,8 @@ const DungeonScene = {
 
   partyAt(x0) {
     const run = Game.run;
-    return partyIds(run).filter((id) => !run.heroes[id].dead).map((id, i) => ({ id, x: x0 - i * 46, y: EXPLORE.LANES[i % 3] }));
+    const k = this.formK === undefined ? 1 : this.formK; // 왼쪽으로 갈 때는 대형도 뒤집혀 선두가 왼쪽에 선다
+    return partyIds(run).filter((id) => !run.heroes[id].dead).map((id, i) => ({ id, x: x0 - i * 46 * k, y: EXPLORE.LANES[i % 3] }));
   },
 
   update(dt) {
@@ -214,7 +215,8 @@ const DungeonScene = {
     if (run.autoMode) dir = 1;
     else if (this.hold) dir = this.hold;
     else if (this.walkTarget !== null) { const d = this.walkTarget - at.x; dir = Math.abs(d) < 4 ? 0 : Math.sign(d); if (!dir) this.walkTarget = null; }
-    this.moving = dir !== 0; this.faceLeft = dir < 0;
+    this.moving = dir !== 0; if (dir) this.faceLeft = dir < 0; // 멈춰도 마지막으로 걷던 쪽을 본다
+    this.formK = (this.formK === undefined ? 1 : this.formK) + ((this.faceLeft ? -1 : 1) - (this.formK === undefined ? 1 : this.formK)) * Math.min(1, dt * 5);
     if (dir) at.x = clamp(at.x + dir * sp, -40, limit + 41);
     // 횃불: 복도를 걸을 때만 닳는다
     if (dir > 0) { this.torchAcc = (this.torchAcc || 0) + sp; if (this.torchAcc >= 900) { this.torchAcc -= 900; run.torch = Math.max(0, run.torch - CONST.TORCH_PER_TILE); if (run.torch < 30 && run.torchPacks > 0) { run.torchPacks--; run.torch = Math.min(CONST.TORCH_MAX, run.torch + 40); Game.toast('횃불 묶음에 불을 붙였다 (+40)', 1200); } this.refreshRes(); } }
@@ -265,7 +267,7 @@ const DungeonScene = {
         ['지나간다', () => '상자를 두고 지나갔다'],
       ],
       altar: [
-        ...(alive.some((id) => HEROES[id].role === 'warlock') ? [['🩸 흑마술사가 계약을 맺는다 (흑마술사 HP -15%)', () => { const id = alive.find((x) => HEROES[x].role === 'warlock'); H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * 0.15)); run.fruit = { bonus: 0.2, battles: 3 }; return `${HEROES[id].name}이(가) 제단과 계약했다. 다음 3번의 전투에서 공격력 +20%`; }]] : []),
+        ...(alive.some((id) => HEROES[id].role === 'warlock') ? [['🩸 저주술사가 계약을 맺는다 (저주술사 HP -15%)', () => { const id = alive.find((x) => HEROES[x].role === 'warlock'); H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * 0.15)); run.fruit = { bonus: 0.2, battles: 3 }; return `${HEROES[id].name}이(가) 제단과 계약했다. 다음 3번의 전투에서 공격력 +20%`; }]] : []),
         ['피를 바친다 (가장 튼튼한 동료 HP -25%)', () => { const id = alive.slice().sort((a, b) => H(b).hp - H(a).hp)[0]; if (id) H(id).hp = Math.max(1, Math.round(H(id).hp - H(id).maxHp * 0.25)); run.fruit = { bonus: 0.15, battles: 3 }; return `${HEROES[id].name}의 피를 바쳤다. 다음 3번의 전투에서 공격력 +15%`; }],
         ['기도한다', () => rng() < 0.6 ? (healAll(0.15), '따뜻한 빛. 파티 HP +15%') : '아무 일도 일어나지 않았다'],
         ['지나간다', () => '제단을 지나쳤다'],
@@ -412,7 +414,7 @@ const DungeonScene = {
     const walking = this.moving && !Game.modalOpen;
     for (const p of list.slice().sort((a, b) => a.y - b.y)) {
       ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(p.x, p.y + 2, 26, 7, 0, 0, Math.PI * 2); ctx.fill();
-      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft && walking, anim: walking ? 'walk' : 'idle', phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
+      drawSprite(ctx, HEROES[p.id].sprite, p.x, p.y - (walking ? Math.abs(Math.sin(t * 10 + p.x * 0.01)) * 3 : 0), { scale: CONST.SPRITE_SCALE, t, flip: !!this.faceLeft, anim: walking ? 'walk' : 'idle', phase: p.x * 0.01, blinking: ((t + p.x * 0.003) % 3.4) < 0.12 });
     }
   },
 };

@@ -705,13 +705,20 @@ const SPRITE_VARIANTS = {
     swap: { '#4a3a7a': '#2a1a2e', '#2e3a62': '#1a1a1a', '#141a30': '#140a18', '#1e1238': '#1a0e1e', '#3a2c62': '#2e1a34', '#5a4a90': '#5a2a4a', '#8a5ab0': '#d03a5a', '#d8b048': '#9a3a5a', '#f8d8bc': '#e8d0d0', '#43306e': '#241426', '#4e3a80': '#30182e' } },
   mage_d: { base: 'mage', build: { sx: 0.96, sy: 1.04, hs: 0.98 }, face: { shape: 'round', eye: 'sharp', brow: 'thin', mouth: 'smirk', extras: [] },
     swap: { '#4a3a7a': '#2a3a6a', '#2e3a62': '#f0e070', '#141a30': '#1a2440', '#1e1238': '#1a2448', '#3a2c62': '#2a3a72', '#5a4a90': '#4a6ac0', '#8a5ab0': '#f0d040', '#43306e': '#22306a', '#4e3a80': '#3048a0' } },
-  // 흑마술사 (v0.52): 마법사 체형에 보라·검정, 어둠의 구슬
+  // 저주술사 (v0.52): 마법사 체형에 보라·검정, 어둠의 구슬
   warlock: { base: 'mage', build: { sx: 0.94, sy: 1.08, hs: 0.96 }, face: { shape: 'sharp', eye: 'sleepy', brow: 'thin', mouth: 'smirk', extras: [], orb: '176,90,240' },
     swap: { '#4a3a7a': '#2a1a3a', '#2e3a62': '#e8e0f0', '#141a30': '#1a0e24', '#1e1238': '#140a1e', '#3a2c62': '#2e1a42', '#5a4a90': '#6a2a8a', '#8a5ab0': '#c04ae0', '#43306e': '#22122e', '#4e3a80': '#3a1a52', '#d8b048': '#9a6ad0' } },
   warlock_b: { base: 'mage', build: { sx: 0.96, sy: 1.04, hs: 0.98 }, face: { shape: 'long', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: ['mole'], orb: '230,50,70' },
     swap: { '#4a3a7a': '#5a1420', '#2e3a62': '#2a1a1e', '#141a30': '#1a0a0e', '#1e1238': '#2a0a10', '#3a2c62': '#4a1018', '#5a4a90': '#8a1a2a', '#8a5ab0': '#e03a4a', '#43306e': '#3a0e14', '#4e3a80': '#6a1420', '#f8d8bc': '#f0d8d8', '#d8b048': '#c03a4a' } },
   warlock_c: { base: 'mage', build: { sx: 0.92, sy: 1.12, hs: 0.94 }, face: { shape: 'child', eye: 'narrow', brow: 'worried', mouth: 'flat', extras: [], orb: '120,240,150' },
     swap: { '#4a3a7a': '#1a2a24', '#2e3a62': '#f0f0f0', '#141a30': '#0a1410', '#1e1238': '#0e1a14', '#3a2c62': '#16302a', '#5a4a90': '#2a5a4a', '#8a5ab0': '#7ae0a0', '#43306e': '#10221c', '#4e3a80': '#1e3e34', '#d8b048': '#6ac08a' } },
+  // 흑마술사 (v0.54): 악마 계약자 — 붉은 지옥불 구슬
+  demonist: { base: 'mage', build: { sx: 0.95, sy: 1.06, hs: 0.97 }, face: { shape: 'sharp', eye: 'sharp', brow: 'angry', mouth: 'smirk', extras: [], orb: '255,90,40' },
+    swap: { '#4a3a7a': '#3a0e14', '#2e3a62': '#1a1a1a', '#141a30': '#140608', '#1e1238': '#1e080c', '#3a2c62': '#4a1218', '#5a4a90': '#7a1a20', '#8a5ab0': '#ff6a3a', '#43306e': '#2e0a10', '#4e3a80': '#5a1218', '#d8b048': '#e0803a' } },
+  demonist_b: { base: 'mage', build: { sx: 0.96, sy: 1.0, hs: 1.02 }, face: { shape: 'child', eye: 'big', brow: 'thin', mouth: 'grin', extras: ['freckles'], orb: '255,160,40' },
+    swap: { '#4a3a7a': '#6a2a10', '#2e3a62': '#ff9a3a', '#141a30': '#2a0e04', '#1e1238': '#3a1206', '#3a2c62': '#5a2208', '#5a4a90': '#a0401a', '#8a5ab0': '#ffc040', '#43306e': '#3a1406', '#4e3a80': '#7a2e10', '#d8b048': '#ffd060' } },
+  demonist_c: { base: 'mage', build: { sx: 1.02, sy: 1.08, hs: 0.96 }, face: { shape: 'long', eye: 'narrow', brow: 'thick', mouth: 'flat', extras: ['scar'], orb: '120,90,255' },
+    swap: { '#4a3a7a': '#1a1440', '#2e3a62': '#c8c0e8', '#141a30': '#0a0820', '#1e1238': '#100c2a', '#3a2c62': '#241c56', '#5a4a90': '#3a2e8a', '#8a5ab0': '#8a6aff', '#43306e': '#14103a', '#4e3a80': '#2a2068', '#d8b048': '#8a7ae0' } },
   // 네크로맨서 (v0.52): 해골 지팡이 · 수의 색
   necro: { base: 'mage', build: { sx: 0.95, sy: 1.08, hs: 0.97 }, face: { shape: 'long', eye: 'narrow', brow: 'thin', mouth: 'flat', extras: [], skull: '120,230,140' },
     swap: { '#4a3a7a': '#2a3a32', '#2e3a62': '#d8dcd4', '#141a30': '#121a16', '#1e1238': '#101a14', '#3a2c62': '#22322a', '#5a4a90': '#3a5a4a', '#8a5ab0': '#9ad08a', '#43306e': '#1a2620', '#4e3a80': '#2a4436', '#f8d8bc': '#e8e4dc', '#d8b048': '#a8b0a0' } },
@@ -744,6 +751,13 @@ Object.assign(SPRITE_VARIANTS, {
   orcBerserker: { base: 'orc', filter: 'hue-rotate(-35deg) saturate(1.9) brightness(1.05)', swap: {} },
   goblinTrapper: { base: 'goblinHorn', filter: 'hue-rotate(110deg) saturate(0.85)', swap: {} },
   knightElin: { base: 'knight', swap: {} },
+  imp: { base: 'goblin', filter: 'hue-rotate(-95deg) saturate(1.8) brightness(0.95)', swap: {} },                 // 흑마술사 악마들 (임시 외형)
+  voidwalker: { base: 'ogre', filter: 'hue-rotate(200deg) saturate(1.3) brightness(0.7) contrast(1.2)', swap: {} },
+  succubus: { base: 'goblinStalker', filter: 'hue-rotate(110deg) saturate(1.4) brightness(1.05)', swap: {} },
+  felhunter: { base: 'goblin', filter: 'hue-rotate(40deg) saturate(2) brightness(0.8) contrast(1.2)', swap: {} },
+  infernal: { base: 'ogre', filter: 'hue-rotate(-80deg) saturate(1.6) brightness(0.75) contrast(1.4)', swap: {} },
+  doomguard: { base: 'orcCaptain', filter: 'hue-rotate(-120deg) saturate(1.8) brightness(0.7) contrast(1.3)', swap: {} },
+  voidlord: { base: 'ogreChief', filter: 'hue-rotate(210deg) saturate(1.2) brightness(0.6) contrast(1.3)', swap: {} },
   skeleton: { base: 'goblin', filter: 'grayscale(1) sepia(0.25) brightness(1.45) contrast(1.4)', swap: {} },         // 네크로맨서 해골 병사
   ghoul: { base: 'goblin', filter: 'hue-rotate(60deg) saturate(0.5) brightness(0.75) contrast(1.2)', swap: {} }, // 구울
   boneGolem: { base: 'ogre', filter: 'grayscale(1) brightness(1.55) contrast(1.3) sepia(0.2)', swap: {} },    // 뼈 골렘 // 반격의 기사: 그림은 시트(02b), 이 항목은 크기 기준용

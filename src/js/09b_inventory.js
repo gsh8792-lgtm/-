@@ -314,7 +314,7 @@ function grantBattleLoot(run, node) {
   p.stones += stones; run.stonesGot += stones;
   const got = [];
   if (src !== 'battle') { const it = EQ.dropItem(rng, p, src, run.tier, partyIds(run)); p.inv.push(it); got.push({ kind: 'item', uid: it.uid }); }
-  if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); }
+  if (src === 'boss') { const g = EQ.dropGem(rng, p, run.tier); p.gems.push(g); got.push({ kind: 'gem', uid: g.uid }); p.tickets += GACHA.BOSS_TICKETS; got.push({ kind: 'ticket', n: GACHA.BOSS_TICKETS }); for (const id of partyIds(run)) { GACHA.addShards(p, id, GACHA.SHARD.boss); got.push({ kind: 'shard', id, n: GACHA.SHARD.boss }); } }
   // 경험치: 출전한 캐릭터 모두 (쓰러진 캐릭터는 절반), 난이도가 높을수록 많이
   const expBase = CHAR_LV.reward[src] * (1 + CHAR_LV.tierMult * (run.tier || 0)) * (node.small ? 0.5 : 1); // 복도의 작은 무리는 절반
   // 경험치는 원정이 끝날 때 정산한다 (원정 중에는 레벨이 오르지 않는다 — 다키스트 던전처럼 같은 체급으로 끝까지)
@@ -330,6 +330,7 @@ function lootHtml(entries) {
   const p = profile();
   return entries.map((e) => {
     if (e.kind === 'ticket') return `<span class="loot ticket">🎟 소환권 ×${e.n}</span>`;
+    if (e.kind === 'shard') return `<span class="loot ticket">◆ ${HEROES[e.id].name} 조각 ×${e.n}</span>`;
     if (e.kind === 'item') { const it = EQ.findItem(p, e.uid); return it ? `<span class="loot g-${it.grade}">${it.grade} ${EQ.itemName(it)}</span>` : ''; }
     const g = EQ.findGem(p, e.uid); return g ? gemBadge(g) : '';
   }).join(' ');

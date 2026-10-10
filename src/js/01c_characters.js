@@ -29,7 +29,7 @@ const BREAKTHROUGH = {
 };
 
 // 직업 기본(기존 5인)이 ①② 스킬과 기본 능력치의 기준
-const CLASS_BASE = { tank: 'tobi', melee: 'danbi', rogue: 'yeon', monk: 'mujin', ranged: 'byeolbi', mage: 'soldam', warlock: 'daon', necro: 'myoyeon', support: 'bori' };
+const CLASS_BASE = { tank: 'tobi', melee: 'danbi', rogue: 'yeon', monk: 'mujin', ranged: 'byeolbi', mage: 'soldam', warlock: 'daon', demon: 'seren', necro: 'myoyeon', support: 'bori' };
 
 // stat: 기준 대비 배율 { hp, atk, aspd(공격 간격 배율의 역수), ms }
 const CHARACTERS = [
@@ -253,8 +253,8 @@ const CHARACTERS = [
       C: { name: '뇌신 강림', target: 'enemy', fx: 'starbolt', power: 3.8, poise: 70, effects: [{ status: 'stun', dur: 1.5 }], desc: '거대한 벼락 + 1.5초 기절 + 그로기 게이지 감소.',
         v: { name: '뇌신의 심판', power: 4.4, poise: 100, effects: [{ status: 'stun', dur: 2 }], desc: '더 큰 벼락 + 2초 기절 + 그로기 게이지 대량 감소.' } },
     } },
-  // ---------------- 흑마술사 (v0.52): 저주(옮는 지속 피해) · 생명력 흡수 · 파멸(지연 폭발) · HP를 바치는 계약
-  { id: 'daon', name: '다온', role: 'warlock', title: '계약의 흑마술사', sprite: 'warlock', trait: 'pact', gift: true,
+  // ---------------- 저주술사 (v0.52): 저주(옮는 지속 피해) · 생명력 흡수 · 파멸(지연 폭발) · HP를 바치는 계약
+  { id: 'daon', name: '다온', role: 'warlock', title: '계약의 저주술사', sprite: 'warlock', trait: 'pact', gift: true,
     desc: '저주를 퍼뜨리고 그 고통으로 산다. 파멸의 낙인은 몇 초 뒤 크게 터진다.',
     ults: {
       A: { base: 'daon_ult', v: { name: '종말', effects: [{ status: 'doom', dur: 3.5, boom: 6.5 }, { status: 'curse', dur: 10, dps: 0.5 }], desc: '강한 저주 + 3.5초 뒤 종말 폭발(공격력 ×6.5).' } },
@@ -282,6 +282,36 @@ const CHARACTERS = [
         v: { name: '심연의 공포', effects: [{ status: 'stun', dur: 1.6 }, { status: 'weaken', dur: 8, value: 0.35 }, { status: 'vuln', dur: 6 }], desc: '모든 적 1.6초 기절 + 8초 약화(-35%) + 6초 취약.' } },
       C: { name: '저주 폭발', target: 'all_enemies', fx: 'nova', power: 0.6, detonate: { status: 'curse', mult: 1.5 }, desc: '모든 적 타격 + 각자의 저주를 한꺼번에 터뜨림(남은 저주 피해 ×1.5).',
         v: { name: '저주의 심판', power: 0.8, detonate: { status: 'curse', mult: 2.2 }, desc: '모든 적 타격 + 저주를 터뜨림(×2.2).' } },
+    } },
+  // ---------------- 흑마술사 (v0.54): 악마 소환. 상시 악마는 레벨로 해금 — Lv1 임프 · Lv10 공허방랑자 · Lv20 서큐버스 · Lv30 지옥사냥개
+  { id: 'seren', name: '세렌', role: 'demon', title: '악마 계약자', sprite: 'demonist', trait: 'fiendlord', gift: true,
+    desc: '작은 임프부터 지옥불정령까지, 레벨이 오를수록 더 강한 악마를 부린다.',
+    ults: {
+      A: { base: 'seren_ult', v: { name: '지옥불 강림', power: 1.8, areaR: 120, summon: { n: 1, kind: 'infernal', hp: 1.6, atk: 1.5, dur: 25 }, effects: [{ status: 'stun', dur: 1.6 }], desc: '더 큰 지옥불정령 — 범위 피해 + 1.6초 기절, 25초.' } },
+      B: { name: '악마의 계약', target: 'self', fx: 'curse', petBuff: { heal: 1, inspire: 0.8, dur: 10, special: true }, effects: [{ status: 'inspire', dur: 10, value: 0.3, to: 'self' }], desc: '내 악마 완전 회복 + 10초간 악마 공격력 +80% · 세렌 공격력 +30%.',
+        v: { name: '영혼 결속', petBuff: { heal: 1, inspire: 1.1, dur: 12, special: true }, effects: [{ status: 'inspire', dur: 12, value: 0.4, to: 'self' }, { status: 'lifesteal', dur: 12, value: 0.2, to: 'self' }], desc: '악마 완전 회복 + 12초간 악마 공격력 +110% · 세렌 공격력 +40% · 흡혈 20%.' } },
+      C: { name: '파멸의 수호병', target: 'self', fx: 'bone', summon: { n: 1, kind: 'doomguard', hp: 1.5, atk: 2.2, dur: 15 }, desc: '거대한 파멸의 수호병을 15초 소환 — 가장 강한 악마.',
+        v: { name: '파멸의 군주', summon: { n: 1, kind: 'doomguard', hp: 2.0, atk: 2.8, dur: 18 }, desc: '더 강한 파멸의 수호병 — 18초.' } },
+    } },
+  { id: 'roa', name: '로아', role: 'demon', title: '지옥불 소환사', sprite: 'demonist_b', trait: 'brave', stat: { hp: 0.95, atk: 1.1 },
+    desc: '임프 떼를 불러 화염을 퍼붓는다. 악마가 많을수록 강해진다.',
+    ults: {
+      A: { name: '임프 무리', target: 'self', fx: 'bone', summon: { n: 3, kind: 'imp', hp: 0.25, atk: 0.55, dur: 15 }, desc: '임프 3마리 추가 소환 — 15초.',
+        v: { name: '임프 군단', summon: { n: 5, kind: 'imp', hp: 0.28, atk: 0.6, dur: 18 }, desc: '임프 5마리 추가 소환 — 18초.' } },
+      B: { name: '불의 비', target: 'area_enemy', areaR: 120, fx: 'meteor', power: 0.6, hits: 4, effects: [{ status: 'burn', dur: 5, dps: 0.3 }], desc: '넓은 범위 4연타 + 화상.',
+        v: { name: '지옥불 폭풍', hits: 6, desc: '넓은 범위 6연타 + 화상.' } },
+      C: { name: '지옥불정령 강하', target: 'area_enemy', areaR: 110, fx: 'meteor', power: 2.0, summon: { n: 1, kind: 'infernal', hp: 1.2, atk: 1.2, dur: 18 }, effects: [{ status: 'stun', dur: 1.2 }], desc: '지옥불정령 강하 — 큰 범위 피해 + 기절, 18초.',
+        v: { name: '지옥불 쌍정령', summon: { n: 2, kind: 'infernal', hp: 1.0, atk: 1.0, dur: 18 }, desc: '지옥불정령 2기 강하 — 범위 피해 + 기절.' } },
+    } },
+  { id: 'maha', name: '마하', role: 'demon', title: '공허의 군주', sprite: 'demonist_c', trait: 'sturdy', stat: { hp: 1.15, atk: 0.95 },
+    desc: '공허의 악마로 적을 붙잡고 파티를 지킨다. 악마를 바쳐 보호막을 만든다.',
+    ults: {
+      A: { name: '공허의 장막', target: 'party', fx: 'wall', shieldPct: 0.15, petBuff: { heal: 0.5, inspire: 0.3, dur: 6, special: true }, desc: '파티 15% 보호막 + 악마 HP 50% 회복 · 특수 능력 즉시.',
+        v: { name: '공허의 요새', shieldPct: 0.22, petBuff: { heal: 1, inspire: 0.5, dur: 8, special: true }, desc: '파티 22% 보호막 + 악마 완전 회복 · 특수 능력 즉시.' } },
+      B: { name: '공허 균열', target: 'all_enemies', fx: 'nova', power: 0.7, effects: [{ status: 'slow', dur: 5, value: 0.4 }, { status: 'taunt', dur: 3 }], desc: '모든 적 피해 + 5초 둔화 + 3초 도발(마하를 노린다).',
+        v: { name: '공허의 포효', power: 0.9, effects: [{ status: 'slow', dur: 6, value: 0.5 }, { status: 'weaken', dur: 6, value: 0.3 }], desc: '모든 적 피해 + 6초 둔화(-50%) + 약화(-30%).' } },
+      C: { name: '공허의 거신', target: 'self', fx: 'bone', summon: { n: 1, kind: 'voidlord', hp: 2.0, atk: 1.0, dur: 18, taunt: 4 }, desc: '거대한 공허의 거신 18초 — 나타날 때 주변 적 4초 도발.',
+        v: { name: '공허의 왕', summon: { n: 1, kind: 'voidlord', hp: 2.8, atk: 1.3, dur: 22, taunt: 5 }, desc: '공허의 왕 22초 — 주변 적 5초 도발.' } },
     } },
   // ---------------- 네크로맨서 (v0.52): 해골 병사 소환 · 시체(쓰러진 적) 활용
   { id: 'myoyeon', name: '묘연', role: 'necro', title: '망자의 군주', sprite: 'necro', trait: 'grave', gift: true,
@@ -355,10 +385,18 @@ const CHARACTERS = [
     } },
 ];
 const CHAR = {}; CHARACTERS.forEach((c) => { CHAR[c.id] = c; });
+// 흑마술사 상시 악마: 캐릭터 레벨로 해금 (와우 흑마법사처럼 작은 악마부터)
+const DEMON_PETS = [
+  { key: 'imp', name: '임프', lv: 1, desc: '멀리서 화염탄 (맞은 적 화상). 약하지만 안전하다.' },
+  { key: 'voidwalker', name: '공허방랑자', lv: 10, desc: '단단한 방패 악마. 9초마다 주변 적을 3초 도발한다.' },
+  { key: 'succubus', name: '서큐버스', lv: 20, desc: '강한 근접 악마. 10초마다 대상을 1.5초 매혹(기절 · 끊기 칸 전부).' },
+  { key: 'felhunter', name: '지옥사냥개', lv: 30, desc: '마법 사냥개. 8초마다 시전 중인 적에게 달려들어 끊기 ●●.' },
+];
+function demonPetsFor(lv) { return DEMON_PETS.filter((x) => (lv || 1) >= x.lv); }
 
 // HEROES / AI_PRESETS / HERO_ORDER / SKILLS 에 등록 (기존 5인은 그대로 두고 속성만 보강)
 (function registerCharacters() {
-  const order = ['tank', 'melee', 'rogue', 'monk', 'ranged', 'mage', 'warlock', 'necro', 'support'];
+  const order = ['tank', 'melee', 'rogue', 'monk', 'ranged', 'mage', 'warlock', 'demon', 'necro', 'support'];
   HERO_ORDER.length = 0;
   for (const role of order) for (const c of CHARACTERS) if (c.role === role) HERO_ORDER.push(c.id);
   for (const c of CHARACTERS) {

@@ -167,14 +167,20 @@ if (sa !== sb) fail++;
   // 소환: 소환권 소모, 신규/돌파/초과 처리, 돌파에 따른 변주 해금
   { const p = GACHA.ensure(EQ.newProfile()); const r = makeRng(1);
     if (GACHA.ownedIds(p).length !== 5 + CHARACTERS.filter((c) => c.gift).length || p.tickets !== GACHA.START_TICKETS) errs.push('starter chars/tickets');
-    p.tickets = 200; const res = GACHA.pull(p, r, 200);
+    p.tickets = 200; const own0 = GACHA.ownedIds(p).length; const res = GACHA.pull(p, r, 200);
     if (res.length !== 200 || p.tickets !== 0) errs.push('pull count');
-    if (GACHA.ownedIds(p).length !== CHARACTERS.length) errs.push('not all owned after 200 pulls');
-    if (!res.some((x) => x.overflow)) errs.push('no overflow after max breakthrough');
+    const heroes = res.filter((x) => x.kind === 'hero').length; if (heroes < 2 || heroes > 18) errs.push('hero rate ' + heroes);
+    const sh = Object.values(p.shards || {}).reduce((a, b) => a + b, 0); if (sh < 400 || sh > 900) errs.push('shard total ' + sh);
+    if (GACHA.ownedIds(p).length > own0 + 18) errs.push('too many new heroes');
+    if (Object.values(p.chars).some((c) => c.bt > 0)) errs.push('pull should not break through');
+    p.shards.kai = 0; if (GACHA.owned(p, 'kai')) delete p.chars.kai; GACHA.addShards(p, 'kai', 39); if (GACHA.unlock(p, 'kai')) errs.push('unlock with 39');
+    GACHA.addShards(p, 'kai', 1 + 20); if (!GACHA.unlock(p, 'kai') || GACHA.shards(p, 'kai') !== 20) errs.push('unlock 40');
+    if (!GACHA.breakthrough(p, 'kai') || p.chars.kai.bt !== 1 || GACHA.shards(p, 'kai') !== 0) errs.push('bt1 cost 20');
+    if (GACHA.breakthrough(p, 'kai')) errs.push('bt2 without 30');
     if (GACHA.pull(p, r, 1) !== null) errs.push('pull without tickets');
     if (ultChoices('kai', 0).length !== 3 || ultChoices('kai', 5).length !== 6) errs.push('variant unlocks');
     if (!(ultDefFor('kai', 'A', 1).power > ultDefFor('kai', 'A', 0).power)) errs.push('bt1 boost'); }
-  console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(23 chars × 6 ultimates cast, mechanics, gacha)');
+  console.log('characters:', errs.length ? 'FAIL ' + [...new Set(errs)].slice(0, 8).join(' | ') : 'OK', '(chars × 6 ultimates cast, mechanics, soul-shard gacha)');
   if (errs.length) fail++;
 }
 // 그로기 역할 분담 규칙 (흔들림 · 끊기 합산 · 점감 · 반복 그로기 · 보스 기믹)
@@ -264,14 +270,14 @@ if (sa !== sb) fail++;
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
   const ids = Object.keys(GEAR_SKILLS);
-  if (ids.length !== 90 || new Set(Object.values(GEAR_SKILLS)).size !== 90) errs.push('90 distinct gear skills');
+  if (ids.length !== 100 || new Set(Object.values(GEAR_SKILLS)).size !== 100) errs.push('100 distinct gear skills');
   // 직업별 그로기 역할: 어떤 조합이든 끊기/기절/공명 수단이 남는다
-  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance'), rogue: (sk) => sk.interrupt >= 1, monk: (sk) => sk.interrupt >= 2, warlock: (sk) => sk.interrupt >= 1, necro: (sk) => !!(sk.summon || sk.interrupt || sk.shieldPct) };
-  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor', rogue: 'armor', monk: 'armor', warlock: 'armor', necro: 'armor' };
+  const role = { tank: (sk) => sk.effects.some((e) => e.status === 'stun'), melee: (sk) => sk.interrupt >= 2, ranged: (sk) => sk.interrupt >= 2, mage: (sk) => sk.interrupt >= 1, support: (sk) => sk.effects.some((e) => e.status === 'resonance'), rogue: (sk) => sk.interrupt >= 1, monk: (sk) => sk.interrupt >= 2, warlock: (sk) => sk.interrupt >= 1, demon: (sk) => sk.interrupt >= 1, necro: (sk) => !!(sk.summon || sk.interrupt || sk.shieldPct) };
+  const roleSlot = { tank: 'weapon', melee: 'armor', ranged: 'armor', mage: 'weapon', support: 'armor', rogue: 'armor', monk: 'armor', warlock: 'armor', demon: 'armor', necro: 'armor' };
   for (const cls in role) for (const n of [1, 2, 3]) { const sid = GEAR_SKILLS[`${cls}_${roleSlot[cls]}_${n}`]; if (!role[cls](SKILLS[sid])) errs.push('role lost ' + sid); }
   // 모든 장비 스킬이 실제로 시전되고 오류가 없다
   const mk = (id, skills, rank) => { const sim = new BattleSim({ seed: 11, stage: 5, waves: [['ogre_chief', 'goblin', 'goblin']], strategy: st0, autoMode: false, partySize: 3, heroes: [id, 'tobi', 'bori'].filter((x, i, a) => a.indexOf(x) === i).map((x) => ({ id: x, hp: 9999, maxHp: 9999, upgrades: {}, skills: x === id ? skills : null, skillRank: x === id ? rank : null })) }); for (let i = 0; i < 150; i++) sim.step(1 / 60); return sim; };
-  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi', rogue: 'ruka', monk: 'soha', warlock: 'risha', necro: 'bella' };
+  const clsHero = { tank: 'tobi', melee: 'kai', ranged: 'mir', mage: 'nox', support: 'lumi', rogue: 'ruka', monk: 'soha', warlock: 'risha', demon: 'roa', necro: 'bella' };
   for (const it of ids) {
     const [cls, kind] = it.split('_'); const slot = kind === 'armor' ? 's1' : 's2'; const hid = clsHero[cls];
     try {
@@ -507,16 +513,31 @@ if (sa !== sb) fail++;
     if (!sim.enemies.some((e) => e.alive && e.target && e.target.minion)) errs.push('enemies ignore minions');
     if (!sim.minions.some((u) => u.stats === n.stats) || !(n.stats.dealt > 0)) errs.push('minion dmg not credited');
     for (let i = 0; i < 60 * 16; i++) sim.step(1 / 60); if (sim.minions.some((u) => u.alive && u.life < -0.5)) errs.push('minion did not expire'); }
-  { const p = GACHA.ensure(EQ.newProfile()); for (const [id, role] of [['mujin', 'monk'], ['daon', 'warlock'], ['myoyeon', 'necro']]) {
+  { const p = GACHA.ensure(EQ.newProfile()); for (const [id, role] of [['mujin', 'monk'], ['daon', 'warlock'], ['seren', 'demon'], ['myoyeon', 'necro']]) {
       if (!p.chars[id]) errs.push(id + ' not gifted'); if (TALENTS[role].length !== 2) errs.push(role + ' talents');
       if (!EQ.DB.items.some((it) => it.cls === role && it.slot === 'weapon' && it.line === 4)) errs.push(role + ' gear');
       if (CHARACTERS.filter((c) => c.role === role).length !== 3) errs.push(role + ' chars'); } }
   // 모든 새 필살기(변주 포함)가 오류 없이 시전된다
-  for (const id of ['mujin', 'soha', 'baekun', 'daon', 'risha', 'kali', 'myoyeon', 'bella', 'kamu']) for (const k of ['A', 'B', 'C', 'A2', 'B2', 'C2']) {
+  for (const id of ['mujin', 'soha', 'baekun', 'daon', 'risha', 'kali', 'seren', 'roa', 'maha', 'myoyeon', 'bella', 'kamu']) for (const k of ['A', 'B', 'C', 'A2', 'B2', 'C2']) {
     try { const sim = mk([['ogre', 'goblin', 'goblin']], [id, 'tobi', 'bori']); for (let i = 0; i < 90; i++) sim.step(1 / 60); sim.corpses = 3; const h = sim.heroes[0]; h.ultDef = SKILLS[`${id}_ult_${k}`]; h.ult = 100; h.castLock = 0; h.statuses.ki = { t: Infinity, n: 3 };
       for (const e of sim.enemies) { e.x = h.x + 70; e.y = h.y; }
       const sp = sim.resolveTarget(h, 'ult') || {}; if (!sim.cast(h, 'ult', sp)) errs.push('ult cast ' + id + k); for (let i = 0; i < 60 * 5; i++) sim.step(1 / 60); } catch (e) { errs.push(id + k + ' ' + e.message); }
   }
+  // 흑마술사(악마): 상시 악마 · 레벨 해금 · 특수 능력 · 지옥불정령 · 악마 지배 · 다시 불러내기
+  { const p = GACHA.ensure(EQ.newProfile()); if (!p.chars.seren) errs.push('seren not gifted');
+    if (GACHA.petFor(p, 'seren') !== 'imp') errs.push('lv1 pet'); p.chars.seren.lv = 25; if (GACHA.petFor(p, 'seren') !== 'succubus') errs.push('lv25 best pet'); p.chars.seren.pet = 'voidwalker'; if (GACHA.petFor(p, 'seren') !== 'voidwalker') errs.push('pet choice'); p.chars.seren.pet = 'felhunter'; if (GACHA.petFor(p, 'seren') !== 'succubus') errs.push('locked pet'); }
+  for (const kind of ['imp', 'voidwalker', 'succubus', 'felhunter']) {
+    const sim = new BattleSim({ seed: 8, stage: 2, waves: [['ogre', 'goblin']], strategy: st0, autoMode: true, partySize: 2, heroes: [{ id: 'seren', hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null, pet: kind }, { id: 'tobi', hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null }] });
+    const pet = sim.petOf(sim.heroes[0]); if (!pet || pet.key !== 'minion_' + kind || pet.life !== Infinity) { errs.push('pet spawn ' + kind); continue; }
+    let sp = 0; sim.events.length = 0; for (let i = 0; i < 60 * 25 && !sim.outcome; i++) { sim.step(1 / 60); sp += sim.events.filter((e) => e.type === 'petSkill').length; sim.events.length = 0; }
+    if (kind !== 'imp' && kind !== 'felhunter' && !sp) errs.push('pet special ' + kind);
+    if (!(sim.heroes[0].stats.dealt > 0)) errs.push('pet/owner dmg ' + kind); }
+  { const sim = new BattleSim({ seed: 8, stage: 2, waves: [['ogre', 'goblin', 'goblin']], strategy: st0, autoMode: false, partySize: 2, heroes: [{ id: 'seren', hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null, pet: 'imp' }, { id: 'tobi', hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null }] });
+    for (let i = 0; i < 90; i++) sim.step(1 / 60); const w = sim.heroes[0], pet = sim.petOf(w);
+    pet.hp = 10; w.cds.s2 = 0; w.castLock = 0; sim.cast(w, 's2', {}); if (!(pet.hp > 10) || !pet.statuses.inspire) errs.push('pet buff');
+    sim._damage(sim.enemies[0], pet, 1e6, { noCrit: true, trueDmg: true }); if (sim.petOf(w)) errs.push('pet not dead'); for (let i = 0; i < 60 * 16; i++) sim.step(1 / 60); if (!sim.petOf(w)) errs.push('pet respawn');
+    const e = sim.enemies.find((x) => x.alive); w.ult = 100; w.castLock = 0; const n0 = sim.minions.filter((u) => u.alive).length; sim.cast(w, 'ult', { x: e.x, y: e.y }); for (let i = 0; i < 40; i++) sim.step(1 / 60);
+    if (!sim.minions.some((u) => u.alive && u.key === 'minion_infernal')) errs.push('infernal'); if (!sim.enemies.some((x) => x.alive && x.statuses.stun) && sim.enemies.some((x) => x.alive)) errs.push('infernal stun'); }
   console.log('new classes:', errs.length ? 'FAIL ' + errs.join(' | ') : 'OK', '(monk ki/dodge, warlock curse spread/doom/pact, necro minions/corpses, gifts, gear, talents, 54 ults)');
   if (errs.length) fail++;
 }
@@ -524,7 +545,7 @@ if (sa !== sb) fail++;
 {
   const errs = [];
   const st0 = JSON.parse(JSON.stringify(AI_PRESETS));
-  for (const c of ['tank', 'melee', 'rogue', 'monk', 'ranged', 'mage', 'warlock', 'necro', 'support']) for (const s of ['armor', 'weapon']) if (!EQ.BASE[`${c}_${s}_5`] || !GEAR_SKILLS[`${c}_${s}_5`]) errs.push('line5 ' + c + s);
+  for (const c of ['tank', 'melee', 'rogue', 'monk', 'ranged', 'mage', 'warlock', 'demon', 'necro', 'support']) for (const s of ['armor', 'weapon']) if (!EQ.BASE[`${c}_${s}_5`] || !GEAR_SKILLS[`${c}_${s}_5`]) errs.push('line5 ' + c + s);
   const mk = (ids, waves) => new BattleSim({ seed: 3, stage: 2, waves, strategy: st0, autoMode: false, partySize: 3, heroes: ids.map((id) => ({ id, hp: 3000, maxHp: 3000, upgrades: {}, ultDef: null, skills: id === 'tobi' ? { s1: 'tobi_s1', s2: 'gs_tank_s2_e' } : id === 'myoyeon' ? { s1: 'gs_necro_s1_e', s2: 'myoyeon_s2' } : null })) });
   { const sim = mk(['tobi', 'myoyeon', 'bori'], [['goblin_archer', 'ogre_chief']]); for (let i = 0; i < 90; i++) sim.step(1 / 60); const t = sim.heroes[0], a = sim.enemies[0], boss = sim.enemies[1];
     const ax = a.x; t.cds.s2 = 0; t.castLock = 0; sim.cast(t, 's2', { unit: a }); if (!(Math.abs(a.x - t.x) < Math.abs(ax - t.x) - 50)) errs.push('pull'); for (let i = 0; i < 20; i++) sim.step(1 / 60); if (!a.statuses.taunt) errs.push('pull taunt');

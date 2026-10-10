@@ -752,7 +752,8 @@ function openPartySelect(run, onDone) {
     if (pick.length && !roles.includes('support')) tips.push('서포터가 없으면 전투 중 회복은 회복약뿐이에요.');
     if (pick.length && roles.includes('rogue')) tips.push('도적: 함정 해제 · 상자 자물쇠 따기 · 후열 적부터 처리.');
     if (pick.length && roles.includes('monk')) tips.push('수도승: 평타로 기를 모아 ②·③으로 터뜨린다. 근접 평타 회피 · 함정 감지.');
-    if (pick.length && roles.includes('warlock')) tips.push('흑마술사: 저주는 쓰러진 적에게서 옮는다. 도적의 중독과 만나면 「역병」.');
+    if (pick.length && roles.includes('warlock')) tips.push('저주술사: 저주는 쓰러진 적에게서 옮는다. 도적의 중독과 만나면 「역병」.');
+    if (pick.length && roles.includes('demon')) tips.push('흑마술사: 악마가 함께 싸운다 (캐릭터 화면에서 고름 · 레벨로 더 강한 악마). 필살기로 지옥불정령·파멸의 수호병.');
     if (pick.length && roles.includes('necro')) tips.push('네크로맨서: 해골 병사가 적을 막는다. 적이 쓰러질수록 시체가 쌓여 강해진다.');
     if (pick.length < CONST.PARTY_SIZE) tips.push(`${CONST.PARTY_SIZE - pick.length}자리가 비어 있어요.`);
     box.appendChild(el('div', 'ps-tips', tips.join('<br>') || '균형 잡힌 파티!'));

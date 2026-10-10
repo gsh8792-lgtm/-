@@ -56,6 +56,7 @@ class BattleSim {
     if (this.surprise) { this.introT = 0.2; for (const h of this.heroes) { h.actLock = 1.6; h.castLock = 1.6; h.atkTimer = 1.6; } this.events.push({ type: 'surprise' }); }
     if (this.relics.has('acorn')) for (const h of this.aliveHeroes()) this._heal(null, h, h.maxHp * 0.1, true);
     for (const h of this.aliveHeroes()) { const pv = this.passive(h, 'first_breath'); if (pv) h.ult = Math.min(100, h.ult + pv); }
+    for (const h of this.aliveHeroes()) if (h.role === 'demon') this._summonPet(h, h.petKind || 'imp'); // 흑마술사: 상시 악마
     for (const h of this.aliveHeroes()) if (h.def.traits.includes('shadow') || this.passive(h, 'shadow_open')) h.statuses.stealth = { t: (h.def.traits.includes('shadow') ? 3 : 0) + CONST.BATTLE_INTRO + (this.passive(h, 'shadow_open') || 0) }; // 도적: 전투 시작 은신
   }
 
@@ -80,7 +81,7 @@ class BattleSim {
       atkTimer: 0.3 + this.rng() * 0.6, target: null, retarget: 0,
       statuses: {}, cds: { s1: 1 + this.rng(), s2: 3 + this.rng() * 2 }, ult: 0,
       levelGap: h.levelGap !== undefined ? h.levelGap : this.levelGap,
-      skillIds: h.skills || null, skillRank: h.skillRank || null, // 장비가 정한 ①② 스킬과 랭크
+      skillIds: h.skills || null, skillRank: h.skillRank || null, petKind: h.pet || null, // 장비가 정한 ①② 스킬과 랭크
       upgrades: h.upgrades || {}, alive: h.hp > 0, castLock: 0, actLock: 0, ultDef: h.ultDef || null, casting: null,
       anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 },
       stats: { dealt: 0, healed: 0, taken: 0, kills: 0 },
@@ -285,8 +286,9 @@ class BattleSim {
     const intro = this.introT > 0;
     if (intro) this.introT -= dt;
     for (const u of this.heroes) if (u.alive) { if (u.recentTaken) u.recentTaken *= Math.exp(-dt / 6); if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
-    for (const u of this.minions) if (u.alive) { if (!intro) { this._tickUnit(u, dt); u.life -= dt; if (u.alive && u.life <= 0) this._minionGone(u, true); } if (u.alive) this._thinkMinion(u, intro); }
-    if (this.minions.length > 12) this.minions = this.minions.filter((u) => u.alive);
+    for (const u of this.minions) if (u.alive) { if (!intro) { this._tickUnit(u, dt); this._minionSpecial(u, dt); u.life -= dt; if (u.alive && u.life <= 0) this._minionGone(u, true); } if (u.alive) this._thinkMinion(u, intro); }
+    if (!intro) for (const h of this.heroes) if (h.alive && h.role === 'demon' && !this.petOf(h)) { h.petRespawn = (h.petRespawn || 0) + dt; if (h.petRespawn >= 15) this._summonPet(h, h.petKind || 'imp'); } // 악마가 쓰러지면 15초 뒤 다시
+    if (this.minions.length > 16) this.minions = this.minions.filter((u) => u.alive);
     for (const u of this.enemies) if (u.alive) { if (!intro) this._tickUnit(u, dt); this._think(u, dt, intro); }
     if (!intro) this._tickZones(dt);
     this._move(dt);
@@ -647,8 +649,8 @@ class BattleSim {
     } else {
       u.anim.cast = 0.18; u.anim.castMax = 0.18; u.face = tgt.x >= u.x ? 1 : -1;
       const travel = 0.12 + this.dist(u, tgt) / 1400;
-      this.events.push({ type: 'projectile', from: u, to: tgt, kind: u.role === 'warlock' ? 'curse' : u.role === 'necro' ? 'bone' : u.key, travel });
-      this.delayed.push({ t: travel, fn: () => { if (tgt.alive) this._damage(u, tgt, this._atkOf(u), { basic: true }); } });
+      this.events.push({ type: 'projectile', from: u, to: tgt, kind: u.role === 'warlock' || u.role === 'demon' ? 'curse' : u.role === 'necro' ? 'bone' : u.key === 'minion_imp' ? 'soldam' : u.key, travel });
+      this.delayed.push({ t: travel, fn: () => { if (!tgt.alive) return; const d = this._damage(u, tgt, this._atkOf(u), { basic: true }); if (d && u.burnDps && tgt.alive) this._applyStatus(u.owner, tgt, { status: 'burn', dur: 4, dps: u.burnDps }); } }); // 임프: 화염탄 화상
     }
   }
 
@@ -1032,7 +1034,9 @@ class BattleSim {
     if (sk.selfHealPct) this._heal(h, h, h.maxHp * sk.selfHealPct * pmul, true);
     if (sk.ultSelf) this._gainUltRaw(h, sk.ultSelf);
     if (sk.corpseHeal) { const n = Math.min(this.corpses, sk.corpseHeal.max); if (n) { this.corpses -= n; this.events.push({ type: 'corpse', unit: h, n }); for (const a of this.aliveHeroes()) this._heal(h, a, a.maxHp * sk.corpseHeal.per * n * pmul, true); } }
-    if (sk.summon) this._summonMinions(h, sk.summon, pmul);
+    if (sk.summon) this._summonMinions(h, sk.target === 'area_enemy' && spec.x !== undefined ? Object.assign({}, sk.summon, { at: { x: spec.x, y: spec.y } }) : sk.summon, pmul); // 지옥불정령은 떨어진 자리에
+    if (sk.petBuff && h.role === 'demon') { let pet = this.petOf(h); if (!pet) { this._summonPet(h, h.petKind || 'imp'); pet = this.petOf(h); } if (pet) { this._heal(h, pet, pet.maxHp * sk.petBuff.heal, true); pet.statuses.inspire = { t: sk.petBuff.dur, value: sk.petBuff.inspire, src: h }; if (sk.petBuff.special) pet.specCd = 0; } }
+    if (sk.petCost) { const pet = this.petOf(h); if (pet) pet.hp = Math.max(1, pet.hp - pet.maxHp * sk.petCost); }
     if (sk.minionBuff) for (const m of this.minions) if (m.alive && m.owner === h) { this._heal(h, m, m.maxHp * sk.minionBuff.heal, true); m.statuses.inspire = { t: sk.minionBuff.dur, value: sk.minionBuff.inspire, src: h }; }
     if (spec.unit) h.face = spec.unit.x >= h.x ? 1 : -1;
     else if (spec.x !== undefined) h.face = spec.x >= h.x ? 1 : -1;
@@ -1150,22 +1154,23 @@ class BattleSim {
   }
   // 네크로맨서 소환 병사: spec { n, corpse(추가로 쓸 시체 수), kind, hp(소환자 최대 HP 비율), atk(공격력 비율), dur, taunt, poison }
   _summonMinions(h, spec, pmul) {
-    const m = h.mods || {}, grave = h.def.traits.includes('grave');
+    const m = h.mods || {}, grave = h.def.traits.includes('grave'), fiend = h.def.traits.includes('fiendlord');
     const extra = Math.min(this.corpses, spec.corpse || 0);
     if (extra) { this.corpses -= extra; this.events.push({ type: 'corpse', unit: h, n: extra }); }
-    const K = { skeleton: { name: '해골 병사', sprite: 'skeleton', size: 0.9, aspd: 1.1, def: 0.05, speed: 92 }, ghoul: { name: '구울', sprite: 'ghoul', size: 0.85, aspd: 0.9, def: 0, speed: 105 }, golem: { name: '뼈 골렘', sprite: 'boneGolem', size: 1.45, aspd: 1.6, def: 0.25, speed: 70 } }[spec.kind || 'skeleton'];
+    const K = MINION_KINDS[spec.kind || 'skeleton'];
     const cap = 4 + (m.minioncap || 0);
     for (let i = 0; i < spec.n + extra; i++) {
-      const mine = this.minions.filter((u) => u.alive && u.owner === h);
+      const mine = this.minions.filter((u) => u.alive && u.owner === h && !u.pet);
       if (mine.length >= cap) this._minionGone(mine[0], true); // 가장 오래된 병사가 흩어진다
       const u = {
         uid: this.uidSeq++, side: 'hero', minion: true, owner: h, key: 'minion_' + (spec.kind || 'skeleton'), def: { name: K.name, traits: [], range: 'melee' }, name: K.name, sprite: K.sprite, role: 'minion',
-        hp: 0, maxHp: Math.round(h.maxHp * spec.hp * (1 + (m.minionhp || 0)) * pmul), atk: this._atkOf(h) * spec.atk * (1 + (m.minionatk || 0)) * (grave ? 1.2 : 1) * pmul,
-        atkInterval: K.aspd, defPct: K.def, size: K.size, mods: {}, melee: true, reach: 0, speed: K.speed,
-        x: clamp(h.x + 40 + i * 14, this.X0, this.X1), y: clamp(h.y + ((i % 3) - 1) * 22, CONST.FIELD_Y0, CONST.FIELD_Y1), tx: 0, ty: 0, face: 1, moving: false,
+        hp: 0, maxHp: Math.round(h.maxHp * spec.hp * (1 + (m.minionhp || 0)) * pmul * (fiend ? 1.15 : 1)), atk: this._atkOf(h) * spec.atk * (1 + (m.minionatk || 0)) * (grave ? 1.2 : 1) * (fiend ? 1.15 : 1) * pmul,
+        atkInterval: K.aspd, defPct: K.def, size: K.size, mods: {}, melee: !K.reach, reach: K.reach || 0, speed: K.speed,
+        x: clamp((spec.at ? spec.at.x : h.x + 40) + i * 14, this.X0, this.X1), y: clamp((spec.at ? spec.at.y : h.y) + ((i % 3) - 1) * 22, CONST.FIELD_Y0, CONST.FIELD_Y1), tx: 0, ty: 0, face: 1, moving: false,
         atkTimer: 0.4 + this.rng() * 0.3, target: null, retarget: 0, statuses: {}, cds: { s1: 0, s2: 0 }, ult: 0, levelGap: h.levelGap,
         alive: true, castLock: 0, actLock: 0, anim: { lunge: 0, lungeX: 0, lungeY: 0, hurt: 0, cast: 0 }, stats: h.stats,
-        life: spec.dur * (1 + (m.miniondur || 0)) + (grave ? 4 : 0), poisonDps: spec.poison || 0, upgrades: {},
+        life: spec.pet ? Infinity : spec.dur * (1 + (m.miniondur || 0)) + (grave ? 4 : 0), poisonDps: spec.poison || 0, burnDps: K.burn || 0, upgrades: {},
+        pet: !!spec.pet, special: K.special || null, specCd: K.specialEvery ? K.specialEvery * 0.5 : 0, specEvery: K.specialEvery ? K.specialEvery * (1 - Math.min(0.5, m.petcdr || 0)) : 0,
       };
       u.hp = u.maxHp;
       this.minions.push(u);
@@ -1178,6 +1183,22 @@ class BattleSim {
     const boom = u.owner && u.owner.mods && u.owner.mods.minionboom;
     if (boom && u.owner.alive) { this.events.push({ type: 'minionBoom', unit: u }); for (const e of this.aliveEnemies()) if (this.dist(e, u) <= 80) this._damage(u.owner, e, this._atkOf(u.owner) * boom, { noCrit: true, skill: 'bone' }); }
   }
+  // 흑마술사 상시 악마 (쓰러지면 15초 뒤 다시 온다)
+  _summonPet(h, kind) {
+    const P = PET_SPECS[kind] || PET_SPECS.imp;
+    this._summonMinions(h, Object.assign({ n: 1, kind, pet: true }, P), 1);
+    h.petRespawn = 0;
+  }
+  petOf(h) { return this.minions.find((u) => u.alive && u.pet && u.owner === h) || null; }
+  _minionSpecial(u, dt) {
+    if (!u.special || u.statuses.stun) return;
+    u.specCd -= dt; if (u.specCd > 0) return;
+    const en = this.aliveEnemies().filter((e) => e.x <= this.W); if (!en.length) return;
+    u.specCd = u.specEvery;
+    if (u.special === 'taunt') { for (const e of en) if (this.dist(e, u) <= 170) this._applyStatus(u, e, { status: 'taunt', dur: 3 }); this.events.push({ type: 'petSkill', unit: u, name: '위협' }); }
+    else if (u.special === 'seduce') { const t = en.find((e) => e.charge || e.call) || (u.target && u.target.alive ? u.target : this.nearest(u, en)); if (t) { this._applyStatus(u, t, { status: 'stun', dur: 1.5 }); this.events.push({ type: 'petSkill', unit: u, name: '매혹', target: t }); } }
+    else if (u.special === 'devour') { const t = en.find((e) => (e.charge || e.call) && this.dist(u, e) <= 260); if (t) { u.x = clamp(t.x - 40, this.X0, this.X1); u.y = t.y; this._damage(u.owner, t, this._atkOf(u) * 1.5, { noCrit: true, skill: 'bite' }); this._interrupt(u, t, 2); this.events.push({ type: 'petSkill', unit: u, name: '마법 삼키기', target: t }); } else u.specCd = 0.5; }
+  }
   // 병사: 죽음의 표식 → 소환자의 대상 → 가장 가까운 적. 적이 없으면 소환자 곁으로
   _thinkMinion(u, intro) {
     const enemies = this.aliveEnemies().filter((e) => e.x <= this.W);
@@ -1189,7 +1210,7 @@ class BattleSim {
       const ot = u.owner.target && u.owner.target.alive && u.owner.target.x <= this.W ? u.owner.target : null;
       u.target = marked.length ? this.nearest(u, marked) : this.focus && this.focus.alive ? this.focus : ot && this.dist(u, ot) < 260 ? ot : this.nearest(u, enemies);
     }
-    const t = u.target, r = this.attackRange(u, t) * 0.8, side = u.x <= t.x ? -1 : 1;
+    const t = u.target, r = this.attackRange(u, t) * (u.melee ? 0.8 : 0.85), side = u.melee ? (u.x <= t.x ? -1 : 1) : (u.owner.x <= t.x ? -1 : 1);
     u.tx = clamp(t.x + side * r, this.X0, this.X1); u.ty = t.y + ((u.uid % 3) - 1) * 12;
   }
 
@@ -1339,6 +1360,22 @@ class BattleSim {
     return { outcome: this.outcome, time: this.time, kills: this.kills, heroes: this.heroes.map((h) => ({ id: h.key, hp: Math.max(0, Math.round(h.hp)), alive: h.alive, stats: h.stats })) };
   }
 }
+
+// 소환수 종류: 크기·공속·방어·이동 + 원거리 사거리 · 특수 능력
+const MINION_KINDS = {
+  skeleton: { name: '해골 병사', sprite: 'skeleton', size: 0.9, aspd: 1.1, def: 0.05, speed: 92 },
+  ghoul: { name: '구울', sprite: 'ghoul', size: 0.85, aspd: 0.9, def: 0, speed: 105 },
+  golem: { name: '뼈 골렘', sprite: 'boneGolem', size: 1.45, aspd: 1.6, def: 0.25, speed: 70 },
+  imp: { name: '임프', sprite: 'imp', size: 0.8, aspd: 1.4, def: 0, speed: 90, reach: 170, burn: 0.1 },
+  voidwalker: { name: '공허방랑자', sprite: 'voidwalker', size: 1.3, aspd: 1.6, def: 0.3, speed: 75, special: 'taunt', specialEvery: 9 },
+  succubus: { name: '서큐버스', sprite: 'succubus', size: 0.95, aspd: 1.0, def: 0.08, speed: 100, special: 'seduce', specialEvery: 10 },
+  felhunter: { name: '지옥사냥개', sprite: 'felhunter', size: 0.95, aspd: 1.1, def: 0.1, speed: 115, special: 'devour', specialEvery: 8 },
+  infernal: { name: '지옥불정령', sprite: 'infernal', size: 1.5, aspd: 1.5, def: 0.3, speed: 70 },
+  doomguard: { name: '파멸의 수호병', sprite: 'doomguard', size: 1.5, aspd: 1.2, def: 0.2, speed: 85 },
+  voidlord: { name: '공허의 거신', sprite: 'voidlord', size: 1.6, aspd: 1.7, def: 0.4, speed: 65 },
+};
+// 상시 악마 능력치 (소환자 최대 HP·공격력 비율)
+const PET_SPECS = { imp: { hp: 0.35, atk: 0.45 }, voidwalker: { hp: 1.0, atk: 0.3 }, succubus: { hp: 0.5, atk: 0.85 }, felhunter: { hp: 0.55, atk: 0.6 } };
 
 BattleSim.runHeadless = function (opts, maxTime) {
   const sim = new BattleSim(Object.assign({ autoMode: true }, opts));

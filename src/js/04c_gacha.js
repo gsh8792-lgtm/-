@@ -1,8 +1,8 @@
 // ===== 04c_gacha.js : 캐릭터 보유·돌파·필살기 선택, 소환(뽑기) =====
-// 데모: 현금 결제 없음. 소환권은 보스 격파 보상(5장). 확률은 15명 균등(1/15), 6번째 이후 중복은 강화석으로 전환.
+// 데모: 현금 결제 없음. 소환권은 보스 격파 보상(5장). 소환은 영혼 조각 위주 — 조각으로 캐릭터를 부르고 돌파한다 (v0.54).
 
 const GACHA = {
-  RATE_NOTE: '15명 모두 같은 확률 (각 6.7%)',
+  RATE_NOTE: '영웅 4% · 영혼 조각 5개 20% · 2개 76% (캐릭터는 모두 같은 확률)',
   BOSS_TICKETS: 5,          // 데모: 보스 격파 시 확정 지급
   START_TICKETS: 5,         // 데모: 첫 실행 지급
   OVERFLOW_STONES: 20,      // 최대 돌파 이후 중복 → 강화석
@@ -21,6 +21,8 @@ const GACHA = {
     return p;
   },
   newChar() { return { bt: 0, ult: 'A', lv: 1, exp: 0 }; },
+  // 흑마술사 악마: 고른 악마가 해금됐으면 그것, 아니면 해금된 가장 강한 악마
+  petFor(p, id) { if (!HEROES[id] || HEROES[id].role !== 'demon') return null; const st = (p.chars && p.chars[id]) || {}; const open = demonPetsFor(st.lv || 1); return (open.find((x) => x.key === st.pet) || open[open.length - 1]).key; },
   level(p, id) { return (p.chars && p.chars[id] && p.chars[id].lv) || 1; },
   // 경험치 지급 → 오른 레벨 수와 새로 배운 필살기
   addExp(p, id, n) {
@@ -40,17 +42,27 @@ const GACHA = {
     return ultDefFor(id, choice, st.bt, st.lv || 1);
   },
   setUlt(p, id, choice) { const st = p.chars[id]; if (st && ultChoices(id, st.bt, st.lv || 1).includes(choice)) st.ult = choice; },
-  // 소환 n회 (소환권 n장 소모). 결과: [{ id, isNew, bt, overflow }]
+  // ---------------- 영혼 조각 (v0.54): 소환은 대부분 '영혼 조각'을 준다. 조각을 모아 캐릭터를 부르고(40) 돌파한다(20·30·50·70·100)
+  SHARD: { unlock: 40, bt: [20, 30, 50, 70, 100], heroRate: 0.04, bigRate: 0.2, big: 5, small: 2, dupHero: 25, boss: 3 },
+  shards(p, id) { return (p.shards && p.shards[id]) || 0; },
+  addShards(p, id, n) { p.shards = p.shards || {}; p.shards[id] = (p.shards[id] || 0) + n; },
+  btCost(p, id) { const st = p.chars && p.chars[id]; return st && st.bt < BREAKTHROUGH.max ? GACHA.SHARD.bt[st.bt] : null; },
+  canUnlock(p, id) { return !GACHA.owned(p, id) && GACHA.shards(p, id) >= GACHA.SHARD.unlock; },
+  canBreak(p, id) { const c = GACHA.btCost(p, id); return c !== null && GACHA.shards(p, id) >= c; },
+  unlock(p, id) { if (!GACHA.canUnlock(p, id)) return false; p.shards[id] -= GACHA.SHARD.unlock; p.chars[id] = GACHA.newChar(); return true; },
+  breakthrough(p, id) { if (!GACHA.canBreak(p, id)) return null; const st = p.chars[id]; p.shards[id] -= GACHA.SHARD.bt[st.bt]; st.bt++; return BREAKTHROUGH.steps.find((s) => s.bt === st.bt); },
+  // 소환 n회 (소환권 n장 소모). 결과: [{ id, kind: 'hero'|'shard', n, isNew }]
+  // 4% 영웅(없으면 합류, 있으면 조각 25) · 20% 조각 5 · 76% 조각 2
   pull(p, rng, n) {
     if ((p.tickets || 0) < n) return null;
     p.tickets -= n;
-    const out = [];
+    const out = [], S = GACHA.SHARD;
     for (let i = 0; i < n; i++) {
-      const c = CHARACTERS[Math.floor(rng() * CHARACTERS.length)];
-      const st = p.chars[c.id];
-      if (!st) { p.chars[c.id] = GACHA.newChar(); out.push({ id: c.id, isNew: true, bt: 0 }); }
-      else if (st.bt < BREAKTHROUGH.max) { st.bt++; out.push({ id: c.id, isNew: false, bt: st.bt, step: BREAKTHROUGH.steps.find((s) => s.bt === st.bt) }); }
-      else { p.stones += GACHA.OVERFLOW_STONES; out.push({ id: c.id, isNew: false, bt: st.bt, overflow: GACHA.OVERFLOW_STONES }); }
+      const c = CHARACTERS[Math.floor(rng() * CHARACTERS.length)], v = rng();
+      if (v < S.heroRate) {
+        if (!p.chars[c.id]) { p.chars[c.id] = GACHA.newChar(); out.push({ id: c.id, kind: 'hero', isNew: true }); }
+        else { GACHA.addShards(p, c.id, S.dupHero); out.push({ id: c.id, kind: 'hero', n: S.dupHero }); }
+      } else { const k = v < S.heroRate + S.bigRate ? S.big : S.small; GACHA.addShards(p, c.id, k); out.push({ id: c.id, kind: 'shard', n: k, big: k === S.big }); }
     }
     return out;
   },

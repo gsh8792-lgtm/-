@@ -286,7 +286,7 @@ const FieldScene = {
       const dx = p.x - f.x, dy = p.y - f.y;
       const d = Math.hypot(dx, dy);
       f.moving = d > 2;
-      if (Math.abs(dx) > 1) f.flip = dx < 0;
+      if (Math.abs(dx) > 6) f.flip = dx < 0; // 작은 흔들림에 좌우가 깜빡이지 않게
       f.x += dx * Math.min(1, dt * 10); f.y += dy * Math.min(1, dt * 10);
       if (f.moving && Math.random() < dt * 4) this.dusts.push({ x: f.x, y: f.y, t: 0 });
     });

@@ -9,7 +9,7 @@ const { BattleSim, ENCOUNTERS, AI_PRESETS, EQ, GACHA, DUNGEON, makeRng } = ctx.X
 const N = +(process.argv[2] || 12);
 const PARTIES = process.env.PARTIES ? process.env.PARTIES.split(';').map((x) => x.split('+')) : [['tobi', 'danbi', 'bori'], ['tobi', 'yeon', 'bori'], ['tobi', 'soldam', 'bori'], ['tobi', 'byeolbi', 'bori']];
 const ONLY = process.env.BOSS || '';
-const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].lv = 5;
+const p = GACHA.ensure(EQ.newProfile()); for (const id in p.chars) p.chars[id].lv = 5; if (process.env.PET) for (const id in p.chars) p.chars[id].pet = process.env.PET;
 for (const id of [...new Set(PARTIES.flat())]) for (const slot of ['weapon', 'armor']) { const base = EQ.DB.items.find((it) => it.cls === EQ.heroClass(id) && it.slot === slot && it.line === 1); const it = EQ.rollItem(makeRng(1), p, { base: base.id, grade: 'UC' }); p.inv.push(it); p.equip[id][slot] = it.uid; }
 const st = JSON.parse(JSON.stringify(AI_PRESETS)); for (const k in st) { st[k].s2.auto = true; st[k].ult.auto = true; st[k].ult.cond = 'auto'; }
 const f = 1 + DUNGEON.FLOOR_SCALE * 5;
@@ -21,7 +21,7 @@ for (const waves of POOL) {
     let win = 0, t = 0, dead = 0;
     for (let s = 0; s < N; s++) {
       const party = PARTIES[s % PARTIES.length];
-      const heroes = party.map((id) => { const lo = EQ.heroLoadout(p, id); return { id, hp: Math.round(lo.maxHp * 0.85), maxHp: lo.maxHp, mods: lo.mods, skills: lo.skills, skillRank: lo.skillRank, upgrades: {}, ultDef: null }; });
+      const heroes = party.map((id) => { const lo = EQ.heroLoadout(p, id); return { id, hp: Math.round(lo.maxHp * 0.85), maxHp: lo.maxHp, mods: lo.mods, skills: lo.skills, skillRank: lo.skillRank, upgrades: {}, ultDef: null, pet: GACHA.petFor(p, id) }; });
       const sim = new BattleSim({ seed: 500 + s, stage: 5, waves, heroes, strategy: st, autoMode: true, smartAuto: smart, partySize: 3, tier: { hp: f * MS.hp, atk: f * MS.atk } });
       let guard = 0; while (!sim.outcome && guard++ < 60 * 400) sim.step(1 / 60);
       if (sim.outcome === 'win') win++; t += sim.time; dead += sim.heroes.filter((h) => !h.alive).length;

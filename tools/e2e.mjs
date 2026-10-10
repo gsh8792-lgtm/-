@@ -450,9 +450,14 @@ async function playRun(p, seed, opts) {
   await p.evaluate(() => { window.GAME.Game.profile.tickets = 40; });
   await p.click('#gacha-close'); await p.click('#btn-gacha');
   for (let i = 0; i < 8; i++) await p.click('#gacha-5');
-  const st = await p.evaluate(() => { const P = window.GAME.Game.profile; const ids = window.GAME.GACHA.ownedIds(P); return { owned: ids.length, maxBt: Math.max(...ids.map((id) => P.chars[id].bt)), newcomer: ids.find((id) => !window.GAME.CHARACTERS.find((c) => c.id === id).starter) }; });
-  ok('중복 소환 → 돌파', st.maxBt >= 1, JSON.stringify(st));
+  const st = await p.evaluate(() => { const P = window.GAME.Game.profile; const ids = window.GAME.GACHA.ownedIds(P); return { owned: ids.length, shards: Object.values(P.shards || {}).reduce((a, b) => a + b, 0), newcomer: ids.find((id) => !window.GAME.CHARACTERS.find((c) => c.id === id).starter) }; });
+  ok('소환 → 영혼 조각 누적', st.shards >= 60, JSON.stringify(st));
   await p.click('#gacha-close');
+  // 영혼 조각으로 돌파 (캐릭터 화면 버튼)
+  await p.evaluate((id) => { const P = window.GAME.Game.profile; P.shards[id] = 20; }, st.newcomer);
+  await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`); await p.click('#btn-bt');
+  ok('영혼 조각 20개 → 1돌파', await p.evaluate((id) => window.GAME.Game.profile.chars[id].bt === 1 && window.GAME.Game.profile.shards[id] === 0, st.newcomer));
+  await p.click('#roster-close');
   // 도감: 새 캐릭터 선택 → 두 번째 필살기 장착
   await p.click('#btn-roster'); await p.click(`#rc-${st.newcomer}`);
   ok('도감: 필살기 6종 표시 (변주는 잠금)', (await p.locator('.rd-ult').count()) === 6);

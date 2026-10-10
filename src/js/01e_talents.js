@@ -90,6 +90,18 @@ const TALENTS = {
       T('w_s2', '흡수 숙련', 's2pow', 0.04, 2), T('w_atk', '피의 맹세', 'atk_pct', 0.02, 2),
       { id: 'w_cap2', name: '피의 군주', tier: 3, max: 1, cap: true, desc: '모든 피해의 8%만큼 HP 회복 + HP 50% 이하일 때 스킬 피해 +20%', fx: [['drain', 0.08], ['bloodlust', 0.2]] } ] },
   ],
+  demon: [
+    { key: 'demonology', name: '악마학', desc: '악마를 키운다', nodes: [
+      T('d_mhp', '악마의 피', 'minionhp', 0.06, 0), T('d_matk', '악마의 송곳니', 'minionatk', 0.06, 0),
+      T('d_pcd', '빠른 명령', 'petcdr', 0.06, 1), T('d_s2', '지배 숙련', 's2pow', 0.04, 1),
+      T('d_ult', '계약의 부름', 'ultgain', 0.03, 2), T('d_hp', '계약의 대가', 'hp_pct', 0.03, 2),
+      { id: 'd_cap1', name: '악마 군주', tier: 3, max: 1, cap: true, desc: '악마 공격력·체력 +25% + 소환한 큰 악마 지속 +30%', fx: [['minionhp', 0.25], ['minionatk', 0.25], ['miniondur', 0.3]] } ] },
+    { key: 'destruction', name: '파괴', desc: '스스로 불태운다', nodes: [
+      T('d_sk', '혼돈의 힘', 'skilldmg', 0.03, 0), T('d_crit', '혼돈의 눈', 'crit', 0.012, 0),
+      T('d_cd', '불타는 피', 'critdmg', 0.05, 1), T('d_s1', '화살 숙련', 's1pow', 0.04, 1),
+      T('d_cdr', '빠른 주문', 'cdr', 0.012, 2), T('d_ultp', '파멸의 정수', 'ultpow', 0.03, 2),
+      { id: 'd_cap2', name: '혼돈', tier: 3, max: 1, cap: true, desc: '치명타 확률 +10% · 치명타 피해 +30%', fx: [['crit', 0.1], ['critdmg', 0.3]] } ] },
+  ],
   necro: [
     { key: 'legion', name: '사령관', desc: '군단을 키운다', nodes: [
       T('n_mhp', '단단한 뼈', 'minionhp', 0.06, 0), T('n_matk', '날 선 뼈', 'minionatk', 0.06, 0),
@@ -116,7 +128,7 @@ const TALENTS = {
   ],
 };
 // 노드 설명 문구 (랭크당)
-const TALENT_STAT_NAME = { hp_pct: '최대 HP', dr: '받는 피해 감소', ccdur: '기절·도발 지속', crushres: '짓누름 저항', s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultgain: '필살기 충전', ultpow: '필살기 위력', thorns: '근접 평타 반사', atk_pct: '공격력', counter: '반격 확률', breakdmg: '그로기 피해', crit: '치명타 확률', aspd: '공격 속도', critdmg: '치명타 피해', mspd: '이동 속도', vsbroken: '그로기 적 피해', skilldmg: '스킬 피해', cdr: '쿨타임 감소', dotdmg: '지속 피해', heal: '회복량', ambush: '기습 피해', backstab: '등 뒤 평타 피해', poisonstack: '중독 최대 겹', kipow: '기 1개당 위력', dodge: '근접 평타 회피', curseSpread: '저주 추가 전염 확률', drain: '피해 흡수(회복)', minionhp: '병사 HP', minionatk: '병사 공격력', miniondur: '병사 지속', corpsepow: '시체 1구당 위력' };
+const TALENT_STAT_NAME = { hp_pct: '최대 HP', dr: '받는 피해 감소', ccdur: '기절·도발 지속', crushres: '짓누름 저항', s1pow: '① 스킬 위력', s2pow: '② 스킬 위력', ultgain: '필살기 충전', ultpow: '필살기 위력', thorns: '근접 평타 반사', atk_pct: '공격력', counter: '반격 확률', breakdmg: '그로기 피해', crit: '치명타 확률', aspd: '공격 속도', critdmg: '치명타 피해', mspd: '이동 속도', vsbroken: '그로기 적 피해', skilldmg: '스킬 피해', cdr: '쿨타임 감소', dotdmg: '지속 피해', heal: '회복량', ambush: '기습 피해', backstab: '등 뒤 평타 피해', poisonstack: '중독 최대 겹', kipow: '기 1개당 위력', dodge: '근접 평타 회피', curseSpread: '저주 추가 전염 확률', drain: '피해 흡수(회복)', minionhp: '병사 HP', minionatk: '병사 공격력', miniondur: '병사 지속', corpsepow: '시체 1구당 위력', petcdr: '악마 특수 능력 쿨타임 감소' };
 function talentPoints(p, id) { const lv = EQ.charLevel(p, id); return Math.max(0, lv - 1); }
 function talentState(p, id) { p.talents = p.talents || {}; return (p.talents[id] = p.talents[id] || {}); }
 function talentSpent(p, id) { const s = talentState(p, id); return Object.values(s).reduce((a, v) => a + v, 0); }
