@@ -97,13 +97,25 @@ single character, front view slightly turned to the right, feet visible at the b
 
 ## 5. 다음 단계 에셋 (같은 화풍 · 같은 규격)
 
-### NPC (마을)
-| id | 이름 | 외형 |
-|---|---|---|
-| npc_guide | 길잡이 | 흰 수염 노인 · 지팡이 · 갈색 로브 |
-| npc_merchant | 잡화점 상인 | 커다란 배낭 · 물약병 · 웃는 얼굴 |
-| npc_smith | 대장장이 | 앞치마 · 망치 · 그을린 팔 |
-| npc_soldier | 영지 병사 | 푸른 깃발 창병 (거점 경비) |
+### NPC (마을·필드) — 영웅 그림과 겹치지 않는 **새 인물**로
+파일 이름 = id (`npc_guide.png` …) · 1명 = 1장 · 오른쪽 3/4 · 투명 배경 · 세로 1024px 이상 · 흰 외곽선
+
+| id | 이름 | 외형 | 어디에 나오나 |
+|---|---|---|---|
+| npc_guide | 길잡이 | 흰 수염 노인 · 나무 지팡이 끝에 초록 등불 · 갈색 여행 로브 · 지도 두루마리 | 마을 광장 |
+| npc_merchant | 잡화 상인 | 통통한 중년 · 커다란 배낭에 냄비·물약병 주렁주렁 · 웃는 얼굴 · 녹색 두건 | 잡화 노점 |
+| npc_smith | 대장장이 | 근육질 · 가죽 앞치마 · 큰 망치 · 그을린 팔 · 짧은 붉은 수염 · 고글 | 화로 옆 |
+| npc_soldier | 영지 병사 | 푸른 깃발 달린 창 · 둥근 투구 · 푸른 망토 · 성실한 얼굴 | 우리 거점 |
+| npc_hunter | 사냥터 안내인 | 털모자 · 활과 화살통 · 사냥한 토끼 끈 · 갈색 가죽옷 | 사냥터 입구 |
+| npc_altar | 소환의 제단지기 | 보라 두건의 신비한 소녀 · 떠 있는 수정 · 별무늬 로브 | 소환의 제단 |
+
+영어 프롬프트 (공통 뒤에 붙이기: *chibi 2.5-head-tall fantasy RPG NPC, full body, 3/4 view facing right, idle pose, ornate costume details with gold trim, soft cel shading, thick white sticker outline, transparent background, no text*)
+- npc_guide: *old village guide, long white beard, brown travel robe, wooden staff with a small green lantern, rolled map under arm, kind eyes*
+- npc_merchant: *cheerful plump traveling merchant, green hood, huge backpack hung with pots and potion bottles, coin pouch, big smile*
+- npc_smith: *muscular blacksmith, leather apron, big forging hammer on shoulder, soot on arms, short red beard, goggles on forehead*
+- npc_soldier: *loyal town guard, round steel helmet, blue cape, spear with small blue banner, simple chainmail*
+- npc_hunter: *forest hunter guide, fur hat, brown leather clothes, longbow and quiver, rabbits tied on a cord at the belt*
+- npc_altar: *mysterious summoning altar keeper girl, purple hood with star patterns, floating crystal above her hands, long sleeves*
 
 ### 몬스터 (던전별) — 파일 이름 = 적 id
 - **고블린 굴**: goblin(고블린) · goblin_archer(궁수) · goblin_caller(나팔수) · goblin_shaman(주술사) · goblin_bomber(폭탄) · goblin_stalker(암살자) · goblin_trapper(덫사냥꾼) · orc(오크) · orc_shield(방패 오크) · orc_hunter(사냥꾼) · orc_berserker(광전사) · cave_troll(동굴 트롤) · ogre(오우거) · orc_captain(오크 대장)
@@ -128,6 +140,7 @@ single character, front view slightly turned to the right, feet visible at the b
 `<id>_attack.png`(무기를 휘두르는 순간) · `<id>_cast.png`(마법·기술 시전) · `<id>_hurt.png`(맞아서 움찔) — 들어오면 가져오기 도구에 연결한다.
 
 ## v0.61 반영 상태
-- 영웅 14명 + NPC 6명(길잡이·상인·대장장이·병사·사냥꾼·제단지기) 일러스트 적용 완료 — 모두 오른쪽 3/4
+- 영웅 14명 일러스트 적용 완료 — 모두 오른쪽 3/4
+- NPC 6명은 **새로 그려야 한다** (위 NPC 표) — 영웅 시트의 남는 그림은 영웅용이라 NPC로 쓰지 않는다
 - 배경·건물·소품은 3D로 직접 만든다(`tools/3d/kit.py`, Blender). 다른 채팅에서는 **캐릭터·몬스터 일러스트**에 집중하면 된다
 - 같은 화풍 유지: 굵은 흰 외곽선 · 치비 2.5등신 · 부드러운 셀 음영 · 오른쪽 3/4 · 투명 배경

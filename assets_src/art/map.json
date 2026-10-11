@@ -1,16 +1,16 @@
 {
- "_설명": "시트의 왼쪽부터 1~5번 그림 → 영웅 id 또는 npc_<이름>(guide·merchant·smith·soldier·hunter·altar). flip = 좌우 반전할 그림(모두 오른쪽을 보게). face = 초상화 얼굴 중심 [가로 비율, 세로 비율]",
+ "_설명": "시트의 왼쪽부터 1~5번 그림 → 영웅 id (빈 칸 = 안 씀. NPC는 영웅 그림을 쓰지 않고 chars/npc_<이름>.png 로 따로 받는다). flip = 좌우 반전할 그림(모두 오른쪽을 보게). face = 초상화 얼굴 중심 [가로 비율, 세로 비율]",
  "sheets": {
   "knight.png": {
    "1": "leon",
    "2": "tobi",
-   "3": "npc_hunter",
+   "3": "",
    "4": "gor",
-   "5": "npc_soldier"
+   "5": ""
   },
   "warrior.png": {
    "1": "danbi",
-   "2": "npc_smith",
+   "2": "",
    "3": "kai",
    "4": "bran",
    "5": "hwa"
@@ -20,13 +20,13 @@
    "2": "seori",
    "3": "eun",
    "4": "nox",
-   "5": "npc_guide"
+   "5": ""
   },
   "hexer.png": {
    "1": "daon",
-   "2": "npc_merchant",
+   "2": "",
    "3": "risha",
-   "4": "npc_altar",
+   "4": "",
    "5": "kali"
   }
  },
