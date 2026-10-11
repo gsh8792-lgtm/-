@@ -364,6 +364,7 @@ const FieldScene = {
     objs.push({ y: FIELD.storage.y, draw: () => this.drawStorage(ctx, FIELD.storage.x, FIELD.storage.y) });
     objs.push({ y: FIELD.altar.y, draw: () => this.drawAltar(ctx, FIELD.altar.x, FIELD.altar.y, t) });
     objs.push({ y: FIELD.merchant.y, draw: () => { const M = FIELD.merchant;
+      if (drawProp3d(ctx, 'stall', M.x, M.y, 150)) { this.shadow(ctx, M.x + 34, M.y + 8, 14); drawSprite(ctx, 'merchant', M.x + 34, M.y + 8, { scale: 2, t, flip: L.x < M.x, blinking: (t % 3.7) < 0.12 }); return; }
       ctx.fillStyle = '#6a4428'; ctx.fillRect(M.x - 56, M.y - 26, 112, 26); ctx.fillStyle = '#8a5a34'; ctx.fillRect(M.x - 56, M.y - 30, 112, 6);
       for (let i = 0; i < 4; i++) { ctx.fillStyle = ['#e0524a', '#5aa0e0', '#9cf0a8', '#ffd34a'][i]; ctx.beginPath(); ctx.arc(M.x - 38 + i * 24, M.y - 36, 6, 0, 7); ctx.fill(); }
       ctx.fillStyle = '#c84a3a'; ctx.beginPath(); ctx.moveTo(M.x - 66, M.y - 92); ctx.lineTo(M.x + 66, M.y - 92); ctx.lineTo(M.x + 58, M.y - 70); ctx.lineTo(M.x - 58, M.y - 70); ctx.fill();
@@ -371,6 +372,8 @@ const FieldScene = {
       ctx.fillStyle = '#5a3a20'; ctx.fillRect(M.x - 58, M.y - 70, 5, 44); ctx.fillRect(M.x + 53, M.y - 70, 5, 44);
       this.shadow(ctx, M.x + 34, M.y - 4, 14); drawSprite(ctx, 'merchant', M.x + 34, M.y - 4, { scale: 2, t, flip: L.x < M.x, blinking: (t % 3.7) < 0.12 }); } });
     objs.push({ y: FIELD.huntExit.y, draw: () => { const H = FIELD.huntExit; ctx.fillStyle = '#6a4a2a'; ctx.fillRect(H.x + 40, H.y - 56, 7, 56); ctx.fillStyle = '#a07a4a'; ctx.fillRect(H.x + 4, H.y - 66, 80, 22); ctx.strokeStyle = '#4a3018'; ctx.lineWidth = 2; ctx.strokeRect(H.x + 4, H.y - 66, 80, 22); ctx.fillStyle = '#fff4d8'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('사냥터 ▼', H.x + 44, H.y - 50); } });
+    if (ART.altar) objs.push({ y: FIELD.altar.y + 6, draw: () => { const x = FIELD.altar.x - 70, y = FIELD.altar.y + 6; this.shadow(ctx, x, y, 14); drawSprite(ctx, 'altar', x, y, { scale: 2, t, flip: L.x < x }); } }); // 소환의 제단지기
+    if (ART.hunter) objs.push({ y: FIELD.huntExit.y - 10, draw: () => { const x = FIELD.huntExit.x + 110, y = FIELD.huntExit.y - 10; this.shadow(ctx, x, y, 14); drawSprite(ctx, 'hunter', x, y, { scale: 2, t, flip: L.x < x }); } }); // 사냥터 안내인
     objs.push({ y: FIELD.guide.y, draw: () => { this.shadow(ctx, FIELD.guide.x, FIELD.guide.y, 16); drawSprite(ctx, 'guide', FIELD.guide.x, FIELD.guide.y, { scale: 2, t, flip: L.x < FIELD.guide.x, blinking: (t % 4) < 0.12 }); } });
     this.followers.forEach((f) => {
       const h = HEROES[f.id];
@@ -438,6 +441,12 @@ const FieldScene = {
   // 대장간: 모루 + 화로 + 대장장이 (임시로 길잡이 스프라이트 사용)
   drawSmith(ctx, x, y, t, L) {
     this.shadow(ctx, x + 34, y, 26);
+    if (drawProp3d(ctx, 'forge', x - 20, y - 2, 140)) { // 3D 화로·모루 (v0.61)
+      const fl = 0.6 + Math.sin(t * 9) * 0.25 + Math.sin(t * 13) * 0.15, g = ctx.createRadialGradient(x - 52, y - 24, 2, x - 52, y - 24, 46);
+      g.addColorStop(0, `rgba(255,170,60,${fl * 0.7})`); g.addColorStop(1, 'rgba(255,120,40,0)'); ctx.fillStyle = g; ctx.fillRect(x - 100, y - 70, 100, 80);
+      if ((t % 1.4) < 0.08) { ctx.fillStyle = '#fff2a0'; for (let i = 0; i < 5; i++) ctx.fillRect(x + 34 + Math.cos(i) * 10, y - 40 - Math.sin(i * 2) * 8, 2, 2); }
+      drawSprite(ctx, ART.smith ? 'smith' : 'guide', x + 34, y + 6, { scale: 2, t, flip: L.x < x + 34, blinking: (t % 3.7) < 0.12 }); return;
+    }
     ctx.fillStyle = '#5a4a44'; ctx.fillRect(x - 70, y - 60, 40, 56);           // 화로
     ctx.fillStyle = '#2a1e1a'; ctx.fillRect(x - 64, y - 40, 28, 22);
     const fl = 0.6 + Math.sin(t * 9) * 0.25 + Math.sin(t * 13) * 0.15;
@@ -448,10 +457,11 @@ const FieldScene = {
     ctx.fillStyle = '#3c3c46'; ctx.fillRect(x + 20, y - 24, 30, 10); ctx.fillRect(x + 28, y - 14, 14, 14); ctx.fillRect(x + 22, y, 26, 4); // 모루
     ctx.fillStyle = '#5c5c6a'; ctx.fillRect(x + 20, y - 24, 30, 3);
     if ((t % 1.4) < 0.08) { ctx.fillStyle = '#fff2a0'; for (let i = 0; i < 5; i++) ctx.fillRect(x + 34 + Math.cos(i) * 10, y - 30 - Math.sin(i * 2) * 8, 2, 2); }
-    drawSprite(ctx, 'guide', x, y, { scale: 2, t, flip: L.x < x, blinking: (t % 3.7) < 0.12 });
+    drawSprite(ctx, ART.smith ? 'smith' : 'guide', x, y, { scale: 2, t, flip: L.x < x, blinking: (t % 3.7) < 0.12 }); // 대장장이 (일러스트가 있으면)
   },
   drawAltar(ctx, x, y, t) {
     this.shadow(ctx, x, y, 30);
+    if (drawProp3d(ctx, 'altar', x, y, 92)) { const g = ctx.createRadialGradient(x, y - 50, 2, x, y - 50, 50); g.addColorStop(0, `rgba(200,160,255,${0.35 + Math.sin(t * 3) * 0.12})`); g.addColorStop(1, 'rgba(200,160,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 50, y - 100, 100, 100); return; }
     ctx.fillStyle = '#6a6478'; ctx.fillRect(x - 26, y - 22, 52, 22); ctx.fillStyle = '#8a8498'; ctx.fillRect(x - 30, y - 28, 60, 8);
     const by = y - 58 + Math.sin(t * 2) * 4;
     const g = ctx.createRadialGradient(x, by, 2, x, by, 46);
@@ -462,11 +472,13 @@ const FieldScene = {
   },
   drawStorage(ctx, x, y) {
     this.shadow(ctx, x, y, 26);
+    if (drawProp3d(ctx, 'storage', x, y, 70)) return;
     ctx.fillStyle = '#4a3a6a'; ctx.fillRect(x - 26, y - 34, 52, 34);
     ctx.fillStyle = '#6a5a9a'; ctx.fillRect(x - 28, y - 42, 56, 12);
     ctx.fillStyle = '#f0c860'; ctx.fillRect(x - 4, y - 32, 8, 10); ctx.fillRect(x - 26, y - 20, 52, 3);
   },
   drawTrunk(ctx, x, y, s) {
+    if (drawProp3d(ctx, 'tree', x, y + 4, 250 * s)) return; // 3D 나무 한 그루 (줄기+잎)
     ctx.fillStyle = 'rgba(0,30,20,0.3)'; ctx.beginPath(); ctx.ellipse(x + 10, y + 4, 34 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#4a3326'; ctx.fillRect(x - 12 * s, y - 150 * s, 24 * s, 150 * s);
     ctx.fillStyle = '#5e4232'; ctx.fillRect(x - 12 * s, y - 150 * s, 8 * s, 150 * s);
@@ -474,6 +486,7 @@ const FieldScene = {
     for (let i = 0; i < 6; i++) ctx.fillRect(x - 6 * s + (i % 2) * 8 * s, y - 140 * s + i * 22 * s, 6 * s, 10 * s);
   },
   drawCanopy(ctx, x, y, s, t) {
+    if (env3d('tree')) return;
     const sw = Math.sin(t * 0.8 + x) * 3 * s;
     const cy = y - 170 * s;
     ctx.fillStyle = 'rgba(0,25,30,0.28)';
@@ -484,6 +497,7 @@ const FieldScene = {
     for (const [bx, by, r] of blobs) { ctx.fillStyle = '#3f8f72'; ctx.beginPath(); ctx.arc(x + bx * s + sw - 14, cy + by * s - 14, r * s * 0.42, 0, Math.PI * 2); ctx.fill(); }
   },
   drawHouse(ctx, x, y, v) {
+    if (drawProp3d(ctx, v ? 'house_b' : 'house_a', x, y + 4, v ? 170 : 200)) return;
     ctx.fillStyle = 'rgba(0,30,20,0.3)'; ctx.fillRect(x - 70, y - 6, 150, 18);
     ctx.fillStyle = v ? '#d8c8a8' : '#e4d4b0'; ctx.fillRect(x - 64, y - 90, 128, 90);
     ctx.fillStyle = '#6e4a32'; for (const dx of [-64, -4, 58]) ctx.fillRect(x + dx, y - 90, 6, 90);
@@ -494,6 +508,7 @@ const FieldScene = {
     ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.beginPath(); ctx.moveTo(x, y - 150); ctx.lineTo(x + 84, y - 86); ctx.lineTo(x, y - 86); ctx.fill();
   },
   drawWell(ctx, x, y) {
+    if (drawProp3d(ctx, 'well', x, y, 96)) return;
     ctx.fillStyle = 'rgba(0,30,20,0.3)'; ctx.beginPath(); ctx.ellipse(x, y + 4, 40, 14, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#7a7a80'; ctx.fillRect(x - 32, y - 30, 64, 30);
     ctx.fillStyle = '#2a3a4a'; ctx.beginPath(); ctx.ellipse(x, y - 30, 32, 10, 0, 0, Math.PI * 2); ctx.fill();
@@ -502,6 +517,7 @@ const FieldScene = {
   },
   drawChest(ctx, x, y, open) {
     this.shadow(ctx, x, y, 24);
+    if (!open && drawProp3d(ctx, 'chest', x, y, 56)) { ctx.fillStyle = `rgba(255,230,120,${0.4 + Math.sin(this.t * 4) * 0.3})`; ctx.fillRect(x - 2, y - 58, 4, 8); return; }
     ctx.fillStyle = '#7a4e2a'; ctx.fillRect(x - 22, y - 26, 44, 26);
     ctx.fillStyle = '#d0a645'; ctx.fillRect(x - 22, y - 16, 44, 4); ctx.fillRect(x - 4, y - 20, 8, 10);
     ctx.fillStyle = '#2b1d16'; ctx.lineWidth = 2; ctx.strokeStyle = '#2b1d16'; ctx.strokeRect(x - 22, y - 26, 44, 26);

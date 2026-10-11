@@ -37,6 +37,7 @@ def split_sheet(path, count=5):
     2) 칸마다 연결 덩어리를 찾아 가장 큰 그림 + 그 주변 장식만 남긴다 (위쪽 제목 글자 · 아래쪽 번호는 버린다)"""
     im = Image.open(path).convert('RGBA'); arr = np.array(im); a = arr[..., 3] > 24
     H, W = a.shape
+    a[:int(H * 0.1), int(W * 0.3):int(W * 0.7)] = False   # 시트 제목 (위 가운데)
     body = a[int(H * 0.18):int(H * 0.84)]                       # 제목·번호를 뺀 띠
     prof = np.convolve(body.sum(axis=0).astype(float), np.ones(15) / 15, mode='same')
     cuts = [0]
@@ -50,6 +51,10 @@ def split_sheet(path, count=5):
         sub = a[:, x0:x1].copy(); F = 3
         # 아래쪽 번호(01 02 ..): 발밑에 붙어 있는 일정한 너비의 글자 띠 — 아래에서부터 너비가 거의 같은 줄을 지운다
         rows = sub.sum(axis=1); ink = np.where(rows > 0)[0]
+        if len(ink): # 번호 자리: 맨 아래 줄들(발보다 아래)은 번호뿐 — 그 가운데를 중심으로 번호 칸을 지운다
+            low = sub[int(H * 0.965):]; ys_, xs_ = np.where(low)
+            if len(xs_) > 30: cx = int(np.median(xs_)); sub[int(H * 0.915):, max(0, cx - 58):cx + 58] = False
+            rows = sub.sum(axis=1); ink = np.where(rows > 0)[0]
         if len(ink):
             last = ink[-1]; P = np.median(rows[max(0, last - 25):last + 1]); y = last
             while y > H * 0.8 and rows[y] <= P * 1.3 + 2: y -= 1
@@ -59,10 +64,10 @@ def split_sheet(path, count=5):
         comps = []
         for i in range(1, n + 1):
             ys, xs = np.where(lab == i)
-            comps.append({ 'i': i, 'y0': ys.min() * F, 'y1': (ys.max() + 1) * F, 'w': (xs.max() + 1 - xs.min()) * F, 'area': len(ys) })
+            comps.append({ 'i': i, 'y0': ys.min() * F, 'y1': (ys.max() + 1) * F, 'w': (xs.max() + 1 - xs.min()) * F, 'area': len(ys), 'edge': xs.min() <= 1 or xs.max() >= small.shape[1] - 2 })
         if not comps: continue
         main = max(comps, key=lambda c: c['area'])
-        keep = [c['i'] for c in comps if c is main or (c['area'] > main['area'] * 0.004 and c['y0'] < H * 0.86 and not (c['y1'] < H * 0.17 and c['w'] > (x1 - x0) * 0.5) and c['y1'] > H * 0.12)]
+        keep = [c['i'] for c in comps if c is main or (c['area'] > main['area'] * 0.004 and c['y0'] < H * 0.84 and c['y1'] > H * 0.18 and c['y0'] > main['y0'] - H * 0.03 and not c['edge'])] # 칸 가장자리에 걸친 조각 = 옆 그림의 무기 끝 # 제목(위)·번호 조각(아래) 버림
         m_small = np.isin(lab, keep)
         m = np.array(Image.fromarray((m_small * 255).astype('uint8')).resize((x1 - x0, H), Image.NEAREST)) > 0
         m = m & sub
@@ -75,6 +80,24 @@ def split_sheet(path, count=5):
 def trim(im):
     a = np.array(im)[..., 3] > 24; ys, xs = np.where(a)
     return im.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+
+def unify(im, target_l=0.56, outline=4):
+    """화풍 맞추기: 밝기(불투명 부분 평균)를 같게 · 흰 스티커 외곽선 두께를 같게"""
+    from PIL import ImageFilter, ImageEnhance
+    a = np.array(im); op = a[..., 3] > 128
+    if op.any():
+        l = (a[..., :3][op].astype(float) @ [0.299, 0.587, 0.114]).mean() / 255
+        g = np.log(target_l) / np.log(max(0.05, min(0.95, l)))
+        rgb = (255 * (a[..., :3] / 255.0) ** g).clip(0, 255).astype('uint8'); a[..., :3] = rgb
+        im = Image.fromarray(a)
+    alpha = im.split()[3].point(lambda v: 255 if v > 24 else 0)
+    big = alpha.filter(ImageFilter.MaxFilter(outline * 2 + 1))
+    base = Image.new('RGBA', im.size, (255, 255, 255, 0)); base.putalpha(big)
+    pad = Image.new('RGBA', (im.width + outline * 2, im.height + outline * 2), (0, 0, 0, 0))
+    out = pad.copy(); bigp = Image.new('L', pad.size, 0); bigp.paste(alpha, (outline, outline)); bigp = bigp.filter(ImageFilter.MaxFilter(outline * 2 + 1))
+    white = Image.new('RGBA', pad.size, (255, 255, 255, 255)); white.putalpha(bigp)
+    out.alpha_composite(white); out.alpha_composite(im, (outline, outline))
+    return out
 
 def face_box(im, hint):
     """초상화용 얼굴 칸 (비율) — 위 22% 근처, 머리 너비 기준 정사각형"""
@@ -94,16 +117,18 @@ def main():
         p = os.path.join(SRC, 'sheets', sheet)
         if not os.path.exists(p): print('없음', sheet); continue
         figs = split_sheet(p); print(sheet, '→', len(figs), '명')
+        flips = set(mp.get('flip') or [])
         for k, hid in assign.items():
             i = int(k) - 1
-            if hid and 0 <= i < len(figs): got[hid] = figs[i]
+            if hid and 0 <= i < len(figs): got[hid] = figs[i].transpose(Image.FLIP_LEFT_RIGHT) if f'{sheet}#{k}' in flips else figs[i] # 모두 오른쪽을 보게
     cdir = os.path.join(SRC, 'chars')
     for f in sorted(os.listdir(cdir)) if os.path.isdir(cdir) else []:
         if f.lower().endswith('.png'): got[f[:-4]] = trim(Image.open(os.path.join(cdir, f)).convert('RGBA'))
     entries = {}
     for hid, im in sorted(got.items()):
-        im = trim(im); w, h = im.size; s = H_OUT / h
-        im = im.resize((max(1, round(w * s)), H_OUT), Image.LANCZOS)
+        im = trim(im); w, h = im.size; s = (H_OUT - 8) / h
+        im = im.resize((max(1, round(w * s)), H_OUT - 8), Image.LANCZOS)
+        im = unify(im)
         im.save(os.path.join(OUT, hid + '.png'))
         buf = io.BytesIO(); im.save(buf, 'WEBP', quality=88, method=6)
         entries[hid] = { 'src': 'data:image/webp;base64,' + base64.b64encode(buf.getvalue()).decode(), 'w': im.size[0], 'h': im.size[1], 'face': face_box(im, (mp.get('face') or {}).get(hid)) }
@@ -111,7 +136,9 @@ def main():
     js = ['// ===== 02c_art.js : 캐릭터 일러스트 (자동 생성: tools/art/import_art.py — 손으로 고치지 말 것) =====',
           '// 그림이 있는 영웅은 코드 드로잉 대신 이 그림을 쓴다 (전투·필드·초상화). 동작은 그림을 기울이고 늘여서 흉내 낸다.',
           'const ART_IMAGES = ' + json.dumps(entries, ensure_ascii=False, separators=(',', ':')) + ';',
-          'for (const id in ART_IMAGES) if (typeof HEROES !== "undefined" && HEROES[id]) { const name = "art_" + id, base = ART[HEROES[id].sprite] || ART.knight; ART[name] = Object.assign({}, base); ART_IMG_META[name] = ART_IMAGES[id]; SPRITE_IMAGE_OVERRIDES[name] = ART_IMAGES[id].src; HEROES[id].sprite = name; }', '']
+          'for (const id in ART_IMAGES) if (typeof HEROES !== "undefined" && HEROES[id]) { const name = "art_" + id, base = ART[HEROES[id].sprite] || ART.knight; ART[name] = Object.assign({}, base); ART_IMG_META[name] = ART_IMAGES[id]; SPRITE_IMAGE_OVERRIDES[name] = ART_IMAGES[id].src; HEROES[id].sprite = name; }',
+          '// NPC: npc_<스프라이트 이름> (guide · merchant · smith · soldier)',
+          'for (const id in ART_IMAGES) if (id.startsWith("npc_")) { const name = id.slice(4); if (!ART[name]) ART[name] = Object.assign({}, ART.guide); ART_IMG_META[name] = ART_IMAGES[id]; SPRITE_IMAGE_OVERRIDES[name] = ART_IMAGES[id].src; }', '']
     open(os.path.join(ROOT, 'src', 'js', '02c_art.js'), 'w').write('\n'.join(js))
     print('영웅', len(entries), '명 →', 'src/js/02c_art.js', sum(len(e['src']) for e in entries.values()) // 1024, 'KB')
 

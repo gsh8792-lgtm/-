@@ -274,8 +274,9 @@ const WorldScene = {
     ctx.beginPath(); ctx.moveTo(0, 480); for (let x = 0; x <= Z.w; x += 200) ctx.lineTo(x, 480 + Math.sin(x * 0.004) * 30); ctx.stroke();
     // 웨이포인트
     const W = this.wp, on = waypointOn(Game.profile, Z.key);
+    if (!drawProp3d(ctx, 'waypoint', W.x, W.y + 6, 120)) {
     ctx.fillStyle = '#6a6a7a'; ctx.beginPath(); ctx.ellipse(W.x, W.y, 48, 18, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#8a8a9a'; ctx.beginPath(); ctx.ellipse(W.x, W.y - 4, 42, 15, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#8a8a9a'; ctx.beginPath(); ctx.ellipse(W.x, W.y - 4, 42, 15, 0, 0, Math.PI * 2); ctx.fill(); }
     for (let i = 0; i < 3; i++) { ctx.strokeStyle = on ? `rgba(120,200,255,${0.8 - i * 0.2})` : 'rgba(180,180,200,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(W.x, W.y - 6, 30 - i * 8, 10 - i * 3, 0, t * 2 + i, t * 2 + i + 4.5); ctx.stroke(); }
     if (on) { const g = ctx.createRadialGradient(W.x, W.y - 30, 4, W.x, W.y - 30, 70); g.addColorStop(0, 'rgba(130,210,255,0.5)'); g.addColorStop(1, 'rgba(130,210,255,0)'); ctx.fillStyle = g; ctx.fillRect(W.x - 70, W.y - 100, 140, 140); }
     // 장식·적·영웅 깊이 정렬
@@ -308,6 +309,7 @@ const WorldScene = {
   },
   drawDeco(ctx, d, t) {
     const { x, y, s, v } = d, k = this.Z.deco;
+    if (drawProp3d(ctx, { tree: 'tree', rock: 'rock', deadtree: 'dead_tree', spire: 'spire' }[k], x, y, { tree: 250, rock: 80, deadtree: 90, spire: 80 }[k] * s, v > 0.5)) { if (k === 'spire') { ctx.fillStyle = `rgba(255,110,40,${0.12 + 0.1 * Math.sin(t * 2 + v * 7)})`; ctx.beginPath(); ctx.ellipse(x, y + 2, 30 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill(); } return; } // 3D 소품 (v0.61)
     if (k === 'tree') { FieldScene.drawTrunk(ctx, x, y, s); FieldScene.drawCanopy(ctx, x, y, s, t); return; }
     if (k === 'rock') { ctx.fillStyle = '#6a6458'; ctx.beginPath(); ctx.ellipse(x, y - 10 * s, 30 * s, 22 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#857e70'; ctx.beginPath(); ctx.ellipse(x - 6 * s, y - 16 * s, 18 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill(); return; }
     if (k === 'deadtree') { ctx.strokeStyle = '#2e2a26'; ctx.lineWidth = 7 * s; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 70 * s); ctx.lineTo(x - 22 * s, y - 100 * s); ctx.moveTo(x, y - 55 * s); ctx.lineTo(x + 26 * s, y - 86 * s); ctx.stroke();
@@ -320,22 +322,24 @@ const WorldScene = {
   drawPost(ctx, pt, t) {
     const st = this.postStatus(pt.i), x = pt.x, y = pt.y;
     FieldScene.shadow(ctx, x, y + 26, 90);
-    ctx.fillStyle = '#5a3f28'; for (let a = 0; a < 14; a++) { const ang = Math.PI * (0.05 + a / 13 * 0.9), px = x + Math.cos(ang) * 92, py = y + 22 + Math.sin(ang) * 26; ctx.fillRect(px - 4, py - 26, 8, 26); ctx.beginPath(); ctx.moveTo(px - 4, py - 26); ctx.lineTo(px, py - 34); ctx.lineTo(px + 4, py - 26); ctx.fill(); }
+    const top3d = drawProp3d(ctx, ['tower', 'tent', 'fort'][Math.min(2, pt.i)], x, y + 22, 210) ? (ENV3D[['tower', 'tent', 'fort'][Math.min(2, pt.i)]]) : null;
+    if (!top3d) { ctx.fillStyle = '#5a3f28'; for (let a = 0; a < 14; a++) { const ang = Math.PI * (0.05 + a / 13 * 0.9), px = x + Math.cos(ang) * 92, py = y + 22 + Math.sin(ang) * 26; ctx.fillRect(px - 4, py - 26, 8, 26); ctx.beginPath(); ctx.moveTo(px - 4, py - 26); ctx.lineTo(px, py - 34); ctx.lineTo(px + 4, py - 26); ctx.fill(); }
     if (pt.i === 0) { ctx.fillStyle = '#6b4a2e'; ctx.fillRect(x - 26, y - 90, 8, 110); ctx.fillRect(x + 18, y - 90, 8, 110); ctx.fillStyle = '#7d5a38'; ctx.fillRect(x - 34, y - 110, 68, 26); ctx.fillStyle = '#4e3520'; ctx.beginPath(); ctx.moveTo(x - 40, y - 108); ctx.lineTo(x, y - 140); ctx.lineTo(x + 40, y - 108); ctx.fill(); }
     else if (pt.i === 1) { ctx.fillStyle = st === 'ours' ? '#4a6a9a' : '#8a4a3a'; ctx.beginPath(); ctx.moveTo(x - 50, y + 10); ctx.lineTo(x, y - 70); ctx.lineTo(x + 50, y + 10); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.moveTo(x - 12, y + 10); ctx.lineTo(x, y - 30); ctx.lineTo(x + 12, y + 10); ctx.fill(); }
-    else { ctx.fillStyle = '#7a7470'; ctx.fillRect(x - 46, y - 70, 92, 84); ctx.fillStyle = '#8e8884'; for (let k = -2; k <= 2; k++) ctx.fillRect(x + k * 20 - 7, y - 84, 14, 16); ctx.fillStyle = '#2a2224'; ctx.beginPath(); ctx.moveTo(x - 16, y + 14); ctx.lineTo(x - 16, y - 18); ctx.quadraticCurveTo(x, y - 34, x + 16, y - 18); ctx.lineTo(x + 16, y + 14); ctx.fill(); }
-    const fx = x + (pt.i === 1 ? 0 : 0), fy = pt.i === 0 ? y - 140 : pt.i === 1 ? y - 70 : y - 84;
+    else { ctx.fillStyle = '#7a7470'; ctx.fillRect(x - 46, y - 70, 92, 84); ctx.fillStyle = '#8e8884'; for (let k = -2; k <= 2; k++) ctx.fillRect(x + k * 20 - 7, y - 84, 14, 16); ctx.fillStyle = '#2a2224'; ctx.beginPath(); ctx.moveTo(x - 16, y + 14); ctx.lineTo(x - 16, y - 18); ctx.quadraticCurveTo(x, y - 34, x + 16, y - 18); ctx.lineTo(x + 16, y + 14); ctx.fill(); } }
+    const fx = x + (pt.i === 1 ? 0 : 0), fy = top3d ? y + 22 - top3d.ay * 210 * top3d.h / top3d.w + 4 : pt.i === 0 ? y - 140 : pt.i === 1 ? y - 70 : y - 84;
     ctx.fillStyle = '#3a2a1a'; ctx.fillRect(fx - 2, fy - 50, 4, 52);
     const col = st === 'ours' ? '#4a8ae0' : st === 'contested' ? '#e08a2a' : '#c03a30', wv = Math.sin(t * 4 + pt.i) * 4;
     ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(fx + 2, fy - 50); ctx.quadraticCurveTo(fx + 20, fy - 46 + wv, fx + 38, fy - 42); ctx.lineTo(fx + 2, fy - 30); ctx.fill();
     if (st === 'contested') for (let k = 0; k < 5; k++) { const fl = (t * 1.4 + k * 0.37) % 1, ex = x - 60 + k * 30, ey = y - 10 - fl * 50; ctx.fillStyle = `rgba(255,${140 - fl * 90},40,${0.8 * (1 - fl)})`; ctx.beginPath(); ctx.arc(ex + Math.sin(t * 5 + k) * 4, ey, 9 * (1 - fl) + 3, 0, Math.PI * 2); ctx.fill(); }
     if (st !== 'ours') { const ids = postWaves(this.zi, pt.i, makeRng(hashSeed(this.Z.key, pt.i)))[0].slice(0, 2); ids.forEach((id, j) => { const ex = x + (j ? 48 : -48), ey = y + 48; FieldScene.shadow(ctx, ex, ey, 12); drawSprite(ctx, ENEMIES[id].sprite, ex, ey, { scale: ENEMIES[id].size > 1.3 ? 1.4 : 1.7, t, flip: j === 1, phase: j + pt.i }); }); }
-    else if (st === 'ours') { const g = ctx.createRadialGradient(x, y, 10, x, y, 110); g.addColorStop(0, 'rgba(120,180,255,0.18)'); g.addColorStop(1, 'rgba(120,180,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 110, y - 110, 220, 220); }
+    else if (st === 'ours') { if (ART.soldier) { FieldScene.shadow(ctx, x + 52, y + 50, 12); drawSprite(ctx, 'soldier', x + 52, y + 50, { scale: 1.7, t, phase: pt.i }); } const g = ctx.createRadialGradient(x, y, 10, x, y, 110); g.addColorStop(0, 'rgba(120,180,255,0.18)'); g.addColorStop(1, 'rgba(120,180,255,0)'); ctx.fillStyle = g; ctx.fillRect(x - 110, y - 110, 220, 220); }
   },
   drawGate(ctx, x, y, t) {
     const S = DUNGEON_SITES[this.Z.site], open = !S.unlock || S.unlock(Game.profile);
+    if (!drawProp3d(ctx, 'cave_gate', x, y + 40, 250)) {
     ctx.fillStyle = '#3a3438'; ctx.beginPath(); ctx.moveTo(x - 110, y + 40); ctx.quadraticCurveTo(x - 100, y - 120, x, y - 140); ctx.quadraticCurveTo(x + 100, y - 120, x + 110, y + 40); ctx.fill();
-    ctx.fillStyle = '#121014'; ctx.beginPath(); ctx.moveTo(x - 60, y + 40); ctx.quadraticCurveTo(x - 56, y - 70, x, y - 80); ctx.quadraticCurveTo(x + 56, y - 70, x + 60, y + 40); ctx.fill();
+    ctx.fillStyle = '#121014'; ctx.beginPath(); ctx.moveTo(x - 60, y + 40); ctx.quadraticCurveTo(x - 56, y - 70, x, y - 80); ctx.quadraticCurveTo(x + 56, y - 70, x + 60, y + 40); ctx.fill(); }
     const col = { cave: '120,220,120', mine: '230,170,80', crypt: '130,170,255', abyss: '255,90,50' }[this.Z.site];
     const g = ctx.createRadialGradient(x, y - 10, 4, x, y - 10, 90); g.addColorStop(0, `rgba(${col},${open ? 0.45 + 0.15 * Math.sin(t * 3) : 0.12})`); g.addColorStop(1, `rgba(${col},0)`); ctx.fillStyle = g; ctx.fillRect(x - 90, y - 100, 180, 180);
     if (!open) { ctx.strokeStyle = '#8a7a6a'; ctx.lineWidth = 6; for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(x + i * 22, y - 60); ctx.lineTo(x + i * 22, y + 40); ctx.stroke(); } }

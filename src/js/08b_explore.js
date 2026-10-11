@@ -550,6 +550,24 @@ function drawCorridor(ctx, camX, t, theme, ext) {
   const X0 = ext ? ext.x0 : 0, W = ext ? ext.x1 : 960, Y0 = ext ? ext.y0 : 0, top = CONST.FIELD_Y0 - 30;
   const tint = ['#231c33', '#231c33', '#1f2430', '#22202c', '#261c2a', '#2a1a22'][theme || 0] || '#231c33';
   ctx.fillStyle = tint; ctx.fillRect(X0, Y0, W - X0, 540 - Y0);
+  // 3D 배경 (v0.61): 던전마다 한 장, 가로로 이어 붙는다 (그림 = 게임 y -108..540, 바닥 시작 288)
+  const site = (Game.run && Game.run.site) || 'cave', bg = env3d('dungeon_' + site);
+  if (bg) {
+    const TW = 1152, off = ((-camX % TW) + TW) % TW;
+    for (let x = off - TW * Math.ceil((off - X0) / TW); x < W; x += TW) {
+      ctx.drawImage(bg, Math.floor(x), Y0, TW + 1, 540 - Y0);
+      for (const tx of [360, 936]) { // 횃불 일렁임
+        const fx = x + tx, fl = 0.85 + Math.sin(t * 9 + tx) * 0.08 + Math.sin(t * 21 + tx * 2) * 0.06;
+        const col = site === 'crypt' ? '120,180,255' : site === 'abyss' ? '255,110,50' : '255,170,80';
+        const g = ctx.createRadialGradient(fx, 64, 4, fx, 64, 130 * fl); g.addColorStop(0, `rgba(${col},${0.3 * fl})`); g.addColorStop(1, `rgba(${col},0)`);
+        ctx.fillStyle = g; ctx.fillRect(fx - 140, -76, 280, 280);
+      }
+    }
+    ctx.fillStyle = 'rgba(8,6,14,0.22)'; ctx.fillRect(X0, Y0, W - X0, 540 - Y0); // 캐릭터가 돋보이게 살짝 어둡게
+    const fg = ctx.createLinearGradient(0, top, 0, 540); fg.addColorStop(0, 'rgba(0,0,0,0)'); fg.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = fg; ctx.fillRect(X0, top, W - X0, 540 - top);
+    return;
+  }
   // 먼 돌벽
   const o1 = -camX * 0.3;
   for (let row = Y0 < 0 ? -Math.ceil(-Y0 / 34) : 0; row < 9; row++) {
